@@ -229,6 +229,10 @@ npm run link:project -- "G:\path\to\cocos-project" --replace
 
 Then build from this repository with `npm run build`. Reload the extension from **Extension Manager** for ordinary changes. Restart Creator before testing changes that touch tool modules and scene scripts together: their module caches do not reload as one unit.
 
+For a development build with minification and local identifier mangling, run `npm run build:debug`. This uses pinned Terser, preserves property/export/tool names and class/function names, and transforms owned CommonJS and graph ESM modules only. No obfuscator, string encryption, anti-debug code or dependency-wide transform is used.
+
+Transformed `dist` contains no inline source maps or embedded TypeScript. Private source maps are written to ignored `.debug-maps/`, outside the packaged runtime. Keep that directory locally for the matching build; do not distribute it. Build metadata records `mode: debug-minified` and the minifier version. Run `npm run build` to restore readable output, then reload Creator; both modes permit uncommitted source and do not imply production qualification.
+
 Do not use **Delete** in Extension Manager while the extension path is a junction; remove the junction from the filesystem instead.
 
 ## Adding Custom Tools

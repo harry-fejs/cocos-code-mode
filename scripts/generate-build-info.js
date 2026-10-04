@@ -26,7 +26,8 @@ const info = {
     // Scoped to what actually ends up in the build -- the editor drops temp files
     // at the repo root, and a flag that cries wolf is a flag people stop reading.
     // Untracked files count here: a new source/*.ts does get compiled in.
-    dirty: git('status --porcelain -- source package.json', '') !== '',
+    dirty: git('status --porcelain -- source static scripts tools/cocos-graph package.json base.tsconfig.json tsconfig.json', '') !== '',
+    mode: 'readable',
     builtAt: new Date().toISOString()
 };
 

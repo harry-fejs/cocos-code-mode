@@ -6,6 +6,7 @@ export interface IBuildInfo {
     branch: string;
     dirty: boolean;
     builtAt: string;
+    mode: 'readable' | 'debug-minified' | 'unknown';
 }
 
 let cached: IBuildInfo | null = null;
@@ -35,7 +36,8 @@ export function getBuildInfo(): IBuildInfo {
         commit: stamped.commit ?? 'unknown',
         branch: stamped.branch ?? 'unknown',
         dirty: stamped.dirty ?? false,
-        builtAt: stamped.builtAt ?? 'unknown'
+        builtAt: stamped.builtAt ?? 'unknown',
+        mode: stamped.mode === 'readable' || stamped.mode === 'debug-minified' ? stamped.mode : 'unknown'
     };
     return cached;
 }

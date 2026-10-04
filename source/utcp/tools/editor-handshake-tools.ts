@@ -29,7 +29,7 @@ export class EditorHandshakeTools {
         properties: {
             instanceId: { type: 'string' }, projectPath: nullableText, editorVersion: nullableText,
             projectMatches: nullableBoolean,
-            build: { type: 'object', properties: { version: { type: 'string' }, commit: { type: 'string' }, branch: { type: 'string' }, dirty: { type: 'boolean' }, builtAt: { type: 'string' } }, required: ['version', 'commit', 'branch', 'dirty', 'builtAt'] },
+            build: { type: 'object', properties: { version: { type: 'string' }, commit: { type: 'string' }, branch: { type: 'string' }, dirty: { type: 'boolean' }, builtAt: { type: 'string' }, mode: { type: 'string', enum: ['readable', 'debug-minified', 'unknown'] } }, required: ['version', 'commit', 'branch', 'dirty', 'builtAt', 'mode'] },
             probe: { type: 'object', properties: { status: { type: 'string', enum: ['responsive', 'timeout', 'error', 'invalid-response'] }, sceneReady: nullableBoolean, code: nullableText,
                 evidence: { type: 'object', properties: { requestId: { type: 'string' }, startedAt: { type: 'integer' }, ageMs: { type: 'integer' }, shared: { type: 'boolean' }, settled: { type: 'boolean' } }, required: ['requestId', 'startedAt', 'ageMs', 'shared', 'settled'] },
             }, required: ['status', 'sceneReady', 'code', 'evidence'] },

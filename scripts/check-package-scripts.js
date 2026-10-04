@@ -30,5 +30,9 @@ if (pkg.scripts?.build !== expectedBuild) {
   console.error(`[check:package-scripts] scripts.build must exactly match: ${expectedBuild}`);
   ok = false;
 }
+if (pkg.scripts?.['build:debug'] !== 'npm run build && node scripts/minify-debug.js && node scripts/check-creator-load.js') {
+  console.error('[check:package-scripts] build:debug must compile, minify and verify Creator loading');
+  ok = false;
+}
 if (!ok) process.exit(1);
 console.log('[check:package-scripts] OK — required scripts present');

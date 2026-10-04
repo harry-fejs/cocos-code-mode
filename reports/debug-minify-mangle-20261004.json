@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-04",
+  "worktree": "G:/_ws/_helpers/cc-code-mode-cst-3x7-worktrees/debug-minify-mangle-cc-3x7",
+  "branch": "feat/cocos-pilot-debug-minify-mangle",
+  "base": "2fd9e8f",
+  "dirtyBaseChangesTransferred": false,
+  "transform": {
+    "tool": "terser",
+    "version": "5.44.0",
+    "files": 142,
+    "beforeBytes": 6370228,
+    "afterBytes": 1211617,
+    "localMangle": true,
+    "properties": false,
+    "keepClassAndFunctionNames": true,
+    "obfuscator": false,
+    "privateMaps": 142,
+    "inlineSourceMapLeaks": 0
+  },
+  "verification": {
+    "buildDebug": "passed",
+    "readableLoader": "passed before transform",
+    "minifiedLoader": "passed",
+    "unitSuite": {
+      "passed": 658,
+      "failed": 0,
+      "scope": "minified artifact before final additive build-mode projection"
+    },
+    "finalModeContractTests": {
+      "passed": 3,
+      "failed": 0
+    },
+    "sourceMapErrorRecovery": {
+      "code": "TARGET_NOT_FOUND",
+      "source": "source/utcp/tools/advanced-capability-tools.ts",
+      "line": 597
+    },
+    "live": {
+      "creator": "3.7.3 hybrid with 3.7.4 engine-native",
+      "project": "G:/_ws/_helpers/cc-3x-minify-test",
+      "endpoint": "http://localhost:50685",
+      "instance": "a0966c566d6e94adccecce027341ea97",
+      "mode": "debug-minified",
+      "builtAt": "2026-10-04T07:58:08.217Z",
+      "handshake": true,
+      "sceneReady": true,
+      "nodeCreateReadDelete": true,
+      "sceneFinalClean": true,
+      "nodeCount": 19,
+      "graphWorkerBuild": true,
+      "graphQuery": "assets/scene/login.scene#21472705-eeda-4479-960c-68bca1b49253",
+      "nativePopupNegative": {
+        "complete": true,
+        "detected": false
+      },
+      "settingsVisual": "reports/debug-minify-settings.png"
+    }
+  },
+  "limits": [
+    "No production qualification or performance latency improvement claim",
+    "283 exposed tools observed on live profile, not 326 live qualification",
+    "Inherited authoring audit source hash drift persists at checked-out HEAD; no frozen files/hashes edited",
+    "API worktree uncommitted status/popup changes not transferred",
+    "Original UIManager project regression and canonical Scene Not Response are separate API follow-ups"
+  ],
+  "commit": false
+}
