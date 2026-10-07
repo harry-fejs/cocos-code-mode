@@ -34,7 +34,7 @@ it('status verifies actual HTTP identity, registry ownership and scene readiness
       activity.start('request-1', 'nodeGetTree');
       assert.equal(activity.snapshot().activeCount, 1);
       activity.finish('request-1', 'nodeGetTree', 'completed', 200, Date.now());
-      assert.equal(activity.snapshot().lastFinished.tool, 'nodeGetTree');
+      assert.equal(activity.snapshot().recentFinished[0].tool, 'nodeGetTree');
     }
     const wrong = await inspectExtensionStatus({ ...identity, instanceId: 'wrong' }, registry);
     assert.equal(wrong.registry.status, 'mismatch');

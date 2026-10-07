@@ -135,6 +135,13 @@ export const statusPanelDefinition = {
         h2, summary { font-size: 13px; margin: 0; padding: 8px 11px; background: #30333b; } summary { cursor: pointer; }
         dl { display: grid; grid-template-columns: minmax(85px, 30%) minmax(0, 1fr); gap: 7px 12px; padding: 11px; margin: 0; }
         dt { color: #aeb4c0; } dd { margin: 0; color: #e1e3e8; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+        .request-list { margin: 0; padding: 11px; list-style: none; max-height: calc(5 * 32px + 22px); overflow-y: auto; scrollbar-gutter: stable; }
+        .request-list:focus-visible { outline: 2px solid #9ec9ff; outline-offset: -2px; }
+        .request-list li { display: flex; align-items: center; gap: 8px; height: 32px; min-width: 0; white-space: nowrap; border-bottom: 1px solid #3e424b; }
+        .request-list li:last-child { border-bottom: 0; }
+        .request-list time { flex: none; color: #aeb4c0; font-size: 12px; }
+        .request-list .request-tool { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; }
+        .request-list li span:last-child { flex: none; font-size: 12px; }
         .controls { padding: 11px; justify-content: flex-start; } label { display: inline-flex; align-items: center; gap: 6px; }
         #action:not(:empty) { padding: 0 11px 11px; }`,
     $: { check: '#check', restart: '#restart', recover: '#recover', open: '#open', clear: '#clear', debug: '#debug', debugLabel: '#debug-label', action: '#action', state: '#state', checked: '#checked', groups: '#groups', root: '#status-root' },

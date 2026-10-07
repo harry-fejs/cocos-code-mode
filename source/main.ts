@@ -117,7 +117,7 @@ export const methods: { [key: string]: (...any: any) => any } = {
             ...snapshot,
             startupFailure: serverStartupFailure,
             sessions: current ? current.sessionPresence.snapshot() : [],
-            activity: current ? current.requestActivity.snapshot() : { activeCount: 0, active: [], overflowCount: 0, lastReceived: null, lastFinished: null },
+            activity: current ? current.requestActivity.snapshot() : { activeCount: 0, active: [], overflowCount: 0, lastReceived: null, recentFinished: [] },
         };
     },
     openAgentInbox() {

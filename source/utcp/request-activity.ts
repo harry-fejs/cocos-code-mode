@@ -21,10 +21,11 @@ export interface RequestActivitySnapshot {
     active: ActiveRequestActivity[];
     overflowCount: number;
     lastReceived: { tool: string; receivedAt: number; ageMs: number } | null;
-    lastFinished: FinishedRequestActivity | null;
+    recentFinished: FinishedRequestActivity[];
 }
 
 const MAX_VISIBLE_ACTIVE = 20;
+const MAX_RECENT_FINISHED = 20;
 const EXCLUDED_TOOLS = new Set(['editorHandshake', 'editorSessionHeartbeat']);
 
 interface VisibleActive {
@@ -38,7 +39,7 @@ export class RequestActivityStore {
     private activeCount = 0;
     private readonly visible = new Map<string, VisibleActive>();
     private lastReceived: { tool: string; receivedAt: number } | null = null;
-    private lastFinished: FinishedRequestActivity | null = null;
+    private readonly recentFinished: FinishedRequestActivity[] = [];
 
     constructor(private readonly now: () => number = Date.now) {}
 
@@ -58,14 +59,15 @@ export class RequestActivityStore {
         this.activeCount = Math.max(0, this.activeCount - 1);
         this.visible.delete(requestId);
         const finishedAt = this.now();
-        this.lastFinished = {
+        this.recentFinished.unshift({
             requestId,
             tool,
             outcome,
             status,
             finishedAt,
             durationMs: Math.max(0, finishedAt - startedAt),
-        };
+        });
+        if (this.recentFinished.length > MAX_RECENT_FINISHED) this.recentFinished.pop();
     }
 
     snapshot(): RequestActivitySnapshot {
@@ -79,7 +81,7 @@ export class RequestActivityStore {
             active,
             overflowCount: Math.max(0, this.activeCount - active.length),
             lastReceived: this.lastReceived ? { ...this.lastReceived, ageMs: Math.max(0, now - this.lastReceived.receivedAt) } : null,
-            lastFinished: this.lastFinished ? { ...this.lastFinished } : null,
+            recentFinished: this.recentFinished.map((entry) => ({ ...entry })),
         };
     }
 
@@ -87,6 +89,6 @@ export class RequestActivityStore {
         this.activeCount = 0;
         this.visible.clear();
         this.lastReceived = null;
-        this.lastFinished = null;
+        this.recentFinished.length = 0;
     }
 }

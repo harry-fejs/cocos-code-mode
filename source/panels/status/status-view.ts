@@ -10,7 +10,7 @@ export interface StatusActivity {
     active: Array<{ requestId: string; tool: string; startedAt: number; ageMs: number }>;
     overflowCount: number;
     lastReceived: { tool: string; receivedAt: number; ageMs: number } | null;
-    lastFinished: { requestId: string; tool: string; outcome: 'completed' | 'failed'; status: number; finishedAt: number; durationMs: number } | null;
+    recentFinished: Array<{ requestId: string; tool: string; outcome: 'completed' | 'failed'; status: number; finishedAt: number; durationMs: number }>;
 }
 
 export interface Status {
@@ -51,13 +51,13 @@ function isStatusActivity(value: unknown): value is StatusActivity {
         || typeof value.lastReceived.tool !== 'string' || value.lastReceived.tool.length < 1 || value.lastReceived.tool.length > 128
         || typeof value.lastReceived.receivedAt !== 'number' || !Number.isInteger(value.lastReceived.receivedAt) || value.lastReceived.receivedAt <= 0
         || typeof value.lastReceived.ageMs !== 'number' || !Number.isFinite(value.lastReceived.ageMs) || value.lastReceived.ageMs < 0)) return false;
-    return value.lastFinished === null || (isRecord(value.lastFinished)
-        && typeof value.lastFinished.requestId === 'string' && value.lastFinished.requestId.length > 0 && value.lastFinished.requestId.length <= 32
-        && typeof value.lastFinished.tool === 'string' && value.lastFinished.tool.length > 0 && value.lastFinished.tool.length <= 128
-        && (value.lastFinished.outcome === 'completed' || value.lastFinished.outcome === 'failed')
-        && typeof value.lastFinished.status === 'number' && Number.isInteger(value.lastFinished.status) && value.lastFinished.status >= 100 && value.lastFinished.status <= 599
-        && typeof value.lastFinished.finishedAt === 'number' && Number.isInteger(value.lastFinished.finishedAt) && value.lastFinished.finishedAt > 0
-        && typeof value.lastFinished.durationMs === 'number' && Number.isInteger(value.lastFinished.durationMs) && value.lastFinished.durationMs >= 0);
+    return Array.isArray(value.recentFinished) && value.recentFinished.length <= 20 && value.recentFinished.every((entry) => isRecord(entry)
+        && typeof entry.requestId === 'string' && entry.requestId.length > 0 && entry.requestId.length <= 32
+        && typeof entry.tool === 'string' && entry.tool.length > 0 && entry.tool.length <= 128
+        && (entry.outcome === 'completed' || entry.outcome === 'failed')
+        && typeof entry.status === 'number' && Number.isInteger(entry.status) && entry.status >= 100 && entry.status <= 599
+        && typeof entry.finishedAt === 'number' && Number.isInteger(entry.finishedAt) && entry.finishedAt > 0
+        && typeof entry.durationMs === 'number' && Number.isInteger(entry.durationMs) && entry.durationMs >= 0);
 }
 
 export function isStatus(value: unknown): value is Status {
@@ -113,13 +113,10 @@ export function renderStatus(container: HTMLElement, snapshot: Status | null): v
         ['Sessions', `${activeSessionCount} active · ${staleSessionCount} stale · ${expiredSessionCount} expired`],
         ['Since last tool request', snapshot.activity.lastReceived ? `${Math.floor(snapshot.activity.lastReceived.ageMs / 1000)}s ago · ${snapshot.activity.lastReceived.tool}` : 'No tool request received'],
     ] : [['State', 'Unavailable']];
-    if (snapshot?.activity.lastFinished) {
-        const last = snapshot.activity.lastFinished;
-        activityRows.push(['Last request', `${last.tool} · ${last.outcome} · ${last.durationMs}ms`]);
-    }
     const startup = snapshot?.startupFailure;
     const groups: Array<[string, Array<[string, string | null | undefined]>]> = [
         ['Operational status', activityRows],
+        ['Recent requests (latest 20)', []],
         ['Session connections', sessionRows],
         ['Server', [
             ['State', server ? (server.running ? 'Running' : 'Stopped') : null],
@@ -151,6 +148,8 @@ export function renderStatus(container: HTMLElement, snapshot: Status | null): v
     ];
     const document = container.ownerDocument;
     const fragment = document.createDocumentFragment();
+    const requestListFocused = container.ownerDocument.activeElement === container.querySelector('.request-list');
+    const requestScrollTop = container.querySelector('.request-list')?.scrollTop ?? 0;
     const expanded = container.querySelector('details')?.open ?? false;
     for (const [heading, rows] of groups) {
         const technical = heading === 'Technical details';
@@ -158,16 +157,46 @@ export function renderStatus(container: HTMLElement, snapshot: Status | null): v
         if (technical) (section as HTMLDetailsElement).open = expanded;
         const title = document.createElement(technical ? 'summary' : 'h2');
         title.textContent = heading;
-        const list = document.createElement('dl');
-        for (const [label, value] of rows) {
-            const term = document.createElement('dt');
-            term.textContent = label;
-            const detail = document.createElement('dd');
-            detail.textContent = value?.trim() || 'Unavailable';
-            list.append(term, detail);
+        if (heading === 'Recent requests (latest 20)') {
+            const list = document.createElement('ol');
+            list.className = 'request-list';
+            list.setAttribute('aria-label', 'Recent completed tool requests, newest first');
+            list.tabIndex = 0;
+            for (const entry of snapshot?.activity.recentFinished ?? []) {
+                const item = document.createElement('li');
+                const time = document.createElement('time');
+                time.dateTime = new Date(entry.finishedAt).toISOString();
+                time.textContent = new Date(entry.finishedAt).toLocaleTimeString();
+                const tool = document.createElement('span');
+                tool.className = 'request-tool';
+                tool.textContent = entry.tool;
+                const result = document.createElement('span');
+                result.textContent = `${entry.outcome} · ${entry.status} · ${entry.durationMs}ms`;
+                item.title = `${time.textContent} · ${entry.tool} · ${result.textContent}`;
+                item.append(time, tool, result);
+                list.append(item);
+            }
+            if (!list.children.length) {
+                const empty = document.createElement('li');
+                empty.textContent = 'No completed tool requests yet';
+                list.append(empty);
+            }
+            section.append(title, list);
+        } else {
+            const list = document.createElement('dl');
+            for (const [label, value] of rows) {
+                const term = document.createElement('dt');
+                term.textContent = label;
+                const detail = document.createElement('dd');
+                detail.textContent = value?.trim() || 'Unavailable';
+                list.append(term, detail);
+            }
+            section.append(title, list);
         }
-        section.append(title, list);
         fragment.append(section);
     }
     container.replaceChildren(fragment);
+    const requestList = container.querySelector('.request-list');
+    if (requestList) requestList.scrollTop = requestScrollTop;
+    if (requestListFocused) (requestList as HTMLElement | null)?.focus();
 }
