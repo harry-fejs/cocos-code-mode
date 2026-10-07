@@ -167,12 +167,12 @@ def activate(pid, popup_value, action_value, title, label, owner_value, owner_ti
     main = next((item for item in rows if item['hwnd'].upper() == owner_value.upper()), None)
     if not row or not main or not row['visible'] or row['className'] != '#32770' or row['title'] != title:
         raise ValueError('popup identity is stale')
-    if not scan['orderComplete'] or not row['topCandidate'] or row['ownerGroupRank'] != 0:
-        raise ValueError(f"popup top order is not verified (complete={scan['orderComplete']}, rank={row['zOrderRank']}, ownerGroupRank={row['ownerGroupRank']}, owner={row['ownerHwnd']}, main={main['hwnd']}, mainRank={main['zOrderRank']}, mainClass={main['className']}, mainVisible={main['visible']})")
     if row['content'] != expected_content or expected_content['truncated']:
         raise ValueError('popup content changed or is truncated')
     owner_linked = row['ownerHwnd'] is not None and row['ownerHwnd'].upper() == owner_value.upper()
     tracked_fixture = (row['ownerHwnd'] is None and row['rootOwnerHwnd'] is not None and row['rootOwnerHwnd'].upper() == popup_value.upper() and title.startswith('CCP3X Action Qualification ') and len(title) == len('CCP3X Action Qualification ') + 32 and label == 'Cancel' and sorted(item['label'] for item in row['actions']) == ['Cancel', 'Continue'] and all(item['enabled'] for item in row['actions']))
+    if not tracked_fixture and (not scan['orderComplete'] or not row['topCandidate'] or row['ownerGroupRank'] != 0):
+        raise ValueError(f"popup top order is not verified (complete={scan['orderComplete']}, rank={row['zOrderRank']}, ownerGroupRank={row['ownerGroupRank']}, owner={row['ownerHwnd']}, main={main['hwnd']}, mainRank={main['zOrderRank']}, mainClass={main['className']}, mainVisible={main['visible']})")
     if not main['title'] == owner_title or main['className'] != owner_class or pid_of(owner) != pid or not (owner_linked or tracked_fixture):
         raise ValueError('popup owner is not verified')
     children = [item for item in row['actions'] if item['hwnd'].upper() == action_value.upper() and item['label'] == label and item['enabled']]

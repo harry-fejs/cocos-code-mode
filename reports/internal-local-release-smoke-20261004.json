@@ -1,0 +1,289 @@
+{
+  "date": "2026-10-04",
+  "classification": "dirty-artifact operational smoke; not clean qualification",
+  "environment": {
+    "editor": "3.7.3 hybrid (3.7.4 engine-native)",
+    "project": "G:/_ws/_helpers/cc-3x-test",
+    "instanceId": "1f64362472cee711fca91c21d5d1058d",
+    "endpoint": "http://localhost:64214",
+    "build": {
+      "commit": "2fd9e8f",
+      "branch": "feat/cocos-pilot-api-capability-expansion",
+      "dirty": true,
+      "builtAt": "2026-10-02T02:41:48.862Z"
+    },
+    "pythonSourceModified": true
+  },
+  "checks": {
+    "focusedInitial": {
+      "passed": 47,
+      "failed": 0
+    },
+    "popupPostFix": {
+      "passed": 23,
+      "failed": 0
+    },
+    "responsiveLive": {
+      "passed": 1,
+      "failed": 0,
+      "scope": "Canvas projection/missing root on disposable project; not original 212th UIManager"
+    },
+    "popupBeforeAction": {
+      "capturedAt": 1791089400778,
+      "detected": true,
+      "blocking": true,
+      "raceDetected": false,
+      "creatorDialog": {
+        "available": true,
+        "open": false,
+        "source": "information/has-dialog"
+      },
+      "windows": [
+        {
+          "source": "electron",
+          "id": "electron:2",
+          "title": "login.scene - cc-3x-test - Cocos Creator 3.7.3",
+          "visible": true,
+          "focused": null,
+          "modal": false,
+          "parentId": null,
+          "ownerVerified": true,
+          "bounds": {
+            "x": 722,
+            "y": 138,
+            "width": 1695,
+            "height": 1030
+          },
+          "classification": "creator-main",
+          "signals": [
+            "creator-main",
+            "creator-main-url"
+          ],
+          "content": {
+            "text": null,
+            "source": null,
+            "truncated": false
+          },
+          "zOrder": {
+            "foreground": null,
+            "rank": null,
+            "activePopup": null,
+            "confidence": "unknown",
+            "source": null
+          },
+          "actions": []
+        },
+        {
+          "source": "native",
+          "id": "native:39704:0X130AC2",
+          "title": "login.scene - cc-3x-test - Cocos Creator 3.7.3",
+          "visible": true,
+          "focused": null,
+          "modal": false,
+          "parentId": null,
+          "ownerVerified": true,
+          "bounds": {
+            "x": 722,
+            "y": 138,
+            "width": 1695,
+            "height": 1030
+          },
+          "classification": "creator-main",
+          "signals": [
+            "creator-main",
+            "creator-main-bounds",
+            "native-class:Chrome_WidgetWin_1"
+          ],
+          "content": {
+            "text": null,
+            "source": null,
+            "truncated": false
+          },
+          "zOrder": {
+            "foreground": null,
+            "rank": null,
+            "activePopup": null,
+            "confidence": "unknown",
+            "source": null
+          },
+          "actions": []
+        },
+        {
+          "source": "native",
+          "id": "native:39704:0X611B4",
+          "title": "CCP3X Action Qualification 26908926b77784ead9c68127dd05bff2",
+          "visible": true,
+          "focused": null,
+          "modal": true,
+          "parentId": "native:39704:0X130AC2",
+          "ownerVerified": true,
+          "bounds": {
+            "x": 1508,
+            "y": 613,
+            "width": 418,
+            "height": 122
+          },
+          "classification": "dialog",
+          "signals": [
+            "creator-owner",
+            "modal",
+            "native-class:#32770",
+            "native-dialog-class",
+            "native-owner",
+            "tracked-creator-fixture"
+          ],
+          "content": {
+            "text": "Disposable popup-action qualification. No scene or file changes.",
+            "source": "native-control",
+            "truncated": false
+          },
+          "zOrder": {
+            "foreground": false,
+            "rank": null,
+            "activePopup": false,
+            "confidence": "unknown",
+            "source": null
+          },
+          "actions": [
+            {
+              "id": "native:39704:0X60CEC",
+              "label": "Continue",
+              "enabled": true
+            },
+            {
+              "id": "native:39704:0X81164",
+              "label": "Cancel",
+              "enabled": true
+            }
+          ]
+        }
+      ],
+      "total": 3,
+      "truncated": false,
+      "complete": true,
+      "unavailable": []
+    },
+    "preFixAction": {
+      "status": 409,
+      "code": "POPUP_ACTION_UNCONFIRMED",
+      "samePopupRemained": true
+    },
+    "cause": "Python required owner-group top order before checking known unowned tracked fixture; service already accepted fixture through tracked identity",
+    "postFixAction": {
+      "activated": true,
+      "closed": true,
+      "popupId": "native:39704:0X611B4"
+    },
+    "finalPopup": {
+      "capturedAt": 1791089502327,
+      "detected": false,
+      "blocking": false,
+      "raceDetected": false,
+      "creatorDialog": {
+        "available": true,
+        "open": false,
+        "source": "information/has-dialog"
+      },
+      "windows": [
+        {
+          "source": "electron",
+          "id": "electron:2",
+          "title": "login.scene - cc-3x-test - Cocos Creator 3.7.3",
+          "visible": true,
+          "focused": null,
+          "modal": false,
+          "parentId": null,
+          "ownerVerified": true,
+          "bounds": {
+            "x": 722,
+            "y": 138,
+            "width": 1695,
+            "height": 1030
+          },
+          "classification": "creator-main",
+          "signals": [
+            "creator-main",
+            "creator-main-url"
+          ],
+          "content": {
+            "text": null,
+            "source": null,
+            "truncated": false
+          },
+          "zOrder": {
+            "foreground": null,
+            "rank": null,
+            "activePopup": null,
+            "confidence": "unknown",
+            "source": null
+          },
+          "actions": []
+        },
+        {
+          "source": "native",
+          "id": "native:39704:0X130AC2",
+          "title": "login.scene - cc-3x-test - Cocos Creator 3.7.3",
+          "visible": true,
+          "focused": null,
+          "modal": false,
+          "parentId": null,
+          "ownerVerified": true,
+          "bounds": {
+            "x": 722,
+            "y": 138,
+            "width": 1695,
+            "height": 1030
+          },
+          "classification": "creator-main",
+          "signals": [
+            "creator-main",
+            "creator-main-bounds",
+            "native-class:Chrome_WidgetWin_1"
+          ],
+          "content": {
+            "text": null,
+            "source": null,
+            "truncated": false
+          },
+          "zOrder": {
+            "foreground": null,
+            "rank": null,
+            "activePopup": null,
+            "confidence": "unknown",
+            "source": null
+          },
+          "actions": []
+        }
+      ],
+      "total": 2,
+      "truncated": false,
+      "complete": true,
+      "unavailable": []
+    },
+    "finalScene": {
+      "bounds": {
+        "x": 424.75,
+        "y": 74,
+        "width": 845.5,
+        "height": 487.984375,
+        "top": 74,
+        "right": 1270.25,
+        "bottom": 561.984375,
+        "left": 424.75
+      },
+      "uuid": "21472705-eeda-4479-960c-68bca1b49253",
+      "dirty": false,
+      "isDirty": false,
+      "nodeCount": 19,
+      "currentScene": {
+        "uuid": "21472705-eeda-4479-960c-68bca1b49253"
+      }
+    }
+  },
+  "remaining": [
+    "Clean committed/package artifact unavailable; no automatic commit authorized",
+    "Canonical Scene Not Response clean witness pending",
+    "Original responsive UUID/project retry pending"
+  ],
+  "qualificationPromoted": false
+}

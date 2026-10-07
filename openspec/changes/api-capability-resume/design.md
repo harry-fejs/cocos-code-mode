@@ -21,7 +21,7 @@
 2. **5 lane API R1–R5** theo `prerequisites/witnessContractIds`, cộng **R6 popup** theo plan riêng — vì điều kiện resume là theo IPC/fixture, không phải theo folder.
 3. **Freeze commit `bacd213`** (không phải `61bd383`) làm mốc — vì `bacd213` đã fix `sp` + `getComponent(string)` và smoke 10/10 sau khi mở `db://assets/scene.scene`.
 4. **Status `pending` trong `.openspec.yaml`** — tooling hiện tại không có state pending, nên dùng trường `status: pending` tự định nghĩa và `.gitignore` không ảnh hưởng; khi resume sẽ đổi thành spec-driven và tạo proposal con.
-5. **Popup observability tách thành lane R6 / plan riêng** — `notes/plans/cc-code-mode-cst/1-wip-260922__tbd-creator-popup-detection/plan.md`. Detection read-only thuộc P1 editor observability; Creator private IPC chỉ là signal, Electron là adapter chính, Win32 HWND là fallback có live-gate. Không gộp popup dismissal vào API resume.
+5. **R6 implementation versus qualification** — detection implementation closed by owner decision on 2026-10-04 in `notes/plans/cc-code-mode-cst/4-done-260922__261004-creator-popup-detection/plan.md`; canonical live acceptance is separately queued in `2-todo-261004__tbd-creator-popup-live-qualification/plan.md`. Detection read-only belongs to P1 editor observability; popup action remains a separate contract. No qualification or portfolio promotion is inferred from plan closure.
 
 ## Risks / Trade-offs
 
