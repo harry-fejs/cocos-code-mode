@@ -50,12 +50,7 @@ function sourceInventory() {
 }
 
 function manualUrl(explicit) {
-  if (explicit) return explicit;
-  const configPath = process.env.UTCP_CONFIG_FILE || path.join(os.homedir(), '.utcp_config.json');
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  const template = (config.manual_call_templates || []).find((item) => /^ccb3x(?:_\d+)?$/.test(item.name));
-  if (!template) throw new Error(`no live ccb3x manual in ${configPath}`);
-  return template.url;
+  return require('./project-connection').selectConnection({ url: explicit }).url;
 }
 
 function sameSet(left, right) {
@@ -106,6 +101,7 @@ function assertExecutionSinkInventory(surfaceIds, toolById) {
 async function main() {
   const urlIndex = process.argv.indexOf('--manual-url');
   const url = manualUrl(urlIndex >= 0 ? process.argv[urlIndex + 1] : null);
+  await require('./project-connection').verifyConnection(require('./project-connection').selectConnection({ url }));
   const response = await fetch(url, { redirect: 'error' });
   if (!response.ok) throw new Error(`GET ${url} -> ${response.status}`);
   const manual = await response.json();

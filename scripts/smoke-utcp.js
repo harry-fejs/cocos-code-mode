@@ -5,19 +5,10 @@ const { homedir } = require('os');
 const assert = require('assert').strict;
 
 async function discoverBase() {
-    let port = Number(process.argv[2]);
-    if (port) return `http://localhost:${port}`;
-    try {
-        const cfgPath = process.env.UTCP_CONFIG_FILE || join(homedir(), '.utcp_config.json');
-        const raw = readFileSync(cfgPath, 'utf8');
-        const cfg = JSON.parse(raw);
-        // Prefer the bare canonical (latest) entry; fall back to any cc-bridge template.
-        const tpls = cfg.manual_call_templates || [];
-        const canon = tpls.find(t => /^(ccb3x|ccb2x)$/.test(t.name)) || tpls[0];
-        const m = String(canon?.url || '').match(/localhost:(\d+)/);
-        if (m) return `http://localhost:${m[1]}`;
-    } catch {}
-    throw new Error('Cannot discover UTCP port: is cc-bridge-3x running? Pass port as arg.');
+    const port = Number(process.argv[2]);
+    const connection = require('./project-connection').selectConnection({ url: port ? `http://localhost:${port}` : undefined });
+    await require('./project-connection').verifyConnection(connection);
+    return connection.base;
 }
 
 async function getJson(url) {

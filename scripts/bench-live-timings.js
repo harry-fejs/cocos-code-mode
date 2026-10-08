@@ -44,26 +44,12 @@ function summary(values) {
 }
 
 function loadToken() {
-  const dir = path.join(os.homedir(), '.cc-bridge', 'local-auth');
-  if (!fs.existsSync(dir)) return '';
-  let newest = '';
-  let mtime = 0;
-  for (const name of fs.readdirSync(dir).filter((n) => n.endsWith('.json'))) {
-    const full = path.join(dir, name);
-    const stat = fs.statSync(full);
-    if (stat.mtimeMs >= mtime) {
-      mtime = stat.mtimeMs;
-      newest = JSON.parse(fs.readFileSync(full, 'utf8')).token;
-    }
-  }
-  return typeof newest === 'string' ? newest : '';
+  const { selectConnection, connectionHeaders } = require('./project-connection');
+  return connectionHeaders(selectConnection());
 }
 
 function discoverBase() {
-  const config = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.utcp_config.json'), 'utf8'));
-  const template = (config.manual_call_templates || []).find((item) => /^ccb3x(?:_\d+)?$/.test(item.name));
-  if (!template) throw new Error('no ccb3x manual in ~/.utcp_config.json');
-  return String(template.url).replace(/\/utcp\/?$/, '');
+  return require('./project-connection').selectConnection().base;
 }
 
 async function timedFetch(url, init) {
@@ -95,7 +81,7 @@ async function sampleUrl(url, count, init = {}) {
 async function callTool(base, tool, args, token) {
   const method = tool.tool_call_template.http_method;
   const url = new URL(`${base}/tools/${tool.name}`);
-  const headers = { 'x-ccb-local-token': token };
+  const headers = { ...token };
   const init = { method, headers };
   if (method === 'GET') {
     for (const [key, value] of Object.entries(args || {})) {
@@ -138,6 +124,8 @@ async function sampleTool(base, tool, args, token) {
 }
 
 async function main() {
+  const connection = require('./project-connection').selectConnection();
+  await require('./project-connection').verifyConnection(connection);
   const base = discoverBase();
   const token = loadToken();
   if (!token) throw new Error('no local-auth token in ~/.cc-bridge/local-auth');
@@ -148,7 +136,7 @@ async function main() {
   const diagnostics = {
     buildInfo: await sampleUrl(`${base}/build-info`, SAMPLES),
     utcpManual: await sampleUrl(`${base}/utcp`, SAMPLES),
-    gatewayHealth: await sampleUrl('http://127.0.0.1:8787/ccb/v1/health', SAMPLES),
+    gatewayHealth: await sampleUrl(require('./project-connection').gatewayHealthUrl(connection), SAMPLES),
   };
   const tools = {};
   for (const testCase of TOOL_CASES) {

@@ -5,18 +5,11 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { performance } = require('node:perf_hooks');
+const { selectConnection, connectionHeaders, verifyConnection, gatewayHealthUrl } = require('./project-connection');
 
 const ROOT = path.resolve(__dirname, '..');
 const REPORT = path.join(ROOT, 'reports', 'evidence', 'phase-05', 'one-rtt.json');
 
-function discoverUtcp() {
-  if (process.env.CCB_UTCP_URL) return process.env.CCB_UTCP_URL.replace(/\/utcp$/, '');
-  const configPath = process.env.UTCP_CONFIG_FILE || path.join(os.homedir(), '.utcp_config.json');
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  const manuals = (config.manual_call_templates || []).filter((item) => /^ccb3x(?:_\d+)?$/.test(item.name));
-  if (manuals.length !== 1) throw new Error(`Set CCB_UTCP_URL to the exact protected relay; found ${manuals.length} ccb3x manuals.`);
-  return String(manuals[0].url).replace(/\/utcp$/, '');
-}
 
 async function get(url) {
   try {
@@ -33,35 +26,13 @@ function percentile(values, p) {
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1))];
 }
 
-async function loadLocalAuth(boundPort) {
-  const dir = path.join(os.homedir(), '.cc-bridge', 'local-auth');
-  if (!fs.existsSync(dir)) return null;
-  const files = fs.readdirSync(dir).filter((name) => name.endsWith('.env'));
-  let newest = null;
-  let mtime = 0;
-  for (const name of files) {
-    const full = path.join(dir, name);
-    const stat = fs.statSync(full);
-    if (stat.mtimeMs < mtime) continue;
-    const lines = fs.readFileSync(full, 'utf8').split(/\r?\n/);
-    const portLine = lines.find((line) => line.startsWith('CCB_BOUND_PORT='));
-    if (boundPort && portLine !== `CCB_BOUND_PORT=${boundPort}`) continue;
-    const instanceLine = lines.find((line) => line.startsWith('CCB_RELAY_INSTANCE_ID='));
-    const tokenLine = lines.find((line) => line.startsWith('CCB_LOCAL_TOKEN='));
-    const relayInstanceId = instanceLine ? instanceLine.slice('CCB_RELAY_INSTANCE_ID='.length) : '';
-    const token = tokenLine ? tokenLine.slice('CCB_LOCAL_TOKEN='.length) : '';
-    if (relayInstanceId && token) {
-      mtime = stat.mtimeMs;
-      newest = { relayInstanceId, token };
-    }
-  }
-  return newest;
-}
 
 async function main() {
-  const base = discoverUtcp();
-  const gatewayHealth = process.env.CCB_GATEWAY_HEALTH || 'http://127.0.0.1:18789/ccb/v1/health';
-  const localAuth = await loadLocalAuth(new URL(base).port);
+  const connection = selectConnection();
+  await verifyConnection(connection);
+  const base = connection.base;
+  const gatewayHealth = gatewayHealthUrl(connection);
+  const localAuth = connectionHeaders(connection);
   const [build, manual, health] = await Promise.all([
     get(`${base}/build-info`),
     get(`${base}/utcp`),
@@ -86,12 +57,7 @@ async function main() {
     console.log(JSON.stringify(report, null, 2));
     throw new Error('live Creator 3x UTCP is not ready');
   }
-  const headers = { 'content-type': 'application/json' };
-  if (localAuth) {
-    headers['x-ccb-local-token'] = localAuth.token;
-    headers['x-ccb-relay-instance'] = localAuth.relayInstanceId;
-    headers['x-ccb-bound-port'] = new URL(base).port;
-  }
+  const headers = { 'content-type': 'application/json', ...localAuth };
   const first = await fetch(`${base}/tools/sceneGetInfo`, { method: 'GET', headers, redirect: 'error' });
   const firstText = await first.text();
   if (first.status === 422) {

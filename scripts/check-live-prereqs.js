@@ -1,23 +1,10 @@
 #!/usr/bin/env node
 "use strict";
 
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
-
-function discoverUtcp() {
-  if (process.env.CCB_UTCP_URL) return process.env.CCB_UTCP_URL;
-  const configPath = process.env.UTCP_CONFIG_FILE || path.join(os.homedir(), ".utcp_config.json");
-  const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-  const manuals = (config.manual_call_templates || []).filter((item) => /^ccb3x(?:_\d+)?$/.test(item.name));
-  if (manuals.length !== 1) {
-    throw new Error(`Set CCB_UTCP_URL to the exact protected relay; found ${manuals.length} ccb3x manuals.`);
-  }
-  return manuals[0].url;
-}
-
-const utcp = discoverUtcp();
-const gateway = process.env.CCB_GATEWAY_HEALTH || "http://127.0.0.1:18789/ccb/v1/health";
+const { selectConnection, verifyConnection, gatewayHealthUrl } = require('./project-connection');
+const connection = selectConnection();
+const utcp = connection.url;
+const gateway = gatewayHealthUrl(connection);
 
 async function get(url) {
   try {
@@ -30,6 +17,7 @@ async function get(url) {
 }
 
 (async () => {
+  await verifyConnection(connection);
   const [manual, health] = await Promise.all([get(utcp), get(gateway)]);
   let tools = [];
   try { tools = JSON.parse(manual.body).tools || []; } catch { /* not a manual */ }

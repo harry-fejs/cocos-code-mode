@@ -107,7 +107,7 @@ export const methods: Record<string, Function> = {
             return;
         }
         if (typeof newPort !== 'number' || !newPort) {
-            newPort = await getConfigManager().getCurrentPort().catch(() => 0);
+            newPort = await getConfigManager().getProjectPort(Editor.Project.path);
         }
 
         const previousServer = utcpServer;
@@ -119,7 +119,7 @@ export const methods: Record<string, Function> = {
             const authBinding = nextServer.getLocalAuthBinding();
             if (!authBinding) throw new Error('UTCP server started without a local authentication binding');
             utcpServer = nextServer;
-            await getConfigManager().updatePort(actualPort, authBinding.relayInstanceId, authBinding.tokenPath);
+            await getConfigManager().updatePort(actualPort);
             bootLog('info', `UTCP connected/listening at http://localhost:${actualPort}/utcp`);
             console.log(`[${packageJSON.name}] UTCP Server restarted on port ${actualPort}`);
         } catch (err) {
@@ -190,7 +190,7 @@ export async function load() {
         setServerProfile(profile, profileConfig.enabled, profileConfig.disabled, profileConfig.envelope);
 
         try {
-            relayHost = new ProtectedRelayHost();
+            relayHost = new ProtectedRelayHost(Editor.Project.path);
             relayHost.activateIfConfigured();
             const lockReason = relayHost.state.reason;
             bootLog('info', `Protected relay state=${relayHost.state.state}${lockReason ? ` code=${lockReason.code} reason=${lockReason.error}` : ''}`);
@@ -229,8 +229,8 @@ export async function load() {
         }
         utcpServer = new UtcpServerManager(relayHost ?? undefined);
         let wasConfiguredPort = true;
-        let port = await Editor.Profile.getConfig(packageJSON.name, "serverPort");
-        if (typeof port !== "number") {
+        let port = await configManager.getProjectPort(Editor.Project.path);
+        if (!port) {
             port = 0;
             wasConfiguredPort = false;
         }
@@ -239,11 +239,13 @@ export async function load() {
             const authBinding = utcpServer.getLocalAuthBinding();
             if (!authBinding) throw new Error('UTCP server started without a local authentication binding');
             const url = `http://localhost:${actualPort}/utcp`;
-            await configManager.updatePort(actualPort, authBinding.relayInstanceId, authBinding.tokenPath);
+            await configManager.updatePort(actualPort);
             bootLog("info", `UTCP listening at ${url}; boot log ${BOOT_LOG_PATH}`);
             stageUpdateInBackground();
             await finishPendingHealth(true);
         } catch (err) {
+            await utcpServer.stop().catch(() => undefined);
+            utcpServer = null;
             bootWarnDialog(`UTCP failed to start. See ${BOOT_LOG_PATH}`);
             bootLog("error", "Failed to start UTCP Server", err);
             await finishPendingHealth(false);

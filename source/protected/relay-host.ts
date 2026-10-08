@@ -15,16 +15,28 @@ import manifestJson from "./public-tool-manifest.json";
 import { bootLog } from "./boot-log";
 import { TelemetryBuffer } from "./telemetry-buffer";
 import { QualificationTraceRecorder } from "./qualification-trace";
+import { canonicalProjectPath, GatewayContext } from '../utcp/project-connection';
 
-function readGatewayFile(): Record<string, string> {
-  try {
-    const raw = JSON.parse(readFileSync(join(homedir(), ".cc-bridge", "gateway.json"), "utf8")) as Record<string, unknown>;
-    const out: Record<string, string> = {};
-    for (const [key, value] of Object.entries(raw)) if (typeof value === "string" && value) out[key] = value;
-    return out;
-  } catch {
-    return {};
+export function readGatewayFile(projectPath?: string, path = join(homedir(), '.cc-bridge', 'gateway.json')): Record<string, string> {
+  if (!existsSync(path)) return {};
+  const raw: unknown = JSON.parse(readFileSync(path, 'utf8'));
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Gateway configuration must be an object');
+  let selected: Record<string, unknown> = raw as Record<string, unknown>;
+  if ('projects' in selected) {
+    if (!projectPath || !selected.projects || typeof selected.projects !== 'object' || Array.isArray(selected.projects)) throw new Error('project-scoped Gateway configuration requires the current project');
+    const matches = Object.entries(selected.projects).filter(([path]) => {
+      try { return canonicalProjectPath(path) === projectPath; } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'code' in error && ['ENOENT', 'ENOTDIR', 'EACCES', 'EPERM', 'ENODEV', 'ENXIO'].includes(String(error.code))) return false;
+        throw error;
+      }
+    });
+    if (matches.length !== 1 || !matches[0][1] || typeof matches[0][1] !== 'object' || Array.isArray(matches[0][1])) throw new Error('no unambiguous Gateway assignment for the current project');
+    selected = matches[0][1] as Record<string, unknown>;
   }
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(selected)) if (typeof value === 'string' && value) out[key] = value;
+  if (projectPath && out.projectPath && canonicalProjectPath(out.projectPath) !== projectPath) throw new Error('Gateway assignment belongs to a different project');
+  return out;
 }
 
 function verifyCanonicalContract(): void {
@@ -82,7 +94,7 @@ export class ProtectedRelayHost {
   readonly requestCache = new SignedRequestCache();
   readonly telemetry = new TelemetryBuffer();
   readonly qualificationTrace = QualificationTraceRecorder.fromEnv();
-  readonly relayInstanceId = randomUUID();
+  relayInstanceId = randomUUID();
   readonly identity: DeviceIdentity | null;
   readonly packageHash: string | null;
   readonly targetPayloadHash: string | null;
@@ -90,8 +102,11 @@ export class ProtectedRelayHost {
   client: GatewayClient | null = null;
   executionKeys = new Map<string, KeyLike>();
   projectId: string | null = null;
+  gatewayContext: GatewayContext = { origin: null, projectId: null };
+  private readonly localProjectPath?: string;
 
-  constructor() {
+  constructor(projectPath?: string) {
+    this.localProjectPath = projectPath ? canonicalProjectPath(projectPath) : undefined;
     let identity: DeviceIdentity | null = null;
     let packageHash: string | null = null;
     let targetPayloadHash: string | null = null;
@@ -122,13 +137,7 @@ export class ProtectedRelayHost {
   }
 
   activateIfConfigured(): void {
-    if (this.bootFailure || !this.identity || !this.packageHash) {
-      const failure = this.bootFailure ?? new CcbError("CCB_BUILD_INCOMPATIBLE", "Relay identity or installed package digest is unavailable.");
-      this.state.lock({ code: failure.body.code, error: failure.body.error, details: failure.body.details });
-      bootLog("error", `Protected relay disconnected: ${failure.body.code} ${failure.body.error}`);
-      return;
-    }
-    const file = readGatewayFile();
+    const file = readGatewayFile(this.localProjectPath);
     const origin = process.env.CCB_GATEWAY_ORIGIN || file.origin;
     const projectId = process.env.CCB_PROJECT_ID || file.projectId;
     const memberCredential = process.env.CCB_MEMBER_CREDENTIAL || file.memberCredential;
@@ -136,6 +145,16 @@ export class ProtectedRelayHost {
     const approvedDeviceId = process.env.CCB_APPROVED_DEVICE_ID || file.approvedDeviceId;
     const approvedDeviceKeyId = process.env.CCB_APPROVED_DEVICE_KEY_ID || file.approvedDeviceKeyId;
     const keyId = process.env.CCB_EXECUTION_KEY_ID || file.executionKeyId || "execution-dev-1";
+    const parsedOrigin = origin ? new URL(origin) : null;
+    if (parsedOrigin && (parsedOrigin.username || parsedOrigin.password || parsedOrigin.search || parsedOrigin.hash)) throw new Error('Gateway origin must not contain credentials, query, or fragment');
+    this.gatewayContext = { origin: parsedOrigin?.origin || null, projectId: projectId || null,
+      ...(file.containerId ? { containerId: file.containerId } : {}) };
+    if (this.bootFailure || !this.identity || !this.packageHash) {
+      const failure = this.bootFailure ?? new CcbError("CCB_BUILD_INCOMPATIBLE", "Relay identity or installed package digest is unavailable.");
+      this.state.lock({ code: failure.body.code, error: failure.body.error, details: failure.body.details });
+      bootLog("error", `Protected relay disconnected: ${failure.body.code} ${failure.body.error}`);
+      return;
+    }
     if (!origin || !projectId || !memberCredential || !executionKey || approvedDeviceId !== this.identity.deviceId || approvedDeviceKeyId !== this.identity.deviceKeyId) {
       const error = "Protected tools stay locked until this exact local identity is enrolled and approved.";
       this.state.lock({

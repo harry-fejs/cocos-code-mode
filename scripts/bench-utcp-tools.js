@@ -13,28 +13,14 @@ function pctl(sorted, q) {
 }
 
 async function discoverPort() {
-    // 1) editor's UTCP config (ground truth)
-    try {
-        const cfgPath = process.env.UTCP_CONFIG_FILE || join(homedir(), '.utcp_config.json');
-        const raw = readFileSync(cfgPath, 'utf8');
-        const cfg = JSON.parse(raw);
-        for (const t of cfg.manual_call_templates || []) {
-            const m = String(t.url || '').match(/localhost:(\d+)/);
-            if (m) return Number(m[1]);
-        }
-    } catch {}
-    // 2) build-info artifact (next best)
-    try {
-        const raw2 = readFileSync(join(__dirname, '..', 'dist', 'build-info.json'), 'utf8');
-        void raw2;
-    } catch {}
-    throw new Error('Cannot discover UTCP port: is the editor running cc-bridge-3x?');
+    return require('./project-connection').selectConnection().port;
 }
 
 async function main() {
-    let port = Number(process.argv[2]);
-    if (!port) port = await discoverPort();
-    const base = `http://localhost:${port}`;
+    const requested = Number(process.argv[2]);
+    const connection = require('./project-connection').selectConnection({ url: requested ? `http://localhost:${requested}` : undefined });
+    await require('./project-connection').verifyConnection(connection);
+    const base = connection.base;
     console.log(`bench: base=${base} concurrency=${CONCURRENCY} repeats=${REPEATS}\n`);
 
     // 0 — manual

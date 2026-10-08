@@ -79,6 +79,13 @@ function main() {
     return;
   }
   checkConfiguration();
+  const connection = require('./project-connection').selectConnection();
+  if (!connection.gateway.origin || !connection.gateway.projectId) fail('selected Cocos project has no configured Gateway assignment');
+  if (process.env.CCB_GATEWAY_ORIGIN && new URL(process.env.CCB_GATEWAY_ORIGIN).origin !== connection.gateway.origin) fail('CCB_GATEWAY_ORIGIN differs from selected project assignment');
+  if (process.env.CCB_PROJECT_ID && process.env.CCB_PROJECT_ID !== connection.gateway.projectId) fail('CCB_PROJECT_ID differs from selected project Gateway project');
+  process.env.CCB_GATEWAY_ORIGIN = connection.gateway.origin;
+  process.env.CCB_PROJECT_ID = connection.gateway.projectId;
+  process.env.CCB_PROJECT_PATH = connection.projectPath;
   run('check-live-prereqs.js', []);
   run('enroll-device.js', []);
   if (process.env.CCB_ADMIN_CREDENTIAL || process.env.CCB_ADMIN_CREDENTIAL_FILE) {

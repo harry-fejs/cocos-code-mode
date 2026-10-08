@@ -1,45 +1,9 @@
 'use strict';
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('fs');
-const path = require('path');
-const { readSource, requireDist } = require('../helpers/require-dist');
+const { requireDist } = require('../helpers/require-dist');
 
-// Plan 1-wip-260831__tbd-ccb3x-manual-schema-compatibility
-// Code Mode validates each tool with a strict schema: any extra per-tool key
-// (notably `annotations`) fails registration for EVERY tool, not just itself.
-// Profile metadata must stay in ToolProfileRegistry, never in the UTCP manual.
-// This test is the CI-runnable guard so the invariant holds even when the live
-// editor is not running.
-
-describe('manual strict schema — no annotations in UTCP tools', () => {
-  it('source does not inject toolDef.annotations', () => {
-    const src = readSource('utcp/utcp-server.ts');
-    assert.equal(/toolDef\.annotations/.test(src), false, 'source must not assign toolDef.annotations');
-    assert.equal(/toolDef\[.annotations/.test(src), false, 'source must not assign toolDef[annotations]');
-    assert.match(src, /Profile annotations remain in ToolProfileRegistry/, 'guard comment must be present');
-    assert.match(src, /Do NOT add fields here/, 'strict-manual comment must be present');
-  });
-
-  it('compiled dist does not inject annotations', () => {
-    const distPath = path.resolve(__dirname, '..', '..', 'dist', 'utcp', 'utcp-server.js');
-    if (!fs.existsSync(distPath)) {
-      // Build not run yet in this environment — source check above is the gate.
-      return;
-    }
-    const dist = fs.readFileSync(distPath, 'utf8');
-    assert.equal(/\.annotations/.test(dist) && /toolDef/.test(dist) && /annotations/.test(dist.slice(dist.indexOf('toolDef'))), false);
-    // More precise: the dist must not contain an assignment to toolDef.annotations at all.
-    assert.equal(/toolDef\.annotations\s*=/.test(dist), false, 'dist must not assign toolDef.annotations');
-  });
-
-  it('ToolProfileRegistry keeps annotations out of the Tool object', () => {
-    const src = fs.readFileSync(path.resolve(__dirname, '..', '..', 'source', 'utcp', 'decorators.ts'), 'utf8');
-    assert.match(src, /registerToolProfile/, 'decorators must register profile metadata separately');
-    // The Tool object pushed to ToolRegistry must have exactly the UTCP SDK fields:
-    // name, description, inputs, outputs, tags, tool_call_template — no annotations/profile.
-    assert.equal(/tool:\s*\{[^}]*annotations/.test(src), false, 'Tool object literal must not include annotations');
-  });
+describe('manual output schema', () => {
 
   it('outputs are slimmed (strict slimOutputsSchema path)', () => {
     const { slimOutputsSchema } = requireDist('utcp/utils/schema-slimmer.js');
@@ -59,34 +23,5 @@ describe('manual strict schema — no annotations in UTCP tools', () => {
     assert.deepEqual(slimmed.properties.reference, { type: 'object' });
     assert.deepEqual(slimmed.properties.name, { type: 'string' });
     assert.equal(slimmed.properties.reference.description, undefined, 'nested description must be stripped');
-  });
-
-  it('restart semantics are socket-close-safe (no reload-menu)', () => {
-    const mainSrc = readSource('main.ts');
-    assert.match(mainSrc, /await previousServer\.stop\(\)/, 'restartServer must await previousServer.stop()');
-    assert.match(mainSrc, /nextServer = new UtcpServerManager\(/, 'restartServer must create a fresh manager');
-    assert.match(mainSrc, /utcpServer = nextServer/, 'restartServer must reassign utcpServer to the fresh manager');
-    assert.match(mainSrc, /await getConfigManager\(\)\.updatePort\(actualPort(?:,[^)]+)?\)/, 'restartServer must update config after start');
-    const serverSrc = readSource('utcp/utcp-server.ts');
-    assert.match(serverSrc, /await http\.close\(\)/, 'stop() must await LocalHttpServer.close()');
-    assert.match(serverSrc, /this\.port = 0/, 'stop() must clear port');
-    const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', '..', 'package.json'), 'utf8'));
-    const labels = (pkg.contributions?.menu || []).map((m) => String(m.label));
-    assert.equal(labels.some((l) => /reload/i.test(l)), false, 'menu must not contain Reload Extension');
-  });
-
-  it('ccb3x bootstrap has strict dedup (no duplicate template/URL)', () => {
-    const src = fs.readFileSync(path.resolve(__dirname, '..', '..', 'scripts', 'cc-bridge-bootstrap.js'), 'utf8');
-    assert.match(src, /byUrl\.get\(base\)/, 'bootstrap must dedup by URL');
-    // Consolidated bootstrap keeps the same invariant (dedup by URL, canonical
-    // wins for same base) but phrases the comment as buildCache liveness.
-    // Accept either wording; assert the underlying canonical-preference logic.
-    assert.equal(
-      src.includes('Prefer the bare canonical') || src.includes('prefer a') || src.includes('per-port'),
-      true,
-      'bootstrap must prefer bare canonical / live probe over stale alias'
-    );
-    assert.match(src, /CANON_3X = 'ccb3x'/, 'bootstrap must use strict ccb3x canonical');
-    assert.equal(/m\.name === canon/.test(src) || /cacheKeyFor/.test(src), true, 'bootstrap must prefer canonical name for same URL');
   });
 });

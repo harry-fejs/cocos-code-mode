@@ -1,12 +1,15 @@
 import { ToolMetadata, ToolRegistry } from './decorators';
 import {
-    bindLocalAuthToPort, extractIdempotencyKey, loadOrCreateLocalAuth, LocalAuthContext,
+    extractIdempotencyKey, createProjectLocalAuth, LocalAuthContext,
     LOCAL_INSTANCE_HEADER, LOCAL_INSTANCE_VARIABLE, LOCAL_PORT_HEADER, LOCAL_PORT_VARIABLE,
-    LOCAL_TOKEN_HEADER, LOCAL_TOKEN_VARIABLE,
+    LOCAL_TOKEN_HEADER, LOCAL_TOKEN_VARIABLE, LOCAL_PROJECT_HEADER, LOCAL_PROJECT_VARIABLE,
 } from './local-auth';
 import { LocalHttpContext, LocalHttpServer, sendJson } from './http-server';
 import { ProtectedRelayHost } from '../protected/relay-host';
 import { CcbError, toCcbErrorBody } from '../protected/errors';
+import { getConfigManager } from './config-manager';
+import { randomUUID } from '../protected/node14-compat';
+import { dirname, join } from 'path';
 import { REMOVED_CUSTOMER_TOOLS } from '../protected/removed-tools';
 import { dispatchProtectedCustomerTool, isProtectedCustomerTool } from '../protected/protected-route';
 import './tools/typescript-defenition';
@@ -277,19 +280,20 @@ export class UtcpServerManager {
 
     async start(port: number = 3000): Promise<number> {
         if (this.http) throw new Error('UTCP Server is already running');
-        const relayInstanceId = this.host?.relayInstanceId;
-        if (!relayInstanceId) throw new CcbError('CCB_GATEWAY_UNAVAILABLE', 'UTCP startup requires a bound protected relay instance.');
-        const localAuth = loadOrCreateLocalAuth(relayInstanceId);
+        if (!this.host) throw new CcbError('CCB_GATEWAY_UNAVAILABLE', 'UTCP startup requires a bound protected relay instance.');
+        const localAuth = createProjectLocalAuth(Editor.Project.path, randomUUID(), join(dirname(getConfigManager().getConfigPath()), '.cc-bridge', 'local-auth'));
         const http = new LocalHttpServer(localAuth);
         this.http = http;
         try {
             const actualPort = await http.listen(port);
-            bindLocalAuthToPort(localAuth, actualPort);
+            await getConfigManager().ensureCocosEditorTemplate(actualPort, localAuth, this.host.gatewayContext);
+            this.host.relayInstanceId = localAuth.relayInstanceId;
             this.localAuth = localAuth;
             this.port = actualPort;
             this.registerTools(actualPort, ToolRegistry.getTools(), new Map<Function, object>(), []);
             return actualPort;
         } catch (error) {
+            if (this.localAuth) await getConfigManager().removeCocosEditorTemplate(this.localAuth).catch(() => undefined);
             await http.close().catch(() => {});
             this.http = null;
             this.localAuth = null;
@@ -314,10 +318,12 @@ export class UtcpServerManager {
             const toolDef = JSON.parse(JSON.stringify(toolMeta.tool));
             if (toolDef.outputs) toolDef.outputs = slimOutputsSchema(toolDef.outputs);
             const toolUrlPath = toolDef.tool_call_template.url;
+            toolDef.tool_call_template.url = `${baseUrl}${toolUrlPath}`;
             toolDef.tool_call_template.headers = {
                 ...(toolDef.tool_call_template.headers || {}),
                 [LOCAL_INSTANCE_HEADER]: `\${${LOCAL_INSTANCE_VARIABLE}}`,
                 [LOCAL_PORT_HEADER]: `\${${LOCAL_PORT_VARIABLE}}`,
+                [LOCAL_PROJECT_HEADER]: `\${${LOCAL_PROJECT_VARIABLE}}`,
             };
             toolDef.tool_call_template.auth = {
                 auth_type: 'api_key',
@@ -393,6 +399,11 @@ export class UtcpServerManager {
             sendJson(response, 200, manual);
         });
         http.route('GET', '/build-info', ({ response }) => sendJson(response, 200, getBuildInfo()));
+        http.route('GET', '/connection', ({ response }) => sendJson(response, 200, {
+            projectPath: this.localAuth?.projectPath, projectId: this.localAuth?.projectId,
+            port: this.port, relayInstanceId: this.localAuth?.relayInstanceId,
+            gateway: this.host?.gatewayContext,
+        }));
     }
 
     private async dispatchProtected(toolName: string, args: Record<string, unknown>, idempotencyKey?: string): Promise<unknown> {
@@ -400,9 +411,9 @@ export class UtcpServerManager {
         return dispatchProtectedCustomerTool(this.host, toolName, args, { idempotencyKey });
     }
     
-    getLocalAuthBinding(): Readonly<Pick<LocalAuthContext, 'relayInstanceId' | 'tokenPath' | 'boundPort'>> | null {
+    getLocalAuthBinding(): Readonly<Pick<LocalAuthContext, 'relayInstanceId' | 'tokenPath' | 'boundPort' | 'projectPath' | 'projectId'>> | null {
         if (!this.localAuth) return null;
-        return { relayInstanceId: this.localAuth.relayInstanceId, tokenPath: this.localAuth.tokenPath, boundPort: this.localAuth.boundPort };
+        return { relayInstanceId: this.localAuth.relayInstanceId, tokenPath: this.localAuth.tokenPath, boundPort: this.localAuth.boundPort, projectPath: this.localAuth.projectPath, projectId: this.localAuth.projectId };
     }
 
     beginDrain(): void {
@@ -414,6 +425,7 @@ export class UtcpServerManager {
         if (!http) return;
         this.beginDrain();
         await http.close();
+        if (this.localAuth) await getConfigManager().removeCocosEditorTemplate(this.localAuth);
         this.http = null;
         this.localAuth = null;
         this.port = 0;

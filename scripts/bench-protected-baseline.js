@@ -23,11 +23,7 @@ function parseArgs(argv) {
 }
 
 function discoverManualUrl() {
-  const configPath = process.env.UTCP_CONFIG_FILE || path.join(os.homedir(), '.utcp_config.json');
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  const template = (config.manual_call_templates || []).find((item) => /^ccb3x(?:_\d+)?$/.test(item.name));
-  if (!template) throw new Error(`No live ccb3x manual in ${configPath}`);
-  return template.url;
+  return require('./project-connection').selectConnection().url;
 }
 
 function percentile(sorted, percentileValue) {
@@ -58,7 +54,7 @@ async function requestTool(baseUrl, manualByName, name, args = {}) {
   if (!tool) throw new Error(`Tool absent from live manual: ${name}`);
   const method = tool.tool_call_template.http_method;
   const url = new URL(`${baseUrl}/tools/${name}`);
-  const init = { method, headers: {} };
+  const init = { method, headers: require('./project-connection').connectionHeaders(require('./project-connection').selectConnection()) };
   if (method === 'GET') Object.entries(args).forEach(([key, value]) => appendQuery(url.searchParams, key, value));
   else {
     init.headers['content-type'] = 'application/json';
@@ -118,6 +114,9 @@ async function mutationBaseline(baseUrl, manualByName) {
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const manualUrl = discoverManualUrl();
+  const connection = require('./project-connection').selectConnection();
+  await require('./project-connection').verifyConnection(connection);
+  if (options.gatewayUrl && new URL(options.gatewayUrl).origin !== connection.gateway.origin) throw new Error('--gateway-url differs from selected project assignment');
   const baseUrl = manualUrl.replace(/\/utcp\/?$/, '');
   const manualResponse = await fetch(manualUrl, { redirect: 'error' });
   const manualText = await manualResponse.text();
@@ -146,7 +145,7 @@ async function main() {
   const evidence = {
     schemaVersion: 1,
     capturedAt: new Date().toISOString(),
-    profile: { creatorProject: 'cc30-new-all-in-one', gateway: options.gatewayUrl ? 'local-development' : 'not-measured', note: 'Company-LAN and 100-device evidence belong to Phase 5.' },
+    profile: { creatorProject: connection.projectPath, gateway: connection.gateway.origin, note: 'Company-LAN and 100-device evidence belong to Phase 5.' },
     manual: { url: manualUrl, toolCount: manual.tools.length, bytes: Buffer.byteLength(manualText), buildInfo },
     smallRead: {
       samples: readSamples.map(({ durationMs, bytes, serverDurationMs }) => ({ durationMs, bytes, serverDurationMs })),

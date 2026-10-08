@@ -5,27 +5,18 @@ let base = null; // resolved once
 
 function discoverBase() {
   if (base) return base;
-  if (process.env.UTCP_BASE) { base = process.env.UTCP_BASE.replace(/\/$/, ''); return base; }
-  const port = Number(process.env.UTCP_PORT || process.argv.find(a => /^\d{4,5}$/.test(a)) || 0);
-  if (port) { base = `http://localhost:${port}`; return base; }
-  try {
-    const home = process.env.HOME || process.env.USERPROFILE || require('os').homedir();
-    const utcpPath = process.env.UTCP_CONFIG_FILE || path.join(home, '.utcp_config.json');
-    const raw = fs.readFileSync(utcpPath, 'utf8');
-    const cfg = JSON.parse(raw);
-    const tpls = cfg.manual_call_templates || [];
-    // Prefer ccb3x (3.7) over ccb2x; these tests target the 3.7 bridge.
-    const canon = tpls.find(t => /^ccb3x/.test(t.name))
-      || tpls.find(t => /^ccb2x$/.test(t.name))
-      || tpls[0];
-    const m = String(canon && canon.url || '').match(/localhost:(\d+)/);
-    if (m) { base = `http://localhost:${m[1]}`; return base; }
-  } catch {}
-  throw new Error('Cannot discover UTCP port: is cc-bridge-3x running? Set UTCP_BASE or pass --utcp-port=49650.');
+  const { selectConnection } = require('../../scripts/project-connection');
+  const connection = selectConnection();
+  base = connection.base;
+  return base;
 }
 
 async function getJson(urlPath, init) {
   const b = discoverBase();
+  const { selectConnection, connectionHeaders, verifyConnection } = require('../../scripts/project-connection');
+  const connection = selectConnection({ url: b });
+  await verifyConnection(connection);
+  if (urlPath.startsWith('/tools/')) init = { ...init, headers: { ...connectionHeaders(connection), ...(init && init.headers) } };
   const url = b + urlPath;
   const r = await fetch(url, init);
   const text = await r.text();

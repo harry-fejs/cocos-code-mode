@@ -31,19 +31,8 @@ function summary(values) {
 }
 
 function loadToken() {
-  const dir = path.join(os.homedir(), '.cc-bridge', 'local-auth');
-  let newest = '';
-  let mtime = 0;
-  for (const name of fs.readdirSync(dir).filter((n) => n.endsWith('.json'))) {
-    const full = path.join(dir, name);
-    const stat = fs.statSync(full);
-    if (stat.mtimeMs >= mtime) {
-      mtime = stat.mtimeMs;
-      newest = JSON.parse(fs.readFileSync(full, 'utf8')).token;
-    }
-  }
-  if (!newest) throw new Error('no local-auth token');
-  return newest;
+  const { selectConnection, connectionHeaders } = require('./project-connection');
+  return connectionHeaders(selectConnection());
 }
 
 function dummyArgs(tool) {
@@ -85,7 +74,7 @@ function dummyArgs(tool) {
 async function invoke(base, tool, args, token) {
   const method = tool.tool_call_template.http_method;
   const url = new URL(`${base}/tools/${tool.name}`);
-  const headers = { 'x-ccb-local-token': token };
+  const headers = { ...token };
   const init = { method, headers, redirect: 'error' };
   if (method === 'GET') {
     for (const [key, value] of Object.entries(args || {})) {
@@ -114,12 +103,12 @@ async function invoke(base, tool, args, token) {
 }
 
 async function main() {
-  const config = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.utcp_config.json'), 'utf8'));
-  const template = (config.manual_call_templates || []).find((item) => /^ccb3x(?:_\d+)?$/.test(item.name));
-  const base = String(template.url).replace(/\/utcp\/?$/, '');
+  const connection = require('./project-connection').selectConnection();
+  await require('./project-connection').verifyConnection(connection);
+  const base = connection.base;
   const token = loadToken();
   const build = await (await fetch(`${base}/build-info`)).json();
-  const health = await (await fetch('http://127.0.0.1:8787/ccb/v1/health')).json();
+  const health = await (await fetch(require('./project-connection').gatewayHealthUrl(connection))).json();
   const manual = await (await fetch(`${base}/utcp`)).json();
   const tools = [];
   for (const tool of manual.tools) {

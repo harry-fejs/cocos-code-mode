@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — project-scoped connections
+
+- Bind canonical Cocos project identity, dedicated port, fresh relay session, and configured Gateway context together in a readable external project registry; keep ordinary UTCP config free of metadata variables.
+- Replace growing UUID dotenv registrations with one private stable credential file per project and correctly namespaced token/session/port/project variables.
+- Serialize shared config transactions; reject ambiguous/live project or reserved-port collisions, malformed config, and stale panel writes. Own-session shutdown cannot remove a replacement session.
+- Add backup-first dry-run/apply migration that externalizes earlier embedded metadata and stores unresolved offline CCB3x history separately, without deleting env files or changing unrelated products.
+- Make live readiness/qualification and benchmark selection project-first; add real-SDK authenticated two-project smoke and behavioral concurrency/collision coverage.
+
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
 Hợp nhất toàn bộ các nhánh `feat/ccb3x-consolidated`, `feat/ccb3x-fail-loud-smoke`, và `feat/ccb3x-scene-graph-index` vào `cc-3x7` (commit `53589bb`). 159 unit tests pass, 31 graph tests pass.
