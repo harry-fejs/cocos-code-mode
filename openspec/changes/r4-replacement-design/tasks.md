@@ -17,3 +17,10 @@
 - [x] Specify required positive and negative witnesses, clean artifact/build identity, fixture identity, route ownership, and persistence/reload or runtime read-back.
 - [x] Require fail-closed behavior for unsupported native paths, invalid input, missing prerequisites, unknown identity, and unavailable evidence.
 - [x] Keep every row `replace`/deferred until the route is implemented and independently evidenced; do not change portfolio states or thresholds in this change.
+
+## Owner-approved prefab follow-through — 2026-10-08
+
+- Existing native prefab workflow extended, not a new variant asset: prefabInstanceInspect now returns source hash, total override count and truncation; prefabApplyOverrides accepts expectedSourceSha256, refuses stale sources before dispatch and returns bounded source diff with sceneSaved:false.
+- prefabValidate reports complete/truncated/totalReferences and never returns valid for a capped check; authoritative Asset DB query failures remain errors.
+- Build/Creator load and focused prefab tests 27/27 pass; registered HTTP inspection→conflict refusal→apply diff→stale refusal smoke passes against simulated Creator IPC and a real disposable prefab file.
+- Real Creator source/instance persistence after reload and exact-artifact live qualification remain required before promoting the frozen replacement row. No tilemap/tween implementation, portfolio edits, or qualification credit in this follow-through.

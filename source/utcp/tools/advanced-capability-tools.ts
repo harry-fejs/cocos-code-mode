@@ -433,8 +433,9 @@ export class AdvancedCapabilityTools {
         return this.prefabSceneOperation('apply', args.reference);
     }
 
-    @utcpTool('prefabInstanceInspect', 'Inspect one scene node as a linked prefab instance and return bounded override metadata.', { type: 'object', properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, { type: 'object', properties: { reference: { type: 'object' }, isPrefabInstance: { type: 'boolean' }, prefabReference: { type: ['object', 'null'] }, overrides: { type: 'array' }, readBack: { type: 'object' } }, required: ['reference', 'isPrefabInstance', 'prefabReference', 'overrides', 'readBack'] }, 'GET', ['prefab', 'instance', 'inspect'])
-    async prefabInstanceInspect(args: { reference: IInstanceReference }): Promise<Record<string, unknown>> {
+    @utcpTool('prefabInstanceInspect', 'Inspect a linked prefab instance; returns source hash and bounded override metadata with explicit truncation. Read-only; does not save/reload the scene.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, maxOverrides: { type: 'integer', minimum: 1, maximum: MAX_ITEMS, default: MAX_ITEMS } }, required: ['reference'] }, { type: 'object', properties: { reference: { type: 'object' }, isPrefabInstance: { type: 'boolean' }, prefabReference: { type: ['object', 'null'] }, overrides: { type: 'array' }, totalOverrides: { type: 'integer' }, truncated: { type: 'boolean' }, source: { type: ['object', 'null'] }, readBack: { type: 'object' } }, required: ['reference', 'isPrefabInstance', 'prefabReference', 'overrides', 'totalOverrides', 'truncated', 'source', 'readBack'] }, 'GET', ['prefab', 'instance', 'inspect'])
+    async prefabInstanceInspect(args: { reference: IInstanceReference, maxOverrides?: number }): Promise<Record<string, unknown>> {
+        const limit = bounded(args.maxOverrides, MAX_ITEMS);
         const readBack = await Editor.Message.request('scene', 'query-node', args.reference.id) as unknown;
         if (!readBack) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Node ${args.reference.id} was not found.` });
         const prefab = propertyValue(objectField(readBack, '__prefab__') ?? objectField(readBack, '_prefab')) as Record<string, unknown> | undefined;
@@ -446,11 +447,19 @@ export class AdvancedCapabilityTools {
         const instance = instanceDescriptor && typeof instanceDescriptor === 'object'
             ? (('value' in instanceDescriptor) && ('type' in instanceDescriptor) ? propertyValue(instanceDescriptor) : instanceDescriptor) as Record<string, unknown>
             : prefabInfo;
-        const overrides = Array.isArray(instance?.propertyOverrides) ? instance.propertyOverrides.slice(0, MAX_ITEMS) : [];
-        return { reference: args.reference, isPrefabInstance: typeof prefabId === 'string' && prefabId.length > 0, prefabReference: typeof prefabId === 'string' && prefabId ? { id: prefabId, type: 'cc.Prefab' } : null, overrides, readBack };
+        const allOverrides = Array.isArray(instance?.propertyOverrides) ? instance.propertyOverrides : [];
+        const assetId = prefabAssetId(readBack);
+        let source: Record<string, unknown> | null = null;
+        if (assetId) {
+            const asset = await resolveAsset({ id: assetId });
+            assertPrefabAsset(asset, 'prefabInstanceInspect');
+            source = { id: asset.uuid, url: asset.url, sha256: (await readAsset(asset)).hash };
+        }
+        return { reference: args.reference, isPrefabInstance: typeof prefabId === 'string' && prefabId.length > 0, prefabReference: typeof prefabId === 'string' && prefabId ? { id: prefabId, type: 'cc.Prefab' } : null, overrides: allOverrides.slice(0, limit), totalOverrides: allOverrides.length, truncated: allOverrides.length > limit, source, readBack };
     }
 
-    private async prefabSceneOperation(operation: 'apply' | 'revert', reference: IInstanceReference): Promise<Record<string, unknown>> {
+    private async prefabSceneOperation(operation: 'apply' | 'revert', reference: IInstanceReference, expectedSourceSha256?: string): Promise<Record<string, unknown>> {
+        if (expectedSourceSha256 !== undefined && !/^[a-f0-9]{64}$/.test(expectedSourceSha256)) invalid('expectedSourceSha256 must be a lowercase SHA-256 digest.');
         try {
             const beforeNode = await Editor.Message.request('scene', 'query-node', reference.id) as unknown;
             if (!beforeNode) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Prefab instance ${reference.id} was not found.` });
@@ -459,6 +468,7 @@ export class AdvancedCapabilityTools {
             const source = await resolveAsset({ id: assetId });
             assertPrefabAsset(source, `prefab ${operation}`);
             const sourceBefore = await readAsset(source);
+            if (expectedSourceSha256 && sourceBefore.hash !== expectedSourceSha256) throw new ToolError({ code: 'PREFAB_SOURCE_CONFLICT', status: 409, message: 'Prefab source changed since inspection; no apply was dispatched.', recovery: 'Inspect the instance/source again and review the overrides before applying.' });
             let result: unknown;
             if (operation === 'apply') {
                 result = await Editor.Message.request('scene', 'execute-scene-script', { name: 'cocos-pilot-3x', method: 'applyPrefabByNode', args: [reference.id] });
@@ -474,7 +484,8 @@ export class AdvancedCapabilityTools {
             const afterAssetId = prefabAssetId(afterNode);
             if (!afterAssetId || baseUuid(afterAssetId) !== baseUuid(assetId)) throw new ToolError({ code: 'READBACK_MISMATCH', status: 502, message: `${operation} prefab read-back lost the linked source identity.`, details: { expectedAsset: assetId, actualAsset: afterAssetId ?? null } });
             const sourceAfter = await readAsset(await resolveAsset({ id: assetId }));
-            return { reference, operation, persisted: true, readBack: afterNode, sourceReadBack: { id: assetId, url: source.url, beforeSha256: sourceBefore.hash, afterSha256: sourceAfter.hash }, result: result ?? null };
+            const changes = operation === 'apply' && sourceBefore.hash !== sourceAfter.hash ? diffValues(JSON.parse(sourceBefore.content), JSON.parse(sourceAfter.content)) : [];
+            return { reference, operation, persisted: true, readBack: afterNode, sourceReadBack: { id: assetId, url: source.url, beforeSha256: sourceBefore.hash, afterSha256: sourceAfter.hash }, sourceChanges: changes, sourceDiffTruncated: changes.length >= MAX_ITEMS, sceneSaved: false, result: result ?? null };
         } catch (error) {
             if (error instanceof ToolError) throw error;
             throw new ToolError({ code: 'PREFAB_OVERRIDE_OPERATION_FAILED', status: 502, message: `${operation} prefab overrides failed or could not be read back.`, details: { cause: error instanceof Error ? error.message : String(error) } });
@@ -509,8 +520,8 @@ export class AdvancedCapabilityTools {
         return { valid: allMissing.length === 0, references, missingReferences, totalMissingReferences: allMissing.length, totalReferences: allReferences.length, truncated: allReferences.length > references.length || allMissing.length > missingReferences.length, source: { uuid: row.uuid, url: row.url, sha256: source.hash, reopened: true } };
     }
 
-    @utcpTool('prefabApplyOverrides', 'Apply prefab overrides through the scene IPC and verify typed source and instance read-back.', { type: 'object', properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, { type: 'object', properties: { reference: { type: 'object' }, operation: { type: 'string' }, persisted: { type: 'boolean' }, readBack: { type: 'object' }, sourceReadBack: { type: 'object' } }, required: ['reference', 'operation', 'persisted', 'readBack', 'sourceReadBack'] }, 'POST', ['prefab', 'apply', 'overrides'])
-    async prefabApplyOverrides(args: { reference: IInstanceReference }): Promise<Record<string, unknown>> { return this.prefabSceneOperation('apply', args.reference); }
+    @utcpTool('prefabApplyOverrides', 'Apply all native linked-instance overrides with optional source SHA-256 conflict guard. Returns source diff and instance read-back; does not create a variant asset or save/reopen the scene. Never retry an ambiguous mutation without inspection.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, expectedSourceSha256: { type: 'string', pattern: '^[a-f0-9]{64}$' } }, required: ['reference'] }, { type: 'object', properties: { reference: { type: 'object' }, operation: { type: 'string' }, persisted: { type: 'boolean' }, readBack: { type: 'object' }, sourceReadBack: { type: 'object' }, sourceChanges: { type: 'array' }, sourceDiffTruncated: { type: 'boolean' }, sceneSaved: { type: 'boolean' } }, required: ['reference', 'operation', 'persisted', 'readBack', 'sourceReadBack', 'sourceChanges', 'sourceDiffTruncated', 'sceneSaved'] }, 'POST', ['prefab', 'apply', 'overrides'])
+    async prefabApplyOverrides(args: { reference: IInstanceReference, expectedSourceSha256?: string }): Promise<Record<string, unknown>> { return this.prefabSceneOperation('apply', args.reference, args.expectedSourceSha256); }
     @utcpTool('prefabRevertOverrides', 'Revert prefab overrides through the scene IPC and verify full-instance restoration.', { type: 'object', properties: { reference: InstanceReferenceSchema, paths: { type: 'array', maxItems: MAX_ITEMS, items: { type: 'string' } } }, required: ['reference'] }, { type: 'object', properties: { reference: { type: 'object' }, operation: { type: 'string' }, persisted: { type: 'boolean' }, readBack: { type: 'object' }, sourceReadBack: { type: 'object' } }, required: ['reference', 'operation', 'persisted', 'readBack', 'sourceReadBack'] }, 'POST', ['prefab', 'revert', 'overrides'])
     async prefabRevertOverrides(args: { reference: IInstanceReference, paths?: string[] }): Promise<Record<string, unknown>> {
         if (args.paths && args.paths.length > 0) throw new ToolError({ code: 'UNSUPPORTED_SELECTIVE_REVERT', status: 422, message: 'Creator 3.7.3 restore-prefab reverts the full instance and does not expose selective path restoration.' });

@@ -139,8 +139,8 @@ export class PrefabJsonTools {
         },
         {
             type: 'object',
-            properties: { valid: { type: 'boolean' }, reference: InstanceReferenceSchema, url: { type: 'string' }, uuid: { type: 'string' }, references: { type: 'array' }, missingReferences: { type: 'array' }, issues: { type: 'array' }, totalEntries: { type: 'integer' } },
-            required: ['valid', 'reference', 'url', 'uuid', 'references', 'missingReferences', 'issues', 'totalEntries'],
+            properties: { valid: { type: 'boolean' }, reference: InstanceReferenceSchema, url: { type: 'string' }, uuid: { type: 'string' }, references: { type: 'array' }, missingReferences: { type: 'array' }, issues: { type: 'array' }, totalEntries: { type: 'integer' }, totalReferences: { type: 'integer' }, truncated: { type: 'boolean' }, complete: { type: 'boolean' } },
+            required: ['valid', 'reference', 'url', 'uuid', 'references', 'missingReferences', 'issues', 'totalEntries', 'totalReferences', 'truncated', 'complete'],
         },
         'GET', ['prefab', 'validate', 'asset']
     )
@@ -151,7 +151,8 @@ export class PrefabJsonTools {
         const maxReferences = args.maxReferences === undefined ? 2000 : args.maxReferences;
         if (!Number.isInteger(maxReferences) || maxReferences < 1 || maxReferences > 2000) throw new Error('maxReferences must be an integer from 1 to 2000.');
         const references = summary.references.slice(0, maxReferences);
-        const rows = await Editor.Message.request('asset-db', 'query-assets', { pattern: 'db://assets/**' }).catch(() => [] as unknown);
+        const rows = await Editor.Message.request('asset-db', 'query-assets', { pattern: 'db://assets/**' });
+        if (!Array.isArray(rows)) throw new ToolError({ code: 'ASSET_DATABASE_UNAVAILABLE', status: 502, message: 'Prefab validation requires an authoritative asset database inventory.' });
         const known = new Set<string>();
         if (Array.isArray(rows)) {
             for (const row of rows) {
@@ -162,7 +163,9 @@ export class PrefabJsonTools {
         }
         const missingReferences = references.filter((id) => !known.has(id.split('@', 1)[0].toLowerCase())).map((id) => ({ id }));
         const issues = missingReferences.map((entry) => ({ code: 'MISSING_REFERENCE', id: entry.id }));
-        return { valid: missingReferences.length === 0, reference: { id: loaded.uuid, type: 'cc.Prefab' }, url: loaded.url, uuid: loaded.uuid, references, missingReferences, issues, totalEntries: summary.totalEntries };
+        const truncated = references.length < summary.references.length;
+        if (truncated) issues.push({ code: 'REFERENCE_LIMIT_REACHED', id: loaded.uuid });
+        return { valid: missingReferences.length === 0 && !truncated, complete: !truncated, truncated, totalReferences: summary.references.length, reference: { id: loaded.uuid, type: 'cc.Prefab' }, url: loaded.url, uuid: loaded.uuid, references, missingReferences, issues, totalEntries: summary.totalEntries };
     }
 
     @utcpTool(
