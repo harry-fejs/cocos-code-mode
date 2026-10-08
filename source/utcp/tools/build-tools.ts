@@ -3,6 +3,7 @@ import { SuccessIndicatorSchema, ISuccessIndicator } from '../schemas';
 import { utcpTool } from '../decorators';
 import { ToolError } from '../tool-error';
 import { buildBuildPresetAudit, BuildPresetAuditResult } from '../../build-preset-audit';
+import { BUILD_SETTING_RULES, BuildProfileArgs, BuildSettingsArgs, BuildTemplateArgs, createBuildTemplate, manageBuildProfiles, manageBuildSettings } from '../build-profiles';
 // Slim view of a build task for agent consumption (full IBuildTaskItemJSON is huge)
 interface IBuildTaskSummary {
     id: string;
@@ -218,6 +219,27 @@ function slimTask(task: any): IBuildTaskSummary {
 }
 
 export class BuildTools {
+    @utcpTool('buildTemplate', 'List/create options-only debug/release templates for web-mobile, web-desktop, Android, iOS, Windows and macOS. Requires real scene UUID/URLs and native package IDs. Never writes settings, triggers builds or claims toolchain/signing readiness. Save generated options via buildProfileManage if needed.', {
+        type: 'object', additionalProperties: false,
+        properties: { operation: { type: 'string', enum: ['list', 'create'] }, platform: { type: 'string', enum: ['web-mobile', 'web-desktop', 'android', 'ios', 'windows', 'mac'] }, mode: { type: 'string', enum: ['debug', 'release'], default: 'debug' }, name: { type: 'string', minLength: 1, maxLength: 64 }, scenes: { type: 'array', minItems: 1, maxItems: 512, items: { type: 'object', additionalProperties: false, properties: { uuid: { type: 'string' }, url: { type: 'string' } }, required: ['uuid', 'url'] } }, startScene: { type: 'string' }, packageName: { type: 'string', maxLength: 256 }, orientation: { type: 'string', enum: ['auto', 'portrait', 'landscape'] }, buildPath: { type: 'string', maxLength: 512 }, remoteServerAddress: { type: 'string', maxLength: 2048 } }, required: ['operation'],
+        allOf: [{ if: { properties: { operation: { const: 'create' } } }, then: { required: ['platform', 'name', 'scenes'] } }],
+    }, { type: 'object', properties: { options: { type: 'object' }, platforms: { type: 'array', items: { type: 'string' } }, modes: { type: 'array', items: { type: 'string' } }, writes: { type: 'boolean' }, readiness: { type: 'string' }, requirements: { type: 'array', items: { type: 'string' } } }, required: ['writes'] }, 'POST', ['build', 'template', 'config'])
+    async buildTemplate(args: BuildTemplateArgs) { return createBuildTemplate(args); }
+
+    @utcpTool('buildSettingsManage', 'Read/write allowlisted Creator builder editor preferences via Profile API. Defaults and cache settings only; does not modify existing task options, trigger builds, configure SDK/NDK or store credentials. Writes verify read-back and restore on failure.', {
+        type: 'object', additionalProperties: false,
+        properties: { operation: { type: 'string', enum: ['get', 'set'] }, key: { type: 'string', enum: Object.keys(BUILD_SETTING_RULES) }, value: { type: ['string', 'boolean'] }, scope: { type: 'string', enum: ['local', 'global'], default: 'local' } },
+        required: ['operation'], allOf: [{ if: { properties: { operation: { const: 'set' } } }, then: { required: ['key', 'value'] } }],
+    }, { type: 'object', properties: { scope: { type: 'string' }, settings: { type: 'object' }, success: { type: 'boolean' }, key: { type: 'string' }, value: {}, affectsExistingTasks: { type: 'boolean' } }, required: ['scope', 'affectsExistingTasks'] }, 'POST', ['build', 'settings', 'profile'])
+    async buildSettingsManage(args: BuildSettingsArgs) { return manageBuildSettings(args); }
+
+    @utcpTool('buildProfileManage', 'List/get/save/delete reusable cocos-pilot-owned project build profiles. Not Creator task history or a native build preset asset. Validates with buildPresetAudit, refuses credential fields, verifies persistence and rollback. Max 32 profiles / 32KiB each. Does not trigger builds; get options then explicitly call buildManage trigger.', {
+        type: 'object', additionalProperties: false,
+        properties: { operation: { type: 'string', enum: ['list', 'get', 'save', 'delete'] }, name: { type: 'string', pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$' }, options: { type: 'object', maxProperties: 64 } },
+        required: ['operation'], allOf: [{ if: { properties: { operation: { enum: ['get', 'save', 'delete'] } } }, then: { required: ['name'] } }, { if: { properties: { operation: { const: 'save' } } }, then: { required: ['options'] } }],
+    }, { type: 'object', properties: { profiles: { type: 'array', items: { type: 'object' } }, total: { type: 'integer' }, storage: { type: 'string' }, name: { type: 'string' }, options: { type: 'object' }, success: { type: 'boolean' }, operation: { type: 'string' } } }, 'POST', ['build', 'preset', 'profile'])
+    async buildProfileManage(args: BuildProfileArgs) { return manageBuildProfiles(args); }
+
     @utcpTool('buildPresetAudit', 'Audit a bounded build preset against a public target profile without dispatching or mutating a build task.', {
         type: 'object',
         additionalProperties: false,

@@ -1001,6 +1001,12 @@ declare namespace cocos_pilot_3x {
         error: string
     };
 
+    /** Generates options only: no persistence/build dispatch or asset/toolchain qualification. */
+    function buildTemplate(args: { operation: 'list' | 'create'; platform?: 'web-mobile' | 'web-desktop' | 'android' | 'ios' | 'windows' | 'mac'; mode?: 'debug' | 'release'; name?: string; scenes?: Array<{ uuid: string; url: string }>; startScene?: string; packageName?: string; orientation?: 'auto' | 'portrait' | 'landscape'; buildPath?: string; remoteServerAddress?: string }): { options?: Record<string, unknown>; platforms?: string[]; modes?: string[]; writes: false; readiness?: string; requirements?: string[] };
+    /** Creator builder preferences only; does not mutate existing task options or trigger builds. */
+    function buildSettingsManage(args: { operation: 'get' | 'set'; key?: string; value?: string | boolean; scope?: 'local' | 'global' }): Promise<{ scope: string; settings?: Record<string, unknown>; success?: boolean; affectsExistingTasks: false }>;
+    /** Persistent cocos-pilot-owned project profiles, not native Creator presets. Credentials forbidden; options validated and writes read back. */
+    function buildProfileManage(args: { operation: 'list' | 'get' | 'save' | 'delete'; name?: string; options?: Record<string, unknown> }): Promise<{ profiles?: Array<{ name: string; platform: string }>; total?: number; name?: string; options?: Record<string, unknown>; success?: boolean }>;
     /** Candidate: pure, read-only audit of bounded public Creator build options for six explicit targets. Reports normalized platform, supported/unsupported/unknown options, errors and warnings; it never dispatches a build or claims an artifact. Candidate remains unqualified. */
     function buildPresetAudit(args: {
         platform: "web-mobile" | "web-desktop" | "android" | "ios" | "windows" | "mac" | string,

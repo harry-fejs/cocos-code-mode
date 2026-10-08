@@ -18,6 +18,15 @@
 - [ ] **Lane R5 — Engine features 3.8** — blocked after clean read-only probe `reports/r5-engine-api-probe-20260922.json` (`cdc2de2`, Creator 3.7.3): `cc.Terrain`, `cc.ParticleSystem`, and `cc.LightProbeInfo` are `undefined`; no mutation attempted. Creator ≥3.8 engine APIs and fresh witnesses required for `lightBakeManage`, `terrainEdit`, `particleConfigure`; physics topology remains qualified.
 - [x] **Lane R6 — Creator popup observability/control implementation** — owner accepted implementation-only closure on 2026-10-04. Detection plan `4-done-260922__261004-creator-popup-detection` and action child `4-done-260923__260925-creator-popup-actions` are complete. Live qualification is separately queued in vault plan `2-todo-261004__tbd-creator-popup-live-qualification` for combined feature testing; clean canonical Scene Not Response, stacked public-action reliability and cleanup remain pending. No portfolio promotion or parent resume closure.
 
+### Build/config priority — owner decision 2026-10-08
+
+- Owner approved development of build configuration, settings and reusable profiles. This does not reopen project/scene globals, Game View, tilemap, bundle/localization or engine-feature qualification.
+- Implemented `buildSettingsManage` for allowlisted Creator builder local/global defaults and cache preferences; writes verify read-back and rollback. No changes to existing tasks, SDK/NDK or signing credentials.
+- Implemented `buildProfileManage` for Cocos Pilot-owned project profiles (list/get/save/delete), audited options, credential refusal, bounded storage and guarded writes. These are not native Creator build preset assets.
+- Implemented `buildTemplate` list/create for six platforms and debug/release options; scene identity syntax/start-scene membership/native package ID are validated, target settings use packages[platform], and nested target profile validation rejects incompatible option types. Templates never persist/dispatch and disclose missing asset/toolchain/signing qualification.
+- Offline build and HTTP persistence smoke use a simulated Creator Profile backend; real Creator persistence/reload and exact build artifact qualification remain pending. No portfolio promotion or threshold changes.
+- Pending separately: numeric task-ID acceptance in buildManage, builder add-task outcome verification, native task/preset settings route, and Android environment configuration after authoritative API discovery. Do not retry ambiguous build submission.
+
 ## Deferred hierarchy browsing — owner idea, not a release gate
 
 - [ ] Sau release Creator 3.7, thiết kế bounded `nodeGetTree` browsing: giữ mặc định depth 4 / 200 nodes (không mở depth vô hạn); khi `truncated`, agent dùng `reference` để đọc tiếp nhánh cần thiết. Với cha rộng, cân nhắc `childOffset` + `pageSize`, trả `childrenCount` và `nextOffset`/end-of-page; giới hạn từng request và không auto-fetch toàn scene. Chốt thứ tự children và semantics khi scene đổi giữa các trang; chứng minh kết quả trên fixture sâu/rộng và đo payload/token trước khi implement. Không tính vào qualification hay publish gate hiện tại.

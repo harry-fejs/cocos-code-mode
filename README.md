@@ -38,7 +38,7 @@ You can read more about Code Mode concept in papers from [Anthropic](https://www
 | **Preview** (1) | `previewManage`* | `get_url`/`open_browser`/`asset_preview`/`scene_preview` (replaces 4: preview*, assetGetPreview, editorGetScenePreview) |
 | **Program** (1) | `programManage`* | `get_info`/`open`/`open_url` (replaces 3: program*, urlOpen) |
 | **Project** (1) | `projectManage`* | `get`/`set` (replaces 2: project*) |
-| **Build** (1) | `buildManage`* | Panel, tasks, trigger, control (replaces 5) |
+| **Build** | `buildManage`, `buildSettingsManage`, `buildProfileManage` | Tasks/trigger/control; Creator defaults/cache preferences; reusable project build options |
 | **Animation** (2) | `animationQuery`, `animationEdit` | Slim clip dumps |
 | **Material/DB** (2) | `materialQuery`, `assetDbQuery` | Effects/pipeline |
 | **System** (2) | `editorGetLogs`, `propertyArrayElement` | Logs, array ops |
@@ -59,6 +59,15 @@ You can read more about Code Mode concept in papers from [Anthropic](https://www
 | **Consolidated** (10) | `inspectorGet/Set/Definition`, `nodeComponentManage`, `editorQuery`, `sceneManage`, `previewManage`, `programManage`, `projectManage`, `buildManage` | Replaces 26 legacy — now the only surface |
 
 * QA: `scripts/smoke-utcp.js` (expects 88) · Perf: `a769a46` bench + `e419276` trim.
+
+
+### Build settings and reusable profiles
+
+`buildSettingsManage` reads or writes allowlisted Creator `builder` preferences through `Editor.Profile`, with explicit `local` (default) or `global` scope. Supported keys are `common.name`, `common.server`, `common.platform`, `common.buildPath`, `common.debug`, `common.md5Cache`, `common.skipCompressTexture`, `common.sourceMaps`, `useBuildAssetCache`, `useBuildEngineCache`, `useBuildTextureCompressCache`, `useBuildAutoAtlasCache`, `supportTaskQueue`, and `serializedOptions.keepNodeUuid`. These defaults do not change existing task options. No SDK/NDK, signing credentials, project-settings filesystem fallback, or automatic build dispatch is provided.
+
+`buildProfileManage` supports `list`, `get`, `save`, and `delete` for reusable **Cocos Pilot-owned project profiles**, not native Creator task/preset assets. Each profile contains a supported `platform` and audited build options, with at most 32 profiles and 32 KiB per profile. Nested credential fields are rejected. Writes verify read-back and attempt restoration on failure; failed restoration returns `BUILD_PROFILE_ROLLBACK_FAILED`. Concurrent writes are rejected while one is pending. Retrieve profile `options` and explicitly pass them to `buildManage({operation:'trigger', options})` only when a build is intended. Creator-live persistence and actual build output qualification remain separate from offline/HTTP verification.
+
+`buildTemplate({operation:'list'})` lists six targets: `web-mobile`, `web-desktop`, `android`, `ios`, `windows`, `mac`. `create` requires `platform`, `name` and real scene UUID/URL pairs; `startScene` defaults to the first supplied scene and must belong to that list. Debug templates enable source maps; release templates disable debug/source maps and Android debug signing. Android/iOS require a real `packageName` and put target options in `packages[platform]`. Android defaults to arm64-v8a; iOS targets iphoneos with Metal. Orientation defaults to landscape. Scene existence, remote bundle configuration, SDK/NDK/Xcode and release signing are not verified by generation; response requirements/readiness state those limits. Generate → save with `buildProfileManage` → inspect options → explicitly trigger is the intended workflow. Templates never persist or dispatch by themselves.
 
 ### Verbose convention
 

@@ -21,6 +21,7 @@ import './tools/preview-tools';
 import './tools/property-array-tools';
 import './tools/material-tools';
 import './tools/consolidated-tools';
+import './tools/build-tools';
 import './execute/execute-tool';
 import './tools/diagnostics-tools';
 import './tools/file-tools';
