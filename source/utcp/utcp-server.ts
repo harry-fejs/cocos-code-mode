@@ -4,7 +4,7 @@ import {
     LOCAL_INSTANCE_HEADER, LOCAL_INSTANCE_VARIABLE, LOCAL_PORT_HEADER, LOCAL_PORT_VARIABLE,
     LOCAL_TOKEN_HEADER, LOCAL_TOKEN_VARIABLE, LOCAL_PROJECT_HEADER, LOCAL_PROJECT_VARIABLE,
 } from './local-auth';
-import { LocalHttpContext, LocalHttpServer, sendJson } from './http-server';
+import { bindJsonWitness, LocalHttpContext, LocalHttpServer, sendJson } from './http-server';
 import { ProtectedRelayHost } from '../protected/relay-host';
 import { CcbError, toCcbErrorBody } from '../protected/errors';
 import { getConfigManager } from './config-manager';
@@ -336,6 +336,12 @@ export class UtcpServerManager {
             const handler = async (context: LocalHttpContext): Promise<void> => {
                 const { body, query, response, startedAt } = context;
                 const duration = () => ({ 'x-duration-ms': String(Date.now() - startedAt) });
+                const trace = this.host?.qualificationTrace;
+                const callId = context.request.headers['x-ccb-qualification-call'];
+                let qualificationRequestId: string | null = null;
+                const witnessed = trace?.liveRunId && typeof callId === 'string' && /^[0-9a-f-]{36}$/i.test(callId)
+                    && context.request.headers['x-ccb-qualification-run'] === trace.liveRunId;
+                if (witnessed && trace && typeof callId === 'string') bindJsonWitness(response, (status, bytes, finished) => trace.httpResult(callId, qualificationRequestId, toolDef.name, status, bytes, finished));
                 try {
                     if (!isToolExposed(toolDef.name, activeProfile, enabledTools, disabledTools)) {
                         sendJson(response, 404, { error: `Tool '${toolDef.name}' is not exposed by the current profile '${activeProfile}'.` }, duration());
@@ -362,7 +368,8 @@ export class UtcpServerManager {
                     }
 
                     const result = isProtectedCustomerTool(toolDef.name)
-                        ? await this.dispatchProtected(toolDef.name, args, extractIdempotencyKey(context.request))
+                        ? await this.dispatchProtected(toolDef.name, args, extractIdempotencyKey(context.request), witnessed ? callId : undefined,
+                            witnessed ? (requestId) => { qualificationRequestId = requestId; } : undefined)
                         : await toolMeta.method.apply(instance, [args]);
                     const trimmed = result === undefined || result === null ? null : trimResponse(result) ?? null;
                     sendJson(
@@ -399,6 +406,12 @@ export class UtcpServerManager {
             sendJson(response, 200, manual);
         });
         http.route('GET', '/build-info', ({ response }) => sendJson(response, 200, getBuildInfo()));
+        if (this.host?.qualificationTrace?.liveRunId) http.route('GET', '/qualification/identity', ({ response }) => sendJson(response, 200, {
+            runId: this.host?.qualificationTrace?.liveRunId, packageHash: this.host?.packageHash,
+            targetPayloadHash: this.host?.targetPayloadHash, deviceId: this.host?.identity?.deviceId,
+            publicKeyDer: this.host?.identity?.publicKeyDer, deviceKeyId: this.host?.identity?.deviceKeyId,
+            creatorVersion: Editor.App.version, build: getBuildInfo(),
+        }));
         http.route('GET', '/connection', ({ response }) => sendJson(response, 200, {
             projectPath: this.localAuth?.projectPath, projectId: this.localAuth?.projectId,
             port: this.port, relayInstanceId: this.localAuth?.relayInstanceId,
@@ -406,9 +419,10 @@ export class UtcpServerManager {
         }));
     }
 
-    private async dispatchProtected(toolName: string, args: Record<string, unknown>, idempotencyKey?: string): Promise<unknown> {
+    private async dispatchProtected(toolName: string, args: Record<string, unknown>, idempotencyKey?: string,
+        qualificationCallId?: string, onQualificationRequest?: (requestId: string) => void): Promise<unknown> {
         if (!this.host) throw new CcbError('CCB_GATEWAY_UNAVAILABLE', 'Protected tools require an active Gateway relay host.');
-        return dispatchProtectedCustomerTool(this.host, toolName, args, { idempotencyKey });
+        return dispatchProtectedCustomerTool(this.host, toolName, args, { idempotencyKey, qualificationCallId, onQualificationRequest });
     }
     
     getLocalAuthBinding(): Readonly<Pick<LocalAuthContext, 'relayInstanceId' | 'tokenPath' | 'boundPort' | 'projectPath' | 'projectId'>> | null {

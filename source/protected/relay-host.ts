@@ -126,6 +126,10 @@ export class ProtectedRelayHost {
     this.packageHash = packageHash;
     this.bootFailure = bootFailure;
     this.targetPayloadHash = targetPayloadHash;
+    if (identity && packageHash && targetPayloadHash && this.qualificationTrace) {
+      this.qualificationTrace.configureLive(this.identityStore.privateKey(identity), identity.deviceKeyId,
+        { deviceId: identity.deviceId, publicKeyDer: identity.publicKeyDer, packageHash, targetPayloadHash });
+    }
     this.state.finishBootLocked(bootFailure ? {
       code: bootFailure.body.code,
       error: bootFailure.body.error,

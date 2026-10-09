@@ -17,6 +17,12 @@ export interface LocalHttpContext {
 }
 
 export type LocalHttpHandler = (context: LocalHttpContext) => void | Promise<void>;
+const jsonWitnesses = new WeakMap<ServerResponse, (status: number, bytes: Buffer, finished: boolean) => void>();
+
+/** Opt-in qualification hook, at the actual post-trim/envelope serialization boundary. */
+export function bindJsonWitness(response: ServerResponse, witness: (status: number, bytes: Buffer, finished: boolean) => void): void {
+  jsonWitnesses.set(response, witness);
+}
 
 export function sendJson(response: ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}): void {
   if (response.writableEnded) return;
@@ -27,6 +33,13 @@ export function sendJson(response: ServerResponse, status: number, body: unknown
     "cache-control": "no-store",
     ...headers,
   });
+  const witness = jsonWitnesses.get(response);
+  if (witness) {
+    let recorded = false;
+    const record = (finished: boolean) => { if (recorded) return; recorded = true; try { witness(status, bytes, finished); } catch { /* Evidence failure never changes HTTP outcomes. */ } };
+    response.once("finish", () => record(true));
+    response.once("close", () => record(response.writableFinished));
+  }
   response.end(bytes);
 }
 

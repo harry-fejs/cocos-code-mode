@@ -196,6 +196,8 @@ npm run package
 4. If everything builds fine, `cc-bridge-3x.zip` file should appear in repository root.
 5. Install it in Cocos Creator with **Extension Manager**.
 
+Customer releases prohibit generic process launch. In addition to the existing fixed updater activation launcher, Windows protected-state storage has one bounded security exception: `source/protected/durable-file.ts` invokes the system PowerShell executable with a constant ACL script, passing only the path and file/directory flag through environment variables. It removes inherited access and enforces/verifies FullControl for the current user and SYSTEM only. Both the final renamed-package witness and release inventory require the unique `protected/durable-file.js` rename-map identity and the reviewed SHA-256 of the entire emitted module (`scripts/fixed-acl-witness.js`); adding a launcher or changing the command/ACL invalidates that approval. Source or compiler/minifier changes require reviewing the emitted code before updating the pin, never automatic repinning. This build witness is not signed installed/runtime evidence. Focused regression: `node --test tests/unit/fixed-acl-witness.test.js`.
+
 ### Development testing
 
 For rapid iteration, link the project extension directory directly to this repository instead of repeatedly importing the packaged zip:
@@ -213,6 +215,24 @@ npm run link:project -- "G:\path\to\cocos-project" --replace
 Then build from this repository with `npm run build`. Reload the extension from **Extension Manager** for ordinary changes. Restart Creator before testing changes that touch tool modules and scene scripts together: their module caches do not reload as one unit.
 
 Do not use **Delete** in Extension Manager while the extension path is a junction; remove the junction from the filesystem instead.
+
+### Installed-live protected qualification
+
+The source witness (`verify-qualification-witness.js`) remains source-only and always refuses signed-live acceptance. Use the separate installed-live pair only against a genuinely updater-installed signed package:
+
+```powershell
+$env:CCB_INSTALLED_LIVE_CONFIG_PATH = 'C:\Users\you\.cc-bridge\qualification\config.json'
+node scripts/run-installed-live-qualification.js
+node scripts/verify-installed-live-qualification.js
+```
+
+Before starting Creator, set `CCB_QUALIFICATION_TRACE_PATH` (fresh source NDJSON), `CCB_QUALIFICATION_LIVE_TRACE_PATH` (fresh signed live NDJSON), `CCB_QUALIFICATION_LIVE_RUN_ID` (fresh v4 UUID), and optionally `CCB_QUALIFICATION_MARKERS_PATH`. Trace paths must be absolute, inside the user home, not traverse links, and not already exist. Without this opt-in the authenticated `/qualification/identity` route and HTTP witness collection do not exist. Restarting requires fresh trace paths.
+
+The private client config is JSON with `schemaVersion: 1`, matching `runId`, `projectPath`, `configPath` (UTCP config), `installedDirectory`, `releaseDirectory` (immutable updater release set containing `root.signed.json`, `target.signed.json`, `policy.signed.json` and the four release artifacts), `trustedRootPath` (raw canonical root payload), `trustedRootSha256` (independent trust pin), `devicePublicKeyDer` (independently approved enrolled device public key), `sourceTracePath`, `liveTracePath`, fresh `runPath`/`reportPath`, and `scenarios`. Each scenario specifies `id`, `toolId`, actual `inputs`, `expectedOutcome`, and `workflow` (`read`, `mutation`, `ten-step`, or `local-screenshot`); a stable `idempotencyKey` is optional. Inputs can consume a preceding actual HTTP result using `{ "$result": "scenario-id/path/to/field" }`. No node IDs or image data are fabricated. The canonical project registry selects the exact current port/session/token/Gateway and `/connection` must agree before and after the run.
+
+The runner verifies trusted signatures, release artifact hashes, every installed file, descriptor/target/build identity, and the independent device-key pin before making scenario calls. It retains only approved metadata and hashes, not credentials, raw results, or screenshots. Signed device events bind real post-trim/envelope HTTP response bytes to the client hashes, protected dispatch phases, actual Creator IPC counters, Gateway response-byte hashes, ten executed command counts, and observed next-request completion telemetry. Device signatures authenticate local instrumentation, not hardware attestation.
+
+For canary credit, `markersPath` contains the existing marker policy fields (`label`, private `value`, `allowedInGatewayRequest`, `allowedSurfaces`) plus `sourceKind` (`operation-input`, `creator-observation`, or `local-result`). Inject the canary into the real selected input/Creator state/result, not a source fixture; signed instrumentation must observe that source. `surfacesPath` uses the existing six-surface manifest (`name`, absolute `root`, `files`); installed-live scans every file under each non-overlapping root, including undeclared files, with 32 MiB/file and 128 MiB/4096-file total limits. Capture real Gateway DB/logs/metrics, relay logs, update state and support-bundle snapshots before verification; source fixture contents are not live capture evidence. Absent or empty surfaces, unobserved injection, unavailable counters, HTTP errors/mismatches, missing workflows or telemetry produce explicit unverified gaps and `pass: false`. Screenshot credit is local-only, never a claimed Gateway round trip. Exit codes: runner `0` means collection finished, not acceptance; verifier `0` means all required evidence verified, `2` means a published partial report, `1` means rejected evidence.
 
 ## Adding Custom Tools
 

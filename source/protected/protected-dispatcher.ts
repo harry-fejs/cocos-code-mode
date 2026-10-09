@@ -19,6 +19,8 @@ import type { CompletionTelemetry } from "./protocol";
 
 export interface ProtectedDispatchContext {
   idempotencyKey?: string;
+  qualificationCallId?: string;
+  onQualificationRequest?: (requestId: string) => void;
 }
 
 export interface DispatcherContext {
@@ -145,7 +147,8 @@ export async function dispatchProtectedTool(
       : await build();
     requestId = built.request.requestId;
     if (ctx.qualificationTrace) {
-      ctx.qualificationTrace.begin(built.request);
+      ctx.qualificationTrace.begin(built.request, dispatch.qualificationCallId);
+      dispatch.onQualificationRequest?.(built.request.requestId);
       traceId = built.request.requestId;
       ipcBeforeGateway = ctx.adapters.readIpcCount?.() ?? null;
     }
@@ -196,6 +199,7 @@ export async function dispatchProtectedTool(
         publicConstants,
         deadlineAtMs: verified.deadlineAtMs,
       });
+      ctx.qualificationTrace?.executionCommands(built.request.requestId, execution.executedCommandIds.length);
       ctx.qualificationTrace?.phase(built.request.requestId, "execution-finish");
       return completed(routeExecutionResult(envelope, localResult(execution)));
     }
@@ -216,6 +220,7 @@ export async function dispatchProtectedTool(
           started = true;
         },
       });
+      ctx.qualificationTrace?.executionCommands(built.request.requestId, execution.executedCommandIds.length);
       ctx.qualificationTrace?.phase(built.request.requestId, "execution-finish");
       const result = routeExecutionResult(envelope, localResult(execution));
       ctx.journal.markCompleted(verified.decisionDigest, result, {

@@ -7,6 +7,7 @@
 - Serialize shared config transactions; reject ambiguous/live project or reserved-port collisions, malformed config, and stale panel writes. Own-session shutdown cannot remove a replacement session.
 - Add backup-first dry-run/apply migration that externalizes earlier embedded metadata and stores unresolved offline CCB3x history separately, without deleting env files or changing unrelated products.
 - Make live readiness/qualification and benchmark selection project-first; add real-SDK authenticated two-project smoke and behavioral concurrency/collision coverage.
+- Preserve the Windows current-user + SYSTEM protected-state DACL while permitting only its reviewed, rename-map-bound, whole-module SHA-256-pinned security operation through both packaging gates. Added arbitrary-launch, altered-command/DACL, and renamed-identity rejection regressions; the separate single updater activation requirement and unrelated forbidden-material checks remain enforced.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

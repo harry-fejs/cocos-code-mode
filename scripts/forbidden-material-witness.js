@@ -1,7 +1,9 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { fixedAclOutput, isFixedAclModule } = require("./fixed-acl-witness");
 
 const dist = path.join(__dirname, "..", "dist");
+const approvedAclOutput = fixedAclOutput(dist);
 const forbidden = [
   /new Function\s*\(/,
   /\beval\s*\(/,
@@ -23,9 +25,8 @@ const forbidden = [
 const updaterProcess = [
   /require\(['"]child_process['"]\)/,
   /from\s+['"]child_process['"]/,
-  /\bexecFile\b/,
-  /\bexecSync\b/,
-  /\bspawn(?:Sync)?\s*\(/,
+  /\b(?:execFile(?:Sync)?|execSync)\b/,
+  /\b(?:spawn(?:Sync)?|fork)\s*\(/,
 ];
 let hits = 0;
 
@@ -45,9 +46,16 @@ function walk(dir) {
       hits += 1;
       continue;
     }
-    const text = fs.readFileSync(full, "utf8");
+    const bytes = fs.readFileSync(full);
+    const text = bytes.toString("utf8");
     const isUpdaterRuntime = full.startsWith(`${path.join(dist, "update")}${path.sep}`);
-    const patterns = isUpdaterRuntime ? forbidden : [...forbidden, ...updaterProcess];
+    const relativePath = `dist/${path.relative(dist, full).split(path.sep).join("/")}`;
+    const isAclRuntime = isFixedAclModule(relativePath, bytes, approvedAclOutput);
+    if (relativePath === approvedAclOutput && !isAclRuntime) {
+      console.error(`${full}: unapproved fixed ACL implementation`);
+      hits += 1;
+    }
+    const patterns = isUpdaterRuntime || isAclRuntime ? forbidden : [...forbidden, ...updaterProcess];
     for (const pattern of patterns) {
       if (pattern.source === "\\bexecuteJavascript\\b" && text.includes("REMOVED_CUSTOMER_TOOLS")) continue;
       if (pattern.test(text)) {

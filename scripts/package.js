@@ -5,6 +5,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { ZipArchive } = require('archiver');
 const { assertReleaseInventory, collectPackageEntries, createPackageManifest, sha256 } = require('./release-inventory');
+const { fixedAclOutput } = require('./fixed-acl-witness');
 const { writeCanonicalJson, writeReleaseSidecars } = require('./release-artifacts');
 
 const projectRoot = path.join(__dirname, '..');
@@ -89,7 +90,10 @@ async function main() {
   const patchedPackageJson = { ...packageJson, version };
   const entries = collectPackageEntries(projectRoot, packageName, patchedPackageJson);
   makeBuildInfoDeterministic(entries);
-  assertReleaseInventory(entries, { requireActivationLauncher: true });
+  assertReleaseInventory(entries, {
+    requireActivationLauncher: true,
+    approvedAclOutput: fixedAclOutput(path.join(projectRoot, 'dist')),
+  });
 
   const manifest = createPackageManifest(packageName, version, entries);
   const manifestArtifact = writeCanonicalJson(path.join(projectRoot, 'dist', 'package-manifest.json'), manifest);

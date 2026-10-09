@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { createHash } = require('node:crypto');
+const { isFixedAclModule } = require('./fixed-acl-witness');
 
 const TRACKED_ROOTS = ['@types', 'i18n', 'static'];
 const TRACKED_FILES = ['package-lock.json', 'scripts/install-update.ps1'];
@@ -250,10 +251,15 @@ function assertReleaseInventory(entries, options = {}) {
     if (NESTED_ARCHIVE.test(entry.archivePath)) throw new Error(`nested archive is not allowed: ${entry.archivePath}`);
     if (isVendorDoc(entry.relativePath)) continue;
     const bytes = entry.bytes || fs.readFileSync(entry.sourcePath);
+    if (entry.relativePath === options.approvedAclOutput
+        && !isFixedAclModule(entry.relativePath, bytes, options.approvedAclOutput)) {
+      throw new Error(`unapproved fixed ACL implementation in ${entry.archivePath}`);
+    }
     if (bytes.includes(0)) continue;
     const text = bytes.toString('utf8');
     const isVendorPathname = isVendorPath(entry.relativePath);
-    if (/(?:node:)?child_process/.test(text) && !isVendorPathname) {
+    if (/(?:node:)?child_process/.test(text) && !isVendorPathname
+        && !isFixedAclModule(entry.relativePath, bytes, options.approvedAclOutput)) {
       if (!/powershell\.exe/i.test(text) || !/install-update\.ps1/i.test(text) || /\b(?:exec|execFile|fork)\s*\(/.test(text) || /shell\s*:\s*(?:true|!0)/.test(text)) {
         throw new Error(`general process launcher in ${entry.archivePath}`);
       }

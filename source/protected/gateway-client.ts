@@ -145,7 +145,7 @@ export class GatewayClient {
           if (response.headers.location) throw new CcbError("CCB_GATEWAY_UNAVAILABLE", "Gateway redirects are not accepted.");
           if (response.headers["content-encoding"]) throw new CcbError("CCB_CANONICAL_INVALID", "Compressed Gateway responses are not accepted.");
           const bytes = await readBoundedResponse(response, this.responseMaxBytes);
-          this.options.qualificationTrace?.gatewayResponse(traceId, bytes.byteLength);
+          this.options.qualificationTrace?.gatewayResponse(traceId, bytes.byteLength, bytes);
           const mediaType = String(response.headers["content-type"] ?? "").toLowerCase();
           if (!mediaType.startsWith("application/json")) throw new CcbError("CCB_CANONICAL_INVALID", "Gateway returned an unsupported media type.");
           const parsed: unknown = JSON.parse(bytes.toString("utf8"));
