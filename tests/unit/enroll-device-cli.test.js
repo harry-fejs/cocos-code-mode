@@ -26,7 +26,7 @@ test('device enrollment CLI signs the exact Gateway proof contract', () => {
   };
   const proof = createProof(identity, challenge);
   const { proofSignature, ...body } = proof;
-  const message = Buffer.from(canonicalize({ domain: 'ccb-device-enrollment-v1', ...body }));
+  const message = Buffer.from(canonicalize({ domain: 'ccp-device-enrollment-v1', ...body }));
   assert.equal(verify(null, message, pair.publicKey, Buffer.from(proofSignature, 'base64url')), true);
   assert.equal(proof.deviceId, identity.deviceId);
   assert.equal(proof.deviceKeyId, identity.deviceKeyId);

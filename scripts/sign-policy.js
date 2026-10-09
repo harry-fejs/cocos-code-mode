@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { canonicalize, decodeBase64UrlStrict } = require('./sign-release');
 
-const POLICY_PREFIX = Buffer.from('CCB1 rollout-policy\n', 'utf8');
+const POLICY_PREFIX = Buffer.from('CCP1 rollout-policy\n', 'utf8');
 const KEY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const projectRoot = path.join(__dirname, '..');
@@ -28,35 +28,35 @@ function exactIso(name) {
   return value;
 }
 function rollbackTargets() {
-  const value = process.env.CCB_POLICY_ROLLBACK_TARGET_SHA256;
+  const value = process.env.CCP_POLICY_ROLLBACK_TARGET_SHA256;
   if (!value) return [];
   const targets = value.split(',').map((entry) => entry.trim());
   if (targets.length > 8 || targets.some((entry) => !SHA256_PATTERN.test(entry))) {
-    throw new Error('CCB_POLICY_ROLLBACK_TARGET_SHA256 must contain at most 8 comma-separated SHA-256 digests');
+    throw new Error('CCP_POLICY_ROLLBACK_TARGET_SHA256 must contain at most 8 comma-separated SHA-256 digests');
   }
   return [...new Set(targets)];
 }
 
 
 function buildPolicyBody() {
-  const targetPayloadSha256 = requiredEnv('CCB_POLICY_TARGET_SHA256');
-  if (!SHA256_PATTERN.test(targetPayloadSha256)) throw new Error('CCB_POLICY_TARGET_SHA256 must be 64 hex chars');
-  const ring = requiredEnv('CCB_POLICY_RING');
-  if (!['1', '3', '10'].includes(ring)) throw new Error('CCB_POLICY_RING must be 1, 3, or 10');
+  const targetPayloadSha256 = requiredEnv('CCP_POLICY_TARGET_SHA256');
+  if (!SHA256_PATTERN.test(targetPayloadSha256)) throw new Error('CCP_POLICY_TARGET_SHA256 must be 64 hex chars');
+  const ring = requiredEnv('CCP_POLICY_RING');
+  if (!['1', '3', '10'].includes(ring)) throw new Error('CCP_POLICY_RING must be 1, 3, or 10');
   return {
     schemaVersion: 1,
-    policySequence: positiveInteger('CCB_POLICY_SEQUENCE'),
-    issuedAt: exactIso('CCB_POLICY_ISSUED_AT'),
-    expiresAt: exactIso('CCB_POLICY_EXPIRES_AT'),
+    policySequence: positiveInteger('CCP_POLICY_SEQUENCE'),
+    issuedAt: exactIso('CCP_POLICY_ISSUED_AT'),
+    expiresAt: exactIso('CCP_POLICY_EXPIRES_AT'),
     targetPayloadSha256,
-    channel: process.env.CCB_POLICY_CHANNEL || 'stable',
+    channel: process.env.CCP_POLICY_CHANNEL || 'stable',
     ring,
-    percentage: Number(process.env.CCB_POLICY_PERCENTAGE || '100'),
-    recommended: process.env.CCB_POLICY_RECOMMENDED !== '0',
+    percentage: Number(process.env.CCP_POLICY_PERCENTAGE || '100'),
+    recommended: process.env.CCP_POLICY_RECOMMENDED !== '0',
     blockedBuilds: [],
     rollbackTargetPayloadSha256: rollbackTargets(),
     disabledOperations: [],
-    emergencyStop: process.env.CCB_POLICY_EMERGENCY_STOP === '1',
+    emergencyStop: process.env.CCP_POLICY_EMERGENCY_STOP === '1',
   };
 }
 
@@ -79,9 +79,9 @@ function main() {
   if (Date.parse(body.expiresAt) <= Date.parse(body.issuedAt)) throw new Error('rollout policy must expire after it is issued');
   const signed = signPolicy(
     body,
-    requiredEnv('CCB_RELEASE_POLICY_KEY_ID'),
-    requiredEnv('CCB_RELEASE_POLICY_PRIVATE_KEY'),
-    process.env.CCB_RELEASE_POLICY_PUBLIC_KEY,
+    requiredEnv('CCP_RELEASE_POLICY_KEY_ID'),
+    requiredEnv('CCP_RELEASE_POLICY_PRIVATE_KEY'),
+    process.env.CCP_RELEASE_POLICY_PUBLIC_KEY,
   );
   const outPath = path.join(projectRoot, 'dist', 'rollout-policy.signed.json');
   fs.writeFileSync(outPath, `${JSON.stringify(signed, null, 2)}\n`);

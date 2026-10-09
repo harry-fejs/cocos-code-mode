@@ -6,19 +6,19 @@ import { join } from "node:path";
 import express from "express";
 import { SignJWT } from "jose";
 import { createMemberTokenVerifier, type AuthContext } from "../../src/auth.ts";
-import { createGatewayAdmission, loadAdmissionConfig } from "../../src/cc-bridge/admission.ts";
-import { createMemberAuthMiddleware } from "../../src/cc-bridge/auth-middleware.ts";
-import { canonicalizeToBytes } from "../../src/cc-bridge/canonical-json.ts";
-import { MemoryEnvelopeSigner } from "../../src/cc-bridge/envelope-signer.ts";
-import { type ExecuteDependencies } from "../../src/cc-bridge/execute-service.ts";
-import { planCreateUiNode } from "../../src/cc-bridge/planners/create-ui-node.ts";
-import { planCommands } from "../../src/cc-bridge/planners/planner-helpers.ts";
-import { ProtectedToolRegistry } from "../../src/cc-bridge/protected-tool-registry.ts";
-import { signProtectedRequest, type ProtectedRequest } from "../../src/cc-bridge/protocol.ts";
-import { ReplayStore } from "../../src/cc-bridge/replay-store.ts";
-import { createCcBridgeRouter } from "../../src/cc-bridge/router.ts";
-import { CcBridgeStore } from "../../src/cc-bridge/store.ts";
-import { PUBLIC_TOOL_BY_NAME } from "../../src/cc-bridge/tool-catalog.ts";
+import { createGatewayAdmission, loadAdmissionConfig } from "../../src/ccp/admission.ts";
+import { createMemberAuthMiddleware } from "../../src/ccp/auth-middleware.ts";
+import { canonicalizeToBytes } from "../../src/ccp/canonical-json.ts";
+import { MemoryEnvelopeSigner } from "../../src/ccp/envelope-signer.ts";
+import { type ExecuteDependencies } from "../../src/ccp/execute-service.ts";
+import { planCreateUiNode } from "../../src/ccp/planners/create-ui-node.ts";
+import { planCommands } from "../../src/ccp/planners/planner-helpers.ts";
+import { ProtectedToolRegistry } from "../../src/ccp/protected-tool-registry.ts";
+import { signProtectedRequest, type ProtectedRequest } from "../../src/ccp/protocol.ts";
+import { ReplayStore } from "../../src/ccp/replay-store.ts";
+import { createCcBridgeRouter } from "../../src/ccp/router.ts";
+import { CcBridgeStore } from "../../src/ccp/store.ts";
+import { PUBLIC_TOOL_BY_NAME } from "../../src/ccp/tool-catalog.ts";
 import { ReplayWindow } from "../../../source/protected/replay-window.ts";
 import { verifyDecision } from "../../../source/protected/decision-verifier.ts";
 import { executeEnvelope } from "../../../source/protected/primitive-executor.ts";
@@ -41,7 +41,7 @@ export class QualificationClient {
     this.keyId = `qualification-device-${index}`;
     this.relay = Object.freeze({ build: "2.0.0-local-qualification", packageHash: sourceHash, creatorVersion: "3.7.3", os: "win32-x64" });
     this.auth = { member_id: `qualification-member-${index}`, label: "local qualification", jti: randomUUID(), is_legacy: false,
-      role: "admin", clearance: "restricted", products: ["cc_bridge"], tokenAlg: "EdDSA", exp: Math.floor(Date.now() / 1000) + 86_400 };
+      role: "admin", clearance: "restricted", products: ["ccp"], tokenAlg: "EdDSA", exp: Math.floor(Date.now() / 1000) + 86_400 };
   }
   reconnect(): void {
     this.agent.destroy();
@@ -50,7 +50,7 @@ export class QualificationClient {
 }
 
 export class QualificationRuntime {
-  readonly directory = mkdtempSync(join(tmpdir(), "ccb-local-qualification-"));
+  readonly directory = mkdtempSync(join(tmpdir(), "ccp-local-qualification-"));
   store = new CcBridgeStore(join(this.directory, "gateway.sqlite"));
   readonly memberKeys = generateKeyPairSync("ed25519");
   readonly executionKeys = generateKeyPairSync("ed25519");
@@ -93,18 +93,18 @@ export class QualificationRuntime {
     this.deps.planners = registry;
   }
   async start(): Promise<void> {
-    for (const client of this.clients) client.token = await new SignJWT({ label: client.auth.label, role: "admin", products: ["cc_bridge"] })
+    for (const client of this.clients) client.token = await new SignJWT({ label: client.auth.label, role: "admin", products: ["ccp"] })
       .setProtectedHeader({ alg: "EdDSA", typ: "JWT" }).setIssuer("local-qualification").setSubject(client.auth.member_id)
       .setJti(client.auth.jti).setIssuedAt().setExpirationTime(client.auth.exp).sign(this.memberKeys.privateKey);
     const verifier = createMemberTokenVerifier({ issuer: "local-qualification", publicKeyPem: this.memberKeys.publicKey.export({ format: "pem", type: "spki" }).toString() });
     const app = express();
-    app.use("/ccb/v1/execute", (_req, res, next) => {
+    app.use("/ccp/v1/execute", (_req, res, next) => {
       this.requests += 1; this.active += 1; this.maxActive = Math.max(this.maxActive, this.active);
       let finished = false;
       const finish = () => { if (!finished) { this.active -= 1; finished = true; } };
       res.once("finish", finish); res.once("close", finish); next();
     });
-    app.use("/ccb", createCcBridgeRouter(this.deps, createMemberAuthMiddleware(verifier), createGatewayAdmission(this.admissionConfig)));
+    app.use("/ccp", createCcBridgeRouter(this.deps, createMemberAuthMiddleware(verifier), createGatewayAdmission(this.admissionConfig)));
     this.server = createServer(app);
     const listening = Promise.withResolvers<void>();
     this.server.once("error", listening.reject);
@@ -144,7 +144,7 @@ export class QualificationRuntime {
     const body = Buffer.from(canonicalizeToBytes(signProtectedRequest(client.keyId, request, client.keys.privateKey)));
     const deferred = Promise.withResolvers<{ status: number; body: Buffer }>();
     const networkStarted = performance.now();
-    const req = httpRequest({ hostname: "127.0.0.1", port: this.port, path: "/ccb/v1/execute", method: "POST", agent: client.agent,
+    const req = httpRequest({ hostname: "127.0.0.1", port: this.port, path: "/ccp/v1/execute", method: "POST", agent: client.agent,
       headers: { authorization: `Bearer ${client.token}`, "content-type": "application/json", "content-length": body.length } }, (res) => {
       const chunks: Buffer[] = []; let bytes = 0;
       res.on("data", (chunk: Buffer) => { bytes += chunk.length; if (bytes > 768 * 1024) res.destroy(new Error("RESPONSE_BOUND")); else chunks.push(chunk); });
@@ -184,7 +184,7 @@ export class QualificationRuntime {
         }, readIpcCount: () => ipcCount,
       }, request, { publicConstants: tool.publicConstants as IJson, deadlineAtMs: verified.deadlineAtMs });
       invariant(result.ipcCount === ipcCount, "SIMULATED_IPC_ACCOUNTING_MISMATCH");
-      const phases = this.store.db.prepare("SELECT phase_timings_json FROM cc_bridge_audit WHERE correlation_id = ?").get(verified.decision.correlationId) as { phase_timings_json: string } | undefined;
+      const phases = this.store.db.prepare("SELECT phase_timings_json FROM ccp_audit WHERE correlation_id = ?").get(verified.decision.correlationId) as { phase_timings_json: string } | undefined;
       invariant(phases, "MISSING_GATEWAY_PHASE_EVIDENCE");
       const gatewayPhases = JSON.parse(phases.phase_timings_json) as Record<string, number>;
       const gatewayMs = ["verify", "authorize", "plan", "validate", "sign"].reduce((sum, phase) => sum + gatewayPhases[phase], 0);

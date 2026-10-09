@@ -221,7 +221,7 @@ function createPackageManifest(packageName, version, entries) {
 const FORBIDDEN_ARCHIVE_PATH = /(?:^|\/)(?:\.env(?:\.|$)|[^/]*(?:private[-_]?key|credential|secret)[^/]*)/i;
 const NESTED_ARCHIVE = /\.(?:zip|tgz|tar|gz|7z|rar|asar)$/i;
 const SECRET_TEXT = [
-  /CCB_(?:EXECUTION|RELEASE|DEVICE)[A-Z0-9_]*PRIVATE_KEY/,
+  /CCP_(?:EXECUTION|RELEASE|DEVICE)[A-Z0-9_]*PRIVATE_KEY/,
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
 ];
 const FIRST_PARTY_FORBIDDEN_TEXT = [

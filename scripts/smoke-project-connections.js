@@ -7,7 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { createRequire } = require('node:module');
-const consumerRequire = process.env.CCB_UTCP_CONSUMER_ROOT ? createRequire(path.resolve(process.env.CCB_UTCP_CONSUMER_ROOT, 'package.json')) : require;
+const consumerRequire = process.env.CCP_UTCP_CONSUMER_ROOT ? createRequire(path.resolve(process.env.CCP_UTCP_CONSUMER_ROOT, 'package.json')) : require;
 const { UtcpClient } = consumerRequire('@utcp/sdk');
 consumerRequire('@utcp/http');
 consumerRequire('@utcp/dotenv-loader');
@@ -16,7 +16,7 @@ const { createProjectLocalAuth } = require('../dist/utcp/local-auth');
 const { LocalHttpServer, sendJson } = require('../dist/utcp/http-server');
 const { readConnectionState } = require('../dist/utcp/project-connection');
 async function main() {
-  const root = fs.mkdtempSync(path.join(os.homedir(), '.ccb-project-smoke-'));
+  const root = fs.mkdtempSync(path.join(os.homedir(), '.ccp-project-smoke-'));
   const priorEditor = global.Editor;
   const manager = getConfigManager();
   const priorConfigPath = manager.getConfigPath();
@@ -37,8 +37,8 @@ async function main() {
       server.route('GET', '/utcp', ({ response }) => sendJson(response, 200, { utcp_version: '1.0.1', manual_version: '1.0.0', tools: [{
         name: 'who', description: 'Read current project identity', inputs: { type: 'object' }, outputs: { type: 'object' }, tags: [],
         tool_call_template: { name: 'who', call_template_type: 'http', http_method: 'GET', url: `http://localhost:${actualPort}/tools/who`,
-          headers: { 'x-ccb-relay-instance': '${CCB_RELAY_INSTANCE_ID}', 'x-ccb-bound-port': '${CCB_BOUND_PORT}', 'x-ccb-project-id': '${CCB_LOCAL_PROJECT_ID}' },
-          auth: { auth_type: 'api_key', var_name: 'x-ccb-local-token', api_key: '${CCB_LOCAL_TOKEN}', location: 'header' } },
+          headers: { 'x-ccp-relay-instance': '${CCP_RELAY_INSTANCE_ID}', 'x-ccp-bound-port': '${CCP_BOUND_PORT}', 'x-ccp-project-id': '${CCP_LOCAL_PROJECT_ID}' },
+          auth: { auth_type: 'api_key', var_name: 'x-ccp-local-token', api_key: '${CCP_LOCAL_TOKEN}', location: 'header' } },
       }] }));
       return { auth, server, port: actualPort };
     }
@@ -50,18 +50,18 @@ async function main() {
     const a = await startProject(path.join(root, 'a'));
     const b = await startProject(path.join(root, 'b'));
     let client = await sdk();
-    assert.deepEqual(await client.callTool(`ccb3x_${a.port}.who`, {}), { projectId: a.auth.projectId, session: a.auth.relayInstanceId });
-    assert.deepEqual(await client.callTool(`ccb3x_${b.port}.who`, {}), { projectId: b.auth.projectId, session: b.auth.relayInstanceId });
+    assert.deepEqual(await client.callTool(`ccp3x_${a.port}.who`, {}), { projectId: a.auth.projectId, session: a.auth.relayInstanceId });
+    assert.deepEqual(await client.callTool(`ccp3x_${b.port}.who`, {}), { projectId: b.auth.projectId, session: b.auth.relayInstanceId });
     assert.equal(manager.readConfig().load_variables_from.length, 2);
     const text = fs.readFileSync(a.auth.tokenPath, 'utf8');
-    assert.equal(/^CCB_LOCAL_TOKEN=/m.test(text), false);
+    assert.equal(/^CCP_LOCAL_TOKEN=/m.test(text), false);
     const duplicate = createProjectLocalAuth(a.auth.projectPath, randomUUID(), path.join(root, 'auth'));
     await assert.rejects(manager.ensureCocosEditorTemplate(a.port, duplicate, gateway), /active relay/);
     assert.equal(fs.readFileSync(a.auth.tokenPath, 'utf8'), text);
     await assert.rejects(manager.ensureCocosEditorTemplate(b.port, a.auth, gateway), /different Cocos project/);
     const foreign = await fetch(`http://localhost:${b.port}/tools/who`, { headers: {
-      'x-ccb-local-token': a.auth.token, 'x-ccb-relay-instance': b.auth.relayInstanceId,
-      'x-ccb-bound-port': String(b.port), 'x-ccb-project-id': a.auth.projectId,
+      'x-ccp-local-token': a.auth.token, 'x-ccp-relay-instance': b.auth.relayInstanceId,
+      'x-ccp-bound-port': String(b.port), 'x-ccp-project-id': a.auth.projectId,
     } });
     assert.equal(foreign.status, 401);
     await a.server.close();
@@ -71,16 +71,16 @@ async function main() {
     assert.notEqual(restarted.auth.token, a.auth.token);
     assert.equal(await manager.removeCocosEditorTemplate(a.auth), false);
     client = await sdk();
-    assert.deepEqual(await client.callTool(`ccb3x_${restarted.port}.who`, {}), { projectId: a.auth.projectId, session: restarted.auth.relayInstanceId });
-    assert.deepEqual(await client.callTool(`ccb3x_${b.port}.who`, {}), { projectId: b.auth.projectId, session: b.auth.relayInstanceId });
+    assert.deepEqual(await client.callTool(`ccp3x_${restarted.port}.who`, {}), { projectId: a.auth.projectId, session: restarted.auth.relayInstanceId });
+    assert.deepEqual(await client.callTool(`ccp3x_${b.port}.who`, {}), { projectId: b.auth.projectId, session: b.auth.relayInstanceId });
     assert.equal(manager.readConfig().load_variables_from.length, 2);
-    assert.equal(manager.readConfig().variables?.CCB_PROJECT_CONNECTIONS, undefined);
+    assert.equal(manager.readConfig().variables?.CCP_PROJECT_CONNECTIONS, undefined);
     assert.equal(readConnectionState(manager.getConfigPath()).configPath, manager.getConfigPath());
     assert.equal(readConnectionState(manager.getConfigPath()).projects[a.auth.projectId].relayInstanceId, restarted.auth.relayInstanceId);
     // A wrong project header must be denied even with the correct current token/session/port.
     const wrongProject = await fetch(`http://localhost:${b.port}/tools/who`, { headers: {
-      'x-ccb-local-token': b.auth.token, 'x-ccb-relay-instance': b.auth.relayInstanceId,
-      'x-ccb-bound-port': String(b.port), 'x-ccb-project-id': a.auth.projectId,
+      'x-ccp-local-token': b.auth.token, 'x-ccp-relay-instance': b.auth.relayInstanceId,
+      'x-ccp-bound-port': String(b.port), 'x-ccp-project-id': a.auth.projectId,
     } });
     assert.equal(wrongProject.status, 401);
     console.log(JSON.stringify({ realSdk: true, authenticatedProjects: 2, restartLoaderCount: 2, staleCleanupPreservedNewSession: true, collisionAndCrossProjectRejected: true }));

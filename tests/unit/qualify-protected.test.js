@@ -10,11 +10,11 @@ const { test } = require('node:test');
 test('qualification orchestrator stops before credentials are available', () => {
   const result = spawnSync(process.execPath, [path.resolve(__dirname, '..', '..', 'scripts', 'qualify-protected.js')], {
     cwd: path.resolve(__dirname, '..', '..'),
-    env: { ...process.env, CCB_MEMBER_CREDENTIAL: '', CCB_MEMBER_CREDENTIAL_FILE: '' },
+    env: { ...process.env, CCP_MEMBER_CREDENTIAL: '', CCP_MEMBER_CREDENTIAL_FILE: '' },
     encoding: 'utf8',
   });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /CCB_MEMBER_CREDENTIAL/);
+  assert.match(result.stderr, /CCP_MEMBER_CREDENTIAL/);
 });
 
 test('qualification status reports missing gates without exposing secret values', () => {
@@ -23,11 +23,11 @@ test('qualification status reports missing gates without exposing secret values'
     cwd: path.resolve(__dirname, '..', '..'),
     env: {
       ...process.env,
-      CCB_MEMBER_CREDENTIAL: secret,
-      CCB_EXECUTION_PUBLIC_KEY: 'public-key',
-      CCB_EXECUTION_KEY_ID: 'execution-1',
-      CCB_PROJECT_ID: '',
-      CCB_ADMIN_CREDENTIAL: '',
+      CCP_MEMBER_CREDENTIAL: secret,
+      CCP_EXECUTION_PUBLIC_KEY: 'public-key',
+      CCP_EXECUTION_KEY_ID: 'execution-1',
+      CCP_PROJECT_ID: '',
+      CCP_ADMIN_CREDENTIAL: '',
     },
     encoding: 'utf8',
   });
@@ -41,7 +41,7 @@ test('qualification status reports missing gates without exposing secret values'
 });
 
 test('qualification status accepts file-backed member and admin credentials', () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ccb-qualification-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ccp-qualification-'));
   const memberFile = path.join(directory, 'member.jwt');
   const adminFile = path.join(directory, 'admin.jwt');
   fs.writeFileSync(memberFile, 'member.token\n', { mode: 0o600 });
@@ -51,10 +51,10 @@ test('qualification status accepts file-backed member and admin credentials', ()
       cwd: path.resolve(__dirname, '..', '..'),
       env: {
         ...process.env,
-        CCB_MEMBER_CREDENTIAL: '',
-        CCB_MEMBER_CREDENTIAL_FILE: memberFile,
-        CCB_ADMIN_CREDENTIAL: '',
-        CCB_ADMIN_CREDENTIAL_FILE: adminFile,
+        CCP_MEMBER_CREDENTIAL: '',
+        CCP_MEMBER_CREDENTIAL_FILE: memberFile,
+        CCP_ADMIN_CREDENTIAL: '',
+        CCP_ADMIN_CREDENTIAL_FILE: adminFile,
       },
       encoding: 'utf8',
     });
@@ -72,10 +72,10 @@ test('qualification status does not treat missing credential files as configured
     cwd: path.resolve(__dirname, '..', '..'),
     env: {
       ...process.env,
-      CCB_MEMBER_CREDENTIAL: '',
-      CCB_MEMBER_CREDENTIAL_FILE: path.join(path.dirname(__filename), 'missing-member.jwt'),
-      CCB_ADMIN_CREDENTIAL: '',
-      CCB_ADMIN_CREDENTIAL_FILE: path.join(path.dirname(__filename), 'missing-admin.jwt'),
+      CCP_MEMBER_CREDENTIAL: '',
+      CCP_MEMBER_CREDENTIAL_FILE: path.join(path.dirname(__filename), 'missing-member.jwt'),
+      CCP_ADMIN_CREDENTIAL: '',
+      CCP_ADMIN_CREDENTIAL_FILE: path.join(path.dirname(__filename), 'missing-admin.jwt'),
     },
     encoding: 'utf8',
   });
@@ -90,10 +90,10 @@ test('qualification status rejects malformed inline credentials', () => {
     cwd: path.resolve(__dirname, '..', '..'),
     env: {
       ...process.env,
-      CCB_MEMBER_CREDENTIAL: 'not a token',
-      CCB_MEMBER_CREDENTIAL_FILE: '',
-      CCB_ADMIN_CREDENTIAL: 'admin\ncredential',
-      CCB_ADMIN_CREDENTIAL_FILE: '',
+      CCP_MEMBER_CREDENTIAL: 'not a token',
+      CCP_MEMBER_CREDENTIAL_FILE: '',
+      CCP_ADMIN_CREDENTIAL: 'admin\ncredential',
+      CCP_ADMIN_CREDENTIAL_FILE: '',
     },
     encoding: 'utf8',
   });

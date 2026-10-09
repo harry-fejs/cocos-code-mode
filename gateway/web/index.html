@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CC Bridge Administration</title><link rel="stylesheet" href="./admin.css"><script src="./admin.js" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CCP Administration</title><link rel="stylesheet" href="./admin.css"><script src="./admin.js" defer></script></head>
 <body>
-<header><div><p class="eyebrow">PRODUCT ADMINISTRATION</p><h1>CC Bridge</h1></div><div class="account"><a id="portal" hidden rel="noopener noreferrer">Shared portal / mcpdocs</a><span id="identity">Signed out</span><button id="logout" hidden>Sign out</button></div></header>
+<header><div><p class="eyebrow">PRODUCT ADMINISTRATION</p><h1>CCP</h1></div><div class="account"><a id="portal" hidden rel="noopener noreferrer">Shared portal / mcpdocs</a><span id="identity">Signed out</span><button id="logout" hidden>Sign out</button></div></header>
 <main>
-<section id="login-panel" class="panel"><h2>Administrator sign-in</h2><p>Use the CCB-approved member admin credential. It is exchanged once for a 15-minute HttpOnly, Secure session and is never saved in browser storage.</p><form id="login"><label>Admin credential<input id="credential" type="password" required autocomplete="off" spellcheck="false" maxlength="8192"></label><button type="submit">Start secure session</button></form><p>HTTPS is required. Your operator must configure <code>CCB_ADMIN_ORIGIN</code> and a trusted TLS reverse proxy.</p></section>
+<section id="login-panel" class="panel"><h2>Administrator sign-in</h2><p>Use the CCP-approved member admin credential. It is exchanged once for a 15-minute HttpOnly, Secure session and is never saved in browser storage.</p><form id="login"><label>Admin credential<input id="credential" type="password" required autocomplete="off" spellcheck="false" maxlength="8192"></label><button type="submit">Start secure session</button></form><p>HTTPS is required. Your operator must configure <code>CCP_ADMIN_ORIGIN</code> and a trusted TLS reverse proxy.</p></section>
 <p id="message" role="status" aria-live="polite"></p>
 <section id="workspace" hidden>
-<nav id="views" aria-label="CC Bridge views"><button data-view="overview" aria-current="page">Overview</button><button data-view="usage">Usage</button><button data-view="requests">Requests</button><button data-view="errors">Errors</button><button data-view="latency">Latency</button><button data-view="security">Security</button><button data-view="devices">Devices</button><button data-view="grants">Grants</button><button data-view="versions">Compatibility</button></nav>
+<nav id="views" aria-label="CCP views"><button data-view="overview" aria-current="page">Overview</button><button data-view="usage">Usage</button><button data-view="requests">Requests</button><button data-view="errors">Errors</button><button data-view="latency">Latency</button><button data-view="security">Security</button><button data-view="devices">Devices</button><button data-view="grants">Grants</button><button data-view="versions">Compatibility</button></nav>
 <aside class="notice"><strong>Gateway signed decision is not Creator completion.</strong> Creator completion telemetry is not collected. All Creator outcomes remain <strong>unknown</strong>; no retry or replay action is provided here.</aside>
 <form id="filters" class="panel filter-grid">
 <label>From<input name="from" type="datetime-local" required></label><label>To<input name="to" type="datetime-local" required></label>
@@ -23,5 +23,5 @@
 <div class="table-wrap"><table><thead id="table-head"></thead><tbody id="table-body"></tbody></table></div>
 <div class="pagination"><button id="previous">Previous</button><span id="page"></span><button id="next">Next</button></div>
 </section>
-<footer>CCB-owned API, authorization and SQLite audit. Details: 7 days. Hourly usage aggregates and lifecycle security events: 90 days. No scene payloads, source, arbitrary arguments or credentials are collected by these views.</footer>
+<footer>CCP-owned API, authorization and SQLite audit. Details: 7 days. Hourly usage aggregates and lifecycle security events: 90 days. No scene payloads, source, arbitrary arguments or credentials are collected by these views.</footer>
 </main></body></html>

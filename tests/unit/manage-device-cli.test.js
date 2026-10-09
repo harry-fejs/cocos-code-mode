@@ -3,10 +3,10 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 
-process.env.CCB_GRANT_DEVICE_ID = '11111111-1111-4111-8111-111111111111';
-process.env.CCB_GRANT_PROJECT_ID = 'project-opaque';
-process.env.CCB_GRANT_OPERATION_CLASS = 'mutation';
-process.env.CCB_GRANT_EXPIRES_AT_MS = String(Date.now() + 60_000);
+process.env.CCP_GRANT_DEVICE_ID = '11111111-1111-4111-8111-111111111111';
+process.env.CCP_GRANT_PROJECT_ID = 'project-opaque';
+process.env.CCP_GRANT_OPERATION_CLASS = 'mutation';
+process.env.CCP_GRANT_EXPIRES_AT_MS = String(Date.now() + 60_000);
 const { grantBody } = require('../../scripts/manage-device');
 
 test('admin grant CLI emits only the bounded grant fields', () => {

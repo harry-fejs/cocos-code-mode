@@ -11,14 +11,14 @@ const auth = {
   relayInstanceId: INSTANCE_ID,
   token: 'x'.repeat(43),
   tokenPath: 'unused-in-http-test.env',
-  variableName: 'CCB_LOCAL_TOKEN',
+  variableName: 'CCP_LOCAL_TOKEN',
 };
 function headersFor(boundAuth = auth) {
   return {
     'content-type': 'application/json',
-    'x-ccb-local-token': boundAuth.token,
-    'x-ccb-relay-instance': boundAuth.relayInstanceId,
-    ...(boundAuth.boundPort === undefined ? {} : { 'x-ccb-bound-port': String(boundAuth.boundPort) }),
+    'x-ccp-local-token': boundAuth.token,
+    'x-ccp-relay-instance': boundAuth.relayInstanceId,
+    ...(boundAuth.boundPort === undefined ? {} : { 'x-ccp-bound-port': String(boundAuth.boundPort) }),
   };
 }
 const authenticatedHeaders = headersFor();
@@ -33,16 +33,16 @@ describe('finite native localhost HTTP server', () => {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
       });
       assert.equal(missing.status, 401);
-      assert.equal((await missing.json()).code, 'CCB_AUTH_REQUIRED');
+      assert.equal((await missing.json()).code, 'CCP_AUTH_REQUIRED');
 
       const wrong = await fetch(`http://127.0.0.1:${port}/echo`, {
-        method: 'POST', headers: { ...authenticatedHeaders, 'x-ccb-local-token': 'y'.repeat(43) }, body: '{}',
+        method: 'POST', headers: { ...authenticatedHeaders, 'x-ccp-local-token': 'y'.repeat(43) }, body: '{}',
       });
       assert.equal(wrong.status, 401);
-      assert.equal((await wrong.json()).code, 'CCB_AUTH_REQUIRED');
+      assert.equal((await wrong.json()).code, 'CCP_AUTH_REQUIRED');
 
       const crossInstance = await fetch(`http://127.0.0.1:${port}/echo`, {
-        method: 'POST', headers: { ...authenticatedHeaders, 'x-ccb-relay-instance': '22222222-2222-4222-8222-222222222222' }, body: '{}',
+        method: 'POST', headers: { ...authenticatedHeaders, 'x-ccp-relay-instance': '22222222-2222-4222-8222-222222222222' }, body: '{}',
       });
 
       const portAuthServer = new LocalHttpServer({ ...auth, boundPort: port + 1 });
@@ -51,7 +51,7 @@ describe('finite native localhost HTTP server', () => {
       try {
         const wrongPort = await fetch(`http://127.0.0.1:${boundPort}/echo`, {
           method: 'POST',
-          headers: { ...headersFor({ ...auth, boundPort: port + 1 }), 'x-ccb-bound-port': String(port + 2) },
+          headers: { ...headersFor({ ...auth, boundPort: port + 1 }), 'x-ccp-bound-port': String(port + 2) },
           body: '{}',
         });
         assert.equal(wrongPort.status, 401);
@@ -59,7 +59,7 @@ describe('finite native localhost HTTP server', () => {
         await portAuthServer.close();
       }
       assert.equal(crossInstance.status, 401);
-      assert.equal((await crossInstance.json()).code, 'CCB_AUTH_INVALID');
+      assert.equal((await crossInstance.json()).code, 'CCP_AUTH_INVALID');
 
       const accepted = await fetch(`http://127.0.0.1:${port}/echo?count=2&enabled=true`, {
         method: 'POST', headers: authenticatedHeaders, body: JSON.stringify({ value: 'ok' }),
@@ -93,7 +93,7 @@ describe('finite native localhost HTTP server', () => {
       method: 'POST', headers: authenticatedHeaders, body: '{}',
     });
     assert.equal(denied.status, 503);
-    assert.equal((await denied.json()).code, 'CCB_BUSY');
+    assert.equal((await denied.json()).code, 'CCP_BUSY');
 
     let closed = false;
     const closing = server.close().then(() => { closed = true; });

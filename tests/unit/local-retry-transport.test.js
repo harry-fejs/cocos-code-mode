@@ -13,12 +13,12 @@ const auth = {
   relayInstanceId: INSTANCE_ID,
   token: 'x'.repeat(43),
   tokenPath: 'unused-in-retry-test.env',
-  variableName: 'CCB_LOCAL_TOKEN',
+  variableName: 'CCP_LOCAL_TOKEN',
 };
 const baseHeaders = {
   'content-type': 'application/json',
-  'x-ccb-local-token': auth.token,
-  'x-ccb-relay-instance': INSTANCE_ID,
+  'x-ccp-local-token': auth.token,
+  'x-ccp-relay-instance': INSTANCE_ID,
 };
 
 describe('local protected retry transport', () => {
@@ -33,7 +33,7 @@ describe('local protected retry transport', () => {
     try {
       const key = 'retry_Key-1234567890';
       const response = await fetch(`http://127.0.0.1:${port}/protected`, {
-        method: 'POST', headers: { ...baseHeaders, 'x-ccb-idempotency-key': key }, body: '{}',
+        method: 'POST', headers: { ...baseHeaders, 'x-ccp-idempotency-key': key }, body: '{}',
       });
       assert.equal(response.status, 200);
       assert.equal(dispatched, key);
@@ -62,9 +62,9 @@ describe('local protected retry transport', () => {
           headers: {
             'content-type': 'application/json',
             'content-length': '2',
-            'x-ccb-local-token': auth.token,
-            'x-ccb-relay-instance': INSTANCE_ID,
-            'x-ccb-idempotency-key': ['aaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbb'],
+            'x-ccp-local-token': auth.token,
+            'x-ccp-relay-instance': INSTANCE_ID,
+            'x-ccp-idempotency-key': ['aaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbb'],
           },
         }, resolve);
         request.once('error', reject);
@@ -74,7 +74,7 @@ describe('local protected retry transport', () => {
       conflicting.resume();
 
       const oversized = await fetch(`http://127.0.0.1:${port}/protected`, {
-        method: 'POST', headers: { ...baseHeaders, 'x-ccb-idempotency-key': 'a'.repeat(129) }, body: '{}',
+        method: 'POST', headers: { ...baseHeaders, 'x-ccp-idempotency-key': 'a'.repeat(129) }, body: '{}',
       });
       assert.equal(oversized.status, 413);
       assert.equal(protectedDispatches, 0);

@@ -12,17 +12,17 @@ const { prepareActivation, verifyStagedDirectory } = requireDist('protected/stag
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 function stagedFixture(root) {
-  const staged = join(root, 'extracted', 'cc-bridge-3x');
+  const staged = join(root, 'extracted', 'ccp3x');
   const payloadPath = join(staged, 'dist', 'main.js');
   mkdirSync(join(payloadPath, '..'), { recursive: true });
   const payload = Buffer.from('module.exports = 1;');
   writeFileSync(payloadPath, payload);
   const manifest = {
-    schemaVersion: 1, package: 'cc-bridge-3x', version: '2.1.0',
-    files: [{ path: 'cc-bridge-3x/dist/main.js', size: payload.length, sha256: digest(payload), mode: 0o644 }],
+    schemaVersion: 1, package: 'ccp3x', version: '2.1.0',
+    files: [{ path: 'ccp3x/dist/main.js', size: payload.length, sha256: digest(payload), mode: 0o644 }],
   };
   const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
-  writeFileSync(join(staged, '.ccb-package-manifest.json'), manifestBytes);
+  writeFileSync(join(staged, '.ccp-package-manifest.json'), manifestBytes);
   const releaseZip = Buffer.from('zip');
   const sbom = Buffer.from('{}\n');
   const provenance = Buffer.from('{}\n');
@@ -46,13 +46,13 @@ function stagedFixture(root) {
     version: '2.1.0',
   };
   const descriptorBytes = Buffer.from(`${JSON.stringify(descriptor)}\n`);
-  writeFileSync(join(staged, '.ccb-staged.json'), descriptorBytes);
+  writeFileSync(join(staged, '.ccp-staged.json'), descriptorBytes);
   return { staged, payloadPath, descriptorSha256: digest(descriptorBytes) };
 }
 
 describe('staged directory activation preflight', () => {
   it('re-verifies the exact extracted manifest and sibling live directory', () => {
-    const root = mkdtempSync(join(tmpdir(), 'ccb-staged-'));
+    const root = mkdtempSync(join(tmpdir(), 'ccp-staged-'));
     try {
       const fixture = stagedFixture(root);
       const live = join(root, 'live');
@@ -65,7 +65,7 @@ describe('staged directory activation preflight', () => {
   });
 
   it('rejects descriptor and staged-file tampering before any swap', () => {
-    const root = mkdtempSync(join(tmpdir(), 'ccb-staged-'));
+    const root = mkdtempSync(join(tmpdir(), 'ccp-staged-'));
     try {
       const fixture = stagedFixture(root);
       assert.throws(() => verifyStagedDirectory(fixture.staged, 'f'.repeat(64)), /descriptor digest/);

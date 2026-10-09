@@ -1,7 +1,7 @@
 {
   "$schema": "./@types/schema/package/index.json",
   "package_version": 2,
-  "name": "cc-bridge-3x",
+  "name": "ccp3x",
   "version": "2.0.0",
   "author": "cst by hzi for cc3.7",
   "editor": ">=3.7.0",
@@ -32,7 +32,7 @@
     "test:live": "node --test tests/live/*.test.js",
     "test:all": "node --test tests/unit/*.test.js tests/live/*.test.js"
   },
-  "description": "i18n:cc-bridge-3x.description",
+  "description": "i18n:ccp3x.description",
   "main": "./dist/main.js",
   "dependencies": {
     "@utcp/http": "^1.1.0",
@@ -80,22 +80,22 @@
     },
     "menu": [
       {
-        "path": "CC Bridge 3x",
-        "label": "i18n:cc-bridge-3x.open_panel",
+        "path": "CCP 3x",
+        "label": "i18n:ccp3x.open_panel",
         "message": "open-panel"
       },
       {
-        "path": "CC Bridge 3x",
+        "path": "CCP 3x",
         "label": "Restart Server",
         "message": "restart-server"
       },
       {
-        "path": "CC Bridge 3x",
+        "path": "CCP 3x",
         "label": "Check for Signed Update",
         "message": "check-for-updates"
       },
       {
-        "path": "CC Bridge 3x",
+        "path": "CCP 3x",
         "label": "About",
         "message": "show-build-info"
       }

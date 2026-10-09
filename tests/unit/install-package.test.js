@@ -16,23 +16,23 @@ afterEach(() => {
 });
 
 async function createBundle() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ccb-package-install-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ccp-package-install-'));
   tempPaths.push(root);
   const project = path.join(root, 'project');
   fs.mkdirSync(project);
   const files = new Map([
-    ['cc-bridge-3x/package.json', Buffer.from('{"name":"cc-bridge-3x","version":"2.0.0-dev.fixture"}')],
-    ['cc-bridge-3x/dist/main.js', Buffer.from('module.exports = "release-bundle";')],
+    ['ccp3x/package.json', Buffer.from('{"name":"ccp3x","version":"2.0.0-dev.fixture"}')],
+    ['ccp3x/dist/main.js', Buffer.from('module.exports = "release-bundle";')],
   ]);
   const manifest = {
     schemaVersion: 1,
-    package: 'cc-bridge-3x',
+    package: 'ccp3x',
     version: '2.0.0-dev.fixture',
     files: [...files].map(([entryPath, bytes]) => ({ path: entryPath, size: bytes.length, sha256: digest(bytes), mode: 0o644 })),
   };
   const manifestPath = path.join(root, 'package-manifest.json');
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest)}\n`);
-  const zipPath = path.join(root, 'cc-bridge-3x.zip');
+  const zipPath = path.join(root, 'ccp3x.zip');
   const output = fs.createWriteStream(zipPath);
   const archive = new ZipArchive({ zlib: { level: 9 } });
   const closed = new Promise((resolve, reject) => {
@@ -62,7 +62,7 @@ describe('release ZIP project installer', () => {
     const bundle = await createBundle();
     const result = install(bundle);
     assert.equal(result.status, 0, result.stderr || result.stdout);
-    const destination = path.join(bundle.project, 'extensions', 'cc-bridge-3x');
+    const destination = path.join(bundle.project, 'extensions', 'ccp3x');
     assert.equal(fs.lstatSync(destination).isSymbolicLink(), false);
     assert.equal(fs.readFileSync(path.join(destination, 'dist', 'main.js'), 'utf8'), 'module.exports = "release-bundle";');
     const output = JSON.parse(result.stdout.trim());
@@ -72,7 +72,7 @@ describe('release ZIP project installer', () => {
 
   it('refuses implicit replacement and preserves an explicit backup', async () => {
     const bundle = await createBundle();
-    const destination = path.join(bundle.project, 'extensions', 'cc-bridge-3x');
+    const destination = path.join(bundle.project, 'extensions', 'ccp3x');
     fs.mkdirSync(destination, { recursive: true });
     fs.writeFileSync(path.join(destination, 'old.txt'), 'old');
     const refused = install(bundle);
@@ -94,6 +94,6 @@ describe('release ZIP project installer', () => {
     const result = install(bundle);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /digest mismatch/i);
-    assert.equal(fs.existsSync(path.join(bundle.project, 'extensions', 'cc-bridge-3x')), false);
+    assert.equal(fs.existsSync(path.join(bundle.project, 'extensions', 'ccp3x')), false);
   });
 });

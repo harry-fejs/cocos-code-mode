@@ -15,8 +15,8 @@ function signOut() {
 }
 async function request(path, options = {}) {
   const headers = { ...options.headers };
-  if (options.method && options.method !== "GET") { headers["Content-Type"] = "application/json"; if (csrf) headers["x-ccb-csrf"] = csrf; }
-  const response = await fetch(`/ccb/v1${path}`, { ...options, headers, credentials: "same-origin", cache: "no-store", redirect: "error" });
+  if (options.method && options.method !== "GET") { headers["Content-Type"] = "application/json"; if (csrf) headers["x-ccp-csrf"] = csrf; }
+  const response = await fetch(`/ccp/v1${path}`, { ...options, headers, credentials: "same-origin", cache: "no-store", redirect: "error" });
   const body = response.status === 204 ? null : await response.json();
   if (!response.ok) {
     if (response.status === 401) signOut();
@@ -144,4 +144,4 @@ ui["create-grant"].addEventListener("submit", async (event) => {
   try { await request("/admin/grants", { method: "POST", body: JSON.stringify(body) }); await load(); message("Scoped grant created."); }
   catch (error) { message(error.message, true); } finally { button.disabled = false; }
 });
-request("/admin/session").then(signedIn).catch(() => { signOut(); message("Sign in with a CCB administrator credential over HTTPS."); });
+request("/admin/session").then(signedIn).catch(() => { signOut(); message("Sign in with a CCP administrator credential over HTTPS."); });

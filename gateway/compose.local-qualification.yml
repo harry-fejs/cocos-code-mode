@@ -1,30 +1,30 @@
-name: ccb-local-qualification
+name: ccp-local-qualification
 services:
   gateway:
     build: .
-    image: cc-bridge-gateway:local-qualification
+    image: ccp-gateway:local-qualification
     init: true
     restart: unless-stopped
     environment:
       NODE_ENV: development
-      CCB_GATEWAY_HOST: 0.0.0.0
-      CCB_GATEWAY_CONTAINER_LOOPBACK: "1"
-      CCB_GATEWAY_PORT: "8787"
-      CCB_ALLOWED_HOSTS: 127.0.0.1,localhost
-      CCB_DB_PATH: /data/cc-bridge.db
-      CCB_CACHE_DIR: /data
-      DTX_MEMBER_JWT_ISSUER: cc-bridge-local-qualification
+      CCP_GATEWAY_HOST: 0.0.0.0
+      CCP_GATEWAY_CONTAINER_LOOPBACK: "1"
+      CCP_GATEWAY_PORT: "8787"
+      CCP_ALLOWED_HOSTS: 127.0.0.1,localhost
+      CCP_DB_PATH: /data/ccp.db
+      CCP_CACHE_DIR: /data
+      DTX_MEMBER_JWT_ISSUER: ccp-local-qualification
       DTX_MEMBER_JWT_PUBLIC_KEY_PATH: /run/secrets/member-jwt-public.pem
-      CCB_EXECUTION_KEY_ID: local-qualification-execution
-      CCB_ALLOW_MEMORY_SIGNER: "0"
-      CCB_SIGNER_SOCKET: /run/cc-bridge/signer.sock
+      CCP_EXECUTION_KEY_ID: local-qualification-execution
+      CCP_ALLOW_MEMORY_SIGNER: "0"
+      CCP_SIGNER_SOCKET: /run/ccp/signer.sock
     ports:
       - "127.0.0.1:18789:8787"
     volumes:
       - data:/data
-      - signer-socket:/run/cc-bridge
+      - signer-socket:/run/ccp
       - type: bind
-        source: ${USERPROFILE}/.cc-bridge/local-qualification/member-jwt-public.pem
+        source: ${USERPROFILE}/.ccp/local-qualification/member-jwt-public.pem
         target: /run/secrets/member-jwt-public.pem
         read_only: true
         bind:
@@ -33,26 +33,26 @@ services:
       signer:
         condition: service_healthy
   signer:
-    image: cc-bridge-gateway:local-qualification
+    image: ccp-gateway:local-qualification
     build: .
     init: true
     restart: unless-stopped
     environment:
-      CCB_EXECUTION_KEY_ID: local-qualification-execution
-      CCB_SIGNER_SOCKET: /run/cc-bridge/signer.sock
-      CCB_SIGNER_PRIVATE_KEY_PATH: /run/secrets/execution-private.pem
+      CCP_EXECUTION_KEY_ID: local-qualification-execution
+      CCP_SIGNER_SOCKET: /run/ccp/signer.sock
+      CCP_SIGNER_PRIVATE_KEY_PATH: /run/secrets/execution-private.pem
     volumes:
-      - signer-socket:/run/cc-bridge
+      - signer-socket:/run/ccp
       - type: bind
-        source: ${USERPROFILE}/.cc-bridge/local-qualification/execution-private.pem
+        source: ${USERPROFILE}/.ccp/local-qualification/execution-private.pem
         target: /run/secrets/execution-private.pem
         read_only: true
         bind:
           create_host_path: false
     entrypoint: ["/usr/bin/dumb-init", "--"]
-    command: ["/bin/sh", "-c", "mkdir -p /run/cc-bridge && chown node:node /run/cc-bridge && exec su-exec node yarn signer:start"]
+    command: ["/bin/sh", "-c", "mkdir -p /run/ccp && chown node:node /run/ccp && exec su-exec node yarn signer:start"]
     healthcheck:
-      test: ["CMD", "node", "-e", "const s=require('net').connect('/run/cc-bridge/signer.sock');s.on('connect',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),2000)"]
+      test: ["CMD", "node", "-e", "const s=require('net').connect('/run/ccp/signer.sock');s.on('connect',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),2000)"]
       interval: 5s
       timeout: 3s
       retries: 5

@@ -1,5 +1,5 @@
 import { KeyLike, createHash } from "crypto";
-import { CcbError } from "./errors";
+import { CcpError } from "./errors";
 import {
   CLOCK_SKEW_MAX_MS, GatewayDecision, ProtectedRequest, SignedGatewayDecision,
   decodeBase64Url, verifyGatewayDecision,
@@ -67,37 +67,37 @@ export function versionSatisfies(versionText: string, range: string): boolean {
 
 function verifyEnvelopeContract(decision: Extract<GatewayDecision, { kind: "execute" }>, tool: PublicToolContract, operation: PublicOperationContract): void {
   const envelope = decision.envelope;
-  if (envelope.effect !== operation.effect) throw new CcbError("CCB_CONTRACT_MISMATCH", "Gateway envelope effect differs from canonical operation metadata.");
+  if (envelope.effect !== operation.effect) throw new CcpError("CCP_CONTRACT_MISMATCH", "Gateway envelope effect differs from canonical operation metadata.");
   const allowedPrimitives = new Set(operation.primitives);
   for (const command of envelope.commands) {
-    if (!allowedPrimitives.has(command.op)) throw new CcbError("CCB_CONTRACT_MISMATCH", "Gateway envelope contains a primitive outside the selected operation.", { op: command.op });
+    if (!allowedPrimitives.has(command.op)) throw new CcpError("CCP_CONTRACT_MISMATCH", "Gateway envelope contains a primitive outside the selected operation.", { op: command.op });
   }
   if (envelope.limits.commandCount > tool.limits.commandCount
     || envelope.limits.ipcCount > tool.limits.creatorIpcCount
     || envelope.limits.inputBytes > tool.limits.inputBytes
     || envelope.limits.outputBytes > tool.limits.outputBytes
     || envelope.limits.timeoutMs > tool.limits.timeoutMs) {
-    throw new CcbError("CCB_LIMIT_EXCEEDED", "Gateway envelope exceeds canonical per-operation limits.");
+    throw new CcpError("CCP_LIMIT_EXCEEDED", "Gateway envelope exceeds canonical per-operation limits.");
   }
   if (envelope.return.mode !== operation.resultMode) {
-    throw new CcbError("CCB_CONTRACT_MISMATCH", "Gateway envelope result mode differs from canonical operation metadata.");
+    throw new CcpError("CCP_CONTRACT_MISMATCH", "Gateway envelope result mode differs from canonical operation metadata.");
   }
 }
 
 export function verifyDecision(options: DecisionVerificationOptions): VerifiedGatewayDecision {
   let signed: SignedGatewayDecision;
   try { signed = parseSignedGatewayDecision(options.signed); }
-  catch { throw new CcbError("CCB_CANONICAL_INVALID", "Gateway decision wrapper is invalid."); }
+  catch { throw new CcpError("CCP_CANONICAL_INVALID", "Gateway decision wrapper is invalid."); }
   const executionKey = options.executionKeys.get(signed.executionKeyId);
-  if (!executionKey) throw new CcbError("CCB_SIGNATURE_INVALID", "Gateway execution key is not trusted.", { executionKeyId: signed.executionKeyId });
+  if (!executionKey) throw new CcpError("CCP_SIGNATURE_INVALID", "Gateway execution key is not trusted.", { executionKeyId: signed.executionKeyId });
 
   let verifiedPayload: unknown;
   try { verifiedPayload = verifyGatewayDecision(signed, executionKey); }
-  catch { throw new CcbError("CCB_SIGNATURE_INVALID", "Gateway decision signature or canonical payload is invalid."); }
+  catch { throw new CcpError("CCP_SIGNATURE_INVALID", "Gateway decision signature or canonical payload is invalid."); }
 
   let decision: GatewayDecision;
   try { decision = parseGatewayDecision(verifiedPayload); }
-  catch { throw new CcbError("CCB_CONTRACT_MISMATCH", "Gateway decision does not match the protected finite contract."); }
+  catch { throw new CcpError("CCP_CONTRACT_MISMATCH", "Gateway decision does not match the protected finite contract."); }
 
   const request = options.request;
   const binding = decision.binding;
@@ -108,24 +108,24 @@ export function verifyDecision(options: DecisionVerificationOptions): VerifiedGa
     && binding.nonce === request.nonce
     && binding.sequence === request.sequence
     && equalToolBinding(request.tool, binding.tool);
-  if (!commonBindingMatches) throw new CcbError("CCB_CONTRACT_MISMATCH", "Gateway decision binding does not match the signed request.");
+  if (!commonBindingMatches) throw new CcpError("CCP_CONTRACT_MISMATCH", "Gateway decision binding does not match the signed request.");
   if (binding.relay.build !== request.relay.build || binding.relay.packageHash !== request.relay.packageHash) {
-    throw new CcbError("CCB_BUILD_INCOMPATIBLE", "Gateway decision relay binding does not match this installed package.");
+    throw new CcpError("CCP_BUILD_INCOMPATIBLE", "Gateway decision relay binding does not match this installed package.");
   }
   if (binding.creatorRange !== options.tool.creatorRange) {
-    throw new CcbError("CCB_CONTRACT_MISMATCH", "Gateway decision Creator range differs from the canonical tool contract.");
+    throw new CcpError("CCP_CONTRACT_MISMATCH", "Gateway decision Creator range differs from the canonical tool contract.");
   }
   if (!versionSatisfies(request.relay.creatorVersion, binding.creatorRange)) {
-    throw new CcbError("CCB_CREATOR_INCOMPATIBLE", "Creator version is outside the signed decision range.", { creatorVersion: request.relay.creatorVersion });
+    throw new CcpError("CCP_CREATOR_INCOMPATIBLE", "Creator version is outside the signed decision range.", { creatorVersion: request.relay.creatorVersion });
   }
 
   const nowMs = options.nowMs ?? Date.now();
   if (binding.issuedAtMs > nowMs + CLOCK_SKEW_MAX_MS || binding.expiresAtMs < nowMs) {
-    throw new CcbError("CCB_EXPIRED", "Gateway decision is expired or not yet valid.");
+    throw new CcpError("CCP_EXPIRED", "Gateway decision is expired or not yet valid.");
   }
   if (decision.kind === "result") {
     if (decision.limits.expiresInMs > binding.expiresAtMs - binding.issuedAtMs || decision.limits.outputBytes > options.tool.limits.outputBytes) {
-      throw new CcbError("CCB_LIMIT_EXCEEDED", "Gateway finite result exceeds canonical signed limits.");
+      throw new CcpError("CCP_LIMIT_EXCEEDED", "Gateway finite result exceeds canonical signed limits.");
     }
   } else {
     verifyEnvelopeContract(decision, options.tool, options.operation);

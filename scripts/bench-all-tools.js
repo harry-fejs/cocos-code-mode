@@ -8,7 +8,7 @@ const { performance } = require('perf_hooks');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'reports', 'evidence', 'phase-05');
-const REPEAT_OK = Number(process.env.CCB_BENCH_SAMPLES || '8');
+const REPEAT_OK = Number(process.env.CCP_BENCH_SAMPLES || '8');
 const WARMUPS = 2;
 
 function percentile(values, p) {
@@ -51,17 +51,17 @@ function dummyArgs(tool) {
     else if (/path|Path|filePath|dirPath|assetPath/i.test(key)) args[key] = 'db://assets';
     else if (key === 'hierarchyPath') args[key] = 'Canvas';
     else if (key === 'pattern') args[key] = '*.md';
-    else if (key === 'content' || key === 'search' || key === 'replace' || key === 'text') args[key] = 'ccb-bench';
+    else if (key === 'content' || key === 'search' || key === 'replace' || key === 'text') args[key] = 'ccp-bench';
     else if (key === 'combo') args[key] = 'Ctrl+Shift+P';
     else if (key === 'key') args[key] = 'a';
-    else if (key === 'name') args[key] = '__ccb_bench';
+    else if (key === 'name') args[key] = '__ccp_bench';
     else if (key === 'uiType') args[key] = 'Canvas';
     else if (key === 'primitiveType') args[key] = 'cube';
     else if (key === 'preset') args[key] = 'typescript';
     else if (key === 'target') args[key] = 'node';
     else if (key === 'category') args[key] = 'scene';
     else if (key === 'operation') args[key] = 'get';
-    else args[key] = 'ccb-bench';
+    else args[key] = 'ccp-bench';
   }
   if (tool.name === 'projectListDirectory') args.dirPath = 'db://assets';
   if (tool.name === 'captureSceneScreenshot') {
@@ -115,7 +115,7 @@ async function main() {
     const args = dummyArgs(tool);
     const first = await invoke(base, tool, args, token);
     const samples = [first];
-    const repeatable = first.ok || first.code === 'CCB_DEVICE_DENIED' || first.code === 'CCB_GATEWAY_UNAVAILABLE';
+    const repeatable = first.ok || first.code === 'CCP_DEVICE_DENIED' || first.code === 'CCP_GATEWAY_UNAVAILABLE';
     if (repeatable) {
       for (let i = 0; i < WARMUPS; i += 1) await invoke(base, tool, args, token);
       for (let i = 1; i < REPEAT_OK; i += 1) samples.push(await invoke(base, tool, args, token));
@@ -152,9 +152,9 @@ async function main() {
     jsonPath,
     toolCount: tools.length,
     ok: tools.filter((t) => t.status >= 200 && t.status < 300).length,
-    denied: tools.filter((t) => t.code === 'CCB_DEVICE_DENIED').length,
-    gatewayUnavailable: tools.filter((t) => t.code === 'CCB_GATEWAY_UNAVAILABLE').length,
-    otherFail: tools.filter((t) => t.status >= 400 && t.code !== 'CCB_DEVICE_DENIED' && t.code !== 'CCB_GATEWAY_UNAVAILABLE').length,
+    denied: tools.filter((t) => t.code === 'CCP_DEVICE_DENIED').length,
+    gatewayUnavailable: tools.filter((t) => t.code === 'CCP_GATEWAY_UNAVAILABLE').length,
+    otherFail: tools.filter((t) => t.status >= 400 && t.code !== 'CCP_DEVICE_DENIED' && t.code !== 'CCP_GATEWAY_UNAVAILABLE').length,
   }, null, 2));
 }
 

@@ -54,8 +54,8 @@ export class QualificationTraceRecorder {
   private live: { runId: string; file: number; bytes: number; key: KeyLike; keyId: string; binding: unknown } | undefined;
 
   configureLive(key: KeyLike, keyId: string, binding: unknown): void {
-    const runId = process.env.CCB_QUALIFICATION_LIVE_RUN_ID;
-    const file = process.env.CCB_QUALIFICATION_LIVE_TRACE_PATH;
+    const runId = process.env.CCP_QUALIFICATION_LIVE_RUN_ID;
+    const file = process.env.CCP_QUALIFICATION_LIVE_TRACE_PATH;
     if (!runId || !file) return;
     try {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(runId)) throw new Error("invalid live run ID");
@@ -93,7 +93,7 @@ export class QualificationTraceRecorder {
     try {
       const payload = canonicalizeToBytes({ schemaVersion: 1, evidenceScope: "installed-live", runId: this.live.runId,
         binding: this.live.binding, evidenceErrors: [...this.errors], ...event });
-      const signature = sign(null, Buffer.concat([Buffer.from("CCB1 installed-live-witness\n"), payload]), this.live.key).toString("base64");
+      const signature = sign(null, Buffer.concat([Buffer.from("CCP1 installed-live-witness\n"), payload]), this.live.key).toString("base64");
       const line = Buffer.from(JSON.stringify({ keyId: this.live.keyId, payload: payload.toString("base64"), signature }) + "\n");
       if (line.length + this.live.bytes > MAX_BYTES || fstatSync(this.live.file).size !== this.live.bytes) throw new Error("live-trace-cap-or-writer-conflict");
       let offset = 0;
@@ -102,8 +102,8 @@ export class QualificationTraceRecorder {
     } catch { this.errors.add("live-trace-recording-failed"); }
   }
   static fromEnv(): QualificationTraceRecorder | null {
-    if (!process.env.CCB_QUALIFICATION_TRACE_PATH) return null;
-    try { return new QualificationTraceRecorder(process.env.CCB_QUALIFICATION_TRACE_PATH, process.env.CCB_QUALIFICATION_MARKERS_PATH); }
+    if (!process.env.CCP_QUALIFICATION_TRACE_PATH) return null;
+    try { return new QualificationTraceRecorder(process.env.CCP_QUALIFICATION_TRACE_PATH, process.env.CCP_QUALIFICATION_MARKERS_PATH); }
     catch { return null; } // Missing trace cannot satisfy qualification; execution is unchanged.
   }
 

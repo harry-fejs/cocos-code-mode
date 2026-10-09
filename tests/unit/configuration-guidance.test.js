@@ -9,11 +9,11 @@ const template = fs.readFileSync(path.join(root, 'static/template/configuration/
 const panel = fs.readFileSync(path.join(root, 'source/panels/configuration/index.ts'), 'utf8');
 
 describe('configuration guidance', () => {
-  it('identifies the MCP server as CC Bridge and exposes an agent instruction', () => {
-    assert.match(template, /CC Bridge MCP Integration/);
+  it('identifies the MCP server as CCP and exposes an agent instruction', () => {
+    assert.match(template, /CCP MCP Integration/);
     assert.match(template, /id="agent-instruction-code"/);
     assert.match(template, /discover.*act/i);
-    assert.match(panel, /"cc-bridge":/);
+    assert.match(panel, /"ccp":/);
     assert.doesNotMatch(panel, /"code-mode":/);
   });
 });

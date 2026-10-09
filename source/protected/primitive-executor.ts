@@ -1,4 +1,4 @@
-import { CcbError } from "./errors";
+import { CcpError } from "./errors";
 import { canonicalizeToBytes, type IJson } from "./canonical-json";
 import { ExecutionEnvelope, ExecutionEnvelopeSchema, PrimitiveCommand, primitiveCommandSemantics } from "./primitive-contract";
 import type { ProtectedRequest } from "./protocol";
@@ -46,14 +46,14 @@ function causeMessage(error: unknown): string {
 }
 
 function causeCode(error: unknown): string {
-  if (error instanceof CcbError) return error.body.code;
+  if (error instanceof CcpError) return error.body.code;
   if (error && typeof error === "object" && "code" in error && typeof error.code === "string") return error.code.slice(0, 64);
   return "CREATOR_IPC_REJECTED";
 }
 
-function deadlineError(afterEffectAttempt: boolean, details: Record<string, null | boolean | number | string>): CcbError {
-  return new CcbError(
-    afterEffectAttempt ? "CCB_OUTCOME_UNKNOWN" : "CCB_EXPIRED",
+function deadlineError(afterEffectAttempt: boolean, details: Record<string, null | boolean | number | string>): CcpError {
+  return new CcpError(
+    afterEffectAttempt ? "CCP_OUTCOME_UNKNOWN" : "CCP_EXPIRED",
     afterEffectAttempt ? "The signed deadline elapsed after an effect may have begun." : "The signed deadline elapsed before an effect began.",
     details,
   );
@@ -84,8 +84,8 @@ async function beforeDeadline<T>(
 function assertOutputBound(result: unknown, maxBytes: number, commandId: string): void {
   let bytes: number;
   try { bytes = canonicalizeToBytes(result).byteLength; }
-  catch { throw new CcbError("CCB_CANONICAL_INVALID", "Creator returned a non-canonical command result.", { commandId }); }
-  if (bytes > maxBytes) throw new CcbError("CCB_RESULT_TOO_LARGE", "Creator command result exceeds the signed output limit.", { commandId, actualBytes: bytes, maxBytes });
+  catch { throw new CcpError("CCP_CANONICAL_INVALID", "Creator returned a non-canonical command result.", { commandId }); }
+  if (bytes > maxBytes) throw new CcpError("CCP_RESULT_TOO_LARGE", "Creator command result exceeds the signed output limit.", { commandId, actualBytes: bytes, maxBytes });
 }
 
 export async function executeEnvelope(
@@ -96,7 +96,7 @@ export async function executeEnvelope(
 ): Promise<PrimitiveExecution> {
   let envelope: ExecutionEnvelope;
   try { envelope = ExecutionEnvelopeSchema.parse(envelopeInput); }
-  catch { throw new CcbError("CCB_CONTRACT_MISMATCH", "Gateway envelope violates the finite primitive ABI."); }
+  catch { throw new CcpError("CCP_CONTRACT_MISMATCH", "Gateway envelope violates the finite primitive ABI."); }
 
   const now = options.now ?? Date.now;
   const startedAt = now();
@@ -116,11 +116,11 @@ export async function executeEnvelope(
   for (const command of envelope.commands) {
     const placeholderHandles: HandleTable = new Map(preflightHandles);
     for (const handle of command.usesHandles) {
-      if (!placeholderHandles.has(handle)) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Command references a handle that is not produced earlier.", { handle, commandId: command.commandId });
+      if (!placeholderHandles.has(handle)) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Command references a handle that is not produced earlier.", { handle, commandId: command.commandId });
     }
     resolveCommand(command, request, publicConstants, placeholderHandles);
     if (command.createsHandle) {
-      if (preflightHandles.has(command.createsHandle)) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Envelope creates a duplicate handle.", { handle: command.createsHandle });
+      if (preflightHandles.has(command.createsHandle)) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Envelope creates a duplicate handle.", { handle: command.createsHandle });
       const semantics = primitiveCommandSemantics(command);
       const kind = command.op === "scene.addComponent" ? "component" : command.op.startsWith("asset.") ? "asset" : "node";
       preflightHandles.set(command.createsHandle, { id: `preflight:${command.createsHandle}`, type: `preflight:${semantics.createsHandle}`, kind });
@@ -149,12 +149,12 @@ export async function executeEnvelope(
         ? expectedIpc
         : adapters.readIpcCount() - ipcBefore;
       if (actualIpc !== expectedIpc) {
-        throw new CcbError("CCB_CONTRACT_MISMATCH", "Creator adapter IPC count differs from the signed primitive contract.", {
+        throw new CcpError("CCP_CONTRACT_MISMATCH", "Creator adapter IPC count differs from the signed primitive contract.", {
           commandId: command.commandId, expected: expectedIpc, actual: actualIpc,
         });
       }
       ipcCount += actualIpc;
-      if (ipcCount > envelope.limits.ipcCount) throw new CcbError("CCB_LIMIT_EXCEEDED", "Creator IPC count exceeds the signed limit.", { actual: ipcCount, max: envelope.limits.ipcCount });
+      if (ipcCount > envelope.limits.ipcCount) throw new CcpError("CCP_LIMIT_EXCEEDED", "Creator IPC count exceeds the signed limit.", { actual: ipcCount, max: envelope.limits.ipcCount });
       assertOutputBound(result, envelope.limits.outputBytes, command.commandId);
       registerCommandHandle(handles, resolved, result);
       commandResults.set(command.commandId, result);
@@ -183,9 +183,9 @@ export async function executeEnvelope(
         snapshotCompleted: snapshotOutcome.completed,
         ...(snapshotError ? { snapshotError: snapshotError.slice(0, 512) } : {}),
       };
-      if (envelope.effect !== "none") throw new CcbError("CCB_OUTCOME_UNKNOWN", "Creator effect may have begun but did not durably complete.", details);
-      if (error instanceof CcbError) throw error;
-      throw new CcbError("CCB_PARTIAL_EXECUTION", "Primitive read execution stopped.", details);
+      if (envelope.effect !== "none") throw new CcpError("CCP_OUTCOME_UNKNOWN", "Creator effect may have begun but did not durably complete.", details);
+      if (error instanceof CcpError) throw error;
+      throw new CcpError("CCP_PARTIAL_EXECUTION", "Primitive read execution stopped.", details);
     }
   }
 
@@ -197,7 +197,7 @@ export async function executeEnvelope(
       ipcCount += 1;
     } catch (error) {
       snapshotOutcome.error = causeMessage(error);
-      throw new CcbError("CCB_OUTCOME_UNKNOWN", "Effect commands completed but the snapshot outcome is unknown.", {
+      throw new CcpError("CCP_OUTCOME_UNKNOWN", "Effect commands completed but the snapshot outcome is unknown.", {
         attemptedCommandIds: attemptedCommandIds.join(","),
         executedCommandIds: executedCommandIds.join(","),
         causalCode: causeCode(error),
@@ -208,7 +208,7 @@ export async function executeEnvelope(
     }
   }
   if (ipcCount !== envelope.limits.ipcCount) {
-    throw new CcbError(envelope.effect === "none" ? "CCB_CONTRACT_MISMATCH" : "CCB_OUTCOME_UNKNOWN", "Actual Creator IPC count differs from the signed finite envelope.", { actual: ipcCount, expected: envelope.limits.ipcCount });
+    throw new CcpError(envelope.effect === "none" ? "CCP_CONTRACT_MISMATCH" : "CCP_OUTCOME_UNKNOWN", "Actual Creator IPC count differs from the signed finite envelope.", { actual: ipcCount, expected: envelope.limits.ipcCount });
   }
   return {
     commandResults, handles, attemptedCommandIds, executedCommandIds,

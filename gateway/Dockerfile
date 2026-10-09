@@ -26,4 +26,4 @@ COPY --from=build /app/web ./web
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod 755 /app/docker-entrypoint.sh && chown -R node:node /app
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/app/docker-entrypoint.sh"]
-HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 CMD node -e "fetch('http://127.0.0.1:8787/ccb/v1/health').then(async(r)=>{const b=await r.json().catch(()=>null);process.exit(r.ok&&b?.ok===true&&b?.signer==='configured'?0:1)}).catch(()=>process.exit(1))"
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 CMD node -e "fetch('http://127.0.0.1:8787/ccp/v1/health').then(async(r)=>{const b=await r.json().catch(()=>null);process.exit(r.ok&&b?.ok===true&&b?.signer==='configured'?0:1)}).catch(()=>process.exit(1))"

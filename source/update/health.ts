@@ -1,6 +1,6 @@
 import { setTimeout as scheduleTimeout, clearTimeout } from "timers"
 import type { RelayState } from "../protected/state-machine";
-import { CcbError } from "../protected/errors";
+import { CcpError } from "../protected/errors";
 
 export type UpdateHealthFailure =
   | "utcp-not-ready"
@@ -31,7 +31,7 @@ export async function evaluateUpdateHealth(input: UpdateHealthInput): Promise<Up
   if (!Number.isSafeInteger(input.protectedProbeTimeoutMs)
     || input.protectedProbeTimeoutMs < 1
     || input.protectedProbeTimeoutMs > 30_000) {
-    throw new CcbError("CCB_CANONICAL_INVALID", "Protected update-health probe timeout must be between 1 and 30000 ms.");
+    throw new CcpError("CCP_CANONICAL_INVALID", "Protected update-health probe timeout must be between 1 and 30000 ms.");
   }
   const failures: UpdateHealthFailure[] = [];
   if (!input.utcpReady) failures.push("utcp-not-ready");

@@ -2,7 +2,7 @@ import { createHash } from "crypto"
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "fs"
 import { homedir } from "os"
 import { join } from "path"
-import { CcbError } from "../protected/errors";
+import { CcpError } from "../protected/errors";
 import { verifyStagedDirectory } from "../protected/staged-update";
 import { decodeBase64Url } from "../protected/protocol";
 import { fetchReleaseJson, assertReleaseOrigin, downloadReleaseArtifact } from "./client";
@@ -42,7 +42,7 @@ export class UpdateManager {
     this.origin = assertReleaseOrigin(options.origin);
     this.rootStore = options.rootStore ?? new TrustedRootStore();
     this.stateStore = options.stateStore ?? new UpdateStateStore();
-    this.stagingRoot = options.stagingRoot ?? join(homedir(), ".cc-bridge", "updates");
+    this.stagingRoot = options.stagingRoot ?? join(homedir(), ".ccp", "updates");
   }
 
   checkAndStage(signal?: AbortSignal): Promise<StagedUpdate> {
@@ -91,7 +91,7 @@ export class UpdateManager {
     try { return SignedMetadataSchema.parse(input); }
     catch (error) {
       const detail = error instanceof Error ? error.message.replace(/[\r\n]+/g, " ").slice(0, 160) : "schema parse failed";
-      throw new CcbError("CCB_CANONICAL_INVALID", `Release ${name} wrapper is invalid.`, { detail });
+      throw new CcpError("CCP_CANONICAL_INVALID", `Release ${name} wrapper is invalid.`, { detail });
     }
   }
 
@@ -120,7 +120,7 @@ export class UpdateManager {
     const packageUrl = accepted.target.package.url;
     const sidecar = (name: string) => new URL(name, packageUrl).href;
     const extractionRoot = join(setDirectory, "extracted");
-    const stagedDirectory = join(extractionRoot, "cc-bridge-3x");
+    const stagedDirectory = join(extractionRoot, "ccp3x");
     if (
       current.activationState === "staged"
       && current.stagedTargetPayloadSha256 === accepted.targetPayloadSha256
@@ -147,7 +147,7 @@ export class UpdateManager {
     await downloadReleaseArtifact(this.origin, sidecar("provenance.intoto.json"), provenancePath, { maxBytes: SIDECAR_LIMIT }, accepted.target.package.provenanceSha256, signal);
 
     const policyPayloadSha256 = accepted.state.policyPayloadSha256;
-    if (!policyPayloadSha256) throw new CcbError("CCB_INTERNAL", "Accepted policy digest was not persisted.");
+    if (!policyPayloadSha256) throw new CcpError("CCP_INTERNAL", "Accepted policy digest was not persisted.");
     const staged = stageVerifiedReleaseSet(zipPath, manifestPath, sbomPath, provenancePath, extractionRoot, {
       packageSha256: accepted.target.package.sha256,
       packageBytes: accepted.target.package.size,

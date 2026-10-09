@@ -3,7 +3,7 @@ import { utcpTool } from '../decorators';
 import packageJSON from '../../../package.json';
 
 // Editor preference tools — read/write persistent config via Editor.Profile.
-// Scoped to the cc-bridge-3x extension's own profile keys. This is NOT project
+// Scoped to the ccp3x extension's own profile keys. This is NOT project
 // settings (that lives in projectManage get/set); these are editor-side
 // persistence of bridge behavior (port, tool profile, envelope).
 
@@ -20,7 +20,7 @@ export class PreferenceTools {
 
     @utcpTool(
         'getEditorPreference',
-        'Read one or all cc-bridge-3x persistent preferences (Editor.Profile). Omit key to list all known keys.',
+        'Read one or all ccp3x persistent preferences (Editor.Profile). Omit key to list all known keys.',
         {
             type: 'object',
             properties: {
@@ -54,7 +54,7 @@ export class PreferenceTools {
 
     @utcpTool(
         'setEditorPreference',
-        'Write a cc-bridge-3x persistent preference (Editor.Profile). Known keys are type-validated.',
+        'Write a ccp3x persistent preference (Editor.Profile). Known keys are type-validated.',
         {
             type: 'object',
             properties: {

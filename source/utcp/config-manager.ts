@@ -50,8 +50,7 @@ export class UtcpConfigManager {
             return state.projects[identity.projectId]?.port || 0;
         });
     }
-    private mutateConnection<T>(auth: LocalAuthContext | undefined, operation: (config: UtcpConfig) => T): T {
-        const configPath = this.getConfigPath();
+    private mutateConnection<T>(auth: LocalAuthContext | undefined, operation: (config: UtcpConfig) => T, configPath = this.getConfigPath()): T {
         return withConfigLock(configPath, () => {
             const config = readUtcpConfig(configPath);
             const paths = [connectionRegistryPath(configPath), ...(auth ? [auth.tokenPath] : [])];
@@ -96,12 +95,12 @@ export class UtcpConfigManager {
             for (const connection of Object.values(state.projects)) {
                 if (connection.projectId !== identity.projectId && connection.port === port) throw new Error('port belongs to a different Cocos project');
             }
-            const name = `ccb3x_${port}`;
-            const ownNames = prior ? [`ccb3x_${prior.port}`] : [];
+            const name = `ccp3x_${port}`;
+            const ownNames = prior ? [`ccp3x_${prior.port}`] : [];
             const colliding = config.manual_call_templates.filter((template) => template.name === name || template.url === `http://localhost:${port}/utcp`);
             if (colliding.some((template) => !ownNames.includes(String(template.name)))) throw new Error('port has an unresolved or foreign UTCP registration; migrate explicitly first');
             if (prior && resolve(prior.tokenPath) !== resolve(auth.tokenPath)) throw new Error('project credential location changed unexpectedly');
-            const namespace = `ccb3x__${port}_`;
+            const namespace = `ccp3x__${port}_`;
             if (Object.keys(config.variables || {}).some((key) => key.startsWith(namespace))) throw new Error('inline credentials shadow this port namespace; reconcile explicitly');
             for (const loader of config.load_variables_from || []) {
                 if (loader.variable_loader_type !== 'dotenv' || typeof loader.env_file_path !== 'string' || resolve(loader.env_file_path) === resolve(auth.tokenPath)) continue;
@@ -115,7 +114,7 @@ export class UtcpConfigManager {
             assertLocalAuthFile(auth);
             config.manual_call_templates = config.manual_call_templates.filter((template) => !ownNames.includes(String(template.name)));
             config.manual_call_templates.push({ name, call_template_type: 'http', url: `http://localhost:${port}/utcp`, http_method: 'GET', content_type: 'application/json',
-                headers: { 'x-ccb-relay-instance': '${CCB_RELAY_INSTANCE_ID}', 'x-ccb-bound-port': '${CCB_BOUND_PORT}', 'x-ccb-project-id': '${CCB_LOCAL_PROJECT_ID}' } });
+                headers: { 'x-ccp-relay-instance': '${CCP_RELAY_INSTANCE_ID}', 'x-ccp-bound-port': '${CCP_BOUND_PORT}', 'x-ccp-project-id': '${CCP_LOCAL_PROJECT_ID}' } });
             const loaders = config.load_variables_from || [];
             config.load_variables_from = [...loaders.filter((loader) => loader.variable_loader_type !== 'dotenv' || resolve(String(loader.env_file_path)) !== resolve(auth.tokenPath)),
                 { variable_loader_type: 'dotenv', env_file_path: resolve(auth.tokenPath) }];
@@ -125,20 +124,20 @@ export class UtcpConfigManager {
             return true;
         });
     }
-    async removeCocosEditorTemplate(auth: LocalAuthContext): Promise<boolean> {
+    async removeCocosEditorTemplate(auth: LocalAuthContext, configPath = this.getConfigPath()): Promise<boolean> {
         if (!auth.projectId || auth.boundPort === undefined) return false;
         return this.mutateConnection(undefined, (config) => {
-            const state = readConnectionState(this.getConfigPath());
+            const state = readConnectionState(configPath);
             assertConnectionConfig(config, state);
             const connection = state.projects[auth.projectId!];
             if (!connection || !connection.active || connection.relayInstanceId !== auth.relayInstanceId || connection.port !== auth.boundPort) return false;
             connection.active = false;
-            config.manual_call_templates = config.manual_call_templates.filter((template) => template.name !== `ccb3x_${connection.port}`);
+            config.manual_call_templates = config.manual_call_templates.filter((template) => template.name !== `ccp3x_${connection.port}`);
             config.load_variables_from = (config.load_variables_from || []).filter((loader) => loader.variable_loader_type !== 'dotenv' || resolve(String(loader.env_file_path)) !== resolve(connection.tokenPath));
             assertConnectionConfig(config, state);
-            storeConnectionState(this.getConfigPath(), state);
+            storeConnectionState(configPath, state);
             return true;
-        });
+        }, configPath);
     }
     async getCurrentPort(): Promise<number> {
         const port = await Editor.Profile.getConfig(packageJSON.name, 'serverPort');

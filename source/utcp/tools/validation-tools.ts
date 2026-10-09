@@ -116,7 +116,7 @@ export class ValidationTools {
         const probeRuntime = async () => {
             try {
                 const state = await Editor.Message.request('scene', 'execute-scene-script', {
-                    name: 'cc-bridge-3x', method: 'runtimeGetState', args: [],
+                    name: 'ccp3x', method: 'runtimeGetState', args: [],
                 });
                 return state || { paused: false, timeScale: 1 };
             } catch (e: any) { return { error: e.message }; }

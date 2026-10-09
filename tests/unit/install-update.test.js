@@ -12,8 +12,8 @@ const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 describe('Windows signed update activation helper', { skip: process.platform !== 'win32' }, () => {
   it('waits for the exact process, re-verifies the immutable set, swaps, and retains one backup', () => {
-    const root = mkdtempSync(join(tmpdir(), 'ccb-activate-'));
-    const staged = join(root, 'extracted', 'cc-bridge-3x');
+    const root = mkdtempSync(join(tmpdir(), 'ccp-activate-'));
+    const staged = join(root, 'extracted', 'ccp3x');
     const live = join(root, 'live');
     try {
       mkdirSync(join(staged, 'dist'), { recursive: true });
@@ -22,11 +22,11 @@ describe('Windows signed update activation helper', { skip: process.platform !==
       const payload = Buffer.from('module.exports = "new";');
       writeFileSync(join(staged, 'dist', 'main.js'), payload);
       const manifest = {
-        schemaVersion: 1, package: 'cc-bridge-3x', version: '2.1.0',
-        files: [{ path: 'cc-bridge-3x/dist/main.js', size: payload.length, sha256: digest(payload), mode: 0o644 }],
+        schemaVersion: 1, package: 'ccp3x', version: '2.1.0',
+        files: [{ path: 'ccp3x/dist/main.js', size: payload.length, sha256: digest(payload), mode: 0o644 }],
       };
       const manifestBytes = Buffer.from(`${JSON.stringify(manifest)}\n`);
-      writeFileSync(join(staged, '.ccb-package-manifest.json'), manifestBytes);
+      writeFileSync(join(staged, '.ccp-package-manifest.json'), manifestBytes);
       const artifacts = {
         'release.zip': Buffer.from('zip'),
         'package-manifest.json': manifestBytes,
@@ -47,7 +47,7 @@ describe('Windows signed update activation helper', { skip: process.platform !==
         policyMetadataSha256: digest(artifacts['policy.signed.json']), version: '2.1.0',
       };
       const descriptorBytes = Buffer.from(`${JSON.stringify(descriptor)}\n`);
-      writeFileSync(join(staged, '.ccb-staged.json'), descriptorBytes);
+      writeFileSync(join(staged, '.ccp-staged.json'), descriptorBytes);
       const creator = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 5000)'], { stdio: 'ignore', windowsHide: true });
       const result = spawnSync('powershell.exe', [
         '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(__dirname, '..', '..', 'scripts', 'install-update.ps1'),
@@ -64,7 +64,7 @@ describe('Windows signed update activation helper', { skip: process.platform !==
   });
 
   it('restores exactly one retained package after failed startup health', () => {
-    const root = mkdtempSync(join(tmpdir(), 'ccb-rollback-'));
+    const root = mkdtempSync(join(tmpdir(), 'ccp-rollback-'));
     const live = join(root, 'live');
     const backup = join(root, 'live.prev');
     try {

@@ -4,7 +4,7 @@ const { createHash, createPrivateKey, createPublicKey, sign, verify } = require(
 const fs = require('node:fs');
 const path = require('node:path');
 
-const TARGET_PREFIX = Buffer.from('CCB1 release-targets\n', 'utf8');
+const TARGET_PREFIX = Buffer.from('CCP1 release-targets\n', 'utf8');
 const KEY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
@@ -53,8 +53,8 @@ function artifact(relativePath) {
 }
 
 function readZip(explicitPath) {
-  const candidate = explicitPath || fs.readdirSync(projectRoot).filter((name) => /^cc-bridge-3x.*\.zip$/.test(name)).sort().at(-1);
-  if (!candidate) throw new Error('no cc-bridge-3x ZIP found; pass an explicit path');
+  const candidate = explicitPath || fs.readdirSync(projectRoot).filter((name) => /^ccp3x.*\.zip$/.test(name)).sort().at(-1);
+  if (!candidate) throw new Error('no ccp3x ZIP found; pass an explicit path');
   const filePath = path.resolve(projectRoot, candidate);
   if (!fs.existsSync(filePath)) throw new Error(`ZIP not found: ${filePath}`);
   const bytes = fs.readFileSync(filePath);
@@ -64,7 +64,7 @@ function readZip(explicitPath) {
 function assertHttpsArtifactUrl(value) {
   const url = new URL(value);
   if (url.protocol !== 'https:' || url.username || url.password || url.hash) {
-    throw new Error('CCB_RELEASE_URL must be HTTPS without credentials or fragment');
+    throw new Error('CCP_RELEASE_URL must be HTTPS without credentials or fragment');
   }
   return url.toString();
 }
@@ -74,7 +74,7 @@ function buildReleaseTargetBody(zip, options = {}) {
   const sbomArtifact = artifact('dist/sbom.cdx.json');
   const provenanceArtifact = artifact('dist/provenance.intoto.json');
   const manifest = JSON.parse(manifestArtifact.bytes.toString('utf8'));
-  if (manifest.schemaVersion !== 1 || manifest.package !== 'cc-bridge-3x' || typeof manifest.version !== 'string') {
+  if (manifest.schemaVersion !== 1 || manifest.package !== 'ccp3x' || typeof manifest.version !== 'string') {
     throw new Error('package manifest identity is invalid');
   }
   if (!Array.isArray(manifest.files) || manifest.files.length === 0) throw new Error('package manifest contains no files');
@@ -83,25 +83,25 @@ function buildReleaseTargetBody(zip, options = {}) {
   }
   return {
     schemaVersion: 1,
-    metadataVersion: options.metadataVersion ?? positiveInteger('CCB_RELEASE_METADATA_VERSION'),
-    releaseSequence: options.releaseSequence ?? positiveInteger('CCB_RELEASE_SEQUENCE'),
-    issuedAt: options.issuedAt ?? exactIso('CCB_RELEASE_ISSUED_AT'),
-    expiresAt: options.expiresAt ?? exactIso('CCB_RELEASE_EXPIRES_AT'),
+    metadataVersion: options.metadataVersion ?? positiveInteger('CCP_RELEASE_METADATA_VERSION'),
+    releaseSequence: options.releaseSequence ?? positiveInteger('CCP_RELEASE_SEQUENCE'),
+    issuedAt: options.issuedAt ?? exactIso('CCP_RELEASE_ISSUED_AT'),
+    expiresAt: options.expiresAt ?? exactIso('CCP_RELEASE_EXPIRES_AT'),
     package: {
       name: manifest.package,
       version: manifest.version,
       sha256: zip.sha256,
       size: zip.bytes.length,
-      url: options.url ?? assertHttpsArtifactUrl(requiredEnv('CCB_RELEASE_URL')),
+      url: options.url ?? assertHttpsArtifactUrl(requiredEnv('CCP_RELEASE_URL')),
       packageManifestSha256: manifestArtifact.sha256,
       sbomSha256: sbomArtifact.sha256,
       provenanceSha256: provenanceArtifact.sha256,
     },
     compatibility: {
       protocol: { min: 1, max: 1 },
-      creator: process.env.CCB_RELEASE_CREATOR || '>=3.7.0',
-      os: (process.env.CCB_RELEASE_OS || 'win32').split(',').filter(Boolean),
-      arch: (process.env.CCB_RELEASE_ARCH || 'x64').split(',').filter(Boolean),
+      creator: process.env.CCP_RELEASE_CREATOR || '>=3.7.0',
+      os: (process.env.CCP_RELEASE_OS || 'win32').split(',').filter(Boolean),
+      arch: (process.env.CCP_RELEASE_ARCH || 'x64').split(',').filter(Boolean),
     },
   };
 }
@@ -126,9 +126,9 @@ function main() {
   if (Date.parse(body.expiresAt) <= Date.parse(body.issuedAt)) throw new Error('release target must expire after it is issued');
   const signed = signTarget(
     body,
-    requiredEnv('CCB_RELEASE_TARGETS_KEY_ID'),
-    requiredEnv('CCB_RELEASE_TARGETS_PRIVATE_KEY'),
-    process.env.CCB_RELEASE_TARGETS_PUBLIC_KEY,
+    requiredEnv('CCP_RELEASE_TARGETS_KEY_ID'),
+    requiredEnv('CCP_RELEASE_TARGETS_PRIVATE_KEY'),
+    process.env.CCP_RELEASE_TARGETS_PUBLIC_KEY,
   );
   const outPath = path.join(projectRoot, 'dist', 'release-target.signed.json');
   fs.writeFileSync(outPath, `${JSON.stringify(signed, null, 2)}\n`);

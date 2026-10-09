@@ -1,6 +1,6 @@
 import { createServer, IncomingMessage, Server, ServerResponse } from "http";
 import { URL } from "url";
-import { CcbError, toCcbErrorBody } from "../protected/errors";
+import { CcpError, toCcpErrorBody } from "../protected/errors";
 import { LocalAuthContext, validateLocalIngress } from "./local-auth";
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -67,21 +67,21 @@ async function readJsonBody(request: IncomingMessage): Promise<unknown> {
   if (request.method === "GET") return undefined;
   const declared = Number(request.headers["content-length"] ?? 0);
   if (!Number.isSafeInteger(declared) || declared < 0 || declared > MAX_BODY_BYTES) {
-    throw new CcbError("CCB_LIMIT_EXCEEDED", `Local request body must not exceed ${MAX_BODY_BYTES} bytes.`);
+    throw new CcpError("CCP_LIMIT_EXCEEDED", `Local request body must not exceed ${MAX_BODY_BYTES} bytes.`);
   }
   const chunks: Buffer[] = [];
   let total = 0;
   for await (const chunk of request) {
     const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     total += bytes.length;
-    if (total > MAX_BODY_BYTES) throw new CcbError("CCB_LIMIT_EXCEEDED", `Local request body must not exceed ${MAX_BODY_BYTES} bytes.`);
+    if (total > MAX_BODY_BYTES) throw new CcpError("CCP_LIMIT_EXCEEDED", `Local request body must not exceed ${MAX_BODY_BYTES} bytes.`);
     chunks.push(bytes);
   }
   if (total === 0) return undefined;
   try {
     return JSON.parse(Buffer.concat(chunks, total).toString("utf8"));
   } catch {
-    throw new CcbError("CCB_CANONICAL_INVALID", "Local request body is not valid JSON.");
+    throw new CcpError("CCP_CANONICAL_INVALID", "Local request body is not valid JSON.");
   }
 }
 
@@ -156,7 +156,7 @@ export class LocalHttpServer {
   private async handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const startedAt = Date.now();
     if (this.lifecycle !== "accepting") {
-      sendJson(response, 503, toCcbErrorBody(new CcbError("CCB_BUSY", "Local server is draining and is not accepting new work.")));
+      sendJson(response, 503, toCcpErrorBody(new CcpError("CCP_BUSY", "Local server is draining and is not accepting new work.")));
       return;
     }
     this.inFlight += 1;
@@ -177,13 +177,13 @@ export class LocalHttpServer {
       await handler({ method, path: url.pathname, query: parseQuery(url), body, request, response, startedAt });
       if (!response.writableEnded) sendJson(response, 204, null);
     } catch (error) {
-      const typed = error instanceof CcbError ? error : new CcbError("CCB_INTERNAL", "Local request failed.");
-      const status = typed.body.code === "CCB_LIMIT_EXCEEDED" ? 413
-        : typed.body.code === "CCB_CANONICAL_INVALID" ? 400
-          : typed.body.code === "CCB_IDEMPOTENCY_CONFLICT" ? 409
-            : typed.body.code === "CCB_BUSY" ? 503
-              : typed.body.code === "CCB_INTERNAL" ? 500 : 422;
-      sendJson(response, status, toCcbErrorBody(typed), { "x-duration-ms": String(Date.now() - startedAt) });
+      const typed = error instanceof CcpError ? error : new CcpError("CCP_INTERNAL", "Local request failed.");
+      const status = typed.body.code === "CCP_LIMIT_EXCEEDED" ? 413
+        : typed.body.code === "CCP_CANONICAL_INVALID" ? 400
+          : typed.body.code === "CCP_IDEMPOTENCY_CONFLICT" ? 409
+            : typed.body.code === "CCP_BUSY" ? 503
+              : typed.body.code === "CCP_INTERNAL" ? 500 : 422;
+      sendJson(response, status, toCcpErrorBody(typed), { "x-duration-ms": String(Date.now() - startedAt) });
     } finally {
       this.inFlight -= 1;
       if (this.inFlight === 0) {

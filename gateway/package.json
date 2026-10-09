@@ -1,5 +1,5 @@
 {
-  "name": "@cc-bridge/gateway",
+  "name": "@ccp/gateway",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,14 +10,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "audit:boundary": "node scripts/audit-product-boundary.mjs",
-    "loopback": "tsx scripts/cc-bridge-loopback.ts",
+    "loopback": "tsx scripts/ccp-loopback.ts",
     "start": "tsx src/server.ts",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
     "signer:start": "tsx src/signer-main.ts",
-    "smoke:production": "tsx scripts/cc-bridge-production-smoke.ts",
-    "qualify:local": "tsx tests/qualification/qualify-cc-bridge-local.ts",
-    "bench:cc-bridge": "tsx scripts/diag/bench-cc-bridge.ts"
+    "smoke:production": "tsx scripts/ccp-production-smoke.ts",
+    "qualify:local": "tsx tests/qualification/qualify-ccp-local.ts",
+    "bench:ccp": "tsx scripts/diag/bench-ccp.ts"
   },
   "dependencies": {
     "@dtx/tool-auth": "1.0.0",

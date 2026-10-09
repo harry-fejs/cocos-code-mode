@@ -1,6 +1,6 @@
 import { KeyLike } from "crypto";
 import { assertIJson, IJson } from "./canonical-json";
-import { CcbError } from "./errors";
+import { CcpError } from "./errors";
 import { executeEnvelope, type PrimitiveAdapters, type PrimitiveExecution } from "./primitive-executor";
 import { collectObservation, type ObservationRuntime, recheckObservation } from "./observation-collectors";
 import { findPublicTool, findPublicToolOperation, type PublicToolManifest } from "./public-tool-loader";
@@ -42,7 +42,7 @@ export interface DispatcherContext {
   telemetry?: TelemetryBuffer;
 }
 
-function evidenceFromError(error: CcbError): JournalOutcomeEvidence {
+function evidenceFromError(error: CcpError): JournalOutcomeEvidence {
   const details = error.body.details;
   const attempted = typeof details.attemptedCommandIds === "string" && details.attemptedCommandIds ? details.attemptedCommandIds.split(",") : [];
   const completed = typeof details.executedCommandIds === "string" && details.executedCommandIds ? details.executedCommandIds.split(",") : [];
@@ -106,7 +106,7 @@ export async function dispatchProtectedTool(
     const tool = findPublicTool(manifest, toolName);
     const operation = findPublicToolOperation(tool, inputs);
     if (operation.effect !== "none" && !dispatch.idempotencyKey) {
-      throw new CcbError("CCB_AUTH_REQUIRED", "Effectful protected calls require an authenticated stable idempotency key.");
+      throw new CcpError("CCP_AUTH_REQUIRED", "Effectful protected calls require an authenticated stable idempotency key.");
     }
     const toolBinding = { id: tool.name, contractVersion: tool.contractVersion, contractHash: tool.contractHash };
     const inputDigest = canonicalToolInputDigest(toolBinding, inputs);
@@ -159,10 +159,10 @@ export async function dispatchProtectedTool(
       pendingTelemetry = undefined;
     } catch (error) {
       if (!telemetryDelivered) ctx.telemetry?.restore(pendingTelemetry);
-      const ccb = error instanceof CcbError ? error : new CcbError("CCB_GATEWAY_UNAVAILABLE", "Gateway request failed.");
+      const ccp = error instanceof CcpError ? error : new CcpError("CCP_GATEWAY_UNAVAILABLE", "Gateway request failed.");
       traceKind = "denied";
       traceOutcome = "denied";
-      traceError = ccb.body.code;
+      traceError = ccp.body.code;
       throw error;
     }
     const verified = verifyDecision({
@@ -183,12 +183,12 @@ export async function dispatchProtectedTool(
       ...ctx.adapters,
       recheckPreconditions: async (signedEnvelope) => {
         if (operation.observation.contractId === "none-v1" || !built.request.observation) {
-          throw new CcbError("CCB_PRECONDITION_FAILED", "Effect envelope has no canonical observation to recheck.");
+          throw new CcpError("CCP_PRECONDITION_FAILED", "Effect envelope has no canonical observation to recheck.");
         }
         await recheckObservation(operation.observation, inputs, built.request.observation, ctx.observationRuntime);
         for (const precondition of signedEnvelope.preconditions) {
           if (precondition.revisionToken !== built.request.observation.revisionToken || precondition.digest !== built.request.observation.digest) {
-            throw new CcbError("CCB_PRECONDITION_FAILED", "Signed precondition does not match the authorized observation.");
+            throw new CcpError("CCP_PRECONDITION_FAILED", "Signed precondition does not match the authorized observation.");
           }
         }
       },
@@ -231,14 +231,14 @@ export async function dispatchProtectedTool(
       return completed(result);
     } catch (error) {
       if (started) {
-        const ccb = error instanceof CcbError ? error : new CcbError("CCB_OUTCOME_UNKNOWN", "Creator effect may have begun.");
-        const outcome = ccb.body.code === "CCB_OUTCOME_UNKNOWN"
-          ? ccb
-          : new CcbError("CCB_OUTCOME_UNKNOWN", ccb.body.error, ccb.body.details);
+        const ccp = error instanceof CcpError ? error : new CcpError("CCP_OUTCOME_UNKNOWN", "Creator effect may have begun.");
+        const outcome = ccp.body.code === "CCP_OUTCOME_UNKNOWN"
+          ? ccp
+          : new CcpError("CCP_OUTCOME_UNKNOWN", ccp.body.error, ccp.body.details);
         try {
           ctx.journal.markOutcomeUnknown(verified.decisionDigest, evidenceFromError(outcome));
         } catch (journalError) {
-          throw new CcbError("CCB_OUTCOME_UNKNOWN", outcome.body.error, {
+          throw new CcpError("CCP_OUTCOME_UNKNOWN", outcome.body.error, {
             ...outcome.body.details,
             journalError: journalError instanceof Error ? journalError.message.slice(0, 512) : String(journalError).slice(0, 512),
           });
@@ -248,10 +248,10 @@ export async function dispatchProtectedTool(
       throw error;
     }
   } catch (error) {
-    traceError = error instanceof CcbError ? error.body.code : "CCB_INTERNAL";
-    if (traceError === "CCB_OUTCOME_UNKNOWN") traceOutcome = "outcome-unknown";
-    if (error instanceof CcbError) throw error;
-    throw new CcbError("CCB_INTERNAL", "Protected dispatch failed before a local result was produced.", {
+    traceError = error instanceof CcpError ? error.body.code : "CCP_INTERNAL";
+    if (traceError === "CCP_OUTCOME_UNKNOWN") traceOutcome = "outcome-unknown";
+    if (error instanceof CcpError) throw error;
+    throw new CcpError("CCP_INTERNAL", "Protected dispatch failed before a local result was produced.", {
       cause: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512),
     });
   } finally {

@@ -74,7 +74,7 @@ function validateKeyPair(identity: DeviceIdentity): void {
 }
 
 export class DeviceIdentityStore {
-  constructor(readonly root = join(homedir(), ".cc-bridge", "identity")) {}
+  constructor(readonly root = join(homedir(), ".ccp", "identity")) {}
 
   loadOrCreate(): DeviceIdentity {
     const path = identityPath(this.root);
@@ -129,7 +129,7 @@ export class DeviceIdentityStore {
       deviceKeyId: identity.deviceKeyId,
       publicKeySpki: identity.publicKeyDer,
     };
-    const signatureBase = canonicalizeToBytes({ domain: "ccb-device-enrollment-v1", ...body });
+    const signatureBase = canonicalizeToBytes({ domain: "ccp-device-enrollment-v1", ...body });
     return { ...body, proofSignature: encodeBase64Url(sign(null, signatureBase, this.privateKey(identity))) };
   }
 }

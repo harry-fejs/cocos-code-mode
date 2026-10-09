@@ -5,7 +5,7 @@ description: Use for Cocos scene/project structural search, composite node resol
 
 # cc-scene-graph
 
-Offline structural navigation for saved Cocos assets. The graph answers **where/what**; CC Bridge remains authoritative for unsaved state, runtime state, and every write.
+Offline structural navigation for saved Cocos assets. The graph answers **where/what**; CCP remains authoritative for unsaved state, runtime state, and every write.
 
 ## Authority model
 
@@ -14,7 +14,7 @@ Offline structural navigation for saved Cocos assets. The graph answers **where/
 - T2 mutable values: transforms, active state, component values. Never indexed.
 - T3 runtime/editor state: selection, viewport, undo, runtime instances. Never indexed.
 
-Node UUIDs and prefab `fileId` values are file-local. Never pass a composite handle directly to Cocos. Resolve its `uuid`, then confirm the exact live scene/target through CC Bridge.
+Node UUIDs and prefab `fileId` values are file-local. Never pass a composite handle directly to Cocos. Resolve its `uuid`, then confirm the exact live scene/target through CCP.
 
 ## Cache layout
 
@@ -60,9 +60,9 @@ Parser schema is v4. v3 or older manifests fail with an explicit rebuild action.
 
 1. Search offline and keep `handle`, `uuid`, `file`, `source`, and `bundle`.
 2. Reject/adapt when `stale.advisory=true`, `dirty` is `true` or `unknown`, `prefabOpaque=true`, or resolution is ambiguous.
-3. Call `ccb3x.sceneGetInfo()` and verify the intended scene is open.
+3. Call `ccp3x_49650.sceneGetInfo()` and verify the intended scene is open.
 4. Resolve/read the exact engine UUID live with `nodeGetTree` or `inspectorGet`.
-5. Perform the write through the narrow CC Bridge tool.
+5. Perform the write through the narrow CCP tool.
 6. Read the changed target live and verify the observable result.
 7. Only then record session continuity:
 
@@ -72,7 +72,7 @@ node tools/cocos-graph/bin/cocos-graph.mjs session-record \
   --working-path <path> --task <description> --verified
 ```
 
-`session-record` rejects calls without `--verified`; it writes `.claude/ccb-session.json` atomically with `age_ms:0`.
+`session-record` rejects calls without `--verified`; it writes `.claude/ccp-session.json` atomically with `age_ms:0`.
 
 
 ### Tool Selection Matrix (Avoiding "Node tree not found")

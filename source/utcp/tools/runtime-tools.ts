@@ -15,7 +15,7 @@ export class RuntimeTools {
     )
     async runtimePause(): Promise<{ success: boolean }> {
         const result = await Editor.Message.request('scene', 'execute-scene-script', {
-            name: 'cc-bridge-3x', method: 'runtimePause', args: [],
+            name: 'ccp3x', method: 'runtimePause', args: [],
         });
         return { success: result === true };
     }
@@ -30,7 +30,7 @@ export class RuntimeTools {
     )
     async runtimeResume(): Promise<{ success: boolean }> {
         const result = await Editor.Message.request('scene', 'execute-scene-script', {
-            name: 'cc-bridge-3x', method: 'runtimeResume', args: [],
+            name: 'ccp3x', method: 'runtimeResume', args: [],
         });
         return { success: result === true };
     }
@@ -55,7 +55,7 @@ export class RuntimeTools {
         }
         const scale = Math.max(0, Math.min(args.scale, 10));
         const result = await Editor.Message.request('scene', 'execute-scene-script', {
-            name: 'cc-bridge-3x', method: 'runtimeSetTimeScale', args: [scale],
+            name: 'ccp3x', method: 'runtimeSetTimeScale', args: [scale],
         });
         return { success: result === true, scale };
     }
@@ -78,7 +78,7 @@ export class RuntimeTools {
     )
     async runtimeGetState(): Promise<{ paused: boolean, timeScale: number, frameCount: number }> {
         const result = await Editor.Message.request('scene', 'execute-scene-script', {
-            name: 'cc-bridge-3x', method: 'runtimeGetState', args: [],
+            name: 'ccp3x', method: 'runtimeGetState', args: [],
         }) as any;
         if (!result || typeof result !== 'object') throw new Error('runtimeGetState: no runtime state — is the preview/game running?');
         // Reject partial payloads outright: field-level coercion would fabricate

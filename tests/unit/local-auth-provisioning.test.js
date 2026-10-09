@@ -13,7 +13,7 @@ const { readConnectionState } = requireDist('utcp/project-connection.js');
 const { mutateUtcpConfig } = requireDist('utcp/config-store.js');
 const gateway = { origin: 'https://assigned.invalid', projectId: 'configured-project' };
 async function fixture(run) {
-  const root = fs.mkdtempSync(join(homedir(), '.ccb-auth-test-'));
+  const root = fs.mkdtempSync(join(homedir(), '.ccp-auth-test-'));
   const priorEditor = global.Editor;
   const manager = getConfigManager();
   const priorPath = manager.getConfigPath();

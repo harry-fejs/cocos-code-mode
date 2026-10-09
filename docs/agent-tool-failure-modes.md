@@ -245,7 +245,7 @@ Hai lỗi runtime 2026-09-01 cho thấy fail-loud chỉ là nửa contract:
 | `projectManage({ operation: 'set' })` | Creator 3.7 không có `project/set-config` | stack + message dài | chỉnh `settings/v2/packages/*.json`; chỉ dùng IPC write trên Creator 3.8 sau live verify |
 | `nodeGetTree` | Node UUID không thuộc scene đang mở (hoặc trong prefab đóng) | generic 500 "Node tree not found for ..." | `TARGET_NOT_FOUND` (404): kiểm tra `sceneGetInfo`, chuyển scene qua `sceneOpen`, hoặc đọc offline qua `readPrefabJson` / `cocos-graph navigate` |
 | `nodeGetTree` | Truyền nhầm composite handle (`file#uuid`) từ cache | 500 không tìm thấy | `COMPOSITE_HANDLE_NOT_SUPPORTED` (400): tách `file` và truyền bare engine UUID |
-Agent không nên parse stack trace hay suy luận từ English message. CC Bridge trả lỗi domain có shape ổn định:
+Agent không nên parse stack trace hay suy luận từ English message. CCP trả lỗi domain có shape ổn định:
 
 ```json
 {

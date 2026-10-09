@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "publicSources": {
+    "canonical-json.ts": "3e5fcbe4fdc342ab1237ff8cea59487fa2fae4bb6747dd55906473df53d3c28e",
+    "canonical-json.LICENSE.txt": "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b",
+    "protocol.ts": "4d37c241d1e4fc0a8302b3296c1544fb32e0e49109d3e976e25ec94c0794dcaa",
+    "primitive-contract.ts": "6f49c2f77abb9bc6116546276bfb55d47684df1e560ed97cb4aebd6b6f83f75b",
+    "errors.ts": "cb13de3188b534eefcab4bdd2e8edcc24bf9359795d3f798641cb1fb41a9a13a",
+    "schemas.ts": "580f7310af0bdb6ce049f03b5ab0fd8557d0327b4fc75cbff3b9e6d181ec842d",
+    "negative-fixture-runner.ts": "43550f88dc5dfef5b779f679d68b47a7f9f50a41fd259dbf5a4e5155df54c2cc",
+    "public-tool-manifest.json": "d0989014c368d0c6d78982351cb8f55ca676a78629321cfd27b0bca5bb162bf1"
+  },
+  "fixtures": {
+    "test-keys.json": "49018b1e79113bcf9fbc71579b8f268d26986a93fdac5de70816e19f4f65c9bc",
+    "vectors.json": "222bb8c6e4adc8fa5b566fcb34c90529eba7cf49d7afa234ae98ee4782910ff2",
+    "canonical-cases.json": "63079984bd578e6954da03ac4db3e4fbba3eaf42ab1e95b3b2aa59b9af4aefa8",
+    "negative-cases.json": "d6a75c622fa180173b60a56dfe29c414380d632e2c5b54163d0d79c917d930e2"
+  }
+}

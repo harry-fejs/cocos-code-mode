@@ -84,9 +84,9 @@ function createProvenance(projectRoot, zipPath, manifestArtifact, sbomArtifact) 
     predicateType: 'https://slsa.dev/provenance/v1',
     predicate: {
       buildDefinition: {
-        buildType: 'https://cc-bridge.dev/build-types/extension-zip/v1',
+        buildType: 'https://ccp.dev/build-types/extension-zip/v1',
         externalParameters: {
-          package: 'cc-bridge-3x',
+          package: 'ccp3x',
           platform: { os: ['win32'], arch: ['x64'], creator: '>=3.7.0' },
         },
         internalParameters: {
@@ -101,7 +101,7 @@ function createProvenance(projectRoot, zipPath, manifestArtifact, sbomArtifact) 
         ],
       },
       runDetails: {
-        builder: { id: 'https://cc-bridge.dev/builders/extension-package-js/v1' },
+        builder: { id: 'https://ccp.dev/builders/extension-package-js/v1' },
         metadata: { invocationId: `${buildInfo.commit}:${path.basename(zipPath)}` },
         byproducts: [
           { name: path.basename(manifestArtifact.path), digest: { sha256: manifestArtifact.sha256 } },

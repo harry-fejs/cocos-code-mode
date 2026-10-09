@@ -9,9 +9,9 @@ describe('cocos-graph output path', () => {
       isolate: true,
       cwd: 'G:/_ws/_helpers/cc-code-mode-cst-merge',
       env: {},
-      branch: 'feat/CCB3X Consolidated',
+      branch: 'feat/CCP3X Consolidated',
     });
-    assert.equal(normalize(out), normalize('.cocos-graph/feat-ccb3x-consolidated'));
+    assert.equal(normalize(out), normalize('.cocos-graph/feat-ccp3x-consolidated'));
   });
 
   it('uses the same nested layout when isolation comes from the environment', () => {

@@ -1,6 +1,6 @@
 import { assertIJson, IJson } from "./canonical-json";
 import { createCreatorAdapters } from "./creator-adapters";
-import { CcbError } from "./errors";
+import { CcpError } from "./errors";
 import { dispatchProtectedTool, type ProtectedDispatchContext } from "./protected-dispatcher";
 import type { ProtectedRelayHost } from "./relay-host";
 import { GATEWAY_PROTECTED_TOOLS } from "./protected-tool-names";
@@ -15,7 +15,7 @@ function canonicalManifest() {
     manifest ??= loadPublicToolManifest(manifestJson);
     return manifest;
   } catch (error) {
-    throw new CcbError("CCB_CONTRACT_MISMATCH", "Installed canonical protected-tool manifest is invalid.", {
+    throw new CcpError("CCP_CONTRACT_MISMATCH", "Installed canonical protected-tool manifest is invalid.", {
       cause: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512),
     });
   }
@@ -32,17 +32,17 @@ export async function dispatchProtectedCustomerTool(
   dispatch: ProtectedDispatchContext = {},
 ): Promise<IJson> {
   if (!GATEWAY_PROTECTED_TOOLS.has(name)) {
-    throw new CcbError("CCB_CONTRACT_MISMATCH", "Protected tool is absent from the canonical public contract.", { tool: name });
+    throw new CcpError("CCP_CONTRACT_MISMATCH", "Protected tool is absent from the canonical public contract.", { tool: name });
   }
   host.state.assertActive();
-  if (!host.identity || !host.packageHash) throw new CcbError("CCB_DEVICE_DENIED", "Protected relay has no verified local identity or installed package digest.");
+  if (!host.identity || !host.packageHash) throw new CcpError("CCP_DEVICE_DENIED", "Protected relay has no verified local identity or installed package digest.");
   if (!host.client || !host.projectId || host.executionKeys.size === 0) {
-    throw new CcbError("CCB_GATEWAY_UNAVAILABLE", "Protected tools require a warm Gateway client, project, and execution public key.");
+    throw new CcpError("CCP_GATEWAY_UNAVAILABLE", "Protected tools require a warm Gateway client, project, and execution public key.");
   }
   assertIJson(inputs);
   const build = getBuildInfo();
   const creatorVersion = Editor.App.version;
-  if (typeof creatorVersion !== "string" || !creatorVersion) throw new CcbError("CCB_CREATOR_INCOMPATIBLE", "Creator runtime did not expose Editor.App.version.");
+  if (typeof creatorVersion !== "string" || !creatorVersion) throw new CcpError("CCP_CREATOR_INCOMPATIBLE", "Creator runtime did not expose Editor.App.version.");
   let creatorIpcCount = 0;
   const creatorRequest = async (module: string, message: string, ...args: unknown[]) => {
     creatorIpcCount += 1;
@@ -85,7 +85,7 @@ export async function dispatchProtectedCustomerTool(
       invoke,
       snapshot: async () => { await creatorRequest("scene", "snapshot"); },
       recheckPreconditions: async () => {
-        throw new CcbError("CCB_PRECONDITION_FAILED", "Effectful protected dispatch must install a live observation recheck.");
+        throw new CcpError("CCP_PRECONDITION_FAILED", "Effectful protected dispatch must install a live observation recheck.");
       },
       readIpcCount: () => creatorIpcCount,
     },

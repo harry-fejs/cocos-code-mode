@@ -13,7 +13,7 @@ test('root signer signs the canonical release-root domain', () => {
   const { privateKey, publicKey } = generateKeyPairSync('ed25519');
   const body = {
     schemaVersion: 1,
-    product: 'cc-bridge-3x',
+    product: 'ccp3x',
     rootVersion: 1,
     issuedAt: '2026-01-01T00:00:00.000Z',
     expiresAt: '2027-01-01T00:00:00.000Z',
@@ -22,11 +22,11 @@ test('root signer signs the canonical release-root domain', () => {
   };
   const payload = Buffer.from(canonicalize(body));
   const signature = signRoot(payload, 'root', privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64url'), publicKey.export({ format: 'der', type: 'spki' }).toString('base64url'));
-  assert.equal(verify(null, Buffer.concat([Buffer.from('CCB1 release-root\n'), payload]), publicKey, Buffer.from(signature.signature, 'base64url')), true);
+  assert.equal(verify(null, Buffer.concat([Buffer.from('CCP1 release-root\n'), payload]), publicKey, Buffer.from(signature.signature, 'base64url')), true);
 });
 
 test('root signer rejects noncanonical bootstrap payloads', () => {
-  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ccb-root-'));
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ccp-root-'));
   try {
     const file = path.join(temp, 'root.json');
     fs.writeFileSync(file, '{ "schemaVersion": 1 }\n');

@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 1,
+  "request": {
+    "protocolVersion": 1,
+    "requestId": "00000000-0000-4000-8000-000000000001",
+    "idempotencyKey": "fixture-request-0001",
+    "deviceId": "00000000-0000-4000-8000-000000000002",
+    "projectId": "00000000-0000-4000-8000-000000000003",
+    "relayInstanceId": "00000000-0000-4000-8000-000000000004",
+    "sequence": 7,
+    "issuedAtMs": 1893456000000,
+    "nonce": "AAAAAAAAAAAAAAAAAAAAAA",
+    "tool": {
+      "id": "createUiNode",
+      "contractVersion": 1,
+      "contractHash": "2fcc840bce139055b64f5c291303b94a5f13ce8b1c3a5b3ae44cf8c03962b0d7"
+    },
+    "relay": {
+      "build": "2.0.0-test",
+      "packageHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "creatorVersion": "3.7.3",
+      "os": "win32-x64"
+    },
+    "inputs": {
+      "uiType": "Canvas",
+      "name": "Fixture Node"
+    },
+    "observation": {
+      "contractId": "ui-parent-v1",
+      "consentVersion": "project-metadata-v1",
+      "revisionToken": "revision-1",
+      "digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "fields": {
+        "parentReference": null,
+        "sceneRoot": "scene-root"
+      }
+    }
+  },
+  "signedRequest": {
+    "deviceKeyId": "device-fixture-1",
+    "payload": "eyJkZXZpY2VJZCI6IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMiIsImlkZW1wb3RlbmN5S2V5IjoiZml4dHVyZS1yZXF1ZXN0LTAwMDEiLCJpbnB1dHMiOnsibmFtZSI6IkZpeHR1cmUgTm9kZSIsInVpVHlwZSI6IkNhbnZhcyJ9LCJpc3N1ZWRBdE1zIjoxODkzNDU2MDAwMDAwLCJub25jZSI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJvYnNlcnZhdGlvbiI6eyJjb25zZW50VmVyc2lvbiI6InByb2plY3QtbWV0YWRhdGEtdjEiLCJjb250cmFjdElkIjoidWktcGFyZW50LXYxIiwiZGlnZXN0IjoiY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjYyIsImZpZWxkcyI6eyJwYXJlbnRSZWZlcmVuY2UiOm51bGwsInNjZW5lUm9vdCI6InNjZW5lLXJvb3QifSwicmV2aXNpb25Ub2tlbiI6InJldmlzaW9uLTEifSwicHJvamVjdElkIjoiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAzIiwicHJvdG9jb2xWZXJzaW9uIjoxLCJyZWxheSI6eyJidWlsZCI6IjIuMC4wLXRlc3QiLCJjcmVhdG9yVmVyc2lvbiI6IjMuNy4zIiwib3MiOiJ3aW4zMi14NjQiLCJwYWNrYWdlSGFzaCI6ImJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmIifSwicmVsYXlJbnN0YW5jZUlkIjoiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDA0IiwicmVxdWVzdElkIjoiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAxIiwic2VxdWVuY2UiOjcsInRvb2wiOnsiY29udHJhY3RIYXNoIjoiMmZjYzg0MGJjZTEzOTA1NWI2NGY1YzI5MTMwM2I5NGE1ZjEzY2U4YjFjM2E1YjNhZTQ0Y2Y4YzAzOTYyYjBkNyIsImNvbnRyYWN0VmVyc2lvbiI6MSwiaWQiOiJjcmVhdGVVaU5vZGUifX0",
+    "signature": "AwGmTUYVCLcHMh754DvjpMNZOMw3pBQKf302RHFiRA-aJqMTIJDP1hW5eP4vx_lGi5468AclDxCiYs5Nbx5ZDg"
+  },
+  "decisions": {
+    "read": {
+      "decision": {
+        "kind": "result",
+        "binding": {
+          "requestId": "00000000-0000-4000-8000-000000000001",
+          "deviceId": "00000000-0000-4000-8000-000000000002",
+          "projectId": "00000000-0000-4000-8000-000000000003",
+          "relayInstanceId": "00000000-0000-4000-8000-000000000004",
+          "nonce": "AAAAAAAAAAAAAAAAAAAAAA",
+          "sequence": 7,
+          "tool": {
+            "id": "createUiNode",
+            "contractVersion": 1,
+            "contractHash": "2fcc840bce139055b64f5c291303b94a5f13ce8b1c3a5b3ae44cf8c03962b0d7"
+          },
+          "relay": {
+            "build": "2.0.0-test",
+            "packageHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "creatorRange": ">=3.7.0 <3.9.0",
+          "issuedAtMs": 1893456000000,
+          "expiresAtMs": 1893456010000
+        },
+        "result": {
+          "type": "observation-value",
+          "jsonPointer": "/fields/parentUuid"
+        },
+        "limits": {
+          "outputBytes": 4096,
+          "expiresInMs": 10000
+        },
+        "correlationId": "00000000-0000-4000-8000-000000000010"
+      },
+      "signed": {
+        "executionKeyId": "execution-fixture-1",
+        "payload": "eyJiaW5kaW5nIjp7ImNyZWF0b3JSYW5nZSI6Ij49My43LjAgPDMuOS4wIiwiZGV2aWNlSWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDIiLCJleHBpcmVzQXRNcyI6MTg5MzQ1NjAxMDAwMCwiaXNzdWVkQXRNcyI6MTg5MzQ1NjAwMDAwMCwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwicHJvamVjdElkIjoiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAzIiwicmVsYXkiOnsiYnVpbGQiOiIyLjAuMC10ZXN0IiwicGFja2FnZUhhc2giOiJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiIn0sInJlbGF5SW5zdGFuY2VJZCI6IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwNCIsInJlcXVlc3RJZCI6IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMSIsInNlcXVlbmNlIjo3LCJ0b29sIjp7ImNvbnRyYWN0SGFzaCI6IjJmY2M4NDBiY2UxMzkwNTViNjRmNWMyOTEzMDNiOTRhNWYxM2NlOGIxYzNhNWIzYWU0NGNmOGMwMzk2MmIwZDciLCJjb250cmFjdFZlcnNpb24iOjEsImlkIjoiY3JlYXRlVWlOb2RlIn19LCJjb3JyZWxhdGlvbklkIjoiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDEwIiwia2luZCI6InJlc3VsdCIsImxpbWl0cyI6eyJleHBpcmVzSW5NcyI6MTAwMDAsIm91dHB1dEJ5dGVzIjo0MDk2fSwicmVzdWx0Ijp7Impzb25Qb2ludGVyIjoiL2ZpZWxkcy9wYXJlbnRVdWlkIiwidHlwZSI6Im9ic2VydmF0aW9uLXZhbHVlIn19",
+        "signature": "MKTZRHUuvpLnjXKjres6O8XEnR0ofVydYw8YZ6kPG4KXzuH6sghRTMDRPXGHMNQHjPtJ9S55bf7ghaNZkFoUCQ"
+      }
+    },
+    "mutation": {
+      "decision": {
+        "kind": "execute",
+        "binding": {
+          "requestId": "00000000-0000-4000-8000-000000000001",
+          "deviceId": "00000000-0000-4000-8000-000000000002",
+          "projectId": "00000000-0000-4000-8000-000000000003",
+          "relayInstanceId": "00000000-0000-4000-8000-000000000004",
+          "nonce": "AAAAAAAAAAAAAAAAAAAAAA",
+          "sequence": 7,
+          "tool": {
+            "id": "createUiNode",
+            "contractVersion": 1,
+            "contractHash": "2fcc840bce139055b64f5c291303b94a5f13ce8b1c3a5b3ae44cf8c03962b0d7"
+          },
+          "relay": {
+            "build": "2.0.0-test",
+            "packageHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "creatorRange": ">=3.7.0 <3.9.0",
+          "issuedAtMs": 1893456000000,
+          "expiresAtMs": 1893456010000
+        },
+        "correlationId": "00000000-0000-4000-8000-000000000011",
+        "envelope": {
+          "effect": "project-write",
+          "commands": [
+            {
+              "op": "scene.createNode",
+              "commandId": "create-node",
+              "usesHandles": [],
+              "createsHandle": "node-1",
+              "args": {
+                "parent": {
+                  "source": "observation",
+                  "jsonPointer": "/fields/parentUuid"
+                },
+                "name": {
+                  "source": "request",
+                  "jsonPointer": "/inputs/name"
+                }
+              }
+            }
+          ],
+          "preconditions": [
+            {
+              "kind": "observation",
+              "revisionToken": "revision-1",
+              "digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            }
+          ],
+          "transaction": {
+            "mode": "ordered-effect",
+            "onError": "stop",
+            "snapshot": "once-after-success"
+          },
+          "return": {
+            "mode": "execution-summary"
+          },
+          "limits": {
+            "commandCount": 1,
+            "ipcCount": 2,
+            "inputBytes": 4096,
+            "outputBytes": 4096,
+            "timeoutMs": 5000
+          }
+        }
+      },
+      "signed": {
+        "executionKeyId": "execution-fixture-1",
+        "payload": "eyJiaW5kaW5nIjp7ImNyZWF0b3JSYW5nZSI6Ij49My43LjAgPDMuOS4wIiwiZGV2aWNlSWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDIiLCJleHBpcmVzQXRNcyI6MTg5MzQ1NjAxMDAwMCwiaXNzdWVkQXRNcyI6MTg5MzQ1NjAwMDAwMCwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwicHJvamVjdElkIjoiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAzIiwicmVsYXkiOnsiYnVpbGQiOiIyLjAuMC10ZXN0IiwicGFja2FnZUhhc2giOiJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiIn0sInJlbGF5SW5zdGFuY2VJZCI6IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwNCIsInJlcXVlc3RJZCI6IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMSIsInNlcXVlbmNlIjo3LCJ0b29sIjp7ImNvbnRyYWN0SGFzaCI6IjJmY2M4NDBiY2UxMzkwNTViNjRmNWMyOTEzMDNiOTRhNWYxM2NlOGIxYzNhNWIzYWU0NGNmOGMwMzk2MmIwZDciLCJjb250cmFjdFZlcnNpb24iOjEsImlkIjoiY3JlYXRlVWlOb2RlIn19LCJjb3JyZWxhdGlvbklkIjoiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDExIiwiZW52ZWxvcGUiOnsiY29tbWFuZHMiOlt7ImFyZ3MiOnsibmFtZSI6eyJqc29uUG9pbnRlciI6Ii9pbnB1dHMvbmFtZSIsInNvdXJjZSI6InJlcXVlc3QifSwicGFyZW50Ijp7Impzb25Qb2ludGVyIjoiL2ZpZWxkcy9wYXJlbnRVdWlkIiwic291cmNlIjoib2JzZXJ2YXRpb24ifX0sImNvbW1hbmRJZCI6ImNyZWF0ZS1ub2RlIiwiY3JlYXRlc0hhbmRsZSI6Im5vZGUtMSIsIm9wIjoic2NlbmUuY3JlYXRlTm9kZSIsInVzZXNIYW5kbGVzIjpbXX1dLCJlZmZlY3QiOiJwcm9qZWN0LXdyaXRlIiwibGltaXRzIjp7ImNvbW1hbmRDb3VudCI6MSwiaW5wdXRCeXRlcyI6NDA5NiwiaXBjQ291bnQiOjIsIm91dHB1dEJ5dGVzIjo0MDk2LCJ0aW1lb3V0TXMiOjUwMDB9LCJwcmVjb25kaXRpb25zIjpbeyJkaWdlc3QiOiJjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjIiwia2luZCI6Im9ic2VydmF0aW9uIiwicmV2aXNpb25Ub2tlbiI6InJldmlzaW9uLTEifV0sInJldHVybiI6eyJtb2RlIjoiZXhlY3V0aW9uLXN1bW1hcnkifSwidHJhbnNhY3Rpb24iOnsibW9kZSI6Im9yZGVyZWQtZWZmZWN0Iiwib25FcnJvciI6InN0b3AiLCJzbmFwc2hvdCI6Im9uY2UtYWZ0ZXItc3VjY2VzcyJ9fSwia2luZCI6ImV4ZWN1dGUifQ",
+        "signature": "F1B3Yc7_C6tyHuNvP7I5WA-PBUkkiJk7xA9KzfVlW0fimP1_uwdbtMjKIp1zqj8f5BmstIDbYJ8zmi5pVkseCA"
+      }
+    },
+    "handles": {
+      "decision": {
+        "kind": "execute",
+        "binding": {
+          "requestId": "00000000-0000-4000-8000-000000000001",
+          "deviceId": "00000000-0000-4000-8000-000000000002",
+          "projectId": "00000000-0000-4000-8000-000000000003",
+          "relayInstanceId": "00000000-0000-4000-8000-000000000004",
+          "nonce": "AAAAAAAAAAAAAAAAAAAAAA",
+          "sequence": 7,
+          "tool": {
+            "id": "createUiNode",
+            "contractVersion": 1,
+            "contractHash": "2fcc840bce139055b64f5c291303b94a5f13ce8b1c3a5b3ae44cf8c03962b0d7"
+          },
+          "relay": {
+            "build": "2.0.0-test",
+            "packageHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "creatorRange": ">=3.7.0 <3.9.0",
+          "issuedAtMs": 1893456000000,
+          "expiresAtMs": 1893456010000
+        },
+        "correlationId": "00000000-0000-4000-8000-000000000013",
+        "envelope": {
+          "effect": "project-write",
+          "commands": [
+            {
+              "op": "scene.createNode",
+              "commandId": "node",
+              "usesHandles": [],
+              "createsHandle": "node-1",
+              "args": {
+                "name": {
+                  "source": "request",
+                  "jsonPointer": "/inputs/name"
+                }
+              }
+            },
+            {
+              "op": "scene.addComponent",
+              "commandId": "component",
+              "usesHandles": [
+                "node-1"
+              ],
+              "createsHandle": "component-1",
+              "args": {
+                "target": {
+                  "source": "handle",
+                  "handle": "node-1"
+                },
+                "componentType": {
+                  "source": "public-contract-constant",
+                  "id": "ui-transform"
+                }
+              }
+            },
+            {
+              "op": "scene.setProperties",
+              "commandId": "properties",
+              "usesHandles": [
+                "component-1"
+              ],
+              "args": {
+                "target": {
+                  "source": "handle",
+                  "handle": "component-1"
+                },
+                "values": [
+                  {
+                    "property": {
+                      "source": "public-contract-constant",
+                      "id": "enabled"
+                    },
+                    "value": {
+                      "source": "request",
+                      "jsonPointer": "/inputs/name"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "preconditions": [
+            {
+              "kind": "observation",
+              "revisionToken": "revision-1",
+              "digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            }
+          ],
+          "transaction": {
+            "mode": "ordered-effect",
+            "onError": "stop",
+            "snapshot": "once-after-success"
+          },
+          "return": {
+            "mode": "execution-summary"
+          },
+          "limits": {
+            "commandCount": 3,
+            "ipcCount": 7,
+            "inputBytes": 8192,
+            "outputBytes": 8192,
+            "timeoutMs": 10000
+          }
+        }
+      },
+      "signed": {
+        "executionKeyId": "execution-fixture-1",
+        "payload": "eyJiaW5kaW5nIjp7ImNyZWF0b3JSYW5nZSI6Ij49My43LjAgPDMuOS4wIiwiZGV2aWNlSWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDIiLCJleHBpcmVzQXRNcyI6MTg5MzQ1NjAxMDAwMCwiaXNzdWVkQXRNcyI6MTg5MzQ1NjAwMDAwMCwibm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwicHJvamVjdElkIjoiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAzIiwicmVsYXkiOnsiYnVpbGQiOiIyLjAuMC10ZXN0IiwicGFja2FnZUhhc2giOiJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiIn0sInJlbGF5SW5zdGFuY2VJZCI6IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwNCIsInJlcXVlc3RJZCI6IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMSIsInNlcXVlbmNlIjo3LCJ0b29sIjp7ImNvbnRyYWN0SGFzaCI6IjJmY2M4NDBiY2UxMzkwNTViNjRmNWMyOTEzMDNiOTRhNWYxM2NlOGIxYzNhNWIzYWU0NGNmOGMwMzk2MmIwZDciLCJjb250cmFjdFZlcnNpb24iOjEsImlkIjoiY3JlYXRlVWlOb2RlIn19LCJjb3JyZWxhdGlvbklkIjoiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDEzIiwiZW52ZWxvcGUiOnsiY29tbWFuZHMiOlt7ImFyZ3MiOnsibmFtZSI6eyJqc29uUG9pbnRlciI6Ii9pbnB1dHMvbmFtZSIsInNvdXJjZSI6InJlcXVlc3QifX0sImNvbW1hbmRJZCI6Im5vZGUiLCJjcmVhdGVzSGFuZGxlIjoibm9kZS0xIiwib3AiOiJzY2VuZS5jcmVhdGVOb2RlIiwidXNlc0hhbmRsZXMiOltdfSx7ImFyZ3MiOnsiY29tcG9uZW50VHlwZSI6eyJpZCI6InVpLXRyYW5zZm9ybSIsInNvdXJjZSI6InB1YmxpYy1jb250cmFjdC1jb25zdGFudCJ9LCJ0YXJnZXQiOnsiaGFuZGxlIjoibm9kZS0xIiwic291cmNlIjoiaGFuZGxlIn19LCJjb21tYW5kSWQiOiJjb21wb25lbnQiLCJjcmVhdGVzSGFuZGxlIjoiY29tcG9uZW50LTEiLCJvcCI6InNjZW5lLmFkZENvbXBvbmVudCIsInVzZXNIYW5kbGVzIjpbIm5vZGUtMSJdfSx7ImFyZ3MiOnsidGFyZ2V0Ijp7ImhhbmRsZSI6ImNvbXBvbmVudC0xIiwic291cmNlIjoiaGFuZGxlIn0sInZhbHVlcyI6W3sicHJvcGVydHkiOnsiaWQiOiJlbmFibGVkIiwic291cmNlIjoicHVibGljLWNvbnRyYWN0LWNvbnN0YW50In0sInZhbHVlIjp7Impzb25Qb2ludGVyIjoiL2lucHV0cy9uYW1lIiwic291cmNlIjoicmVxdWVzdCJ9fV19LCJjb21tYW5kSWQiOiJwcm9wZXJ0aWVzIiwib3AiOiJzY2VuZS5zZXRQcm9wZXJ0aWVzIiwidXNlc0hhbmRsZXMiOlsiY29tcG9uZW50LTEiXX1dLCJlZmZlY3QiOiJwcm9qZWN0LXdyaXRlIiwibGltaXRzIjp7ImNvbW1hbmRDb3VudCI6MywiaW5wdXRCeXRlcyI6ODE5MiwiaXBjQ291bnQiOjcsIm91dHB1dEJ5dGVzIjo4MTkyLCJ0aW1lb3V0TXMiOjEwMDAwfSwicHJlY29uZGl0aW9ucyI6W3siZGlnZXN0IjoiY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjYyIsImtpbmQiOiJvYnNlcnZhdGlvbiIsInJldmlzaW9uVG9rZW4iOiJyZXZpc2lvbi0xIn1dLCJyZXR1cm4iOnsibW9kZSI6ImV4ZWN1dGlvbi1zdW1tYXJ5In0sInRyYW5zYWN0aW9uIjp7Im1vZGUiOiJvcmRlcmVkLWVmZmVjdCIsIm9uRXJyb3IiOiJzdG9wIiwic25hcHNob3QiOiJvbmNlLWFmdGVyLXN1Y2Nlc3MifX0sImtpbmQiOiJleGVjdXRlIn0",
+        "signature": "oMeKPl1AuWpBIdW9YgFei_H9ADwopkuymnPMkWB9VengNzS6DXmVV_z4rxrfYUC5YV4370e-_KGEZp0RCkAeBA"
+      }
+    }
+  }
+}

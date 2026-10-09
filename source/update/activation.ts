@@ -4,7 +4,7 @@ import { once } from "events"
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "fs"
 import { homedir } from "os"
 import { isAbsolute, join, resolve } from "path"
-import { CcbError } from "../protected/errors";
+import { CcpError } from "../protected/errors";
 import { prepareActivation } from "../protected/staged-update";
 
 export interface ActivationLaunch {
@@ -18,8 +18,8 @@ export interface ActivationLaunch {
 
 function stableHelper(sourcePath: string): string {
   const source = readFileSync(resolve(sourcePath));
-  if (source.length === 0 || source.length > 128 * 1024) throw new CcbError("CCB_BUILD_INCOMPATIBLE", "Fixed update activation helper is invalid.");
-  const directory = join(homedir(), ".cc-bridge", "update-helper");
+  if (source.length === 0 || source.length > 128 * 1024) throw new CcpError("CCP_BUILD_INCOMPATIBLE", "Fixed update activation helper is invalid.");
+  const directory = join(homedir(), ".ccp", "update-helper");
   const destination = join(directory, "install-update.ps1");
   const expected = createHash("sha256").update(source).digest("hex");
   if (existsSync(destination) && createHash("sha256").update(readFileSync(destination)).digest("hex") === expected) return destination;
@@ -47,9 +47,9 @@ export async function launchStagedActivation(input: ActivationLaunch): Promise<v
   const verified = prepareActivation(input.creatorPid, input.stagedDirectory, input.liveDirectory, input.descriptorSha256);
   const helperPath = stableHelper(input.helperPath);
   const systemRoot = process.env.SystemRoot;
-  if (!systemRoot || !isAbsolute(systemRoot)) throw new CcbError("CCB_BUILD_INCOMPATIBLE", "Windows system root is unavailable.");
+  if (!systemRoot || !isAbsolute(systemRoot)) throw new CcpError("CCP_BUILD_INCOMPATIBLE", "Windows system root is unavailable.");
   const powershell = join(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
-  if (!existsSync(powershell) || !existsSync(helperPath)) throw new CcbError("CCB_BUILD_INCOMPATIBLE", "Fixed update activation helper is unavailable.");
+  if (!existsSync(powershell) || !existsSync(helperPath)) throw new CcpError("CCP_BUILD_INCOMPATIBLE", "Fixed update activation helper is unavailable.");
   await spawnPowerShell(powershell, [
     "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", helperPath,
     "-CreatorPid", String(verified.creatorPid),
@@ -66,14 +66,14 @@ export async function launchPendingHealthRollback(input: {
   liveDirectory: string;
   helperPath: string;
 }): Promise<void> {
-  if (!Number.isSafeInteger(input.creatorPid) || input.creatorPid < 1) throw new CcbError("CCB_CANONICAL_INVALID", "Creator PID must be a positive integer.");
+  if (!Number.isSafeInteger(input.creatorPid) || input.creatorPid < 1) throw new CcpError("CCP_CANONICAL_INVALID", "Creator PID must be a positive integer.");
   const liveDirectory = resolve(input.liveDirectory);
   const helperPath = stableHelper(input.helperPath);
   const systemRoot = process.env.SystemRoot;
-  if (!systemRoot || !isAbsolute(systemRoot)) throw new CcbError("CCB_BUILD_INCOMPATIBLE", "Windows system root is unavailable.");
+  if (!systemRoot || !isAbsolute(systemRoot)) throw new CcpError("CCP_BUILD_INCOMPATIBLE", "Windows system root is unavailable.");
   const powershell = join(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
   if (!existsSync(powershell) || !existsSync(helperPath) || !existsSync(`${liveDirectory}.prev`)) {
-    throw new CcbError("CCB_BUILD_INCOMPATIBLE", "Pending-health rollback prerequisites are unavailable.");
+    throw new CcpError("CCP_BUILD_INCOMPATIBLE", "Pending-health rollback prerequisites are unavailable.");
   }
   await spawnPowerShell(powershell, [
     "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", helperPath,

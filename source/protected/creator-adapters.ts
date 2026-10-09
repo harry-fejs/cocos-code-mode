@@ -1,4 +1,4 @@
-import { CcbError } from "./errors";
+import { CcpError } from "./errors";
 import type { PrimitiveCommand } from "./primitive-contract";
 
 export type CreatorChannel = (module: string, message: string, ...args: unknown[]) => Promise<unknown>;
@@ -15,7 +15,7 @@ export interface CreatorLocalApis {
 }
 
 function text(value: unknown, label: string): string {
-  if (typeof value !== "string" || value.length === 0) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", `${label} must be a string.`);
+  if (typeof value !== "string" || value.length === 0) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", `${label} must be a string.`);
   return value;
 }
 
@@ -243,7 +243,7 @@ async function assetQuery(channel: CreatorChannel, args: Record<string, unknown>
       return boundAssetTree(rootNode, args);
     }
     default:
-      throw new CcbError("CCB_PRIMITIVE_UNKNOWN", "Unknown finite asset query action.", { action: String(args.action) });
+      throw new CcpError("CCP_PRIMITIVE_UNKNOWN", "Unknown finite asset query action.", { action: String(args.action) });
   }
 }
 
@@ -309,7 +309,7 @@ async function sceneReadNode(channel: CreatorChannel, args: Record<string, unkno
       return { nodes, total, truncated: total > nodes.length };
     }
     default:
-      throw new CcbError("CCB_PRIMITIVE_UNKNOWN", "Unknown finite scene read action.", { action: String(args.action) });
+      throw new CcpError("CCP_PRIMITIVE_UNKNOWN", "Unknown finite scene read action.", { action: String(args.action) });
   }
 }
 
@@ -365,7 +365,7 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
         };
         const primitive = text(args.primitive, "primitive type");
         const prefabUrl = prefabByPrimitive[primitive];
-        if (!prefabUrl) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Primitive type has no fixed Creator prefab.", { primitive });
+        if (!prefabUrl) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Primitive type has no fixed Creator prefab.", { primitive });
         const assetUuid = await channel("asset-db", "query-uuid", prefabUrl);
         let parent = args.parent;
         if (parent === undefined) {
@@ -471,7 +471,7 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
         }
         if (action === "copy") {
           if (args.siblingIndex !== undefined && args.destination === undefined) {
-            throw new CcbError("CCB_CONTRACT_MISMATCH", "Copy with siblingIndex requires a destination.");
+            throw new CcpError("CCP_CONTRACT_MISMATCH", "Copy with siblingIndex requires a destination.");
           }
           const result = await channel("scene", "duplicate-node", [target]);
           const copied = creatorReference(result, "cc.Node");
@@ -506,7 +506,7 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
           });
           if (siblingIndex < 0) throw new Error(`Node ${target} is absent from parent ${parentUuid}.`);
           const created = creatorReference(await channel("scene", "execute-scene-script", {
-            name: "cc-bridge-3x",
+            name: "ccp3x",
             method: "createPrefabFromNode",
             args: [target, text(args.prefabPath, "prefab path")],
           }), "cc.Prefab").reference;
@@ -530,7 +530,7 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
         }
         if (action === "apply_prefab" || action === "unwrap_prefab" || action === "unwrap_prefab_completely") {
           const result = await channel("scene", "execute-scene-script", {
-            name: "cc-bridge-3x",
+            name: "ccp3x",
             method: action === "apply_prefab" ? "applyPrefabByNode" : "unlinkPrefabByNode",
             args: action === "apply_prefab" ? [target] : [target, action === "unwrap_prefab_completely"],
           });
@@ -546,7 +546,7 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
           await channel("asset-db", "open-asset", text(assetUuid, "prefab asset UUID"));
           return { success: true };
         }
-        throw new CcbError("CCB_PRIMITIVE_UNKNOWN", "Unknown finite scene node action.", { action });
+        throw new CcpError("CCP_PRIMITIVE_UNKNOWN", "Unknown finite scene node action.", { action });
       }
       case "asset.query": return assetQuery(channel, args);
       case "asset.operate": {
@@ -607,7 +607,7 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
         }
         const messages: Record<string, [string, string]> = { scene_mode: ["scene", "query-scene-mode"], ready: ["scene", "query-is-ready"], enum_values: ["scene", "query-enum-list-with-path"], layers: ["scene", "query-layer-builtin"], sorting_layers: ["scene", "query-sorting-layer-builtin"], has_script: ["scene", "query-component-has-script"], creatable_assets: ["scene", "query-creatable-asset-types"], asset_types: ["asset-db", "query-all-asset-types"], importers: ["asset-db", "query-all-importer"], shared_settings: ["programming", "query-shared-settings"], sorted_plugins: ["programming", "query-sorted-plugins"] };
         const tuple = messages[category];
-        if (!tuple) throw new CcbError("CCB_PRIMITIVE_UNKNOWN", "Unknown finite editor query category.", { category });
+        if (!tuple) throw new CcpError("CCP_PRIMITIVE_UNKNOWN", "Unknown finite editor query category.", { category });
         const [module, message] = tuple;
         const value = await channel(module, message, ...(args.enumPath !== undefined ? [args.enumPath] : args.className !== undefined ? [args.className] : args.target !== undefined ? [args.target] : []));
         if (category === "scene_mode") return { sceneMode: String(value) };
@@ -623,7 +623,7 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
         return { values: items.map((item) => item && typeof item === "object" ? { name: "name" in item ? item.name : "key" in item ? item.key : undefined, value: "value" in item ? item.value : undefined } : { name: String(item), value: item }) };
       }
       case "editor.selection": {
-        if (!local) throw new CcbError("CCB_PRIMITIVE_UNKNOWN", "Fixed Editor selection adapter is unavailable.");
+        if (!local) throw new CcpError("CCP_PRIMITIVE_UNKNOWN", "Fixed Editor selection adapter is unavailable.");
         const type = args.selectionType === "asset" ? "asset" : "node";
         const targets = Array.isArray(args.targets) ? args.targets.map((target) => text(target, "selection target")) : [];
         if (args.action === "select") local.selection.select(type, targets.length === 1 ? targets[0] : targets);
@@ -632,7 +632,7 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
         else if (args.action === "hover") local.selection.hover(type, targets[0]);
         else if (args.action === "update") local.selection.update(type, targets);
         else if (args.action === "select_all") await channel("scene", "select-all-nodes");
-        else if (args.action !== "query") throw new CcbError("CCB_PRIMITIVE_UNKNOWN", "Unknown finite selection action.", { action: String(args.action) });
+        else if (args.action !== "query") throw new CcpError("CCP_PRIMITIVE_UNKNOWN", "Unknown finite selection action.", { action: String(args.action) });
         return { success: true, selected: local.selection.getSelected(type), lastSelected: local.selection.getLastSelected(type) };
       }
       case "editor.viewport": {
@@ -641,7 +641,7 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
         if (action === "query_gizmo") { const [gizmoTool, gizmoPivot, gizmoCoordinate] = await Promise.all([channel("scene", "query-gizmo-tool-name"), channel("scene", "query-gizmo-pivot"), channel("scene", "query-gizmo-coordinate")]); return { success: true, gizmoTool, gizmoPivot, gizmoCoordinate }; }
         if (action === "query_viewport") { const [is2D, gridVisible, iconGizmo3D, iconGizmoSize] = await Promise.all([channel("scene", "query-is2D"), channel("scene", "query-is-grid-visible"), channel("scene", "query-is-icon-gizmo-3d"), channel("scene", "query-icon-gizmo-size")]); return { success: true, is2D: Boolean(is2D), gridVisible: Boolean(gridVisible), iconGizmo3D: Boolean(iconGizmo3D), iconGizmoSize }; }
         const message = messages[action];
-        if (!message) throw new CcbError("CCB_PRIMITIVE_UNKNOWN", "Unknown finite viewport action.", { action });
+        if (!message) throw new CcpError("CCP_PRIMITIVE_UNKNOWN", "Unknown finite viewport action.", { action });
         if (action === "align_view_to_selected_node" || action === "align_selected_node_to_view") await channel("scene", message);
         else await channel("scene", message, args.targets ?? args.value);
         return { success: true };
@@ -663,7 +663,7 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
           value_at_frame: ["query-property-value-at-frame", [args.clip, ...values]],
         };
         const tuple = calls[query];
-        if (!tuple) throw new CcbError("CCB_PRIMITIVE_UNKNOWN", "Unknown finite animation query.", { query });
+        if (!tuple) throw new CcpError("CCP_PRIMITIVE_UNKNOWN", "Unknown finite animation query.", { query });
         return { result: (await channel("scene", tuple[0], ...tuple[1].filter((value) => value !== undefined))) ?? null };
       }
       case "animation.edit": {
@@ -690,7 +690,7 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
           message = "save-clip";
           callArgs = [];
         } else {
-          throw new CcbError("CCB_PRIMITIVE_UNKNOWN", "Unknown finite animation edit action.", { action });
+          throw new CcpError("CCP_PRIMITIVE_UNKNOWN", "Unknown finite animation edit action.", { action });
         }
         const ok = await channel("scene", message, ...callArgs);
         if ((action === "record_start" || action === "record_stop" || action === "save_clip") && !ok) {
@@ -724,7 +724,7 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
       }
       case "runtime.control": {
         const methods: Record<string, string> = { pause: "runtimePause", resume: "runtimeResume", "set-time-scale": "runtimeSetTimeScale", "get-state": "runtimeGetState" };
-        const result = await channel("scene", "execute-scene-script", { name: "cc-bridge-3x", method: methods[args.action as string], args: args.value === undefined ? [] : [args.value] });
+        const result = await channel("scene", "execute-scene-script", { name: "ccp3x", method: methods[args.action as string], args: args.value === undefined ? [] : [args.value] });
         if (args.action !== "get-state") return { success: result === true, ...(args.action === "set-time-scale" ? { scale: args.value } : {}) };
         if (!result || typeof result !== "object" || Array.isArray(result)
           || !("paused" in result) || typeof result.paused !== "boolean"
@@ -738,13 +738,13 @@ export function createCreatorAdapters(channel: CreatorChannel, local?: CreatorLo
         const target = text(args.target, "button node");
         const node = await channel("scene", "query-node", target);
         if (!node || typeof node !== "object") throw new Error(`Button node ${target} was not found.`);
-        const result = await channel("scene", "execute-scene-script", { name: "cc-bridge-3x", method: "simulateButtonClick", args: [target] });
+        const result = await channel("scene", "execute-scene-script", { name: "ccp3x", method: "simulateButtonClick", args: [target] });
         if (!result || typeof result !== "object" || !("handlersFired" in result) || typeof result.handlersFired !== "number") throw new Error("Button simulation returned an invalid result.");
         return { handlersFired: result.handlersFired, method: "method" in result && typeof result.method === "string" ? result.method : "clickEvents" };
       }
       default: {
         const exhaustive: never = command;
-        throw new CcbError("CCB_PRIMITIVE_UNKNOWN", "Relay has no adapter for this primitive.", { op: String(exhaustive) });
+        throw new CcpError("CCP_PRIMITIVE_UNKNOWN", "Relay has no adapter for this primitive.", { op: String(exhaustive) });
       }
     }
   };

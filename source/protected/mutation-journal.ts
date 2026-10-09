@@ -2,7 +2,7 @@ import { homedir } from "os";
 import { join } from "path";
 import { z } from "zod";
 import { assertIJson, canonicalizeToBytes, IJson } from "./canonical-json";
-import { CcbError } from "./errors";
+import { CcpError } from "./errors";
 import { ensurePrivateDirectory, readPrivateJson, writePrivateJsonAtomic } from "./durable-file";
 
 const DIGEST_PATTERN = /^[a-f0-9]{64}$/;
@@ -64,7 +64,7 @@ export type JournalAdmission =
 
 export class MutationJournal {
   constructor(
-    readonly root = join(homedir(), ".cc-bridge", "journal-v2"),
+    readonly root = join(homedir(), ".ccp", "journal-v2"),
     private readonly resultMaxBytes = 512 * 1024,
   ) {
     ensurePrivateDirectory(root);
@@ -75,14 +75,14 @@ export class MutationJournal {
     const existing = this.read(path);
     if (existing) {
       if (existing.requestId !== requestId || existing.idempotencyKey !== idempotencyKey) {
-        throw new CcbError("CCB_IDEMPOTENCY_CONFLICT", "Journal decision digest is bound to a different request.");
+        throw new CcpError("CCP_IDEMPOTENCY_CONFLICT", "Journal decision digest is bound to a different request.");
       }
       if (existing.state === "completed") {
-        if (existing.result === undefined) throw new CcbError("CCB_INTERNAL", "Completed effect journal has no stored result.");
+        if (existing.result === undefined) throw new CcpError("CCP_INTERNAL", "Completed effect journal has no stored result.");
         return { action: "return-completed", record: existing, result: existing.result };
       }
       if (existing.state === "started" || existing.state === "outcome-unknown") {
-        throw new CcbError("CCB_OUTCOME_UNKNOWN", "A previous effect may have begun and cannot be automatically retried.", {
+        throw new CcpError("CCP_OUTCOME_UNKNOWN", "A previous effect may have begun and cannot be automatically retried.", {
           requestId,
           attemptedCommandIds: existing.attemptedCommandIds.join(","),
           completedCommandIds: existing.completedCommandIds.join(","),
@@ -114,8 +114,8 @@ export class MutationJournal {
     const path = this.recordPath(decisionDigest);
     const existing = this.read(path);
     if (!existing || existing.state !== "prepared") {
-      if (existing?.state === "started" || existing?.state === "outcome-unknown") throw new CcbError("CCB_OUTCOME_UNKNOWN", "Effect journal is already in an ambiguous state.");
-      throw new CcbError("CCB_INTERNAL", "Effect journal was not prepared before execution.");
+      if (existing?.state === "started" || existing?.state === "outcome-unknown") throw new CcpError("CCP_OUTCOME_UNKNOWN", "Effect journal is already in an ambiguous state.");
+      throw new CcpError("CCP_INTERNAL", "Effect journal was not prepared before execution.");
     }
     const started: MutationJournalRecord = {
       ...existing,
@@ -131,11 +131,11 @@ export class MutationJournal {
     assertIJson(result);
     const resultBytes = canonicalizeToBytes(result);
     if (resultBytes.byteLength > this.resultMaxBytes) {
-      throw new CcbError("CCB_RESULT_TOO_LARGE", "Effect result exceeds the durable journal limit.", { maxBytes: this.resultMaxBytes });
+      throw new CcpError("CCP_RESULT_TOO_LARGE", "Effect result exceeds the durable journal limit.", { maxBytes: this.resultMaxBytes });
     }
     const path = this.recordPath(decisionDigest);
     const existing = this.read(path);
-    if (!existing || existing.state !== "started") throw new CcbError("CCB_INTERNAL", "Effect journal was not started before completion.");
+    if (!existing || existing.state !== "started") throw new CcpError("CCP_INTERNAL", "Effect journal was not started before completion.");
     const completed: MutationJournalRecord = {
       ...existing,
       state: "completed",
@@ -153,7 +153,7 @@ export class MutationJournal {
     const path = this.recordPath(decisionDigest);
     const existing = this.read(path);
     if (!existing || (existing.state !== "started" && existing.state !== "outcome-unknown")) {
-      throw new CcbError("CCB_INTERNAL", "Effect journal was not started before recording ambiguity.");
+      throw new CcpError("CCP_INTERNAL", "Effect journal was not started before recording ambiguity.");
     }
     const ambiguous: MutationJournalRecord = {
       ...existing,

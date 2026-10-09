@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const extensionName = 'cc-bridge-3x';
+const extensionName = 'ccp3x';
 const repositoryRoot = path.resolve(__dirname, '..');
 
 function backupPathFor(destination) {
@@ -16,7 +16,7 @@ function linkProjectExtension({ projectPath, sourcePath = repositoryRoot, replac
 
   const project = path.resolve(projectPath);
   const source = path.resolve(sourcePath);
-  const destination = path.join(project, 'extensions', extensionName);
+  const destination = path.join(project, 'extensions', extensionName); for (const legacy of ['cc-bridge-3x', 'cocos-pilot-3x']) if (fs.existsSync(path.join(project, 'extensions', legacy))) throw new Error(`Legacy extension ${legacy} is still installed; close Creator and preserve it outside extensions before installing CCP (no double loading).`);
 
   if (!fs.statSync(project).isDirectory()) {
     throw new Error(`Cocos project directory does not exist: ${project}`);
@@ -48,7 +48,7 @@ function usage() {
   return [
     'Usage: npm run link:project -- <path-to-cocos-project> [--replace]',
     '',
-    '--replace  Rename an existing cc-bridge-3x directory to a timestamped backup before linking.',
+    '--replace  Rename an existing ccp3x directory to a timestamped backup before linking.',
   ].join('\n');
 }
 

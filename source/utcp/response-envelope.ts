@@ -104,7 +104,7 @@ export function createResultEnvelope(toolName: string, args: any, result: any, o
     const refs = collectRefs(result);
     const timestamp = new Date().toISOString();
     const summary = opts.summary || summarizeResult(result);
-    const callId = `ccb_${hashObject({ tool: toolName, args: args || {}, result })}`;
+    const callId = `ccp_${hashObject({ tool: toolName, args: args || {}, result })}`;
     return {
         ok: opts.ok !== false,
         tool: toolName,

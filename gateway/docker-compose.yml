@@ -1,42 +1,43 @@
 services:
-  cc-bridge-gateway:
+  ccp-gateway:
     build: .
-    image: cc-bridge-gateway:dev
-    container_name: cc-bridge-gateway
+    image: ccp-gateway:dev
+    container_name: ccp-gateway
     restart: unless-stopped
     init: true
     environment:
       NODE_ENV: production
-      CCB_GATEWAY_HOST: ${CCB_GATEWAY_HOST:-0.0.0.0}
-      CCB_GATEWAY_PORT: "${CCB_GATEWAY_PORT:-8787}"
-      CCB_CACHE_DIR: /data
-      CCB_DB_PATH: /data/cc-bridge.db
-      CCB_ALLOWED_HOSTS: ${CCB_ALLOWED_HOSTS:-127.0.0.1,localhost,192.168.20.100}
-      CCB_EXECUTION_KEY_ID: ${CCB_EXECUTION_KEY_ID:-}
-      CCB_ALLOW_MEMORY_SIGNER: ${CCB_ALLOW_MEMORY_SIGNER:-}
-      CCB_EXECUTION_PRIVATE_KEY_PKCS8: ${CCB_EXECUTION_PRIVATE_KEY_PKCS8:-}
-      CCB_SIGNER_SOCKET: ${CCB_SIGNER_SOCKET:-}
-      CCB_RELEASE_TARGETS_KEY_ID: ${CCB_RELEASE_TARGETS_KEY_ID:-release-targets}
-      CCB_RELEASE_TARGETS_PUBLIC_KEY_PEM: ${CCB_RELEASE_TARGETS_PUBLIC_KEY_PEM:-}
-      CCB_RELEASE_POLICY_KEY_ID: ${CCB_RELEASE_POLICY_KEY_ID:-rollout-policy}
-      CCB_RELEASE_POLICY_PUBLIC_KEY_PEM: ${CCB_RELEASE_POLICY_PUBLIC_KEY_PEM:-}
-      CCB_RELEASE_TARGETS_THRESHOLD: ${CCB_RELEASE_TARGETS_THRESHOLD:-1}
-      CCB_RELEASE_POLICY_THRESHOLD: ${CCB_RELEASE_POLICY_THRESHOLD:-1}
+      CCP_GATEWAY_HOST: ${CCP_GATEWAY_HOST:-0.0.0.0}
+      CCP_GATEWAY_CONTAINER_LOOPBACK: "${CCP_GATEWAY_CONTAINER_LOOPBACK:-1}"
+      CCP_GATEWAY_PORT: "${CCP_GATEWAY_PORT:-8787}"
+      CCP_CACHE_DIR: /data
+      CCP_DB_PATH: /data/ccp.db
+      CCP_ALLOWED_HOSTS: ${CCP_ALLOWED_HOSTS:-127.0.0.1,localhost,192.168.20.100}
+      CCP_EXECUTION_KEY_ID: ${CCP_EXECUTION_KEY_ID:-}
+      CCP_ALLOW_MEMORY_SIGNER: ${CCP_ALLOW_MEMORY_SIGNER:-}
+      CCP_EXECUTION_PRIVATE_KEY_PKCS8: ${CCP_EXECUTION_PRIVATE_KEY_PKCS8:-}
+      CCP_SIGNER_SOCKET: ${CCP_SIGNER_SOCKET:-}
+      CCP_RELEASE_TARGETS_KEY_ID: ${CCP_RELEASE_TARGETS_KEY_ID:-release-targets}
+      CCP_RELEASE_TARGETS_PUBLIC_KEY_PEM: ${CCP_RELEASE_TARGETS_PUBLIC_KEY_PEM:-}
+      CCP_RELEASE_POLICY_KEY_ID: ${CCP_RELEASE_POLICY_KEY_ID:-rollout-policy}
+      CCP_RELEASE_POLICY_PUBLIC_KEY_PEM: ${CCP_RELEASE_POLICY_PUBLIC_KEY_PEM:-}
+      CCP_RELEASE_TARGETS_THRESHOLD: ${CCP_RELEASE_TARGETS_THRESHOLD:-1}
+      CCP_RELEASE_POLICY_THRESHOLD: ${CCP_RELEASE_POLICY_THRESHOLD:-1}
       DTX_MEMBER_JWT_ISSUER: ${DTX_MEMBER_JWT_ISSUER:-mcpdocs}
       DTX_MEMBER_JWT_PUBLIC_KEY_PATH: /run/secrets/member-jwt-public.pem
     ports:
-      - "${CCB_GATEWAY_PUBLISH_PORT:-8787}:${CCB_GATEWAY_PORT:-8787}"
+      - "127.0.0.1:${CCP_GATEWAY_PUBLISH_PORT:-8787}:${CCP_GATEWAY_PORT:-8787}"
     volumes:
-      - cc-bridge-data:/data
-      - signer-sock:/run/cc-bridge
-      - ${USERPROFILE}/.cc-bridge/member-jwt-public.pem:/run/secrets/member-jwt-public.pem:ro
+      - ccp-data:/data
+      - signer-sock:/run/ccp
+      - ${USERPROFILE}/.ccp/member-jwt-public.pem:/run/secrets/member-jwt-public.pem:ro
     healthcheck:
       test:
         [
           "CMD",
           "node",
           "-e",
-          "fetch(`http://127.0.0.1:${CCB_GATEWAY_PORT:-8787}/ccb/v1/health`).then(async(r)=>{const b=await r.json().catch(()=>null);process.exit(r.ok&&b?.ok===true&&b?.signer==='configured'?0:1)}).catch(()=>process.exit(1))",
+          "fetch(`http://127.0.0.1:${CCP_GATEWAY_PORT:-8787}/ccp/v1/health`).then(async(r)=>{const b=await r.json().catch(()=>null);process.exit(r.ok&&b?.ok===true&&b?.signer==='configured'?0:1)}).catch(()=>process.exit(1))",
         ]
       interval: 15s
       timeout: 5s
@@ -45,27 +46,27 @@ services:
 
   # Production signing: private key stays in this process, not in the Gateway.
   #   docker compose --profile signer up -d
-  # Requires CCB_SIGNER_PRIVATE_KEY_PATH on the host (PEM Ed25519).
-  cc-bridge-signer:
+  # Requires CCP_SIGNER_PRIVATE_KEY_PATH on the host (PEM Ed25519).
+  ccp-signer:
     profiles: ["signer"]
-    image: cc-bridge-gateway:dev
+    image: ccp-gateway:dev
     build: .
-    container_name: cc-bridge-signer
+    container_name: ccp-signer
     restart: unless-stopped
     init: true
     environment:
-      CCB_SIGNER_SOCKET: /run/cc-bridge/signer.sock
-      CCB_EXECUTION_KEY_ID: ${CCB_EXECUTION_KEY_ID:-execution-dev-1}
-      CCB_SIGNER_PRIVATE_KEY_PATH: /run/secrets/execution-private.pem
+      CCP_SIGNER_SOCKET: /run/ccp/signer.sock
+      CCP_EXECUTION_KEY_ID: ${CCP_EXECUTION_KEY_ID:-execution-dev-1}
+      CCP_SIGNER_PRIVATE_KEY_PATH: /run/secrets/execution-private.pem
     volumes:
-      - signer-sock:/run/cc-bridge
+      - signer-sock:/run/ccp
       - ./secrets/execution-private.pem:/run/secrets/execution-private.pem:ro
     entrypoint: ["/usr/bin/dumb-init", "--"]
     command:
       - /bin/sh
       - -c
-      - mkdir -p /run/cc-bridge && chown node:node /run/cc-bridge && su-exec node yarn signer:start
+      - mkdir -p /run/ccp && chown node:node /run/ccp && su-exec node yarn signer:start
 
 volumes:
-  cc-bridge-data:
+  ccp-data:
   signer-sock:

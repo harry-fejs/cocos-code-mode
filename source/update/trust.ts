@@ -1,6 +1,6 @@
 import { createHash, createPublicKey } from "crypto"
 import type { KeyLike } from "crypto"
-import { CcbError } from "../protected/errors";
+import { CcpError } from "../protected/errors";
 import { decodeBase64Url } from "../protected/protocol";
 import {
   ReleaseTargetBody,
@@ -41,7 +41,7 @@ function activeAt(issuedAt: string, expiresAt: string, nowMs: number, label: str
   const issued = Date.parse(issuedAt);
   const expires = Date.parse(expiresAt);
   if (!Number.isFinite(issued) || !Number.isFinite(expires) || issued > nowMs || expires <= nowMs || expires <= issued) {
-    throw new CcbError(issued > nowMs || expires <= issued ? "CCB_CANONICAL_INVALID" : "CCB_EXPIRED", `${label} metadata is not currently valid.`);
+    throw new CcpError(issued > nowMs || expires <= issued ? "CCP_CANONICAL_INVALID" : "CCP_EXPIRED", `${label} metadata is not currently valid.`);
   }
 }
 
@@ -49,17 +49,17 @@ function roleKeys(root: RootBody, role: keyof RootBody["roles"]): { keys: Readon
   const definition = root.roles[role];
   const unique = new Set(definition.keyIds);
   if (unique.size !== definition.keyIds.length || definition.threshold > unique.size) {
-    throw new CcbError("CCB_CANONICAL_INVALID", `Root ${role} role is invalid.`);
+    throw new CcpError("CCP_CANONICAL_INVALID", `Root ${role} role is invalid.`);
   }
   const keys = new Map<string, KeyLike>();
   for (const keyId of definition.keyIds) {
     const definitionForKey = root.keys[keyId];
-    if (!definitionForKey) throw new CcbError("CCB_CANONICAL_INVALID", `Root ${role} role references an unknown key.`);
+    if (!definitionForKey) throw new CcpError("CCP_CANONICAL_INVALID", `Root ${role} role references an unknown key.`);
     try {
       const der = decodeBase64Url(definitionForKey.spkiDer, 44, 44);
       keys.set(keyId, createPublicKey({ key: der, format: "der", type: "spki" }));
     } catch {
-      throw new CcbError("CCB_CANONICAL_INVALID", `Root ${role} key is not a valid Ed25519 SPKI key.`);
+      throw new CcpError("CCP_CANONICAL_INVALID", `Root ${role} key is not a valid Ed25519 SPKI key.`);
     }
   }
   return { keys, threshold: definition.threshold };
@@ -86,7 +86,7 @@ export function acceptRootRotation(current: RootBody, candidateWrapper: SignedMe
     { label: "current-root", ...currentRole },
     { label: "candidate-root", ...candidateRole },
   ]);
-  if (candidate.rootVersion <= current.rootVersion) throw new CcbError("CCB_REPLAY", "Root version must increase.");
+  if (candidate.rootVersion <= current.rootVersion) throw new CcpError("CCP_REPLAY", "Root version must increase.");
   activeAt(candidate.issuedAt, candidate.expiresAt, nowMs, "Candidate root");
   return candidate;
 }
@@ -109,8 +109,8 @@ export function acceptRelease(
 
   const targetPayloadSha256 = payloadDigest(targetWrapper);
   const policyPayloadSha256 = payloadDigest(policyWrapper);
-  if (policy.targetPayloadSha256 !== targetPayloadSha256) throw new CcbError("CCB_SIGNATURE_INVALID", "Rollout policy targets different signed target bytes.");
-  if (policy.channel !== compatibility.channel) throw new CcbError("CCB_BUILD_INCOMPATIBLE", "Rollout policy channel does not match this relay.");
+  if (policy.targetPayloadSha256 !== targetPayloadSha256) throw new CcpError("CCP_SIGNATURE_INVALID", "Rollout policy targets different signed target bytes.");
+  if (policy.channel !== compatibility.channel) throw new CcpError("CCP_BUILD_INCOMPATIBLE", "Rollout policy channel does not match this relay.");
   const current = stateStore.load();
   if (policy.emergencyStop) {
     stateStore.persistIfMonotonic({
@@ -123,30 +123,30 @@ export function acceptRelease(
       channel: policy.channel,
       ring: policy.ring,
     });
-    throw new CcbError("CCB_BUILD_INCOMPATIBLE", "Rollout policy emergency stop is active.");
+    throw new CcpError("CCP_BUILD_INCOMPATIBLE", "Rollout policy emergency stop is active.");
   }
   if (ringRank(policy.ring) > ringRank(compatibility.allowedRing) || !selectedForPercentage(compatibility.deviceId, policy.percentage)) {
-    throw new CcbError("CCB_BUILD_INCOMPATIBLE", "This device is not selected for the rollout ring.");
+    throw new CcpError("CCP_BUILD_INCOMPATIBLE", "This device is not selected for the rollout ring.");
   }
-  if (policy.blockedBuilds.includes(compatibility.currentBuild)) throw new CcbError("CCB_BUILD_INCOMPATIBLE", "Current relay build is blocked.");
+  if (policy.blockedBuilds.includes(compatibility.currentBuild)) throw new CcpError("CCP_BUILD_INCOMPATIBLE", "Current relay build is blocked.");
   if (policy.minimumBuild && !satisfiesSemverRange(compatibility.currentBuild, `>=${policy.minimumBuild}`)) {
-    throw new CcbError("CCB_BUILD_INCOMPATIBLE", "Current relay build is below the policy minimum.");
+    throw new CcpError("CCP_BUILD_INCOMPATIBLE", "Current relay build is below the policy minimum.");
   }
   if (compatibility.protocolVersion < target.compatibility.protocol.min || compatibility.protocolVersion > target.compatibility.protocol.max) {
-    throw new CcbError("CCB_CONTRACT_MISMATCH", "Release target protocol range is incompatible.");
+    throw new CcpError("CCP_CONTRACT_MISMATCH", "Release target protocol range is incompatible.");
   }
   if (!target.compatibility.os.includes(compatibility.os) || !target.compatibility.arch.includes(compatibility.arch)) {
-    throw new CcbError("CCB_BUILD_INCOMPATIBLE", "Release target platform is incompatible.");
+    throw new CcpError("CCP_BUILD_INCOMPATIBLE", "Release target platform is incompatible.");
   }
   if (!satisfiesSemverRange(compatibility.creatorVersion, target.compatibility.creator)) {
-    throw new CcbError("CCB_CREATOR_INCOMPATIBLE", "Release target Creator range is incompatible.");
+    throw new CcpError("CCP_CREATOR_INCOMPATIBLE", "Release target Creator range is incompatible.");
   }
   const rollbackTargetPayloadSha256 = current.activeTargetPayloadSha256
     && policy.rollbackTargetPayloadSha256.includes(current.activeTargetPayloadSha256)
     ? current.activeTargetPayloadSha256
     : undefined;
   if (current.activeTargetPayloadSha256 && !rollbackTargetPayloadSha256) {
-    throw new CcbError("CCB_BUILD_INCOMPATIBLE", "Rollout policy does not permit health rollback to the active release.");
+    throw new CcpError("CCP_BUILD_INCOMPATIBLE", "Rollout policy does not permit health rollback to the active release.");
   }
   const next = stateStore.persistIfMonotonic({
     ...current,

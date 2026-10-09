@@ -6,7 +6,7 @@ import {
 } from './local-auth';
 import { bindJsonWitness, LocalHttpContext, LocalHttpServer, sendJson } from './http-server';
 import { ProtectedRelayHost } from '../protected/relay-host';
-import { CcbError, toCcbErrorBody } from '../protected/errors';
+import { CcpError, toCcpErrorBody } from '../protected/errors';
 import { getConfigManager } from './config-manager';
 import { randomUUID } from '../protected/node14-compat';
 import { dirname, join } from 'path';
@@ -273,6 +273,7 @@ export class UtcpServerManager {
     public port: number = 0;
     private readonly host?: ProtectedRelayHost;
     private localAuth: LocalAuthContext | null = null;
+    private publishedConfigPath: string | null = null;
     constructor(host?: ProtectedRelayHost) {
         this.host = host;
         registerAllImporters();
@@ -280,23 +281,26 @@ export class UtcpServerManager {
 
     async start(port: number = 3000): Promise<number> {
         if (this.http) throw new Error('UTCP Server is already running');
-        if (!this.host) throw new CcbError('CCB_GATEWAY_UNAVAILABLE', 'UTCP startup requires a bound protected relay instance.');
-        const localAuth = createProjectLocalAuth(Editor.Project.path, randomUUID(), join(dirname(getConfigManager().getConfigPath()), '.cc-bridge', 'local-auth'));
+        if (!this.host) throw new CcpError('CCP_GATEWAY_UNAVAILABLE', 'UTCP startup requires a bound protected relay instance.');
+        const configPath = getConfigManager().getConfigPath();
+        const localAuth = createProjectLocalAuth(Editor.Project.path, randomUUID(), join(dirname(configPath), '.ccp', 'local-auth'));
         const http = new LocalHttpServer(localAuth);
         this.http = http;
         try {
             const actualPort = await http.listen(port);
             await getConfigManager().ensureCocosEditorTemplate(actualPort, localAuth, this.host.gatewayContext);
+            this.publishedConfigPath = configPath;
             this.host.relayInstanceId = localAuth.relayInstanceId;
             this.localAuth = localAuth;
             this.port = actualPort;
             this.registerTools(actualPort, ToolRegistry.getTools(), new Map<Function, object>(), []);
             return actualPort;
         } catch (error) {
-            if (this.localAuth) await getConfigManager().removeCocosEditorTemplate(this.localAuth).catch(() => undefined);
+            if (this.localAuth) await getConfigManager().removeCocosEditorTemplate(this.localAuth, this.publishedConfigPath ?? configPath).catch(() => undefined);
             await http.close().catch(() => {});
             this.http = null;
             this.localAuth = null;
+            this.publishedConfigPath = null;
             throw error;
         }
     }
@@ -337,10 +341,10 @@ export class UtcpServerManager {
                 const { body, query, response, startedAt } = context;
                 const duration = () => ({ 'x-duration-ms': String(Date.now() - startedAt) });
                 const trace = this.host?.qualificationTrace;
-                const callId = context.request.headers['x-ccb-qualification-call'];
+                const callId = context.request.headers['x-ccp-qualification-call'];
                 let qualificationRequestId: string | null = null;
                 const witnessed = trace?.liveRunId && typeof callId === 'string' && /^[0-9a-f-]{36}$/i.test(callId)
-                    && context.request.headers['x-ccb-qualification-run'] === trace.liveRunId;
+                    && context.request.headers['x-ccp-qualification-run'] === trace.liveRunId;
                 if (witnessed && trace && typeof callId === 'string') bindJsonWitness(response, (status, bytes, finished) => trace.httpResult(callId, qualificationRequestId, toolDef.name, status, bytes, finished));
                 try {
                     if (!isToolExposed(toolDef.name, activeProfile, enabledTools, disabledTools)) {
@@ -379,8 +383,8 @@ export class UtcpServerManager {
                         duration(),
                     );
                 } catch (error) {
-                    if (error instanceof CcbError) {
-                        sendJson(response, 422, toCcbErrorBody(error), duration());
+                    if (error instanceof CcpError) {
+                        sendJson(response, 422, toCcpErrorBody(error), duration());
                         return;
                     }
                     console.error(`Error in tool ${toolDef.name}:`, error);
@@ -421,7 +425,7 @@ export class UtcpServerManager {
 
     private async dispatchProtected(toolName: string, args: Record<string, unknown>, idempotencyKey?: string,
         qualificationCallId?: string, onQualificationRequest?: (requestId: string) => void): Promise<unknown> {
-        if (!this.host) throw new CcbError('CCB_GATEWAY_UNAVAILABLE', 'Protected tools require an active Gateway relay host.');
+        if (!this.host) throw new CcpError('CCP_GATEWAY_UNAVAILABLE', 'Protected tools require an active Gateway relay host.');
         return dispatchProtectedCustomerTool(this.host, toolName, args, { idempotencyKey, qualificationCallId, onQualificationRequest });
     }
     
@@ -439,9 +443,10 @@ export class UtcpServerManager {
         if (!http) return;
         this.beginDrain();
         await http.close();
-        if (this.localAuth) await getConfigManager().removeCocosEditorTemplate(this.localAuth);
+        if (this.localAuth) await getConfigManager().removeCocosEditorTemplate(this.localAuth, this.publishedConfigPath ?? undefined);
         this.http = null;
         this.localAuth = null;
+        this.publishedConfigPath = null;
         this.port = 0;
         console.log('UTCP Server stopped');
     }

@@ -36,7 +36,7 @@ async function migrate(configPath, apply) {
   const { config, state: external } = withConfigLock(configPath, () => ({ config: readUtcpConfig(configPath), state: readConnectionState(configPath) }));
   const snapshot = JSON.stringify(config);
   const registrySnapshot = JSON.stringify(external);
-  const embedded = config.variables?.CCB_PROJECT_CONNECTIONS;
+  if (config.variables?.CCB_PROJECT_CONNECTIONS !== undefined && config.variables?.CCP_PROJECT_CONNECTIONS !== undefined) throw new Error('conflicting legacy/current embedded registries'); const embedded = config.variables?.CCP_PROJECT_CONNECTIONS ?? config.variables?.CCB_PROJECT_CONNECTIONS;
   const legacy = embedded === undefined ? null : LegacyConnectionStateSchema.parse(JSON.parse(embedded));
   const state = { ...external, projects: { ...external.projects } };
   for (const [id, connection] of Object.entries(legacy?.projects || {})) {
@@ -44,7 +44,7 @@ async function migrate(configPath, apply) {
     state.projects[id] = connection;
   }
   const cleanConfig = { ...config, variables: { ...config.variables } };
-  delete cleanConfig.variables.CCB_PROJECT_CONNECTIONS;
+  delete cleanConfig.variables.CCB_PROJECT_CONNECTIONS; delete cleanConfig.variables.CCP_PROJECT_CONNECTIONS;
   assertConnectionConfig(cleanConfig, state);
   const quarantined = [...(legacy?.quarantined || [])];
   const reports = [];
@@ -67,7 +67,8 @@ async function migrate(configPath, apply) {
   const removedManuals = new Set();
   for (let index = 0; index < config.manual_call_templates.length; index += 1) {
     const manual = config.manual_call_templates[index];
-    if (!/^ccb3x(?:_\d+)?$/.test(String(manual.name))) continue;
+    // ccb3x is an intentional historical migration input, never an active alias.
+    if (!/^(?:ccb3x(?:_\d+)?|ccp3x_\d+)$/.test(String(manual.name))) continue;
     let url;
     try { url = new URL(manual.url); } catch { continue; }
     if (url.protocol !== 'http:' || !['localhost', '127.0.0.1'].includes(url.hostname) || url.username || url.password || url.search || url.hash || url.pathname !== '/utcp') continue;
@@ -113,7 +114,7 @@ if (require.main === module) {
     if (args[i] === '--config') { if (!args[++i]) throw new Error('--config requires a path'); }
     else if (!['--apply', '--dry-run'].includes(args[i])) throw new Error(`unknown argument ${args[i]}`);
   }
-  const configPath = path.resolve(index >= 0 ? args[index + 1] : path.join(os.homedir(), '.utcp_config.json'));
+  const configPath = path.resolve(index >= 0 ? args[index + 1] : process.env.UTCP_CONFIG_FILE || path.join(os.homedir(), '.utcp_config.json'));
   migrate(configPath, apply).then((report) => console.log(JSON.stringify(report, null, 2))).catch((error) => { console.error(error.message); process.exitCode = 1; });
 }
 module.exports = { migrate };

@@ -1,6 +1,6 @@
-# CC Bridge 3x — Cocos Creator 3.7 bridge (UTCP)
+# CCP 3x — Cocos Creator 3.7 bridge (UTCP)
 
-**CC Bridge 3x** (formerly `cocos-code-mode-3x7`) turns the Cocos Creator Editor into an AI-controllable tool. It runs an HTTP server inside the editor that exposes scene manipulation, asset management, and property inspection as structured tool calls via [UTCP Protocol](https://www.utcp.io/) — letting AI agents build, inspect, and modify Cocos Creator projects the same way a developer would through the UI.
+**CCP 3x** (formerly `cocos-code-mode-3x7`) turns the Cocos Creator Editor into an AI-controllable tool. It runs an HTTP server inside the editor that exposes scene manipulation, asset management, and property inspection as structured tool calls via [UTCP Protocol](https://www.utcp.io/) — letting AI agents build, inspect, and modify Cocos Creator projects the same way a developer would through the UI.
 These tools are combined in [UTCP Code Mode](https://github.com/universal-tool-calling-protocol/code-mode/) environment to achieve maximum performance and token efficiency for AI agents, letting them call the tools in isolated JS sandbox.
 
 ## Quickstart
@@ -90,15 +90,15 @@ This extension architecture follows a **discover, then act** pattern. AI agents 
 
 ```typescript
 // Preferred (consolidated): discover → set in one session
-const tree = ccb3x.nodeGetTree({ maxDepth: 2, fields: ['name', 'active'] });
+const tree = ccp3x_49650.nodeGetTree({ maxDepth: 2, fields: ['name', 'active'] });
 const ref = tree.children[0].reference;
 
 // Single-class definition instead of full dump
-const { definition } = await ccb3x.inspectorGetDefinition({ target: 'instance', reference: ref, section: 'UITransform' });
+const { definition } = await ccp3x_49650.inspectorGetDefinition({ target: 'instance', reference: ref, section: 'UITransform' });
 
 // Unified get/set — no need to pick inspector*Instance vs inspector*Settings
-const { dump } = await ccb3x.inspectorGet({ target: 'instance', reference: ref, fields: ['position'] });
-await ccb3x.inspectorSet({ target: 'instance', reference: ref, propertyPaths: ['position.x'], values: [120] });
+const { dump } = await ccp3x_49650.inspectorGet({ target: 'instance', reference: ref, fields: ['position'] });
+await ccp3x_49650.inspectorSet({ target: 'instance', reference: ref, propertyPaths: ['position.x'], values: [120] });
 
 // 2.0.0: legacy removed — use consolidated names above.
 ```
@@ -193,7 +193,7 @@ cd cocos-code-mode
 npm i
 npm run package
 ```
-4. If everything builds fine, `cc-bridge-3x.zip` file should appear in repository root.
+4. If everything builds fine, `ccp3x.zip` file should appear in repository root.
 5. Install it in Cocos Creator with **Extension Manager**.
 
 Customer releases prohibit generic process launch. In addition to the existing fixed updater activation launcher, Windows protected-state storage has one bounded security exception: `source/protected/durable-file.ts` invokes the system PowerShell executable with a constant ACL script, passing only the path and file/directory flag through environment variables. It removes inherited access and enforces/verifies FullControl for the current user and SYSTEM only. Both the final renamed-package witness and release inventory require the unique `protected/durable-file.js` rename-map identity and the reviewed SHA-256 of the entire emitted module (`scripts/fixed-acl-witness.js`); adding a launcher or changing the command/ACL invalidates that approval. Source or compiler/minifier changes require reviewing the emitted code before updating the pin, never automatic repinning. This build witness is not signed installed/runtime evidence. Focused regression: `node --test tests/unit/fixed-acl-witness.test.js`.
@@ -206,7 +206,7 @@ For rapid iteration, link the project extension directory directly to this repos
 npm run link:project -- "G:\path\to\cocos-project"
 ```
 
-If the project already has an imported `cc-bridge-3x`, preserve it as a timestamped backup while replacing it:
+If the project already has an imported `ccp3x`, preserve it as a timestamped backup while replacing it:
 
 ```powershell
 npm run link:project -- "G:\path\to\cocos-project" --replace
@@ -221,16 +221,18 @@ Do not use **Delete** in Extension Manager while the extension path is a junctio
 The source witness (`verify-qualification-witness.js`) remains source-only and always refuses signed-live acceptance. Use the separate installed-live pair only against a genuinely updater-installed signed package:
 
 ```powershell
-$env:CCB_INSTALLED_LIVE_CONFIG_PATH = 'C:\Users\you\.cc-bridge\qualification\config.json'
+$env:CCP_INSTALLED_LIVE_CONFIG_PATH = 'C:\Users\you\.ccp\qualification\config.json'
 node scripts/run-installed-live-qualification.js
 node scripts/verify-installed-live-qualification.js
 ```
 
-Before starting Creator, set `CCB_QUALIFICATION_TRACE_PATH` (fresh source NDJSON), `CCB_QUALIFICATION_LIVE_TRACE_PATH` (fresh signed live NDJSON), `CCB_QUALIFICATION_LIVE_RUN_ID` (fresh v4 UUID), and optionally `CCB_QUALIFICATION_MARKERS_PATH`. Trace paths must be absolute, inside the user home, not traverse links, and not already exist. Without this opt-in the authenticated `/qualification/identity` route and HTTP witness collection do not exist. Restarting requires fresh trace paths.
+Before starting Creator, set `CCP_QUALIFICATION_TRACE_PATH` (fresh source NDJSON), `CCP_QUALIFICATION_LIVE_TRACE_PATH` (fresh signed live NDJSON), `CCP_QUALIFICATION_LIVE_RUN_ID` (fresh v4 UUID), and optionally `CCP_QUALIFICATION_MARKERS_PATH`. Trace paths must be absolute, inside the user home, not traverse links, and not already exist. Without this opt-in the authenticated `/qualification/identity` route and HTTP witness collection do not exist. Restarting requires fresh trace paths.
 
 The private client config is JSON with `schemaVersion: 1`, matching `runId`, `projectPath`, `configPath` (UTCP config), `installedDirectory`, `releaseDirectory` (immutable updater release set containing `root.signed.json`, `target.signed.json`, `policy.signed.json` and the four release artifacts), `trustedRootPath` (raw canonical root payload), `trustedRootSha256` (independent trust pin), `devicePublicKeyDer` (independently approved enrolled device public key), `sourceTracePath`, `liveTracePath`, fresh `runPath`/`reportPath`, and `scenarios`. Each scenario specifies `id`, `toolId`, actual `inputs`, `expectedOutcome`, and `workflow` (`read`, `mutation`, `ten-step`, or `local-screenshot`); a stable `idempotencyKey` is optional. Inputs can consume a preceding actual HTTP result using `{ "$result": "scenario-id/path/to/field" }`. No node IDs or image data are fabricated. The canonical project registry selects the exact current port/session/token/Gateway and `/connection` must agree before and after the run.
 
 The runner verifies trusted signatures, release artifact hashes, every installed file, descriptor/target/build identity, and the independent device-key pin before making scenario calls. It retains only approved metadata and hashes, not credentials, raw results, or screenshots. Signed device events bind real post-trim/envelope HTTP response bytes to the client hashes, protected dispatch phases, actual Creator IPC counters, Gateway response-byte hashes, ten executed command counts, and observed next-request completion telemetry. Device signatures authenticate local instrumentation, not hardware attestation.
+
+To reverify immutable evidence without overwriting its original report or changing the pinned config, set `CCP_INSTALLED_LIVE_REPORT_PATH` to a fresh absolute report path. Per-operation runtime credit is separate from request-pointer projection audit: when a real observation reaches the 512-pointer cap, measured HTTP/counters/phases can earn runtime credit, but `payloadProjectionVerified: false` remains an overall unverified gap. Denied effectful calls may perform measured upfront observation IPC; denial credit requires zero **post-Gateway effect IPC**, not a fabricated zero total. Completion telemetry proves the observed signed next-request carrier only; inspect real Gateway persistence separately. Optional `large-result` scenarios specify `minimumHttpBytes` (at least 65536) and earn credit only from actually measured independent HTTP result bytes.
 
 For canary credit, `markersPath` contains the existing marker policy fields (`label`, private `value`, `allowedInGatewayRequest`, `allowedSurfaces`) plus `sourceKind` (`operation-input`, `creator-observation`, or `local-result`). Inject the canary into the real selected input/Creator state/result, not a source fixture; signed instrumentation must observe that source. `surfacesPath` uses the existing six-surface manifest (`name`, absolute `root`, `files`); installed-live scans every file under each non-overlapping root, including undeclared files, with 32 MiB/file and 128 MiB/4096-file total limits. Capture real Gateway DB/logs/metrics, relay logs, update state and support-bundle snapshots before verification; source fixture contents are not live capture evidence. Absent or empty surfaces, unobserved injection, unavailable counters, HTTP errors/mismatches, missing workflows or telemetry produce explicit unverified gaps and `pass: false`. Screenshot credit is local-only, never a claimed Gateway round trip. Exit codes: runner `0` means collection finished, not acceptance; verifier `0` means all required evidence verified, `2` means a published partial report, `1` means rejected evidence.
 
@@ -270,7 +272,7 @@ Register the class by importing it in `utcp-server.ts`. Tools are served automat
 
 ## UTCP Call Templates Configuration
 
-The extension provides a **Configuration** panel in the **CC Bridge 3x** menu. It shows the current server port, the path to the UTCP config file, and lets you manage additional UTCP call templates for the Code Mode MCP bridge.
+The extension provides a **Configuration** panel in the **CCP 3x** menu. It shows the current server port, the path to the UTCP config file, and lets you manage additional UTCP call templates for the Code Mode MCP bridge.
 
 You can find Call Template structures in [UTCP documentation](https://www.utcp.io/protocols):
 - [MCP Call Template](https://utcp.io/protocols/mcp#call-template-structure)
@@ -278,22 +280,26 @@ You can find Call Template structures in [UTCP documentation](https://www.utcp.i
 - [CLI Call Template](https://utcp.io/protocols/cli#call-template-structure)
 - [Text Call Template](http://utcp.io/protocols/text#call-template-structure)
 
-Connections are project-first: the canonical real Cocos project path (Windows case-normalized) determines a stable SHA-256 project identity and private `~/.cc-bridge/local-auth/<project-id>.env` credential file. Each start rotates the relay session UUID and token; only `ccb3x_<port>` is registered, with namespaced token, session, port, and project variables. There is no global credential or latest-project pointer. Normal shutdown removes only its own active session registration and retains the project's dedicated port reservation. Another project cannot reuse that reserved port; a second live session for the same project is rejected.
+Connections are project-first: the canonical real Cocos project path (Windows case-normalized) determines a stable SHA-256 project identity and private `~/.ccp/local-auth/<project-id>.env` credential file. Each start rotates the relay session UUID and token; only `ccp3x_<port>` is registered, with namespaced token, session, port, and project variables. There is no global credential or latest-project pointer. Normal shutdown removes only its own active session registration and retains the project's dedicated port reservation. Another project cannot reuse that reserved port; a second live session for the same project is rejected.
 
-Project connection metadata lives in a readable, pretty-printed `<UTCP-config-directory>/.cc-bridge/project-connections.json`, not in UTCP variables. The registry contains `version: 1`, its owning `configPath`, and a `projects` map keyed by stable local path identity. Each binding contains `projectPath`, `projectId`, `port`, `relayInstanceId`, `tokenPath`, `ownerPid`, `active`, and nonsecret `gateway` context (`origin`, configured Gateway `projectId`, and optional explicitly configured `containerId`). The registry and ordinary SDK-compatible UTCP config are checked together under the shared config lock; disagreement fails closed. Separate custom config directories have separate registries. This local path identity is distinct from the Gateway's project ID. No container ID is inferred. `gateway.json` may contain a `projects` map keyed by canonical project paths; project-scoped records contain the existing Gateway configuration fields. If using a legacy single assignment, its optional `projectPath` must match the current editor. Global environment overrides remain explicit runtime configuration, not an inferred project assignment.
+Project connection metadata lives in a readable, pretty-printed `<UTCP-config-directory>/.ccp/project-connections.json`, not in UTCP variables. The registry contains `version: 1`, its owning `configPath`, and a `projects` map keyed by stable local path identity. Each binding contains `projectPath`, `projectId`, `port`, `relayInstanceId`, `tokenPath`, `ownerPid`, `active`, and nonsecret `gateway` context (`origin`, configured Gateway `projectId`, and optional explicitly configured `containerId`). The registry and ordinary SDK-compatible UTCP config are checked together under the shared config lock; disagreement fails closed. Separate custom config directories have separate registries. This local path identity is distinct from the Gateway's project ID. No container ID is inferred. `gateway.json` may contain a `projects` map keyed by canonical project paths; project-scoped records contain the existing Gateway configuration fields. If using a legacy single assignment, its optional `projectPath` must match the current editor. Global environment overrides remain explicit runtime configuration, not an inferred project assignment.
 
-Live scripts require `CCB_PROJECT_PATH` or an explicit registered loopback endpoint, reject mismatched project/port metadata, and verify `/connection` before using it. `check-live-prereqs.js` uses the selected project's assigned Gateway, never a hardcoded other container. `@utcp/dotenv-loader` resolves namespaced variables on each access; the consuming Code Mode process must import that plugin and reload/register the current manual after a restart.
+Live scripts require `CCP_PROJECT_PATH` or an explicit registered loopback endpoint, reject mismatched project/port metadata, and verify `/connection` before using it. `check-live-prereqs.js` uses the selected project's assigned Gateway, never a hardcoded other container. `@utcp/dotenv-loader` resolves namespaced variables on each access; the consuming Code Mode process must import that plugin and reload/register the current manual after a restart.
 
-For old per-session registrations or the former embedded `CCB_PROJECT_CONNECTIONS` string, build first, then run `node scripts/migrate-project-connections.js --dry-run --config <path>`; review its nonsecret report before `--apply`. Apply creates an exclusive config backup, serializes with editor config/registry writes, persists the external registry and a pretty JSON history report under `<UTCP-config-directory>/.cc-bridge/migration-reports/` before removing embedded metadata or quarantined registrations from active config. Existing external project records must agree exactly; conflicts stop without mutation. Migration is idempotent. Reports retain unresolved offline CCB3x manual references and proven CC Bridge UUID dotenv registration references separately from active project bindings. It does not infer projects from offline ports, copy secret template fields, delete credential files, or modify unrelated `ccb2x`/`ccp3x`. Occupied or inconclusive endpoints and unproven loaders stay active and are reported honestly. An abandoned `.ccb-lock` is never removed automatically: verify its owner is gone before manual recovery. Invalid JSON/config fails closed rather than being replaced by an empty configuration.
+For per-session registrations or embedded project metadata (legacy `CCB_PROJECT_CONNECTIONS` is migration input only), build first, then run `node scripts/migrate-project-connections.js --dry-run --config <path>`; review its nonsecret report before `--apply`. Apply creates an exclusive config backup, serializes with editor config/registry writes, persists the external registry and a pretty JSON history report under `<UTCP-config-directory>/.ccp/migration-reports/` before removing embedded metadata or quarantined registrations from active config. Existing external project records must agree exactly; conflicts stop without mutation. Migration is idempotent. Reports retain unresolved offline CCP3x manual references and proven CCP UUID dotenv registration references separately from active project bindings. It does not infer projects from offline ports, copy secret template fields, delete credential files, or modify unrelated `ccp2x_<port>`/`ccp3x`. Occupied or inconclusive endpoints and unproven loaders stay active and are reported honestly. An abandoned `.ccp-lock` is never removed automatically: verify its owner is gone before manual recovery. Invalid JSON/config fails closed rather than being replaced by an empty configuration.
 
-`node scripts/smoke-project-connections.js` exercises two isolated native HTTP servers with the actual UTCP SDK and dotenv plugin, including restart credential rotation, collision rejection, and stale cleanup. Set `CCB_UTCP_CONSUMER_ROOT` to an installed consumer's package root if that plugin is not installed in this extension. It never touches the real user config.
+`node scripts/smoke-project-connections.js` exercises two isolated native HTTP servers with the actual UTCP SDK and dotenv plugin, including restart credential rotation, collision rejection, and stale cleanup. Set `CCP_UTCP_CONSUMER_ROOT` to an installed consumer's package root if that plugin is not installed in this extension. It never touches the real user config.
+
+The CCP cutover is breaking: only `ccp3x` / `@ccp/gateway`, `CCP_*`, `x-ccp-*`, `/ccp/v1/*` and `CCP1` signing domains are current. Existing JWT grants, enrollment proofs, release signatures and installed-live evidence do not gain CCP validity through a text rename. Issue fresh authorized CCP product credentials/enrollment and a freshly signed `ccp3x` release; requalify separately. Neutral DTX issuer settings are unchanged.
+
+For an offline registry (external or ownership-proven embedded metadata) whose credential files are all under the same explicitly owned legacy root, use `node scripts/migrate-ccp-identity.js --dry-run --config <absolute-config> --state-root <config-directory>/.cc-bridge`, review the report, then invoke the same command with `--apply`. It is never invoked automatically; use this cutover command directly for a legacy state root, not the current-registry externalizer above. It refuses live/unknown owner PIDs, occupied/unknown ports, links, destination conflicts, unowned registrations, credential roots outside that registry root, Gateway databases/sockets, and installed legacy extensions. Close Creator and preserve legacy extension directories **outside** `extensions` before installing CCP; link/install commands reject double loading. Apply preserves exclusive private config/state backups, migrates only ownership-proven credential namespaces and inactive dedicated port reservations, and archives all other old bytes under `.ccp/legacy-signed-state` without making them active trust. Interrupted publication fails closed on the destination conflict. Editor.Profile migration is explicitly refused because offline ownership is unavailable: select the intended CCP config/profile manually. Independent custom credential roots and stopped Gateway DB migration require separately verified ownership and are not inferred.
 
 ## Agent Prompt Guidance
 
-Use the copy-ready instruction and mandatory `register_manual` bootstrap in the [CC Bridge with Code Mode MCP guide](docs/cc-bridge-code-mode-usage.md). The output rules below further reduce raw tree dumps by 50-80% while retaining useful references.
+Use the copy-ready instruction and mandatory `register_manual` bootstrap in the [CCP with Code Mode MCP guide](docs/ccp-code-mode-usage.md). The output rules below further reduce raw tree dumps by 50-80% while retaining useful references.
 
 ```text
-When returning data from ccb3x tools (manual `ccb3x`):
+When returning data from ccp3x_<port> tools (manual `ccp3x_<port>`):
 - Return stats/aggregates (counts, top-N) unless the question needs items.
 - User asks list/find/which/show → return capped list with .slice(0, N), not count.
 - Drop empty arrays/objects and deep subtrees a summary already answers.
@@ -304,18 +310,18 @@ When returning data from ccb3x tools (manual `ccb3x`):
 Full failure-mode analysis and trade-offs: [`docs/prompt-guidance-risks.md`](docs/prompt-guidance-risks.md).
 Migration for consolidated tools (A1 shims → 45): [`docs/consolidated-migration.md`](docs/consolidated-migration.md).
 
-See [CC Bridge with Code Mode MCP](docs/cc-bridge-code-mode-usage.md) for connection setup, manual registration, workflows, and troubleshooting.
+See [CCP with Code Mode MCP](docs/ccp-code-mode-usage.md) for connection setup, manual registration, workflows, and troubleshooting.
 
 ## Code Mode MCP Integration
 
-CC Bridge exposes its Cocos Creator tools through a UTCP manual. The [Code Mode MCP server](https://github.com/universal-tool-calling-protocol/code-mode/?tab=readme-ov-file#even-easier-ready-to-use-mcp-server) registers that manual for an AI client. Configure the bridge, then have the agent call `register_manual` and verify with `list_tools`.
+CCP exposes its Cocos Creator tools through a UTCP manual. The [Code Mode MCP server](https://github.com/universal-tool-calling-protocol/code-mode/?tab=readme-ov-file#even-easier-ready-to-use-mcp-server) registers that manual for an AI client. Configure the bridge, then have the agent call `register_manual` and verify with `list_tools`.
 
 ### MCP Server Config
 
 ```json
 {
   "mcpServers": {
-    "cc-bridge": {
+    "ccp": {
       "command": "npx",
       "args": ["@utcp/code-mode-mcp"],
       "env": {
@@ -332,10 +338,10 @@ To register Code Mode MCP for a Claude Code agent, open your project and run:
 
 Linux/MacOS:
 ``` bash
-claude mcp add --transport stdio --env UTCP_CONFIG_FILE="~/.utcp_config.json" -- cc-bridge npx @utcp/code-mode-mcp
+claude mcp add --transport stdio --env UTCP_CONFIG_FILE="~/.utcp_config.json" -- ccp npx @utcp/code-mode-mcp
 ```
 
 Windows:
 ``` powershell
-claude mcp add --transport stdio --env UTCP_CONFIG_FILE="%userprofile%/.utcp_config.json" -- cc-bridge cmd /c npx @utcp/code-mode-mcp
+claude mcp add --transport stdio --env UTCP_CONFIG_FILE="%userprofile%/.utcp_config.json" -- ccp cmd /c npx @utcp/code-mode-mcp
 ```

@@ -6,7 +6,7 @@ const path = require('node:path');
 const zlib = require('node:zlib');
 const { createHash } = require('node:crypto');
 
-const PACKAGE_NAME = 'cc-bridge-3x';
+const PACKAGE_NAME = 'ccp3x';
 const MAX_ZIP_BYTES = 256 * 1024 * 1024;
 const MAX_ENTRY_BYTES = 64 * 1024 * 1024;
 
@@ -118,8 +118,8 @@ function installPackage({ zipPath, projectPath, manifestPath, replace }) {
   const entries = readZipEntries(fs.readFileSync(zip));
   const actual = new Map();
   const extensions = path.join(project, 'extensions');
-  const destination = path.join(extensions, PACKAGE_NAME);
-  const staging = path.join(extensions, `.cc-bridge-3x-install-${process.pid}-${Date.now()}`);
+  const destination = path.join(extensions, PACKAGE_NAME); for (const legacy of ['cc-bridge-3x', 'cocos-pilot-3x']) if (fs.existsSync(path.join(extensions, legacy))) throw new Error(`Legacy extension ${legacy} is still installed; close Creator and preserve it outside extensions before installing CCP (no double loading).`);
+  const staging = path.join(extensions, `.ccp3x-install-${process.pid}-${Date.now()}`);
   let backup;
   try {
     fs.mkdirSync(extensions, { recursive: true });
@@ -139,7 +139,7 @@ function installPackage({ zipPath, projectPath, manifestPath, replace }) {
       actual.set(key, true);
     }
     if (actual.size !== declared.size) throw new Error('ZIP entry set differs from the package manifest');
-    if (!fs.existsSync(path.join(staging, 'cc-bridge-3x', 'package.json')) || !fs.existsSync(path.join(staging, 'cc-bridge-3x', 'dist', 'main.js'))) throw new Error('Package is missing package.json or dist/main.js');
+    if (!fs.existsSync(path.join(staging, 'ccp3x', 'package.json')) || !fs.existsSync(path.join(staging, 'ccp3x', 'dist', 'main.js'))) throw new Error('Package is missing package.json or dist/main.js');
     if (fs.existsSync(destination)) {
       if (!replace) throw new Error(`Extension destination already exists: ${destination}. Re-run with --replace after closing Creator.`);
       backup = `${destination}.imported-backup-${new Date().toISOString().replace(/[-:.TZ]/g, '')}`;

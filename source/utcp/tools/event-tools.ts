@@ -4,7 +4,7 @@
 import { utcpTool } from '../decorators';
 import { InstanceReferenceSchema, IInstanceReference } from '../schemas';
 
-const EVENT_PACKAGE = 'cc-bridge-3x';
+const EVENT_PACKAGE = 'ccp3x';
 
 async function ensureRuntimeNode(id: string): Promise<void> {
     const exists = await Editor.Message.request('scene', 'query-node', id);

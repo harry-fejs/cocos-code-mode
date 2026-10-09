@@ -2,7 +2,7 @@ import { verify as ed25519Verify } from "crypto"
 import type { KeyLike } from "crypto"
 import { z } from "zod";
 import { parseCanonicalJson } from "../protected/canonical-json";
-import { CcbError } from "../protected/errors";
+import { CcpError } from "../protected/errors";
 import { ED25519_SIGNATURE_BYTES, assertKeyId, decodeBase64Url } from "../protected/protocol";
 
 const Sha256Schema = z.string().regex(/^[0-9a-f]{64}$/);
@@ -25,7 +25,7 @@ export type SignedMetadata = z.infer<typeof SignedMetadataSchema>;
 const RoleSchema = z.object({ keyIds: z.array(KeyIdSchema).min(1), threshold: z.number().int().positive() }).strict();
 export const RootBodySchema = z.object({
   schemaVersion: z.literal(1),
-  product: z.literal("cc-bridge-3x"),
+  product: z.literal("ccp3x"),
   rootVersion: z.number().int().positive(),
   issuedAt: IsoSchema,
   expiresAt: IsoSchema,
@@ -41,7 +41,7 @@ export const ReleaseTargetBodySchema = z.object({
   issuedAt: IsoSchema,
   expiresAt: IsoSchema,
   package: z.object({
-    name: z.literal("cc-bridge-3x"),
+    name: z.literal("ccp3x"),
     version: z.string().min(1).max(128),
     sha256: Sha256Schema,
     size: z.number().int().positive().safe(),
@@ -78,16 +78,16 @@ export const RolloutPolicyBodySchema = z.object({
 export type RolloutPolicyBody = z.infer<typeof RolloutPolicyBodySchema>;
 
 const PREFIX = {
-  root: Buffer.from("CCB1 release-root\n", "utf8"),
-  target: Buffer.from("CCB1 release-targets\n", "utf8"),
-  policy: Buffer.from("CCB1 rollout-policy\n", "utf8"),
+  root: Buffer.from("CCP1 release-root\n", "utf8"),
+  target: Buffer.from("CCP1 release-targets\n", "utf8"),
+  policy: Buffer.from("CCP1 rollout-policy\n", "utf8"),
 } as const;
 const BODY_SCHEMA = { root: RootBodySchema, target: ReleaseTargetBodySchema, policy: RolloutPolicyBodySchema } as const;
 export type ReleaseMetadataKind = keyof typeof PREFIX;
 export type ReleaseMetadataBody<K extends ReleaseMetadataKind> = K extends "root" ? RootBody : K extends "target" ? ReleaseTargetBody : RolloutPolicyBody;
 
-function fail(code: "CCB_CANONICAL_INVALID" | "CCB_SIGNATURE_INVALID", message: string): never {
-  throw new CcbError(code, message);
+function fail(code: "CCP_CANONICAL_INVALID" | "CCP_SIGNATURE_INVALID", message: string): never {
+  throw new CcpError(code, message);
 }
 
 interface DecodedMetadata<K extends ReleaseMetadataKind> {
@@ -105,16 +105,16 @@ export interface ReleaseSignatureRole {
 function decodeMetadata<K extends ReleaseMetadataKind>(kind: K, input: unknown): DecodedMetadata<K> {
   let wrapper: SignedMetadata;
   try { wrapper = SignedMetadataSchema.parse(input); }
-  catch { fail("CCB_CANONICAL_INVALID", "Release metadata wrapper is invalid."); }
+  catch { fail("CCP_CANONICAL_INVALID", "Release metadata wrapper is invalid."); }
   let payload: Buffer;
   try { payload = decodeBase64Url(wrapper.payload, 256 * 1024); }
-  catch { fail("CCB_CANONICAL_INVALID", "Release metadata payload encoding is invalid."); }
+  catch { fail("CCP_CANONICAL_INVALID", "Release metadata payload encoding is invalid."); }
   let parsed: unknown;
   try { parsed = parseCanonicalJson(payload, 256 * 1024); }
-  catch { fail("CCB_CANONICAL_INVALID", "Release metadata payload is not canonical RFC 8785 I-JSON."); }
+  catch { fail("CCP_CANONICAL_INVALID", "Release metadata payload is not canonical RFC 8785 I-JSON."); }
   let body: ReleaseMetadataBody<K>;
   try { body = BODY_SCHEMA[kind].parse(parsed) as ReleaseMetadataBody<K>; }
-  catch { fail("CCB_CANONICAL_INVALID", `Release ${kind} metadata body is invalid.`); }
+  catch { fail("CCP_CANONICAL_INVALID", `Release ${kind} metadata body is invalid.`); }
   return { wrapper, message: Buffer.concat([PREFIX[kind], payload]), body };
 }
 
@@ -130,10 +130,10 @@ export function verifyReleaseMetadataForRoles<K extends ReleaseMetadataKind>(
   input: unknown,
   roles: readonly ReleaseSignatureRole[],
 ): ReleaseMetadataBody<K> {
-  if (roles.length === 0) fail("CCB_SIGNATURE_INVALID", "Release metadata has no authorized signature roles.");
+  if (roles.length === 0) fail("CCP_SIGNATURE_INVALID", "Release metadata has no authorized signature roles.");
   for (const role of roles) {
     if (!Number.isSafeInteger(role.threshold) || role.threshold < 1 || role.threshold > role.keys.size) {
-      fail("CCB_SIGNATURE_INVALID", `Release metadata ${role.label} signature threshold is invalid.`);
+      fail("CCP_SIGNATURE_INVALID", `Release metadata ${role.label} signature threshold is invalid.`);
     }
   }
   const decoded = decodeMetadata(kind, input);
@@ -141,12 +141,12 @@ export function verifyReleaseMetadataForRoles<K extends ReleaseMetadataKind>(
   const acceptedByRole = roles.map(() => 0);
   for (const entry of decoded.wrapper.signatures) {
     try { assertKeyId(entry.keyId); }
-    catch { fail("CCB_CANONICAL_INVALID", "Release metadata key ID is invalid."); }
-    if (seen.has(entry.keyId)) fail("CCB_SIGNATURE_INVALID", "Release metadata contains a duplicate signature key.");
+    catch { fail("CCP_CANONICAL_INVALID", "Release metadata key ID is invalid."); }
+    if (seen.has(entry.keyId)) fail("CCP_SIGNATURE_INVALID", "Release metadata contains a duplicate signature key.");
     seen.add(entry.keyId);
     let signature: Buffer;
     try { signature = decodeBase64Url(entry.signature, ED25519_SIGNATURE_BYTES, ED25519_SIGNATURE_BYTES); }
-    catch { fail("CCB_SIGNATURE_INVALID", "Release metadata signature encoding is invalid."); }
+    catch { fail("CCP_SIGNATURE_INVALID", "Release metadata signature encoding is invalid."); }
     let recognized = false;
     let valid = false;
     roles.forEach((role, index) => {
@@ -158,12 +158,12 @@ export function verifyReleaseMetadataForRoles<K extends ReleaseMetadataKind>(
         valid = true;
       }
     });
-    if (!recognized) fail("CCB_SIGNATURE_INVALID", "Release metadata contains an unknown signature key.");
-    if (!valid) fail("CCB_SIGNATURE_INVALID", "Release metadata signature is invalid.");
+    if (!recognized) fail("CCP_SIGNATURE_INVALID", "Release metadata contains an unknown signature key.");
+    if (!valid) fail("CCP_SIGNATURE_INVALID", "Release metadata signature is invalid.");
   }
   roles.forEach((role, index) => {
     if (acceptedByRole[index] < role.threshold) {
-      fail("CCB_SIGNATURE_INVALID", `Release metadata ${role.label} signature threshold not met.`);
+      fail("CCP_SIGNATURE_INVALID", `Release metadata ${role.label} signature threshold not met.`);
     }
   });
   return decoded.body;

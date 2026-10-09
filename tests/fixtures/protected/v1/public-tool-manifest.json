@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "manifestHash": "ebcfdfe1878acdad25d4a501be6c248dce6f8cdf4ab5e194dc6ab19e8cff980f",
+  "manifestHash": "0fbea2bbe16f02fba5137604793352b876eed3094a98b12a193ca0fa17d34c16",
   "tools": [
     {
       "name": "animationEdit",
@@ -7529,7 +7529,7 @@
       ],
       "publicConstants": {
         "sceneScript": {
-          "name": "cc-bridge-3x",
+          "name": "ccp3x",
           "method": "runtimeGetState"
         }
       },
@@ -7554,7 +7554,7 @@
         "creatorIpcCount": 64,
         "timeoutMs": 15000
       },
-      "contractHash": "e140bea0659016e64d6d70b2a3f793b78154523df3101408a3d5e62600fa76a6",
+      "contractHash": "583c1806708c28b83d8ef363c6b2ac57cf56da1d200b0aa08b61d34b38fa1052",
       "primitiveAbiVersion": 2
     },
     {
@@ -7603,7 +7603,7 @@
       ],
       "publicConstants": {
         "sceneScript": {
-          "name": "cc-bridge-3x",
+          "name": "ccp3x",
           "method": "runtimePause"
         }
       },
@@ -7630,7 +7630,7 @@
         "creatorIpcCount": 64,
         "timeoutMs": 15000
       },
-      "contractHash": "56e1437d8b3f883b4f695c1586d1e0ddc25230adb8f7ce617c698651b72bbf55",
+      "contractHash": "4da3b47419f278b3d9e497342fb785234d4985ea7344c03a54b10668a3c26d38",
       "primitiveAbiVersion": 2
     },
     {
@@ -7679,7 +7679,7 @@
       ],
       "publicConstants": {
         "sceneScript": {
-          "name": "cc-bridge-3x",
+          "name": "ccp3x",
           "method": "runtimeResume"
         }
       },
@@ -7706,7 +7706,7 @@
         "creatorIpcCount": 64,
         "timeoutMs": 15000
       },
-      "contractHash": "e78e40e8bd5a876d5af78ddfe573dbbe7274a9c37d96cbd3b928a416de506901",
+      "contractHash": "cc7c9a25703d46b2cd5d3cb22257f1c5b946a539f67a735b49a129806cb57e44",
       "primitiveAbiVersion": 2
     },
     {
@@ -7781,7 +7781,7 @@
       ],
       "publicConstants": {
         "sceneScript": {
-          "name": "cc-bridge-3x",
+          "name": "ccp3x",
           "method": "runtimeSetTimeScale"
         }
       },
@@ -7808,7 +7808,7 @@
         "creatorIpcCount": 64,
         "timeoutMs": 15000
       },
-      "contractHash": "b55344f22e70f354c7e480bb046e1313cd2cf8a83eb79222c3cb6dc8d00a6177",
+      "contractHash": "3f9a646b35ffae9e48348bc9ec042164c6e91c668e5039ed578bf8b97e78e42f",
       "primitiveAbiVersion": 2
     },
     {
@@ -8209,7 +8209,7 @@
       ],
       "publicConstants": {
         "sceneScript": {
-          "name": "cc-bridge-3x",
+          "name": "ccp3x",
           "method": "simulateButtonClick"
         }
       },
@@ -8236,7 +8236,7 @@
         "creatorIpcCount": 64,
         "timeoutMs": 15000
       },
-      "contractHash": "8a74c183e2a24910ed5fbfb3840667e77a6ae38e314f3722112e0e3ee4b0381a",
+      "contractHash": "701375f2b2e8c668c791f3874b831e4be7996666bd6768985ce4242154b7ec7d",
       "primitiveAbiVersion": 2
     }
   ]

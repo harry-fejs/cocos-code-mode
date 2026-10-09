@@ -4,7 +4,7 @@
 !.claude/skills/
 !.claude/skills/**
 !.claude/settings.json
-.claude/cc-bridge-cache.json
+.claude/ccp-cache.json
 .claude/cc-code-mode-cache.json
 .cursor/
 .aider*

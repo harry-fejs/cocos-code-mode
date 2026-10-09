@@ -7,7 +7,7 @@ import { formatBuildInfo, getBuildInfo } from './build-info';
 import { ProtectedRelayHost } from './protected/relay-host';
 import { dispatchProtectedCustomerTool } from './protected/protected-route';
 import { BOOT_LOG_PATH, bootLog, bootWarnDialog } from './protected/boot-log';
-import { toCcbErrorBody } from './protected/errors';
+import { toCcpErrorBody } from './protected/errors';
 import { launchPendingHealthRollback, launchStagedActivation } from './update/activation';
 import { UpdateManager, type StagedUpdate } from './update/manager';
 import { UpdateStateStore } from './update/state';
@@ -29,7 +29,7 @@ async function finishPendingHealth(utcpReady: boolean): Promise<void> {
         const recovered = stateStore.recoverActivation(backupPresent);
         if (recovered.activationState === 'rollback-required') {
             pendingHealthRollback = true;
-            relayHost?.state.lock({ code: 'CCB_BUILD_INCOMPATIBLE', error: 'Signed update rollback is required before protected execution can resume.' });
+            relayHost?.state.lock({ code: 'CCP_BUILD_INCOMPATIBLE', error: 'Signed update rollback is required before protected execution can resume.' });
             bootLog('error', 'Signed update rollback-required state recovered; rollback queued for Creator shutdown');
             return;
         }
@@ -65,8 +65,8 @@ async function finishPendingHealth(utcpReady: boolean): Promise<void> {
         stateStore.markBackupRetired(existsSync(backup));
         bootLog('info', 'Signed update passed startup health; prior package removed');
     } catch (error) {
-        const code = toCcbErrorBody(error).code;
-        relayHost?.state.lock({ code: 'CCB_BUILD_INCOMPATIBLE', error: 'Signed update recovery could not be completed; protected execution remains locked.' });
+        const code = toCcpErrorBody(error).code;
+        relayHost?.state.lock({ code: 'CCP_BUILD_INCOMPATIBLE', error: 'Signed update recovery could not be completed; protected execution remains locked.' });
         pendingHealthRollback = backupPresent;
         bootLog('error', `Unable to resolve pending update health: ${code}`);
     }
@@ -79,7 +79,7 @@ function stageUpdateInBackground(): void {
         stagedUpdate = result;
         bootLog('info', `Signed update staged: ${result.accepted.target.package.version}`);
     }).catch((error) => {
-        const body = toCcbErrorBody(error);
+        const body = toCcpErrorBody(error);
         const transport = typeof body.details.transport === 'string' ? ` transport=${body.details.transport}` : '';
         const status = typeof body.details.status === 'number' ? ` status=${body.details.status}` : '';
         const detailError = typeof body.details.detail === 'string' ? ` detail=${body.details.detail}` : ` message=${body.error.replace(/[\r\n]+/g, ' ').slice(0, 160)}`;
@@ -161,7 +161,7 @@ export const methods: Record<string, Function> = {
             stagedUpdate = result;
             return { staged: true, version: result.accepted.target.package.version };
         } catch (error) {
-            const body = toCcbErrorBody(error);
+            const body = toCcpErrorBody(error);
             bootLog('error', `Update check failed: ${body.code}`);
             return { staged: false, ...body };
         }
@@ -199,9 +199,9 @@ export async function load() {
             relayHost = null;
             bootLog("error", "Protected relay failed to boot; menus and local tools still start", err);
         }
-        const releaseOrigin = process.env.CCB_RELEASE_ORIGIN;
+        const releaseOrigin = process.env.CCP_RELEASE_ORIGIN;
         if (releaseOrigin && relayHost?.identity) {
-            const configuredRing = process.env.CCB_RELEASE_RING;
+            const configuredRing = process.env.CCP_RELEASE_RING;
             const allowedRing = configuredRing === '3' || configuredRing === '10' ? configuredRing : '1';
             const build = getBuildInfo();
             updateManager = new UpdateManager({
@@ -213,7 +213,7 @@ export async function load() {
                     arch: process.arch,
                     currentBuild: build.version,
                     deviceId: relayHost.identity.deviceId,
-                    channel: process.env.CCB_RELEASE_CHANNEL || 'stable',
+                    channel: process.env.CCP_RELEASE_CHANNEL || 'stable',
                     allowedRing,
                 },
             });
@@ -221,8 +221,8 @@ export async function load() {
                 updateManager.initializeInstalledTarget(relayHost.targetPayloadHash);
             }
         }
-        if (process.env.CCB_DISABLE_LOCAL_UTCP === "1") {
-            bootLog("info", "Local broker disabled by CCB_DISABLE_LOCAL_UTCP=1");
+        if (process.env.CCP_DISABLE_LOCAL_UTCP === "1") {
+            bootLog("info", "Local broker disabled by CCP_DISABLE_LOCAL_UTCP=1");
             stageUpdateInBackground();
             await finishPendingHealth(false);
             return;
@@ -293,7 +293,7 @@ export async function unload() {
                 helperPath: activationHelperPath,
             });
         } catch (error) {
-            bootLog('error', `Unable to queue pending-health rollback: ${toCcbErrorBody(error).code}`);
+            bootLog('error', `Unable to queue pending-health rollback: ${toCcpErrorBody(error).code}`);
         }
         return;
     }
@@ -312,6 +312,6 @@ export async function unload() {
         bootLog('info', `Signed update queued for Creator shutdown: ${currentStagedUpdate.accepted.target.package.version}`);
     } catch (error) {
         currentUpdateManager.markActivationLaunchFailed();
-        bootLog('error', `Unable to queue staged update: ${toCcbErrorBody(error).code}`);
+        bootLog('error', `Unable to queue staged update: ${toCcpErrorBody(error).code}`);
     }
 }

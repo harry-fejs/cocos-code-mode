@@ -8,8 +8,8 @@ const { performance } = require('perf_hooks');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'reports', 'evidence', 'phase-05');
-const SAMPLES = Number(process.env.CCB_BENCH_SAMPLES || '15');
-const WARMUPS = Number(process.env.CCB_BENCH_WARMUPS || '3');
+const SAMPLES = Number(process.env.CCP_BENCH_SAMPLES || '15');
+const WARMUPS = Number(process.env.CCP_BENCH_WARMUPS || '3');
 
 const TOOL_CASES = [
   { name: 'sceneGetInfo', args: {} },
@@ -112,7 +112,7 @@ async function sampleTool(base, tool, args, token) {
     method: tool.tool_call_template.http_method,
     lastStatus: samples[samples.length - 1]?.status,
     lastCode: samples[samples.length - 1]?.code || null,
-    failClosed: fail.length === samples.length && fail[0]?.code === 'CCB_GATEWAY_UNAVAILABLE',
+    failClosed: fail.length === samples.length && fail[0]?.code === 'CCP_GATEWAY_UNAVAILABLE',
     client: summary(ok.map((s) => s.durationMs) || fail.map((s) => s.durationMs)),
     allClient: summary(samples.map((s) => s.durationMs)),
     server: summary(ok.map((s) => s.serverDurationMs).filter(Number.isFinite)),
@@ -128,7 +128,7 @@ async function main() {
   await require('./project-connection').verifyConnection(connection);
   const base = discoverBase();
   const token = loadToken();
-  if (!token) throw new Error('no local-auth token in ~/.cc-bridge/local-auth');
+  if (!token) throw new Error('no local-auth token in ~/.ccp/local-auth');
   const build = await (await fetch(`${base}/build-info`)).json();
   const manualRes = await timedFetch(`${base}/utcp`);
   const manual = JSON.parse(manualRes.body);

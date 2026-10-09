@@ -79,7 +79,7 @@ export class ScreenshotTools {
         const jpegQuality = validateJpegQuality(args.jpegQuality);
 
         const base64 = await Editor.Message.request('scene', 'execute-scene-script', {
-            name: 'cc-bridge-3x',
+            name: 'ccp3x',
             method: 'captureScreenshot',
             args: [imageSize, jpegQuality],
         }) as string;

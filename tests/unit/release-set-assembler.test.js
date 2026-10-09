@@ -14,12 +14,12 @@ function run(project, root, zip, output) {
   return spawnSync(process.execPath, [path.join(project, 'scripts', 'assemble-release-set.js')], {
     cwd: project,
     encoding: 'utf8',
-    env: { ...process.env, CCB_RELEASE_ROOT_METADATA_PATH: root, CCB_RELEASE_ZIP: zip, CCB_RELEASE_DIRECTORY: output },
+    env: { ...process.env, CCP_RELEASE_ROOT_METADATA_PATH: root, CCP_RELEASE_ZIP: zip, CCP_RELEASE_DIRECTORY: output },
   });
 }
 
 test('release-set assembler preflights before immutable writes', () => {
-  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ccb-release-set-'));
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ccp-release-set-'));
   try {
     const project = path.join(temp, 'project');
     const dist = path.join(project, 'dist');

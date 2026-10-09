@@ -16,8 +16,8 @@ function enforceWindowsAcl(path: string, directory: boolean): void {
   const powershell = join(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
   const script = [
     "$ErrorActionPreference='Stop'",
-    "$p=$env:CCB_ACL_PATH",
-    "$isDir=$env:CCB_ACL_DIRECTORY -eq '1'",
+    "$p=$env:CCP_ACL_PATH",
+    "$isDir=$env:CCP_ACL_DIRECTORY -eq '1'",
     "$owner=[Security.Principal.WindowsIdentity]::GetCurrent().User",
     "$system=New-Object Security.Principal.SecurityIdentifier('S-1-5-18')",
     "$inherit=if($isDir){[Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit}else{[Security.AccessControl.InheritanceFlags]::None}",
@@ -40,7 +40,7 @@ function enforceWindowsAcl(path: string, directory: boolean): void {
     execFileSync(powershell, ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script], {
       stdio: "ignore",
       windowsHide: true,
-      env: { ...process.env, CCB_ACL_PATH: path, CCB_ACL_DIRECTORY: directory ? "1" : "0" },
+      env: { ...process.env, CCP_ACL_PATH: path, CCP_ACL_DIRECTORY: directory ? "1" : "0" },
     });
   } catch (error) {
     throw new Error(`unable to enforce Windows protected-state ACL: ${error instanceof Error ? error.message : String(error)}`);

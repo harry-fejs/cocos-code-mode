@@ -7,16 +7,16 @@ const path = require('node:path');
 const { canonicalize } = require('./sign-release');
 const { readCredential } = require('./credential-input');
 
-const origin = new URL(process.env.CCB_GATEWAY_ORIGIN || 'http://127.0.0.1:8787');
-const credential = readCredential('CCB_MEMBER_CREDENTIAL', 'CCB_MEMBER_CREDENTIAL_FILE');
-const label = process.env.CCB_DEVICE_LABEL || os.hostname().slice(0, 64);
-const identityPath = path.resolve(process.env.CCB_DEVICE_IDENTITY_PATH || path.join(os.homedir(), '.cc-bridge', 'identity', 'device-identity-v1.json'));
+const origin = new URL(process.env.CCP_GATEWAY_ORIGIN || 'http://127.0.0.1:8787');
+const credential = readCredential('CCP_MEMBER_CREDENTIAL', 'CCP_MEMBER_CREDENTIAL_FILE');
+const label = process.env.CCP_DEVICE_LABEL || os.hostname().slice(0, 64);
+const identityPath = path.resolve(process.env.CCP_DEVICE_IDENTITY_PATH || path.join(os.homedir(), '.ccp', 'identity', 'device-identity-v1.json'));
 
 function fail(message) { throw new Error(message); }
 function validateOrigin() {
   const loopback = ['127.0.0.1', 'localhost', '::1'].includes(origin.hostname);
-  if (origin.username || origin.password || origin.search || origin.hash || !['', '/'].includes(origin.pathname)) fail('CCB_GATEWAY_ORIGIN must be an exact origin');
-  if (origin.protocol !== 'https:' && !(origin.protocol === 'http:' && loopback && process.env.CCB_ALLOW_INSECURE_GATEWAY === '1')) {
+  if (origin.username || origin.password || origin.search || origin.hash || !['', '/'].includes(origin.pathname)) fail('CCP_GATEWAY_ORIGIN must be an exact origin');
+  if (origin.protocol !== 'https:' && !(origin.protocol === 'http:' && loopback && process.env.CCP_ALLOW_INSECURE_GATEWAY === '1')) {
     fail('Gateway must use HTTPS, except explicit loopback qualification');
   }
 }
@@ -27,7 +27,7 @@ function readIdentity() {
   return identity;
 }
 async function post(relative, body) {
-  if (!credential) fail('CCB_MEMBER_CREDENTIAL is required');
+  if (!credential) fail('CCP_MEMBER_CREDENTIAL is required');
   const response = await fetch(new URL(relative, `${origin.origin}/`), {
     method: 'POST',
     redirect: 'error',
@@ -52,15 +52,15 @@ function createProof(identity, challenge) {
     publicKeySpki: identity.publicKeyDer,
   };
   const key = createPrivateKey({ key: Buffer.from(identity.privateKeyDer, 'base64url'), format: 'der', type: 'pkcs8' });
-  const signatureBase = Buffer.from(canonicalize({ domain: 'ccb-device-enrollment-v1', ...body }), 'utf8');
+  const signatureBase = Buffer.from(canonicalize({ domain: 'ccp-device-enrollment-v1', ...body }), 'utf8');
   return { ...body, proofSignature: sign(null, signatureBase, key).toString('base64url') };
 }
 async function main() {
   validateOrigin();
-  if (!label || label.length > 64) fail('CCB_DEVICE_LABEL must contain 1..64 characters');
+  if (!label || label.length > 64) fail('CCP_DEVICE_LABEL must contain 1..64 characters');
   const identity = readIdentity();
-  const challenge = await post('ccb/v1/devices/challenge', { label });
-  const enrolled = await post('ccb/v1/devices/enroll', createProof(identity, challenge));
+  const challenge = await post('ccp/v1/devices/challenge', { label });
+  const enrolled = await post('ccp/v1/devices/enroll', createProof(identity, challenge));
   console.log(JSON.stringify({ ...enrolled, deviceKeyId: identity.deviceKeyId, label }, null, 2));
 }
 

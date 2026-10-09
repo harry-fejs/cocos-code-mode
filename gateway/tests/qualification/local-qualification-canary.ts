@@ -1,8 +1,8 @@
 import { generateKeyPairSync, randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { CANARY_MIN_SOAK_MS, recordVerifiedCanaryHealth } from "../../src/cc-bridge/canary.ts";
-import { importReleaseTarget, publishRolloutPolicy } from "../../src/cc-bridge/release-admin.ts";
-import { signReleaseMetadata } from "../../src/cc-bridge/release-metadata.ts";
+import { CANARY_MIN_SOAK_MS, recordVerifiedCanaryHealth } from "../../src/ccp/canary.ts";
+import { importReleaseTarget, publishRolloutPolicy } from "../../src/ccp/release-admin.ts";
+import { signReleaseMetadata } from "../../src/ccp/release-metadata.ts";
 import { verifyReleaseMetadata, type RootBody, type RolloutPolicyBody } from "../../../source/update/metadata.ts";
 import { acceptRelease } from "../../../source/update/trust.ts";
 import { UpdateStateStore } from "../../../source/update/state.ts";
@@ -10,15 +10,15 @@ import { Evidence, delay, errorCode, invariant, sha256 } from "./local-qualifica
 import { QualificationRuntime } from "./local-qualification-runtime.ts";
 
 export async function qualifyCanary(runtime: QualificationRuntime, evidence: Evidence): Promise<void> {
-  const fixtureClock = process.env.CCB_QUAL_CANARY_CLOCK === "fixture";
-  invariant(!process.env.CCB_QUAL_CANARY_CLOCK || ["fixture", "wall"].includes(process.env.CCB_QUAL_CANARY_CLOCK), "INVALID_CANARY_CLOCK");
+  const fixtureClock = process.env.CCP_QUAL_CANARY_CLOCK === "fixture";
+  invariant(!process.env.CCP_QUAL_CANARY_CLOCK || ["fixture", "wall"].includes(process.env.CCP_QUAL_CANARY_CLOCK), "INVALID_CANARY_CLOCK");
   const rootKeys = generateKeyPairSync("ed25519");
   const targetKeys = generateKeyPairSync("ed25519");
   const policyKeys = generateKeyPairSync("ed25519");
   const keys = { targets: new Map([["qualification-target", targetKeys.publicKey]]), targetsThreshold: 1,
     policy: new Map([["qualification-policy", policyKeys.publicKey]]), policyThreshold: 1 };
   const times = { issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 86_400_000).toISOString() };
-  const rootBody: RootBody = { schemaVersion: 1, product: "cc-bridge-3x", rootVersion: 1, ...times,
+  const rootBody: RootBody = { schemaVersion: 1, product: "ccp3x", rootVersion: 1, ...times,
     keys: {
       "qualification-root": { algorithm: "Ed25519", spkiDer: rootKeys.publicKey.export({ format: "der", type: "spki" }).toString("base64url") },
       "qualification-target": { algorithm: "Ed25519", spkiDer: targetKeys.publicKey.export({ format: "der", type: "spki" }).toString("base64url") },
@@ -27,7 +27,7 @@ export async function qualifyCanary(runtime: QualificationRuntime, evidence: Evi
     roles: { root: { keyIds: ["qualification-root"], threshold: 1 }, targets: { keyIds: ["qualification-target"], threshold: 1 }, policy: { keyIds: ["qualification-policy"], threshold: 1 } } };
   const root = verifyReleaseMetadata("root", signReleaseMetadata("root", "qualification-root", rootBody, rootKeys.privateKey), new Map([["qualification-root", rootKeys.publicKey]]), 1);
   let target = signReleaseMetadata("target", "qualification-target", { schemaVersion: 1, metadataVersion: 1, releaseSequence: 1, ...times,
-    package: { name: "cc-bridge-3x", version: "2.0.1-local-qualification", sha256: sha256("metadata-only-no-ZIP"), size: 1,
+    package: { name: "ccp3x", version: "2.0.1-local-qualification", sha256: sha256("metadata-only-no-ZIP"), size: 1,
       url: "https://qualification.invalid/never-downloaded.zip", packageManifestSha256: sha256("no-manifest"), sbomSha256: sha256("no-sbom"), provenanceSha256: sha256("no-provenance") },
     compatibility: { protocol: { min: 1, max: 1 }, creator: ">=3.7.0 <3.9.0", os: ["win32"], arch: ["x64"] },
   }, targetKeys.privateKey);
@@ -72,12 +72,12 @@ export async function qualifyCanary(runtime: QualificationRuntime, evidence: Evi
     const failedClient = runtime.clients[runtime.clients.length - 1];
     runtime.store.revokeDevice(failedClient.deviceId);
     await soak("failed-local");
-    await runtime.call(failedClient, "canary-ring1-revoked-device", 422, "CCB_DEVICE_DENIED");
+    await runtime.call(failedClient, "canary-ring1-revoked-device", 422, "CCP_DEVICE_DENIED");
     recordVerifiedCanaryHealth(runtime.store, { targetHash: imported.targetPayloadHash, packageHash: imported.packageHash,
       deviceId: failedClient.deviceId, probeId: randomUUID(), observedAtMs: Date.now(), ring: "1", healthy: false });
     const before = runtime.store.latestRolloutPolicySequence();
     let denied = false;
-    try { publish(policy("failed-local", "3")); } catch (error) { invariant(errorCode(error) === "CCB_DEVICE_DENIED", "WRONG_PROMOTION_DENIAL"); denied = true; }
+    try { publish(policy("failed-local", "3")); } catch (error) { invariant(errorCode(error) === "CCP_DEVICE_DENIED", "WRONG_PROMOTION_DENIAL"); denied = true; }
     invariant(denied && runtime.store.getRolloutState("failed-local")?.ring === "1" && runtime.store.latestRolloutPolicySequence() === before, "FAILED_CANARY_PROMOTED");
     return { ring: "1", deniedPromotion: "3", elapsedSoakProof: !fixtureClock, failureSource: "revoked-device-protected-call" };
   });
@@ -111,26 +111,26 @@ export async function qualifyCanary(runtime: QualificationRuntime, evidence: Evi
     const published = publish(wrapper);
     for (let index = 0; index < 10; index += 1) {
       let denied = false;
-      try { accept(wrapper, "healthy-local", "10", index); } catch (error) { invariant(errorCode(error) === "CCB_BUILD_INCOMPATIBLE", "WRONG_EMERGENCY_DENIAL"); denied = true; }
+      try { accept(wrapper, "healthy-local", "10", index); } catch (error) { invariant(errorCode(error) === "CCP_BUILD_INCOMPATIBLE", "WRONG_EMERGENCY_DENIAL"); denied = true; }
       invariant(denied && states[index].load().highestPolicySequence === published.policySequence, "EMERGENCY_POLICY_NOT_PERSISTED");
     }
     return { deniedClients: 10, policySequence: published.policySequence, activationAttempted: false };
   });
   await evidence.scenario("signed-emergency-protected-operation-stop", async () => {
     await runtime.restart();
-    await runtime.call(runtime.clients[0], "signed-emergency-protected-operation-stop", 422, "CCB_GATEWAY_UNAVAILABLE");
+    await runtime.call(runtime.clients[0], "signed-emergency-protected-operation-stop", 422, "CCP_GATEWAY_UNAVAILABLE");
     return { actualCreatorIpc: 0, gate: "signed-rollout-policy" };
   });
   await evidence.scenario("signed-disabled-operation-stop", async () => {
     publish(policy("healthy-local", "10", { disabledOperations: ["createUiNode"] }));
-    await runtime.call(runtime.clients[0], "signed-disabled-operation-stop", 422, "CCB_CONTRACT_MISMATCH");
+    await runtime.call(runtime.clients[0], "signed-disabled-operation-stop", 422, "CCP_CONTRACT_MISMATCH");
     return { actualCreatorIpc: 0, gate: "signed-disabledOperations" };
   });
   await evidence.scenario("gateway-environment-emergency-stop", async () => {
-    const previous = process.env.CCB_EMERGENCY_STOP;
-    process.env.CCB_EMERGENCY_STOP = "1";
-    try { await runtime.call(runtime.clients[0], "gateway-environment-emergency-stop", 422, "CCB_GATEWAY_UNAVAILABLE"); }
-    finally { if (previous === undefined) delete process.env.CCB_EMERGENCY_STOP; else process.env.CCB_EMERGENCY_STOP = previous; }
-    return { actualCreatorIpc: 0, gate: "CCB_EMERGENCY_STOP-separate-from-signed-policy" };
+    const previous = process.env.CCP_EMERGENCY_STOP;
+    process.env.CCP_EMERGENCY_STOP = "1";
+    try { await runtime.call(runtime.clients[0], "gateway-environment-emergency-stop", 422, "CCP_GATEWAY_UNAVAILABLE"); }
+    finally { if (previous === undefined) delete process.env.CCP_EMERGENCY_STOP; else process.env.CCP_EMERGENCY_STOP = previous; }
+    return { actualCreatorIpc: 0, gate: "CCP_EMERGENCY_STOP-separate-from-signed-policy" };
   });
 }

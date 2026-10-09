@@ -26,8 +26,8 @@ function Assert-Contained([string] $Root, [string] $Candidate) {
 }
 
 function Assert-StagedDirectory([string] $Root, [string] $ReleaseRoot, [string] $ExpectedDescriptorSha256) {
-    $descriptorPath = Join-Path $Root ".ccb-staged.json"
-    $manifestPath = Join-Path $Root ".ccb-package-manifest.json"
+    $descriptorPath = Join-Path $Root ".ccp-staged.json"
+    $manifestPath = Join-Path $Root ".ccp-package-manifest.json"
     if (-not (Test-Path -LiteralPath $descriptorPath -PathType Leaf)) { throw "activation descriptor missing" }
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "package manifest missing" }
     if ((Get-Sha256 $descriptorPath) -ne $ExpectedDescriptorSha256) { throw "activation descriptor digest mismatch" }
@@ -61,15 +61,15 @@ function Assert-StagedDirectory([string] $Root, [string] $ReleaseRoot, [string] 
     }
     if ((Get-Sha256 $manifestPath) -ne $descriptor.packageManifestSha256) { throw "package manifest digest mismatch" }
     $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
-    if ($manifest.schemaVersion -ne 1 -or $manifest.package -ne "cc-bridge-3x" -or $manifest.version -ne $descriptor.version) {
+    if ($manifest.schemaVersion -ne 1 -or $manifest.package -ne "ccp3x" -or $manifest.version -ne $descriptor.version) {
         throw "package manifest identity mismatch"
     }
     $declared = @{}
     foreach ($entry in $manifest.files) {
-        if ($entry.path -notmatch '^cc-bridge-3x/.+' -or $entry.sha256 -notmatch '^[a-f0-9]{64}$') {
+        if ($entry.path -notmatch '^ccp3x/.+' -or $entry.sha256 -notmatch '^[a-f0-9]{64}$') {
             throw "package manifest entry invalid"
         }
-        $relativePath = $entry.path.Substring("cc-bridge-3x/".Length)
+        $relativePath = $entry.path.Substring("ccp3x/".Length)
         $relativeKey = $relativePath.ToLowerInvariant()
         if ($declared.ContainsKey($relativeKey)) { throw "package manifest entry duplicated" }
         $full = Get-FullPath (Join-Path $Root ($relativePath.Replace('/', [IO.Path]::DirectorySeparatorChar)))
@@ -81,7 +81,7 @@ function Assert-StagedDirectory([string] $Root, [string] $ReleaseRoot, [string] 
         $declared[$relativeKey] = $true
     }
     $actual = @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force | Where-Object {
-        $_.Name -ne ".ccb-staged.json" -and $_.Name -ne ".ccb-package-manifest.json"
+        $_.Name -ne ".ccp-staged.json" -and $_.Name -ne ".ccp-package-manifest.json"
     })
     if ($actual.Count -ne $declared.Count) { throw "staged file set differs from manifest" }
     foreach ($file in $actual) {

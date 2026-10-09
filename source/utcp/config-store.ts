@@ -1,5 +1,6 @@
-import { closeSync, constants, existsSync, fsyncSync, lstatSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'fs';
+import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from 'fs';
 import { randomBytes } from 'crypto';
+import { dirname, join } from 'path';
 
 export interface UtcpConfig {
     manual_call_templates: Array<Record<string, unknown>>;
@@ -41,25 +42,26 @@ export function writeUtcpConfig(path: string, config: UtcpConfig): void {
     writeJsonAtomic(path, config);
 }
 export function withConfigLock<T>(path: string, operation: () => T): T {
-    const lock = `${path}.ccb-lock`;
-    const deadline = Date.now() + 3000;
-    let descriptor: number;
+    mkdirSync(dirname(path), { recursive: true });
+    const lock = `${path}.ccp-lock`;
+    const deadline = Date.now() + 5000;
+    const wait = new Int32Array(new SharedArrayBuffer(4));
+    // Never steal a lock based on age: a suspended writer may still resume.
     for (;;) {
         try {
-            descriptor = openSync(lock, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY, 0o600);
+            mkdirSync(lock);
             break;
         } catch (error: unknown) {
             if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 'EEXIST') throw error;
             if (Date.now() >= deadline) throw new Error('UTCP configuration is busy; abandoned locks require owner verification before removal');
-            Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+            Atomics.wait(wait, 0, 0, 25);
         }
     }
     try {
-        writeFileSync(descriptor, JSON.stringify({ pid: process.pid }), 'utf8');
+        writeFileSync(join(lock, 'owner.json'), JSON.stringify({ pid: process.pid, acquiredAt: new Date().toISOString() }));
         return operation();
     } finally {
-        closeSync(descriptor);
-        unlinkSync(lock);
+        rmSync(lock, { recursive: true, force: true });
     }
 }
 export function mutateUtcpConfig<T>(path: string, operation: (config: UtcpConfig) => T): T {

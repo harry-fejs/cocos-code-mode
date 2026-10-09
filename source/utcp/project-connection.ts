@@ -5,10 +5,10 @@ import { z } from 'zod';
 import { UtcpConfig, writeJsonAtomic } from './config-store';
 
 export function connectionRegistryPath(configPath: string): string {
-    return join(dirname(resolve(configPath)), '.cc-bridge', 'project-connections.json');
+    return join(dirname(resolve(configPath)), '.ccp', 'project-connections.json');
 }
 export function migrationReportsPath(configPath: string): string {
-    return join(dirname(resolve(configPath)), '.cc-bridge', 'migration-reports');
+    return join(dirname(resolve(configPath)), '.ccp', 'migration-reports');
 }
 export function canonicalProjectPath(path: string): string {
     if (!path || !path.trim()) throw new Error('an explicit Cocos project path is required');
@@ -48,6 +48,8 @@ function validateState(state: ConnectionState, configPath: string): ConnectionSt
 }
 export function readConnectionState(configPath: string): ConnectionState {
     const path = connectionRegistryPath(configPath);
+    // Explicit legacy migration input check, never an active registry fallback.
+    if (!existsSync(path) && existsSync(join(dirname(resolve(configPath)), '.cc-bridge', 'project-connections.json'))) throw new Error('legacy project registry requires explicit offline migrate-ccp-identity; refusing new empty reservations');
     if (!existsSync(path)) return { version: 1, configPath: resolve(configPath), projects: {} };
     const stat = lstatSync(path);
     if (stat.isSymbolicLink() || !stat.isFile() || stat.size > 4 * 1024 * 1024) throw new Error('project registry must be a bounded regular file');
@@ -63,9 +65,9 @@ export function storeConnectionState(configPath: string, state: ConnectionState)
 }
 export function assertConnectionConfig(config: UtcpConfig, state: ConnectionState): void {
     validateState(state, state.configPath);
-    if (config.variables?.CCB_PROJECT_CONNECTIONS !== undefined) throw new Error('embedded project metadata must be migrated before using connections');
+    if (config.variables?.CCP_PROJECT_CONNECTIONS !== undefined) throw new Error('embedded project metadata must be migrated before using connections');
     for (const connection of Object.values(state.projects)) {
-        const templates = config.manual_call_templates.filter((entry) => entry.name === `ccb3x_${connection.port}`);
+        const templates = config.manual_call_templates.filter((entry) => entry.name === `ccp3x_${connection.port}`);
         const loaders = (config.load_variables_from || []).filter((entry) => entry.variable_loader_type === 'dotenv' && typeof entry.env_file_path === 'string' && resolve(entry.env_file_path) === resolve(connection.tokenPath));
         if (connection.active) {
             if (templates.length !== 1 || templates[0].url !== `http://localhost:${connection.port}/utcp` || loaders.length !== 1) throw new Error('active project registry and UTCP config disagree');

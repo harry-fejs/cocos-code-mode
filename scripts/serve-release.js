@@ -5,11 +5,11 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const HOST = process.env.CCB_RELEASE_HOST || '192.168.20.100';
-const PORT = Number(process.env.CCB_RELEASE_PORT || '8788');
-const ROOT = path.resolve(process.env.CCB_RELEASE_DIRECTORY || path.join(__dirname, '..', 'release-set'));
-const CERT = process.env.CCB_RELEASE_TLS_CERT;
-const KEY = process.env.CCB_RELEASE_TLS_KEY;
+const HOST = process.env.CCP_RELEASE_HOST || '192.168.20.100';
+const PORT = Number(process.env.CCP_RELEASE_PORT || '8788');
+const ROOT = path.resolve(process.env.CCP_RELEASE_DIRECTORY || path.join(__dirname, '..', 'release-set'));
+const CERT = process.env.CCP_RELEASE_TLS_CERT;
+const KEY = process.env.CCP_RELEASE_TLS_KEY;
 
 const ALLOWED = new Map([
   ['/metadata/root.json', 'metadata/root.json'],
@@ -27,10 +27,10 @@ function required(name, value) {
 }
 
 function validate() {
-  if (!Number.isSafeInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error('CCB_RELEASE_PORT must be 1..65535');
-  if (!HOST || /[/?#]/.test(HOST)) throw new Error('CCB_RELEASE_HOST must be a plain bind address');
-  const cert = required('CCB_RELEASE_TLS_CERT', CERT);
-  const key = required('CCB_RELEASE_TLS_KEY', KEY);
+  if (!Number.isSafeInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error('CCP_RELEASE_PORT must be 1..65535');
+  if (!HOST || /[/?#]/.test(HOST)) throw new Error('CCP_RELEASE_HOST must be a plain bind address');
+  const cert = required('CCP_RELEASE_TLS_CERT', CERT);
+  const key = required('CCP_RELEASE_TLS_KEY', KEY);
   if (!fs.statSync(cert).isFile() || !fs.statSync(key).isFile()) throw new Error('TLS certificate and key must be regular files');
   if (!fs.statSync(ROOT).isDirectory()) throw new Error(`release directory does not exist: ${ROOT}`);
   for (const relative of ALLOWED.values()) {
@@ -65,7 +65,7 @@ function main() {
     if (req.method !== 'GET' || !ALLOWED.has(req.url)) { res.writeHead(404); res.end(); return; }
     sendFile(res, ALLOWED.get(req.url));
   });
-  server.listen(PORT, HOST, () => console.log(`CCB release HTTPS origin: https://${HOST}:${PORT}/ root=${ROOT}`));
+  server.listen(PORT, HOST, () => console.log(`CCP release HTTPS origin: https://${HOST}:${PORT}/ root=${ROOT}`));
   const shutdown = () => server.close(() => process.exit(0));
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);

@@ -101,7 +101,7 @@ async function main() {
   const outputPath = path.join(projectRoot, zipFileName);
 
   for (const name of fs.readdirSync(projectRoot)) {
-    if (name !== zipFileName && /^cc-bridge-3x.*\.zip$/.test(name)) fs.rmSync(path.join(projectRoot, name));
+    if (name !== zipFileName && /^ccp3x.*\.zip$/.test(name)) fs.rmSync(path.join(projectRoot, name));
   }
   fs.rmSync(outputPath, { force: true });
   await createZip(outputPath, entries);

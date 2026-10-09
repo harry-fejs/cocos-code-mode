@@ -14,7 +14,7 @@ export function resolveManifest({ cwd = process.cwd(), env = process.env, explic
 
 export function validateSessionGraph({ cwd = process.cwd(), env = process.env, session, explicitOut = null } = {}) {
   const project = env.CC_PROJECT_DIR ?? session?.project;
-  if (!project) return { stale: true, banner: ['no project in ccb-session.json — cannot locate _manifest.json'] };
+  if (!project) return { stale: true, banner: ['no project in ccp-session.json — cannot locate _manifest.json'] };
   const outName = explicitOut ?? env.CC_GRAPH_OUT ?? resolveGraphOutName({ isolate: env.CC_GRAPH_ISOLATE === '1', cwd });
   const manifest = readJson(join(project, outName, '_manifest.json'));
   if (!manifest || !Array.isArray(manifest.shards)) return { stale: true, banner: [`index NOT BUILT (${outName})`] };

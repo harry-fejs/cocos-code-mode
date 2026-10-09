@@ -19,7 +19,7 @@ function failConfigRename(configPath, operation) {
   return Promise.resolve().then(operation).finally(() => { fs.renameSync = prior; });
 }
 it('rolls back registration, credential rotation, and shutdown publication failures and permits normal retry', async () => {
-  const root = fs.mkdtempSync(path.join(os.homedir(), '.ccb-recovery-test-'));
+  const root = fs.mkdtempSync(path.join(os.homedir(), '.ccp-recovery-test-'));
   const manager = getConfigManager();
   const priorPath = manager.getConfigPath(); const priorEditor = global.Editor;
   global.Editor = { Profile: { async setConfig() {}, async getConfig() {} } };
@@ -27,7 +27,7 @@ it('rolls back registration, credential rotation, and shutdown publication failu
     const project = path.join(root, 'project'); fs.mkdirSync(project);
     const configPath = path.join(root, 'utcp.json');
     await manager.setConfigPath(configPath);
-    const auth = createProjectLocalAuth(project, randomUUID(), path.join(root, '.cc-bridge', 'local-auth'));
+    const auth = createProjectLocalAuth(project, randomUUID(), path.join(root, '.ccp', 'local-auth'));
     await assert.rejects(failConfigRename(configPath, () => manager.ensureCocosEditorTemplate(49501, auth, gateway)), /sharing violation/);
     assert.equal(fs.existsSync(connectionRegistryPath(configPath)), false);
     assert.equal(fs.existsSync(auth.tokenPath), false);
@@ -45,7 +45,7 @@ it('rolls back registration, credential rotation, and shutdown publication failu
     assert.deepEqual(fs.readFileSync(connectionRegistryPath(configPath)), registryBeforeStop);
     assert.equal(await manager.getProjectPort(project), 49502);
     assert.equal(await manager.removeCocosEditorTemplate(auth), true);
-    const next = createProjectLocalAuth(project, randomUUID(), path.join(root, '.cc-bridge', 'local-auth'));
+    const next = createProjectLocalAuth(project, randomUUID(), path.join(root, '.ccp', 'local-auth'));
     await assert.rejects(failConfigRename(configPath, () => manager.ensureCocosEditorTemplate(49502, next, gateway)), /sharing violation/);
     assert.equal(readConnectionState(configPath).projects[auth.projectId].active, false);
     await manager.ensureCocosEditorTemplate(49502, next, gateway);

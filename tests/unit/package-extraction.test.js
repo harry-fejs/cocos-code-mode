@@ -29,7 +29,7 @@ async function zip(filePath, files) {
 function manifest(files) {
   return {
     schemaVersion: 1,
-    package: 'cc-bridge-3x',
+    package: 'ccp3x',
     version: '2.1.0',
     files: files.map(([path, bytes]) => ({ path, size: bytes.length, sha256: digest(bytes), mode: 0o644 })),
   };
@@ -37,11 +37,11 @@ function manifest(files) {
 
 describe('bounded ZIP extraction', () => {
   it('extracts exactly the signed manifest and writes a staged descriptor', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'ccb-zip-'));
+    const root = mkdtempSync(join(tmpdir(), 'ccp-zip-'));
     try {
       const files = [
-        ['cc-bridge-3x/package.json', Buffer.from('{"name":"cc-bridge-3x"}')],
-        ['cc-bridge-3x/dist/main.js', Buffer.from('module.exports = 1;')],
+        ['ccp3x/package.json', Buffer.from('{"name":"ccp3x"}')],
+        ['ccp3x/dist/main.js', Buffer.from('module.exports = 1;')],
       ];
       const zipPath = join(root, 'release.zip');
       await zip(zipPath, files);
@@ -62,18 +62,18 @@ describe('bounded ZIP extraction', () => {
         targetPayloadSha256: 'a'.repeat(64), policyPayloadSha256: 'b'.repeat(64),
         rootMetadataSha256: 'c'.repeat(64), targetMetadataSha256: 'd'.repeat(64), policyMetadataSha256: 'e'.repeat(64),
       });
-      assert.equal(result.directory, join(destination, 'cc-bridge-3x'));
+      assert.equal(result.directory, join(destination, 'ccp3x'));
       assert.equal(readFileSync(join(result.directory, 'dist', 'main.js'), 'utf8'), 'module.exports = 1;');
-      assert.equal(JSON.parse(readFileSync(join(result.directory, '.ccb-staged.json'), 'utf8')).targetPayloadSha256, 'a'.repeat(64));
+      assert.equal(JSON.parse(readFileSync(join(result.directory, '.ccp-staged.json'), 'utf8')).targetPayloadSha256, 'a'.repeat(64));
     } finally { rmSync(root, { recursive: true, force: true }); }
   });
 
   it('rejects undeclared and case-colliding ZIP entries without leaving staging output', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'ccb-zip-'));
+    const root = mkdtempSync(join(tmpdir(), 'ccp-zip-'));
     try {
       const files = [
-        ['cc-bridge-3x/dist/main.js', Buffer.from('one')],
-        ['cc-bridge-3x/dist/MAIN.js', Buffer.from('two')],
+        ['ccp3x/dist/main.js', Buffer.from('one')],
+        ['ccp3x/dist/MAIN.js', Buffer.from('two')],
       ];
       const zipPath = join(root, 'release.zip');
       await zip(zipPath, files);
@@ -84,10 +84,10 @@ describe('bounded ZIP extraction', () => {
   });
 
   it('rejects tampered entry bytes against the signed manifest', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'ccb-zip-'));
+    const root = mkdtempSync(join(tmpdir(), 'ccp-zip-'));
     try {
-      const actual = [['cc-bridge-3x/dist/main.js', Buffer.from('tampered')]];
-      const declared = [['cc-bridge-3x/dist/main.js', Buffer.from('expected')]];
+      const actual = [['ccp3x/dist/main.js', Buffer.from('tampered')]];
+      const declared = [['ccp3x/dist/main.js', Buffer.from('expected')]];
       const zipPath = join(root, 'release.zip');
       await zip(zipPath, actual);
       assert.throws(() => extractVerifiedPackage(zipPath, manifest(declared), join(root, 'staged')), /does not match/);

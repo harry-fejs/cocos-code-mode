@@ -5,8 +5,8 @@ const path = require('node:path');
 const { createHash } = require('node:crypto');
 const { canonicalize } = require('./sign-release');
 
-const root = path.resolve(process.env.CCB_RELEASE_DIRECTORY || path.join(__dirname, '..', 'release-set'));
-const origin = process.env.CCB_RELEASE_ORIGIN;
+const root = path.resolve(process.env.CCP_RELEASE_DIRECTORY || path.join(__dirname, '..', 'release-set'));
+const origin = process.env.CCP_RELEASE_ORIGIN;
 const paths = ['release.zip', 'package-manifest.json', 'sbom.cdx.json', 'provenance.intoto.json'];
 function fail(message) { throw new Error(message); }
 function read(relative) {
@@ -30,12 +30,12 @@ function payload(wrapperValue, relative) {
   return { bytes, value };
 }
 function main() {
-  if (!origin || !origin.startsWith('https://')) fail('CCB_RELEASE_ORIGIN must be an HTTPS origin');
+  if (!origin || !origin.startsWith('https://')) fail('CCP_RELEASE_ORIGIN must be an HTTPS origin');
   const target = payload(wrapper('metadata/target.json'), 'target metadata');
   const policy = payload(wrapper('metadata/policy.json'), 'policy metadata');
   const rootMetadata = wrapper('metadata/root.json');
   const targetPackage = target.value.package;
-  if (!targetPackage || targetPackage.name !== 'cc-bridge-3x') fail('target package identity is invalid');
+  if (!targetPackage || targetPackage.name !== 'ccp3x') fail('target package identity is invalid');
   const expectedUrls = new Map([
     ['release.zip', targetPackage.url],
     ['package-manifest.json', new URL('package-manifest.json', origin).toString()],

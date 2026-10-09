@@ -1,9 +1,9 @@
-import { CcbError, CcbErrorCode } from "./errors";
+import { CcpError, CcpErrorCode } from "./errors";
 
 export type RelayState = "BOOTING" | "LOCKED" | "ACTIVE" | "DRAINING";
 
 export interface RelayLockReason {
-  code: CcbErrorCode;
+  code: CcpErrorCode;
   error: string;
   details?: Record<string, null | boolean | number | string>;
 }
@@ -11,7 +11,7 @@ export interface RelayLockReason {
 export class ProtectedRelayStateMachine {
   private current: RelayState = "BOOTING";
   private lockReason: RelayLockReason = {
-    code: "CCB_GATEWAY_UNAVAILABLE",
+    code: "CCP_GATEWAY_UNAVAILABLE",
     error: "Protected relay is still booting.",
   };
   private activeWork = 0;
@@ -61,9 +61,9 @@ export class ProtectedRelayStateMachine {
   assertActive(): void {
     if (this.current === "ACTIVE") return;
     if (this.current === "DRAINING") {
-      throw new CcbError("CCB_BUSY", "Protected relay is draining and rejects new work.", { state: this.current });
+      throw new CcpError("CCP_BUSY", "Protected relay is draining and rejects new work.", { state: this.current });
     }
-    throw new CcbError(this.lockReason.code, this.lockReason.error, {
+    throw new CcpError(this.lockReason.code, this.lockReason.error, {
       state: this.current,
       ...(this.lockReason.details ?? {}),
     });

@@ -34,7 +34,7 @@ function installed(config) {
   }
   if (verified.root.digest !== config.trustedRootSha256) throw new Error('release root is not the pinned trusted root');
   for (const entry of [root, verified.target.body, verified.policy.body]) if (Date.parse(entry.issuedAt) > Date.now() || Date.parse(entry.expiresAt) <= Date.now()) throw new Error('release metadata not currently active');
-  const descriptorBytes = read(path.join(config.installedDirectory, '.ccb-staged.json'));
+  const descriptorBytes = read(path.join(config.installedDirectory, '.ccp-staged.json'));
   const descriptor = JSON.parse(descriptorBytes);
   const target = verified.target.body.package;
   if (descriptor.schemaVersion !== 1 || descriptor.packageSha256 !== target.sha256 || descriptor.packageBytes !== target.size || descriptor.version !== target.version || descriptor.targetPayloadSha256 !== verified.target.digest || descriptor.policyPayloadSha256 !== verified.policy.digest || verified.policy.body.targetPayloadSha256 !== verified.target.digest) throw new Error('installed descriptor is not bound to signed release');
@@ -43,13 +43,13 @@ function installed(config) {
     if (sha(bytes) !== descriptor[field] || (name === 'release.zip' && bytes.length !== target.size)) throw new Error('release artifact mismatch: ' + name);
     if (Object.hasOwn(target, field) && target[field] !== descriptor[field]) throw new Error('signed artifact binding mismatch');
   }
-  const manifestBytes = read(path.join(config.installedDirectory, '.ccb-package-manifest.json'));
+  const manifestBytes = read(path.join(config.installedDirectory, '.ccp-package-manifest.json'));
   if (sha(manifestBytes) !== target.packageManifestSha256) throw new Error('installed manifest mismatch');
   const manifest = JSON.parse(manifestBytes);
-  if (manifest.package !== 'cc-bridge-3x' || manifest.version !== target.version || !Array.isArray(manifest.files) || !manifest.files.length || manifest.files.length > 4096) throw new Error('invalid installed manifest');
+  if (manifest.package !== 'ccp3x' || manifest.version !== target.version || !Array.isArray(manifest.files) || !manifest.files.length || manifest.files.length > 4096) throw new Error('invalid installed manifest');
   const expected = new Set(); let total = 0;
   for (const file of manifest.files) {
-    const prefix = 'cc-bridge-3x/';
+    const prefix = 'ccp3x/';
     if (!file.path.startsWith(prefix)) throw new Error('manifest file outside package');
     const rel = file.path.slice(prefix.length);
     if (!rel || rel.split('/').some(p => !p || p === '.' || p === '..') || rel.includes('\\') || rel.includes(':') || expected.has(rel)) throw new Error('unsafe or duplicate manifest path');
@@ -63,7 +63,7 @@ function installed(config) {
       const file = path.join(directory, item.name); const rel = path.relative(config.installedDirectory, file).replaceAll('\\', '/');
       if (item.isSymbolicLink()) throw new Error('installed tree contains link');
       if (item.isDirectory()) walk(file, depth + 1);
-      else if (!item.isFile() || (!expected.delete(rel) && !['.ccb-staged.json', '.ccb-package-manifest.json'].includes(rel))) throw new Error('installed unsigned file');
+      else if (!item.isFile() || (!expected.delete(rel) && !['.ccp-staged.json', '.ccp-package-manifest.json'].includes(rel))) throw new Error('installed unsigned file');
     }
   }
   walk(config.installedDirectory);
@@ -82,7 +82,7 @@ function signedEvents(file, identity, runId, packageBinding) {
     const wrapper = JSON.parse(line);
     if (wrapper.keyId !== identity.deviceKeyId || typeof wrapper.payload !== 'string' || typeof wrapper.signature !== 'string') throw new Error('unsigned or source-only live event');
     const payload = Buffer.from(wrapper.payload, 'base64');
-    if (!crypto.verify(null, Buffer.concat([Buffer.from('CCB1 installed-live-witness\n'), payload]), key, Buffer.from(wrapper.signature, 'base64'))) throw new Error('forged live event signature');
+    if (!crypto.verify(null, Buffer.concat([Buffer.from('CCP1 installed-live-witness\n'), payload]), key, Buffer.from(wrapper.signature, 'base64'))) throw new Error('forged live event signature');
     const event = JSON.parse(payload);
     if (event.schemaVersion !== 1 || event.evidenceScope !== 'installed-live' || event.runId !== runId || event.binding.deviceId !== identity.deviceId || event.binding.publicKeyDer !== identity.publicKeyDer || event.binding.packageHash !== packageBinding.packageHash || event.binding.targetPayloadHash !== packageBinding.targetPayloadHash || !Array.isArray(event.evidenceErrors) || event.evidenceErrors.length) throw new Error('live event binding or evidence errors');
     return event;

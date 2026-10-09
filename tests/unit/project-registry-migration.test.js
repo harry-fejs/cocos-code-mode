@@ -10,12 +10,12 @@ const { selectConnection } = require('../../scripts/project-connection');
 const { requireDist } = require('../helpers/require-dist');
 const { connectionRegistryPath, projectIdentity, readConnectionState, storeConnectionState } = requireDist('utcp/project-connection.js');
 function fixture() {
-  const root = fs.mkdtempSync(path.join(os.homedir(), '.ccb-registry-test-'));
+  const root = fs.mkdtempSync(path.join(os.homedir(), '.ccp-registry-test-'));
   const project = path.join(root, 'project'); fs.mkdirSync(project);
   const configPath = path.join(root, 'utcp.json');
   const identity = projectIdentity(project);
   const connection = { ...identity, port: 49401, relayInstanceId: randomUUID(), tokenPath: path.join(root, 'private.env'), ownerPid: process.pid, active: true, gateway: { origin: 'https://assigned.invalid', projectId: 'assigned' } };
-  const config = { manual_call_templates: [{ name: 'ccb3x_49401', call_template_type: 'http', url: 'http://localhost:49401/utcp' }], load_variables_from: [{ variable_loader_type: 'dotenv', env_file_path: connection.tokenPath }], variables: { OTHER_PRODUCT: 'preserve', CCB_PROJECT_CONNECTIONS: JSON.stringify({ version: 1, projects: { [identity.projectId]: connection }, quarantined: [{ kind: 'loader', reference: 'offline.env', reason: 'offline-project-unknown', status: 'unresolved' }] }) } };
+  const config = { manual_call_templates: [{ name: 'ccp3x_49401', call_template_type: 'http', url: 'http://localhost:49401/utcp' }], load_variables_from: [{ variable_loader_type: 'dotenv', env_file_path: connection.tokenPath }], variables: { OTHER_PRODUCT: 'preserve', CCP_PROJECT_CONNECTIONS: JSON.stringify({ version: 1, projects: { [identity.projectId]: connection }, quarantined: [{ kind: 'loader', reference: 'offline.env', reason: 'offline-project-unknown', status: 'unresolved' }] }) } };
   fs.writeFileSync(configPath, JSON.stringify(config));
   fs.writeFileSync(connection.tokenPath, 'private-file-untouched');
   return { root, configPath, identity, connection, config };
@@ -32,7 +32,7 @@ it('externalizes embedded metadata with durable backup/history before removal an
     assert.deepEqual(next.variables, { OTHER_PRODUCT: 'preserve' });
     assert.equal(fs.readFileSync(report.backup, 'utf8'), original);
     assert.equal(readConnectionState(value.configPath).projects[value.identity.projectId].relayInstanceId, value.connection.relayInstanceId);
-    assert.deepEqual(JSON.parse(fs.readFileSync(report.reportPath, 'utf8')).quarantined, JSON.parse(value.config.variables.CCB_PROJECT_CONNECTIONS).quarantined);
+    assert.deepEqual(JSON.parse(fs.readFileSync(report.reportPath, 'utf8')).quarantined, JSON.parse(value.config.variables.CCP_PROJECT_CONNECTIONS).quarantined);
     assert.equal(fs.readFileSync(value.connection.tokenPath, 'utf8'), 'private-file-untouched');
     const second = await migrate(value.configPath, true);
     assert.equal(second.changed, false); assert.equal(second.backup, null); assert.equal(second.reportPath, null);

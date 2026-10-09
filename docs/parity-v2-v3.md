@@ -2,7 +2,7 @@
 
 Tham chiếu sống cho câu hỏi "bản kia có tool tương đương không". Cập nhật mỗi khi port xong một dòng.
 
-**v3** `cc-bridge-3x` (Creator 3.7.x/3.8.x, branch `feat/ccb3x-consolidated` / `cc-3x7`) = **86 tools** · **v2** `cc-bridge-2x` (Creator 2.4.15, branch `cc-2x`) = **53 tools**
+**v3** `ccp3x` (Creator 3.7.x/3.8.x, branch `feat/ccb3x-consolidated` / `cc-3x7`) = **86 tools** · **v2** `ccp2x` (Creator 2.4.15, branch `cc-2x`) = **53 tools**
 **Cập nhật:** 2026-09-05 (Consolidated baseline @ `0483c4f`: Graph v4, Fail-Loud §2/§5/§7, strict UTCP manual 0-annotations, 3.8 project-config probe & IPC implementation, Lane C intake; unit tests 158/158 pass)
 **Đối chiếu message:** `docs/cc-3x7-message-registry.json` (416 msg / 20 module, dump 3.7.3) · coverage 131/416 xem `plans/reports/verify-260821-0939-cc3x7-api.md`
 
@@ -49,7 +49,7 @@ Tên khác nhau **không** đồng nghĩa thiếu chức năng — v3 gom 10 con
 | `findNodesWithMissingAssets` | `sceneSnapshot` + scan null ref | ⚠️ |
 | `inspectorGet` | `nodeQuery dump` + `componentQuery props` | ✅ |
 | `inspectorSet` | `nodeSetProperty` / `nodeSetPropertyUndo` | ✅ |
-| `inspectorGetDefinition` (gen d.ts runtime) | file tĩnh `cc-bridge-2x.d.ts` | ✅ khác cơ chế, cùng nhu cầu |
+| `inspectorGetDefinition` (gen d.ts runtime) | file tĩnh `ccp2x.d.ts` | ✅ khác cơ chế, cùng nhu cầu |
 | `listComponentClasses` · `nodeGetAvailableComponentTypes` · `nodeComponentsGet` | `componentQuery classes` / `props` | ✅ |
 | `nodeGetTree` · `nodeGetAtPath` | `nodeQuery tree` / `at_path` · `sceneSnapshot` | ✅ |
 | `nodeOperate` move/copy/delete/apply_prefab | `nodeMove` · `nodeDuplicate` · `nodeRemove` · `prefabSync` | ✅ |

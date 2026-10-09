@@ -8,7 +8,7 @@ const { requireDist } = require('../helpers/require-dist');
 const { canonicalProjectPath } = requireDist('utcp/project-connection.js');
 const { readGatewayFile } = requireDist('protected/relay-host.js');
 it('selects valid project with unrelated unavailable Gateway map keys while refusing missing or ambiguous selection', () => {
-  const root = fs.mkdtempSync(path.join(os.homedir(), '.ccb-gateway-map-test-'));
+  const root = fs.mkdtempSync(path.join(os.homedir(), '.ccp-gateway-map-test-'));
   try {
     const project = path.join(root, 'current'); fs.mkdirSync(project);
     const canonical = canonicalProjectPath(project);

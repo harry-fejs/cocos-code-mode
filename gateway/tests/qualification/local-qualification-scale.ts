@@ -2,13 +2,13 @@ import { Evidence, delay, digestFiles, integer, invariant, percentiles, sha256 }
 import { QualificationRuntime } from "./local-qualification-runtime.ts";
 
 export async function qualifyScale(runtime: QualificationRuntime, evidence: Evidence): Promise<void> {
-  const warmups = integer("CCB_BENCH_WARMUPS", 10, 0, 100);
-  const rounds = integer("CCB_BENCH_SAMPLES", 100, 1, 200);
-  const soakSeconds = integer("CCB_QUAL_SOAK_SECONDS", 1800, 0, 7200);
-  const intervalMs = integer("CCB_QUAL_SOAK_INTERVAL_MS", 5000, 1000, 60_000);
-  const rssBudget = integer("CCB_QUAL_RSS_MIB", 768, 64, 16_384) * 1024 * 1024;
-  const growthBudget = integer("CCB_QUAL_RSS_GROWTH_MIB", 256, 16, 8192) * 1024 * 1024;
-  const httpP95Budget = integer("CCB_QUAL_HTTP_P95_MS", 2000, 1, 60_000);
+  const warmups = integer("CCP_BENCH_WARMUPS", 10, 0, 100);
+  const rounds = integer("CCP_BENCH_SAMPLES", 100, 1, 200);
+  const soakSeconds = integer("CCP_QUAL_SOAK_SECONDS", 1800, 0, 7200);
+  const intervalMs = integer("CCP_QUAL_SOAK_INTERVAL_MS", 5000, 1000, 60_000);
+  const rssBudget = integer("CCP_QUAL_RSS_MIB", 768, 64, 16_384) * 1024 * 1024;
+  const growthBudget = integer("CCP_QUAL_RSS_GROWTH_MIB", 256, 16, 8192) * 1024 * 1024;
+  const httpP95Budget = integer("CCP_QUAL_HTTP_P95_MS", 2000, 1, 60_000);
   invariant(runtime.clients.length === 100, "SCALE_REQUIRES_100_DEVICES");
   evidence.emit({ type: "configuration", scenario: "scale", clients: 100, warmups, rounds, soakSeconds, intervalMs, rssBudget, growthBudget,
     gatewayCoreP95BudgetMs: 5, httpP95Budget, admission: runtime.admissionConfig,

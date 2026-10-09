@@ -63,7 +63,7 @@ async function main() {
   if (first.status === 422) {
     let body;
     try { body = JSON.parse(firstText); } catch { body = null; }
-    if (body && typeof body.code === 'string' && /^CCB_(?:GATEWAY_UNAVAILABLE|BUILD_INCOMPATIBLE)$/.test(body.code)) {
+    if (body && typeof body.code === 'string' && /^CCP_(?:GATEWAY_UNAVAILABLE|BUILD_INCOMPATIBLE)$/.test(body.code)) {
       report.failClosed = { status: first.status, code: body.code };
       fs.mkdirSync(path.dirname(REPORT), { recursive: true });
       fs.writeFileSync(REPORT, `${JSON.stringify(report, null, 2)}\n`);
@@ -72,7 +72,7 @@ async function main() {
     }
   }
   if (!first.ok) throw new Error(`sceneGetInfo -> ${first.status}: ${firstText.slice(0, 200)}`);
-  const samples = Number(process.env.CCB_BENCH_SAMPLES || '20');
+  const samples = Number(process.env.CCP_BENCH_SAMPLES || '20');
   const durations = [];
   for (let i = 0; i < samples; i += 1) {
     const started = performance.now();

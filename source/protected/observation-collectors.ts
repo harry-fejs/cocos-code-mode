@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { assertIJson, canonicalizeToBytes, IJson } from "./canonical-json";
-import { CcbError } from "./errors";
+import { CcpError } from "./errors";
 import { OBSERVATION_MAX_BYTES } from "./protocol";
 import type { ProtectedObservation } from "./request-builder";
 
@@ -21,10 +21,10 @@ export interface ObservationRuntime {
 }
 
 function jsonValue(value: unknown, depth = 0): IJson {
-  if (depth > 64) throw new CcbError("CCB_LIMIT_EXCEEDED", "Creator observation exceeds the maximum nesting depth.");
+  if (depth > 64) throw new CcpError("CCP_LIMIT_EXCEEDED", "Creator observation exceeds the maximum nesting depth.");
   if (value === null || typeof value === "string" || typeof value === "boolean") return value;
   if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new CcbError("CCB_CANONICAL_INVALID", "Creator observation contains a non-finite number.");
+    if (!Number.isFinite(value)) throw new CcpError("CCP_CANONICAL_INVALID", "Creator observation contains a non-finite number.");
     return value;
   }
   if (Array.isArray(value)) return value.map((entry) => jsonValue(entry, depth + 1));
@@ -37,7 +37,7 @@ function jsonValue(value: unknown, depth = 0): IJson {
     }
     return out;
   }
-  throw new CcbError("CCB_CANONICAL_INVALID", "Creator observation contains a non-JSON value.");
+  throw new CcpError("CCP_CANONICAL_INVALID", "Creator observation contains a non-JSON value.");
 }
 
 function inputRecord(inputs: IJson): Record<string, IJson> {
@@ -82,7 +82,7 @@ async function inspectEntity(runtime: ObservationRuntime, id: string): Promise<I
   if (component !== null && component !== undefined) return { id, kind: "component", value: jsonValue(component) };
   const asset = await runtime.request("asset-db", "query-asset-info", id);
   if (asset !== null && asset !== undefined) return { id, kind: "asset", value: jsonValue(asset) };
-  throw new CcbError("CCB_PRECONDITION_FAILED", "Creator observation target no longer exists.", { target: id });
+  throw new CcpError("CCP_PRECONDITION_FAILED", "Creator observation target no longer exists.", { target: id });
 }
 
 function projectValue(root: unknown, dotPath: string): unknown {
@@ -101,7 +101,7 @@ async function collectProjection(contractId: string, inputs: IJson, runtime: Obs
       return {};
     case "ui-parent-v1": {
       const root = await runtime.request("scene", "query-node-tree");
-      if (!root) throw new CcbError("CCB_PRECONDITION_FAILED", "No active scene root is available.");
+      if (!root) throw new CcpError("CCP_PRECONDITION_FAILED", "No active scene root is available.");
       const parentId = referenceId(record.parentReference);
       const parent = parentId ? await inspectEntity(runtime, parentId) : null;
       return { parentReference: parent, sceneRoot: jsonValue(root) };
@@ -111,12 +111,12 @@ async function collectProjection(contractId: string, inputs: IJson, runtime: Obs
         runtime.request("scene", "query-current-scene"),
         runtime.request("scene", "query-node-tree"),
       ]);
-      if (!root) throw new CcbError("CCB_PRECONDITION_FAILED", "No active scene root is available.");
+      if (!root) throw new CcpError("CCP_PRECONDITION_FAILED", "No active scene root is available.");
       return { scene: jsonValue(scene ?? null), root: jsonValue(root) };
     }
     case "scene-target-v1": {
       const ids = collectReferenceIds(inputs);
-      if (ids.length === 0) throw new CcbError("CCB_PRECONDITION_FAILED", "Scene target observation has no concrete references.");
+      if (ids.length === 0) throw new CcpError("CCP_PRECONDITION_FAILED", "Scene target observation has no concrete references.");
       const targets = await Promise.all(ids.map((id) => inspectEntity(runtime, id)));
       return { targets };
     }
@@ -135,7 +135,7 @@ async function collectProjection(contractId: string, inputs: IJson, runtime: Obs
       return { history: { current: jsonValue(current ?? null), dirty: Boolean(dirty) } };
     }
     case "editor-state-v1": {
-      if (!runtime.selection) throw new CcbError("CCB_PRECONDITION_FAILED", "Editor selection state is unavailable.");
+      if (!runtime.selection) throw new CcpError("CCP_PRECONDITION_FAILED", "Editor selection state is unavailable.");
       const [is2D, gridVisible, gizmoTool, gizmoPivot, gizmoCoordinate] = await Promise.all([
         runtime.request("scene", "query-is2D"),
         runtime.request("scene", "query-is-grid-visible"),
@@ -166,32 +166,32 @@ async function collectProjection(contractId: string, inputs: IJson, runtime: Obs
       return { buildTask: jsonValue(task ?? null) };
     }
     case "runtime-state-v1": {
-      const state = await runtime.request("scene", "execute-scene-script", { name: "cc-bridge-3x", method: "runtimeGetState", args: [] });
-      if (!state || typeof state !== "object") throw new CcbError("CCB_PRECONDITION_FAILED", "Runtime state is unavailable.");
+      const state = await runtime.request("scene", "execute-scene-script", { name: "ccp3x", method: "runtimeGetState", args: [] });
+      if (!state || typeof state !== "object") throw new CcpError("CCP_PRECONDITION_FAILED", "Runtime state is unavailable.");
       return { runtimeState: jsonValue(state) };
     }
     case "project-setting-v1": {
       const config = await runtime.request("project", "query-config", "project");
-      if (config === undefined || config === null) throw new CcbError("CCB_PRECONDITION_FAILED", "Project settings are unavailable.");
+      if (config === undefined || config === null) throw new CcpError("CCP_PRECONDITION_FAILED", "Project settings are unavailable.");
       const path = typeof record.path === "string" ? record.path : typeof record.key === "string" ? record.key : "";
       return { projectSetting: { path, value: jsonValue(path ? projectValue(config, path) : config) } };
     }
     default:
-      throw new CcbError("CCB_CONTRACT_MISMATCH", "Unknown canonical observation contract.", { contractId });
+      throw new CcpError("CCP_CONTRACT_MISMATCH", "Unknown canonical observation contract.", { contractId });
   }
 }
 
 export async function collectObservation(spec: ObservationSpec, inputs: IJson, runtime: ObservationRuntime): Promise<ProtectedObservation> {
   for (const field of spec.fields) {
     if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(field)) {
-      throw new CcbError("CCB_CONTRACT_MISMATCH", "Observation field is not a public contract identifier.", { field });
+      throw new CcpError("CCP_CONTRACT_MISMATCH", "Observation field is not a public contract identifier.", { field });
     }
   }
   const projection = await collectProjection(spec.contractId, inputs, runtime);
   const fields: Record<string, IJson> = {};
   for (const field of spec.fields) {
     if (!Object.prototype.hasOwnProperty.call(projection, field)) {
-      throw new CcbError("CCB_CONTRACT_MISMATCH", "Observation field has no finite Creator projection.", { field, contractId: spec.contractId });
+      throw new CcpError("CCP_CONTRACT_MISMATCH", "Observation field has no finite Creator projection.", { field, contractId: spec.contractId });
     }
     fields[field] = projection[field];
   }
@@ -206,7 +206,7 @@ export async function collectObservation(spec: ObservationSpec, inputs: IJson, r
   };
   const bytes = canonicalizeToBytes(observation);
   if (bytes.byteLength > OBSERVATION_MAX_BYTES) {
-    throw new CcbError("CCB_LIMIT_EXCEEDED", "Observation exceeds the public contract byte cap.", { bytes: bytes.byteLength });
+    throw new CcpError("CCP_LIMIT_EXCEEDED", "Observation exceeds the public contract byte cap.", { bytes: bytes.byteLength });
   }
   return observation;
 }
@@ -220,7 +220,7 @@ export async function recheckObservation(
   const current = await collectObservation(spec, inputs, runtime);
   if (current.contractId !== original.contractId || current.consentVersion !== original.consentVersion
     || current.revisionToken !== original.revisionToken || current.digest !== original.digest) {
-    throw new CcbError("CCB_PRECONDITION_FAILED", "Creator state changed after Gateway authorization.", {
+    throw new CcpError("CCP_PRECONDITION_FAILED", "Creator state changed after Gateway authorization.", {
       contractId: spec.contractId,
       expectedDigest: original.digest,
       actualDigest: current.digest,

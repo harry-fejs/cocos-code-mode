@@ -11,7 +11,7 @@ const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const surfaceNames = ["gateway-db-snapshot", "gateway-logs", "metrics", "relay-logs", "update-state", "support-bundle"];
 const rootPointers = ["/", "/protocolVersion", "/requestId", "/idempotencyKey", "/deviceId", "/projectId", "/relayInstanceId", "/sequence", "/issuedAtMs", "/nonce", "/tool", "/tool/id", "/tool/contractVersion", "/tool/contractHash", "/relay", "/relay/build", "/relay/packageHash", "/relay/creatorVersion", "/relay/os", "/inputs"];
 function fixture(t) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ccb-witness-validator-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ccp-witness-validator-"));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const binding = { projectId: randomUUID(), relayInstanceId: randomUUID(), relay: { build: "source-test", packageHash: hash("source-only"), creatorVersion: "3.7.3", os: "win32-x64" } };
   const markers = [{ label: "private-canary", value: "SOURCE_PRIVATE_CANARY_984317", allowedInGatewayRequest: false, allowedSurfaces: [] }];
@@ -41,16 +41,16 @@ function fixture(t) {
     fs.writeFileSync(fixturePath, bytes);
     return { label: markers[0].label, runId: run.runId, requestId: record.requestId, toolId: record.toolId, fixturePath, fixtureSha256: hash(bytes), offset: bytes.indexOf(markers[0].value) };
   });
-  const env = { ...process.env, CCB_QUALIFICATION_SCOPE: "source-qualification", CCB_QUALIFICATION_TRACE_PATH: path.join(dir, "trace.ndjson"), CCB_QUALIFICATION_MARKERS_PATH: path.join(dir, "markers.json"), CCB_QUALIFICATION_SURFACES_PATH: path.join(dir, "surfaces.json"), CCB_QUALIFICATION_RUN_PATH: path.join(dir, "run.json"), CCB_QUALIFICATION_REPORT_PATH: path.join(dir, "report.json") };
-  delete env.CCB_QUALIFICATION_REQUIRED_TOOLS;
+  const env = { ...process.env, CCP_QUALIFICATION_SCOPE: "source-qualification", CCP_QUALIFICATION_TRACE_PATH: path.join(dir, "trace.ndjson"), CCP_QUALIFICATION_MARKERS_PATH: path.join(dir, "markers.json"), CCP_QUALIFICATION_SURFACES_PATH: path.join(dir, "surfaces.json"), CCP_QUALIFICATION_RUN_PATH: path.join(dir, "run.json"), CCP_QUALIFICATION_REPORT_PATH: path.join(dir, "report.json") };
+  delete env.CCP_QUALIFICATION_REQUIRED_TOOLS;
   const state = { dir, markers, records, surfaces, run, env };
   state.execute = () => {
     const trace = state.records.map((record) => JSON.stringify(record)).join("\n") + "\n";
     state.run.traceSha256 = hash(trace);
-    fs.writeFileSync(env.CCB_QUALIFICATION_TRACE_PATH, trace);
-    fs.writeFileSync(env.CCB_QUALIFICATION_MARKERS_PATH, JSON.stringify(state.markers));
-    fs.writeFileSync(env.CCB_QUALIFICATION_SURFACES_PATH, JSON.stringify(state.surfaces));
-    fs.writeFileSync(env.CCB_QUALIFICATION_RUN_PATH, JSON.stringify(state.run));
+    fs.writeFileSync(env.CCP_QUALIFICATION_TRACE_PATH, trace);
+    fs.writeFileSync(env.CCP_QUALIFICATION_MARKERS_PATH, JSON.stringify(state.markers));
+    fs.writeFileSync(env.CCP_QUALIFICATION_SURFACES_PATH, JSON.stringify(state.surfaces));
+    fs.writeFileSync(env.CCP_QUALIFICATION_RUN_PATH, JSON.stringify(state.run));
     return spawnSync(process.execPath, [cli], { env, encoding: "utf8", timeout: 15000 });
   };
   return state;
@@ -59,13 +59,13 @@ function rejected(t, mutate) {
   const state = fixture(t); mutate(state);
   const result = state.execute();
   assert.equal(result.status, 1, result.stdout + result.stderr);
-  assert.equal(fs.existsSync(state.env.CCB_QUALIFICATION_REPORT_PATH), false, "rejected evidence must not publish a report");
+  assert.equal(fs.existsSync(state.env.CCP_QUALIFICATION_REPORT_PATH), false, "rejected evidence must not publish a report");
   assert.equal(result.stderr.includes(state.markers[0]?.value || "DO_NOT_MATCH"), false);
 }
 test("source fixture qualification stays explicitly non-live and exposes measured observation IPC", (t) => {
   const state = fixture(t); const result = state.execute();
   assert.equal(result.status, 0, result.stderr);
-  const report = JSON.parse(fs.readFileSync(state.env.CCB_QUALIFICATION_REPORT_PATH, "utf8"));
+  const report = JSON.parse(fs.readFileSync(state.env.CCP_QUALIFICATION_REPORT_PATH, "utf8"));
   assert.equal(report.sourceQualificationPassed, true);
   assert.equal(report.pass, false);
   assert.equal(report.signedLiveAcceptance, false);
@@ -102,11 +102,11 @@ const cases = [
   ["truncated pointer inventory", (s) => { s.records[0].request.pointerTruncated = true; }],
   ["concurrent Gateway activity", (s) => { s.records[0].gateway.concurrent = true; }],
   ["hidden overlapping operation intervals", (s) => { s.records[0].durationMs = 150; }],
-  ["missing completed required tool despite override", (s) => { s.records[2].outcome = "failed"; s.env.CCB_QUALIFICATION_REQUIRED_TOOLS = "sceneGetInfo"; }],
+  ["missing completed required tool despite override", (s) => { s.records[2].outcome = "failed"; s.env.CCP_QUALIFICATION_REQUIRED_TOOLS = "sceneGetInfo"; }],
   ["missing denied scenario", (s) => { s.records.pop(); s.run.operations.pop(); s.run.injections.pop(); }],
   ["forbidden marker in Gateway request", (s) => { s.records[0].request.matchedMarkers.push("private-canary"); }],
   ["forbidden marker in scan surface", (s) => fs.writeFileSync(s.surfaces[0].files[0], s.markers[0].value)],
-  ["source evidence relabeled signed-live", (s) => { s.env.CCB_QUALIFICATION_SCOPE = "signed-live"; }],
+  ["source evidence relabeled signed-live", (s) => { s.env.CCP_QUALIFICATION_SCOPE = "signed-live"; }],
   ["ancestor alias in declared file", (s) => { s.surfaces[0].files[0] = s.surfaces[0].root + path.sep + ".." + path.sep + path.basename(s.surfaces[0].root) + path.sep + "snapshot.txt"; }],
   ["whole-run aggregate byte cap", (s) => { for (const surface of s.surfaces) fs.truncateSync(surface.files[0], 24 * 1024 * 1024); }],
 ];

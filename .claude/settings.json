@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ./scripts/cc-bridge-bootstrap.js",
+            "command": "node ./scripts/ccp-bootstrap.js",
             "timeout": 10
           }
         ]

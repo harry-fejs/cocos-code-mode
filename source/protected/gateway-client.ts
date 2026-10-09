@@ -2,7 +2,7 @@ import { Agent as HttpsAgent, RequestOptions, request as httpsRequest } from "ht
 import { Agent as HttpAgent, IncomingMessage, request as httpRequest } from "http";
 import { URL } from "url";
 import { z } from "zod";
-import { CCB_ERROR_CODES, CcbError, CcbErrorCode } from "./errors";
+import { CCP_ERROR_CODES, CcpError, CcpErrorCode } from "./errors";
 import { canonicalizeToBytes } from "./canonical-json";
 import { EXECUTE_PATH, SignedGatewayDecision, SignedProtectedRequest, WRAPPER_MAX_BYTES } from "./protocol";
 import { parseSignedGatewayDecision } from "./schemas";
@@ -35,7 +35,7 @@ function readBoundedResponse(response: IncomingMessage, maxBytes: number): Promi
       const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
       size += bytes.byteLength;
       if (size > maxBytes) {
-        response.destroy(new CcbError("CCB_LIMIT_EXCEEDED", "Gateway response exceeded the wire limit.", { maxBytes }));
+        response.destroy(new CcpError("CCP_LIMIT_EXCEEDED", "Gateway response exceeded the wire limit.", { maxBytes }));
         return;
       }
       chunks.push(bytes);
@@ -45,8 +45,8 @@ function readBoundedResponse(response: IncomingMessage, maxBytes: number): Promi
   });
 }
 
-function isCcbErrorCode(value: string): value is CcbErrorCode {
-  return (CCB_ERROR_CODES as readonly string[]).includes(value);
+function isCcpErrorCode(value: string): value is CcpErrorCode {
+  return (CCP_ERROR_CODES as readonly string[]).includes(value);
 }
 
 export class GatewayClient {
@@ -62,13 +62,13 @@ export class GatewayClient {
   constructor(private readonly options: GatewayClientOptions) {
     const origin = new URL(options.origin);
     const loopback = origin.hostname === "127.0.0.1" || origin.hostname === "localhost" || origin.hostname === "::1";
-    const allowInsecure = (process.env.CCB_ALLOW_INSECURE_GATEWAY === "1" || options.allowInsecureLoopback === true)
+    const allowInsecure = (process.env.CCP_ALLOW_INSECURE_GATEWAY === "1" || options.allowInsecureLoopback === true)
       && origin.protocol === "http:" && loopback;
     if (origin.username || origin.password || origin.search || origin.hash || (origin.pathname !== "/" && origin.pathname !== "")) {
       throw new Error("Gateway origin must be an exact origin without credentials, path, query, or fragment");
     }
     if (origin.protocol !== "https:" && !allowInsecure) {
-      throw new Error("Gateway origin must be HTTPS, or http://127.0.0.1 with CCB_ALLOW_INSECURE_GATEWAY=1");
+      throw new Error("Gateway origin must be HTTPS, or http://127.0.0.1 with CCP_ALLOW_INSECURE_GATEWAY=1");
     }
     this.endpoint = new URL(EXECUTE_PATH, origin.origin);
     this.agent = origin.protocol === "https:"
@@ -83,25 +83,25 @@ export class GatewayClient {
   async execute(wrapper: SignedProtectedRequest): Promise<SignedGatewayDecision> {
     const now = Date.now();
     if (now < this.nextAttemptAt) {
-      throw new CcbError("CCB_GATEWAY_UNAVAILABLE", "Gateway reconnect backoff is active.", { retryAfterMs: this.nextAttemptAt - now });
+      throw new CcpError("CCP_GATEWAY_UNAVAILABLE", "Gateway reconnect backoff is active.", { retryAfterMs: this.nextAttemptAt - now });
     }
     const body = canonicalizeToBytes(wrapper);
-    if (body.byteLength > WRAPPER_MAX_BYTES) throw new CcbError("CCB_LIMIT_EXCEEDED", "Signed request wrapper exceeds the wire limit.");
+    if (body.byteLength > WRAPPER_MAX_BYTES) throw new CcpError("CCP_LIMIT_EXCEEDED", "Signed request wrapper exceeds the wire limit.");
     const memberCredential = await this.options.memberCredential();
-    if (!memberCredential || /[\r\n]/.test(memberCredential)) throw new CcbError("CCB_AUTH_REQUIRED", "A valid member credential is required.");
+    if (!memberCredential || /[\r\n]/.test(memberCredential)) throw new CcpError("CCP_AUTH_REQUIRED", "A valid member credential is required.");
     try {
       const decision = await this.sendOnce(body, memberCredential);
       this.failures = 0;
       this.nextAttemptAt = 0;
       return decision;
     } catch (error) {
-      if (!(error instanceof CcbError) || error.body.code === "CCB_GATEWAY_UNAVAILABLE") {
+      if (!(error instanceof CcpError) || error.body.code === "CCP_GATEWAY_UNAVAILABLE") {
         this.failures += 1;
         const delay = Math.min(this.maximumBackoffMs, this.minimumBackoffMs * (2 ** Math.min(this.failures - 1, 8)));
         this.nextAttemptAt = Date.now() + delay;
       }
-      if (error instanceof CcbError) throw error;
-      throw new CcbError("CCB_GATEWAY_UNAVAILABLE", "Gateway request failed before a decision was accepted.");
+      if (error instanceof CcpError) throw error;
+      throw new CcpError("CCP_GATEWAY_UNAVAILABLE", "Gateway request failed before a decision was accepted.");
     }
   }
   private requestId(body: Buffer): string {
@@ -142,26 +142,26 @@ export class GatewayClient {
       const traceId = this.options.qualificationTrace ? this.requestId(body) : "";
       const outgoing = transport(requestOptions, async (response) => {
         try {
-          if (response.headers.location) throw new CcbError("CCB_GATEWAY_UNAVAILABLE", "Gateway redirects are not accepted.");
-          if (response.headers["content-encoding"]) throw new CcbError("CCB_CANONICAL_INVALID", "Compressed Gateway responses are not accepted.");
+          if (response.headers.location) throw new CcpError("CCP_GATEWAY_UNAVAILABLE", "Gateway redirects are not accepted.");
+          if (response.headers["content-encoding"]) throw new CcpError("CCP_CANONICAL_INVALID", "Compressed Gateway responses are not accepted.");
           const bytes = await readBoundedResponse(response, this.responseMaxBytes);
           this.options.qualificationTrace?.gatewayResponse(traceId, bytes.byteLength, bytes);
           const mediaType = String(response.headers["content-type"] ?? "").toLowerCase();
-          if (!mediaType.startsWith("application/json")) throw new CcbError("CCB_CANONICAL_INVALID", "Gateway returned an unsupported media type.");
+          if (!mediaType.startsWith("application/json")) throw new CcpError("CCP_CANONICAL_INVALID", "Gateway returned an unsupported media type.");
           const parsed: unknown = JSON.parse(bytes.toString("utf8"));
           if (response.statusCode !== 200) {
             const gatewayError = GatewayErrorSchema.safeParse(parsed);
-            if (gatewayError.success && isCcbErrorCode(gatewayError.data.code)) {
-              throw new CcbError(gatewayError.data.code, gatewayError.data.error, gatewayError.data.details, gatewayError.data.recovery);
+            if (gatewayError.success && isCcpErrorCode(gatewayError.data.code)) {
+              throw new CcpError(gatewayError.data.code, gatewayError.data.error, gatewayError.data.details, gatewayError.data.recovery);
             }
-            throw new CcbError("CCB_GATEWAY_UNAVAILABLE", "Gateway denied the request without a valid error envelope.", { status: response.statusCode ?? 0 });
+            throw new CcpError("CCP_GATEWAY_UNAVAILABLE", "Gateway denied the request without a valid error envelope.", { status: response.statusCode ?? 0 });
           }
           resolve(parseSignedGatewayDecision(parsed));
         } catch (error) {
           reject(error);
         }
       });
-      outgoing.setTimeout(this.deadlineMs, () => outgoing.destroy(new CcbError("CCB_GATEWAY_UNAVAILABLE", "Gateway request deadline exceeded.")));
+      outgoing.setTimeout(this.deadlineMs, () => outgoing.destroy(new CcpError("CCP_GATEWAY_UNAVAILABLE", "Gateway request deadline exceeded.")));
       outgoing.once("error", reject);
       this.options.qualificationTrace?.gatewayRequest(traceId, body);
       outgoing.end(body);

@@ -5,7 +5,7 @@ import type { ExecutionEnvelope } from "./primitive-contract";
 
 export const PROTOCOL_VERSION = 1 as const;
 export const EXECUTE_METHOD = "POST" as const;
-export const EXECUTE_PATH = "/ccb/v1/execute" as const;
+export const EXECUTE_PATH = "/ccp/v1/execute" as const;
 export const REQUEST_PAYLOAD_MAX_BYTES = 256 * 1024;
 export const DECISION_PAYLOAD_MAX_BYTES = 512 * 1024;
 export const WRAPPER_MAX_BYTES = 360 * 1024;
@@ -111,7 +111,7 @@ export function decodeBase64Url(value: string, maxBytes: number, exactBytes?: nu
 
 function signatureBase(domain: "request" | "decision", keyId: string, payload: Uint8Array): Buffer {
   assertKeyId(keyId);
-  const prefix = `CCB1 ${domain}\n${EXECUTE_METHOD}\n${EXECUTE_PATH}\n${keyId}\n`;
+  const prefix = `CCP1 ${domain}\n${EXECUTE_METHOD}\n${EXECUTE_PATH}\n${keyId}\n`;
   return Buffer.concat([Buffer.from(prefix, "utf8"), Buffer.from(payload)]);
 }
 

@@ -3,14 +3,14 @@
 const { URL } = require('node:url');
 const { readCredential } = require('./credential-input');
 
-const origin = new URL(process.env.CCB_GATEWAY_ORIGIN || 'http://127.0.0.1:8787');
-const credential = readCredential('CCB_ADMIN_CREDENTIAL', 'CCB_ADMIN_CREDENTIAL_FILE');
+const origin = new URL(process.env.CCP_GATEWAY_ORIGIN || 'http://127.0.0.1:8787');
+const credential = readCredential('CCP_ADMIN_CREDENTIAL', 'CCP_ADMIN_CREDENTIAL_FILE');
 
 function fail(message) { throw new Error(message); }
 function validateOrigin() {
   const loopback = ['127.0.0.1', 'localhost', '::1'].includes(origin.hostname);
-  if (origin.username || origin.password || origin.search || origin.hash || !['', '/'].includes(origin.pathname)) fail('CCB_GATEWAY_ORIGIN must be an exact origin');
-  if (origin.protocol !== 'https:' && !(origin.protocol === 'http:' && loopback && process.env.CCB_ALLOW_INSECURE_GATEWAY === '1')) fail('Gateway must use HTTPS, except explicit loopback qualification');
+  if (origin.username || origin.password || origin.search || origin.hash || !['', '/'].includes(origin.pathname)) fail('CCP_GATEWAY_ORIGIN must be an exact origin');
+  if (origin.protocol !== 'https:' && !(origin.protocol === 'http:' && loopback && process.env.CCP_ALLOW_INSECURE_GATEWAY === '1')) fail('Gateway must use HTTPS, except explicit loopback qualification');
 }
 function id(name, value) {
   if (!value || !/^[0-9a-f-]{36}$/i.test(value)) fail(`${name} must be a UUID`);
@@ -21,7 +21,7 @@ function required(name, value, max = 128) {
   return value;
 }
 async function request(method, relative, body) {
-  if (!credential) fail('CCB_ADMIN_CREDENTIAL is required');
+  if (!credential) fail('CCP_ADMIN_CREDENTIAL is required');
   const response = await fetch(new URL(relative, `${origin.origin}/`), {
     method,
     redirect: 'error',
@@ -36,27 +36,27 @@ async function request(method, relative, body) {
 }
 function grantBody() {
   const body = {
-    memberId: process.env.CCB_GRANT_MEMBER_ID || undefined,
-    deviceId: id('CCB_GRANT_DEVICE_ID', process.env.CCB_GRANT_DEVICE_ID),
-    projectId: required('CCB_GRANT_PROJECT_ID', process.env.CCB_GRANT_PROJECT_ID),
-    toolId: process.env.CCB_GRANT_TOOL_ID || undefined,
-    operationClass: required('CCB_GRANT_OPERATION_CLASS', process.env.CCB_GRANT_OPERATION_CLASS, 16),
-    expiresAtMs: process.env.CCB_GRANT_EXPIRES_AT_MS ? Number(process.env.CCB_GRANT_EXPIRES_AT_MS) : undefined,
+    memberId: process.env.CCP_GRANT_MEMBER_ID || undefined,
+    deviceId: id('CCP_GRANT_DEVICE_ID', process.env.CCP_GRANT_DEVICE_ID),
+    projectId: required('CCP_GRANT_PROJECT_ID', process.env.CCP_GRANT_PROJECT_ID),
+    toolId: process.env.CCP_GRANT_TOOL_ID || undefined,
+    operationClass: required('CCP_GRANT_OPERATION_CLASS', process.env.CCP_GRANT_OPERATION_CLASS, 16),
+    expiresAtMs: process.env.CCP_GRANT_EXPIRES_AT_MS ? Number(process.env.CCP_GRANT_EXPIRES_AT_MS) : undefined,
   };
-  if (!['read', 'mutation', 'capture', 'control'].includes(body.operationClass)) fail('CCB_GRANT_OPERATION_CLASS is invalid');
-  if (body.expiresAtMs !== undefined && (!Number.isSafeInteger(body.expiresAtMs) || body.expiresAtMs <= Date.now())) fail('CCB_GRANT_EXPIRES_AT_MS must be a future safe integer');
+  if (!['read', 'mutation', 'capture', 'control'].includes(body.operationClass)) fail('CCP_GRANT_OPERATION_CLASS is invalid');
+  if (body.expiresAtMs !== undefined && (!Number.isSafeInteger(body.expiresAtMs) || body.expiresAtMs <= Date.now())) fail('CCP_GRANT_EXPIRES_AT_MS must be a future safe integer');
   return Object.fromEntries(Object.entries(body).filter(([, value]) => value !== undefined));
 }
 async function main() {
   validateOrigin();
   const [command, value] = process.argv.slice(2);
   let result;
-  if (command === 'approve') result = await request('POST', `ccb/v1/devices/${id('deviceId', value)}/approve`);
-  else if (command === 'revoke-device') result = await request('POST', `ccb/v1/devices/${id('deviceId', value)}/revoke`);
-  else if (command === 'grant') result = await request('POST', 'ccb/v1/admin/grants', grantBody());
-  else if (command === 'revoke-grant') result = await request('POST', `ccb/v1/admin/grants/${id('grantId', value)}/revoke`);
-  else if (command === 'list-devices') result = await request('GET', 'ccb/v1/admin/devices');
-  else if (command === 'list-grants') result = await request('GET', 'ccb/v1/admin/grants');
+  if (command === 'approve') result = await request('POST', `ccp/v1/devices/${id('deviceId', value)}/approve`);
+  else if (command === 'revoke-device') result = await request('POST', `ccp/v1/devices/${id('deviceId', value)}/revoke`);
+  else if (command === 'grant') result = await request('POST', 'ccp/v1/admin/grants', grantBody());
+  else if (command === 'revoke-grant') result = await request('POST', `ccp/v1/admin/grants/${id('grantId', value)}/revoke`);
+  else if (command === 'list-devices') result = await request('GET', 'ccp/v1/admin/devices');
+  else if (command === 'list-grants') result = await request('GET', 'ccp/v1/admin/grants');
   else fail('usage: approve|revoke-device|grant|revoke-grant|list-devices|list-grants');
   console.log(JSON.stringify(result, null, 2));
 }

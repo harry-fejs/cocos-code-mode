@@ -1,4 +1,4 @@
-import { CcbError } from "./errors";
+import { CcpError } from "./errors";
 
 interface ConsumedDecision {
   digest: string;
@@ -19,7 +19,7 @@ export class ReplayWindow {
   }
 
   nextSequence(): number {
-    if (!Number.isSafeInteger(this.next + 1)) throw new CcbError("CCB_LIMIT_EXCEEDED", "Relay sequence exhausted.");
+    if (!Number.isSafeInteger(this.next + 1)) throw new CcpError("CCP_LIMIT_EXCEEDED", "Relay sequence exhausted.");
     this.next += 1;
     return this.next;
   }
@@ -30,10 +30,10 @@ export class ReplayWindow {
     const digestExpiry = this.consumedDigests.get(digest);
     if (byNonce) {
       if (byNonce.digest === digest && byNonce.sequence === sequence) return "exact-duplicate";
-      throw new CcbError("CCB_REPLAY", "Decision nonce was already consumed with different signed bytes.", { sequence });
+      throw new CcpError("CCP_REPLAY", "Decision nonce was already consumed with different signed bytes.", { sequence });
     }
     if (digestExpiry !== undefined) {
-      throw new CcbError("CCB_REPLAY", "Decision payload was replayed under a different nonce.", { sequence });
+      throw new CcpError("CCP_REPLAY", "Decision payload was replayed under a different nonce.", { sequence });
     }
     this.consumedByNonce.set(nonce, { digest, sequence, expiresAtMs });
     this.consumedDigests.set(digest, expiresAtMs);

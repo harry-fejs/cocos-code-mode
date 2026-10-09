@@ -31,7 +31,7 @@ function staged(store) {
 
 describe('recoverable signed update activation', () => {
   it('persists activating only after helper spawn and restores staged after launch failure', () => {
-    const root = mkdtempSync(join(tmpdir(), 'ccb-update-state-'));
+    const root = mkdtempSync(join(tmpdir(), 'ccp-update-state-'));
     try {
       const store = new UpdateStateStore(join(root, 'state.json'));
       staged(store);
@@ -46,7 +46,7 @@ describe('recoverable signed update activation', () => {
   });
 
   it('recovers pending health and retries backup retirement before final active', () => {
-    const root = mkdtempSync(join(tmpdir(), 'ccb-update-state-'));
+    const root = mkdtempSync(join(tmpdir(), 'ccp-update-state-'));
     try {
       const store = new UpdateStateStore(join(root, 'state.json'));
       staged(store);

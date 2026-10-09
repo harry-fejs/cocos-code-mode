@@ -101,7 +101,7 @@ module.exports = Editor.Panel.define({
 
             const config = {
                 "mcpServers": {
-                    "cc-bridge": {
+                    "ccp": {
                         "command": "npx",
                         "args": ["-y", "@utcp/code-mode-mcp"],
                         "env": {
@@ -133,7 +133,7 @@ module.exports = Editor.Panel.define({
             } else {
                 let html = '';
                 templates.forEach((t: any) => {
-                const isCocos = /^(ccb3x(_\d+)?|ccb2x(_\d+)?)$/.test(t.name);
+                const isCocos = /^(ccp3x_\d+|ccp2x_\d+)$/.test(t.name);
                     const delBtn = isCocos
                         ? `` // No delete for Cocos
                         : `<ui-button slot="header" type="danger" class="remove-btn" tooltip="Remove Template">
@@ -198,7 +198,7 @@ module.exports = Editor.Panel.define({
         },
 
         removeBridge(name: string) {
-            if (/^(ccb3x(_\d+)?|ccb2x(_\d+)?)$/.test(name)) return;
+            if (/^(ccp3x_\d+|ccp2x_\d+)$/.test(name)) return;
             if (!confirm(`Remove template ${name}?`)) return;
 
             const configManager = getConfigManager();

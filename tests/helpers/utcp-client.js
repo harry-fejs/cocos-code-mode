@@ -16,7 +16,7 @@ async function getJson(urlPath, init) {
   const { selectConnection, connectionHeaders, verifyConnection } = require('../../scripts/project-connection');
   const connection = selectConnection({ url: b });
   await verifyConnection(connection);
-  if (urlPath.startsWith('/tools/')) init = { ...init, headers: { ...connectionHeaders(connection), ...(init && init.headers) } };
+  if (urlPath !== '/utcp' && urlPath !== '/build-info') init = { ...init, headers: { ...connectionHeaders(connection), ...(init && init.headers) } };
   const url = b + urlPath;
   const r = await fetch(url, init);
   const text = await r.text();

@@ -9,7 +9,7 @@ const { UtcpServerManager } = requireDist('utcp/utcp-server.js');
 const { getConfigManager } = requireDist('utcp/config-manager.js');
 const { selectConnection, connectionHeaders } = require('../../scripts/project-connection');
 it('starts same project under two custom configs without overwriting either live credential', async () => {
-  const root = fs.mkdtempSync(path.join(os.homedir(), '.ccb-config-auth-test-'));
+  const root = fs.mkdtempSync(path.join(os.homedir(), '.ccp-config-auth-test-'));
   const priorEditor = global.Editor; const manager = getConfigManager(); const priorConfig = manager.getConfigPath();
   const servers = [];
   try {
@@ -26,8 +26,8 @@ it('starts same project under two custom configs without overwriting either live
       const binding = server.getLocalAuthBinding(); bindings.push(binding);
     }
     assert.notEqual(bindings[0].tokenPath, bindings[1].tokenPath);
-    assert.equal(path.dirname(bindings[0].tokenPath), path.join(root, 'a', '.cc-bridge', 'local-auth'));
-    assert.equal(path.dirname(bindings[1].tokenPath), path.join(root, 'b', '.cc-bridge', 'local-auth'));
+    assert.equal(path.dirname(bindings[0].tokenPath), path.join(root, 'a', '.ccp', 'local-auth'));
+    assert.equal(path.dirname(bindings[1].tokenPath), path.join(root, 'b', '.ccp', 'local-auth'));
     for (let index = 0; index < configurations.length; index++) {
       const connection = selectConnection({ configPath: configurations[index], projectPath: project });
       const response = await fetch(`${connection.base}/tools/nonexistent`, { headers: connectionHeaders(connection) });
@@ -35,7 +35,13 @@ it('starts same project under two custom configs without overwriting either live
       assert.equal(response.status, 404);
     }
   } finally {
-    for (const { server, configPath } of servers) { await manager.setConfigPath(configPath); await server.stop(); }
+    await manager.setConfigPath(path.join(root, 'unrelated.json'));
+    for (const { server } of servers) await server.stop();
+    for (const { configPath } of servers) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      assert.equal(config.manual_call_templates.length, 0, 'shutdown removes its originally published registration');
+      assert.equal(config.load_variables_from.length, 0);
+    }
     await manager.setConfigPath(priorConfig); global.Editor = priorEditor;
     fs.rmSync(root, { recursive: true, force: true });
   }

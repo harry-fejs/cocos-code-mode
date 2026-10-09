@@ -11,7 +11,7 @@ const { requireDist } = require('../helpers/require-dist');
 
 const { verifyReleaseMetadata } = requireDist('update/metadata.js');
 
-const TARGET_PREFIX = Buffer.from('CCB1 release-targets\n', 'utf8');
+const TARGET_PREFIX = Buffer.from('CCP1 release-targets\n', 'utf8');
 
 function canonicalize(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -28,11 +28,11 @@ function targetBody(overrides = {}) {
     issuedAt: '2026-09-06T00:00:00.000Z',
     expiresAt: '2027-09-06T00:00:00.000Z',
     package: {
-      name: 'cc-bridge-3x',
+      name: 'ccp3x',
       version: '2.0.0',
       sha256: 'a'.repeat(64),
       size: 42,
-      url: 'https://releases.example.test/cc-bridge-3x.zip',
+      url: 'https://releases.example.test/ccp3x.zip',
       packageManifestSha256: 'b'.repeat(64),
       sbomSha256: 'c'.repeat(64),
       provenanceSha256: 'd'.repeat(64),
@@ -61,13 +61,13 @@ describe('release metadata sign <-> verify contract', () => {
     const body = targetBody();
     const signed = signedBy(body, keys.privateKey);
     const parsed = verifyReleaseMetadata('target', signed, new Map([['targets-fixture-1', publicKey]]), 1);
-    assert.equal(parsed.package.name, 'cc-bridge-3x');
+    assert.equal(parsed.package.name, 'ccp3x');
     assert.equal(parsed.package.sha256, 'a'.repeat(64));
     assert.equal(parsed.compatibility.protocol.min, 1);
   });
 
   it('rejects a signature over the wrong domain prefix', () => {
-    const signed = signedBy(targetBody(), keys.privateKey, 'targets-fixture-1', Buffer.from('CCB1 release-root\n', 'utf8'));
+    const signed = signedBy(targetBody(), keys.privateKey, 'targets-fixture-1', Buffer.from('CCP1 release-root\n', 'utf8'));
     assert.throws(() => verifyReleaseMetadata('target', signed, new Map([['targets-fixture-1', publicKey]]), 1), /signature is invalid/);
   });
 

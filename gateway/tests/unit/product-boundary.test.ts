@@ -7,7 +7,7 @@ import { auditProductBoundary } from '../../scripts/audit-product-boundary.mjs';
 const roots: string[] = [];
 
 function fixture(dependency = '1.0.0', source = "import { value } from './local';\n") {
-  const root = mkdtempSync(join(tmpdir(), 'ccb-boundary-'));
+  const root = mkdtempSync(join(tmpdir(), 'ccp-boundary-'));
   roots.push(root);
   mkdirSync(join(root, 'src'), { recursive: true });
   writeFileSync(join(root, 'package.json'), JSON.stringify({ dependencies: { '@dtx/tool-auth': dependency } }));
@@ -27,7 +27,7 @@ describe('Gateway product boundary audit', () => {
   });
 
   it('rejects local dependency specifications and cross-product imports', () => {
-    const root = fixture('file:../tool-auth.tgz', "import value from 'mcpdocs/src/cc-bridge';\n");
+    const root = fixture('file:../tool-auth.tgz', "import value from 'mcpdocs/src/ccp';\n");
     expect(auditProductBoundary(root)).toEqual(expect.arrayContaining([
       expect.stringContaining('must resolve from a registry'),
       expect.stringContaining('imports product-owned mcpdocs code'),

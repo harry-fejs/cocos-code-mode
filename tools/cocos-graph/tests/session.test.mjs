@@ -11,7 +11,7 @@ describe('verified scene session continuity', () => {
     try {
       assert.throws(() => recordVerifiedSession({ root, project: 'P', bundle: 'B', sceneUuid: 'S', task: 'T', verified: false }), /requires verified=true/);
       const artifact = recordVerifiedSession({ root, project: 'P', bundle: 'B', sceneUuid: 'S', workingPath: '/Canvas', task: 'verified edit', verified: true });
-      const stored = JSON.parse(readFileSync(join(root, '.claude', 'ccb-session.json'), 'utf8'));
+      const stored = JSON.parse(readFileSync(join(root, '.claude', 'ccp-session.json'), 'utf8'));
       assert.deepEqual(stored, artifact);
       assert.equal(stored.verified, true);
       assert.equal(stored.age_ms, 0);

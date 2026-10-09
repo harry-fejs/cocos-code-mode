@@ -6,9 +6,9 @@ import { PARSER_VERSION } from '../../../tools/cocos-graph/src/manifest.mjs';
 import { readJson } from '../../../tools/cocos-graph/src/storage.mjs';
 
 // Gate mirrors arch.md section 5 / Unity Coplay age_ms > 2000 -> is_stale.
-const STALE_MS = Number(process.env.CCB_SESSION_STALE_MS || 2000);
+const STALE_MS = Number(process.env.CCP_SESSION_STALE_MS || 2000);
 const ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-const PREFIX = '[ccb-session]';
+const PREFIX = '[ccp-session]';
 
 function readSessionJson(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
@@ -36,7 +36,7 @@ function fmt(ms) {
 }
 
 function main() {
-  const session = readSessionJson(path.join(ROOT, '.claude', 'ccb-session.json'));
+  const session = readSessionJson(path.join(ROOT, '.claude', 'ccp-session.json'));
   if (!session) return null;
 
   const banner = [];
@@ -57,7 +57,7 @@ function main() {
 
   const project = projectDir(session);
   if (!project) {
-    note('no project in ccb-session.json — cannot locate .cocos-graph/_manifest.json; treat any remembered graph as unbuilt');
+    note('no project in ccp-session.json — cannot locate .cocos-graph/_manifest.json; treat any remembered graph as unbuilt');
     return { banner, stale };
   }
 
@@ -103,8 +103,8 @@ function main() {
   }
 
   banner.push(stale
-    ? 'stale signal above: re-check ccb3x.sceneGetInfo().dirty and fall back to nodeGetTree before any write'
-    : 'dirty is unknown offline — call ccb3x.sceneGetInfo() before relying on structure for a write');
+    ? 'stale signal above: re-check ccp3x_49650.sceneGetInfo().dirty and fall back to nodeGetTree before any write'
+    : 'dirty is unknown offline — call ccp3x_49650.sceneGetInfo() before relying on structure for a write');
   return { banner, stale };
 }
 

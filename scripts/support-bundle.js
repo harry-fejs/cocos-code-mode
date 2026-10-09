@@ -6,7 +6,7 @@ const os = require('node:os');
 const { createHash } = require('node:crypto');
 
 const root = path.join(__dirname, '..');
-const outDir = path.join(os.tmpdir(), `ccb-support-${Date.now()}`);
+const outDir = path.join(os.tmpdir(), `ccp-support-${Date.now()}`);
 fs.mkdirSync(outDir, { recursive: true, mode: 0o700 });
 const copied = [];
 
@@ -61,7 +61,7 @@ if (targetWrapper && typeof targetWrapper.payload === 'string') {
   });
 }
 
-const state = readJson(path.join(os.homedir(), '.cc-bridge', 'update-state-v1.json'));
+const state = readJson(path.join(os.homedir(), '.ccp', 'update-state-v1.json'));
 if (state) {
   emit('update-state.json', {
     schemaVersion: state.schemaVersion,

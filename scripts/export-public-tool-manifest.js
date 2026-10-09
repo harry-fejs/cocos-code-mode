@@ -6,10 +6,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const canonicalPath = path.join(root, 'gateway', 'src', 'cc-bridge', 'public-tool-manifest.json');
+const canonicalPath = path.join(root, 'gateway', 'src', 'ccp', 'public-tool-manifest.json');
 const generatedPaths = [
   path.join(root, 'source', 'protected', 'public-tool-manifest.json'),
-  path.join(root, 'gateway', 'tests', 'fixtures', 'cc-bridge', 'v1', 'public-tool-manifest.json'),
+  path.join(root, 'gateway', 'tests', 'fixtures', 'ccp', 'v1', 'public-tool-manifest.json'),
   path.join(root, 'tests', 'fixtures', 'protected', 'v1', 'public-tool-manifest.json'),
 ];
 
@@ -49,16 +49,16 @@ const publicSources = [
   'errors.ts', 'schemas.ts', 'negative-fixture-runner.ts', 'public-tool-manifest.json',
 ];
 const fixtureRoots = [
-  path.join(root, 'gateway', 'tests', 'fixtures', 'cc-bridge', 'v1'),
+  path.join(root, 'gateway', 'tests', 'fixtures', 'ccp', 'v1'),
   path.join(root, 'tests', 'fixtures', 'protected', 'v1'),
 ];
 for (const fixtureRoot of fixtureRoots) {
-  const fixtureManifestPath = path.join(fixtureRoot, 'manifest.json');
+  const fixtureManifestPath = path.join(fixtureRoot, 'ccp-manifest.json');
   const fixtureManifest = JSON.parse(fs.readFileSync(fixtureManifestPath, 'utf8'));
   fixtureManifest.publicSources = Object.fromEntries(publicSources.map((file) => {
     const sourcePath = file === 'public-tool-manifest.json'
       ? path.join(fixtureRoot, file)
-      : path.join(root, fixtureRoot.includes(`${path.sep}gateway${path.sep}`) ? 'gateway/src/cc-bridge' : 'source/protected', file);
+      : path.join(root, fixtureRoot.includes(`${path.sep}gateway${path.sep}`) ? 'gateway/src/ccp' : 'source/protected', file);
     return [file, sha256(fs.readFileSync(sourcePath))];
   }));
   fs.writeFileSync(fixtureManifestPath, `${JSON.stringify(fixtureManifest, null, 2)}\n`, 'utf8');

@@ -3,7 +3,7 @@ import { createWriteStream, mkdirSync, readFileSync, renameSync, rmSync } from "
 import { request as httpsRequest } from "https"
 import { dirname } from "path"
 import { URL } from "url"
-import { CcbError } from "../protected/errors";
+import { CcpError } from "../protected/errors";
 
 const MAX_REDIRECTS = 3;
 type Reader = { getReader(): ReadableStreamDefaultReader<Uint8Array> };
@@ -16,8 +16,8 @@ function node14Fetch(url: URL, signal?: AbortSignal): Promise<Response> {
       path: `${url.pathname}${url.search}`,
       method: "GET",
       headers: { "accept-encoding": "identity" },
-      ca: process.env.CCB_RELEASE_CA_PATH || process.env.NODE_EXTRA_CA_CERTS
-        ? readFileSync(process.env.CCB_RELEASE_CA_PATH || process.env.NODE_EXTRA_CA_CERTS!)
+      ca: process.env.CCP_RELEASE_CA_PATH || process.env.NODE_EXTRA_CA_CERTS
+        ? readFileSync(process.env.CCP_RELEASE_CA_PATH || process.env.NODE_EXTRA_CA_CERTS!)
         : undefined,
     }, (incoming) => {
       const pending: Array<{ resolve: (value: ReadResult) => void; reject: (error: Error) => void }> = [];
@@ -62,7 +62,7 @@ type ReadResult = { done: boolean; value?: Uint8Array };
 export function assertReleaseOrigin(origin: string): URL {
   const url = new URL(origin);
   if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash || url.href !== `${url.origin}/`) {
-    throw new CcbError("CCB_CANONICAL_INVALID", "Release origin must be an exact HTTPS origin without path, credentials, query, or fragment.");
+    throw new CcpError("CCP_CANONICAL_INVALID", "Release origin must be an exact HTTPS origin without path, credentials, query, or fragment.");
   }
   return url;
 }
@@ -70,7 +70,7 @@ export function assertReleaseOrigin(origin: string): URL {
 export function assertReleaseArtifactUrl(origin: URL, artifactUrl: string): URL {
   const url = new URL(artifactUrl);
   if (url.origin !== origin.origin || url.protocol !== "https:" || url.username || url.password || url.hash) {
-    throw new CcbError("CCB_CANONICAL_INVALID", "Release artifact URL must stay on the HTTPS release origin.");
+    throw new CcpError("CCP_CANONICAL_INVALID", "Release artifact URL must stay on the HTTPS release origin.");
   }
   return url;
 }
@@ -89,27 +89,27 @@ async function fetchRelease(origin: URL, input: URL, signal?: AbortSignal): Prom
       const transport = typeof cause === "string"
         ? cause.slice(0, 64)
         : error instanceof Error ? error.message.replace(/[\r\n]+/g, " ").slice(0, 96) : undefined;
-      throw new CcbError("CCB_GATEWAY_UNAVAILABLE", "Release artifact request failed.", transport ? { transport } : {});
+      throw new CcpError("CCP_GATEWAY_UNAVAILABLE", "Release artifact request failed.", transport ? { transport } : {});
     }
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
-      if (!location || redirects === MAX_REDIRECTS) throw new CcbError("CCB_GATEWAY_UNAVAILABLE", "Release redirect chain is invalid or too long.");
+      if (!location || redirects === MAX_REDIRECTS) throw new CcpError("CCP_GATEWAY_UNAVAILABLE", "Release redirect chain is invalid or too long.");
       url = assertReleaseArtifactUrl(origin, new URL(location, url).href);
       continue;
     }
-    if (!response.ok) throw new CcbError("CCB_GATEWAY_UNAVAILABLE", `Release origin returned HTTP ${response.status}.`, { status: response.status });
+    if (!response.ok) throw new CcpError("CCP_GATEWAY_UNAVAILABLE", `Release origin returned HTTP ${response.status}.`, { status: response.status });
     const encoding = response.headers.get("content-encoding");
-    if (encoding && encoding.toLowerCase() !== "identity") throw new CcbError("CCB_CANONICAL_INVALID", "Compressed release responses are not accepted.");
+    if (encoding && encoding.toLowerCase() !== "identity") throw new CcpError("CCP_CANONICAL_INVALID", "Compressed release responses are not accepted.");
     return response;
   }
-  throw new CcbError("CCB_GATEWAY_UNAVAILABLE", "Release redirect chain did not terminate.");
+  throw new CcpError("CCP_GATEWAY_UNAVAILABLE", "Release redirect chain did not terminate.");
 }
 
 function declaredLength(response: Response, maxBytes: number): number {
   const header = response.headers.get("content-length");
   const length = header === null ? Number.NaN : Number(header);
   if (!Number.isSafeInteger(length) || length < 1 || length > maxBytes) {
-    throw new CcbError("CCB_LIMIT_EXCEEDED", `Release response must declare 1..${maxBytes} bytes.`);
+    throw new CcpError("CCP_LIMIT_EXCEEDED", `Release response must declare 1..${maxBytes} bytes.`);
   }
   return length;
 }
@@ -117,7 +117,7 @@ function declaredLength(response: Response, maxBytes: number): number {
 export async function fetchReleaseJson(origin: URL, artifactUrl: string, maxBytes: number, signal?: AbortSignal): Promise<unknown> {
   const response = await fetchRelease(origin, assertReleaseArtifactUrl(origin, artifactUrl), signal);
   const expected = declaredLength(response, maxBytes);
-  if (!response.body) throw new CcbError("CCB_GATEWAY_UNAVAILABLE", "Release response body is missing.");
+  if (!response.body) throw new CcpError("CCP_GATEWAY_UNAVAILABLE", "Release response body is missing.");
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
@@ -127,14 +127,14 @@ export async function fetchReleaseJson(origin: URL, artifactUrl: string, maxByte
     total += value.byteLength;
     if (total > expected || total > maxBytes) {
       await reader.cancel();
-      throw new CcbError("CCB_LIMIT_EXCEEDED", "Release response exceeded its declared size.");
+      throw new CcpError("CCP_LIMIT_EXCEEDED", "Release response exceeded its declared size.");
     }
     chunks.push(value);
   }
-  if (total !== expected) throw new CcbError("CCB_SIGNATURE_INVALID", "Release response was truncated.");
+  if (total !== expected) throw new CcpError("CCP_SIGNATURE_INVALID", "Release response was truncated.");
   const bytes = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), total);
   try { return JSON.parse(bytes.toString("utf8")); }
-  catch { throw new CcbError("CCB_CANONICAL_INVALID", "Release response is not valid JSON."); }
+  catch { throw new CcpError("CCP_CANONICAL_INVALID", "Release response is not valid JSON."); }
 }
 
 export async function downloadReleaseArtifact(
@@ -148,12 +148,12 @@ export async function downloadReleaseArtifact(
   const exactBytes = typeof expectedSize === "number" ? expectedSize : undefined;
   const maxBytes = typeof expectedSize === "number" ? expectedSize : expectedSize.maxBytes;
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || !/^[0-9a-f]{64}$/.test(expectedSha256)) {
-    throw new CcbError("CCB_CANONICAL_INVALID", "Signed release artifact bounds are invalid.");
+    throw new CcpError("CCP_CANONICAL_INVALID", "Signed release artifact bounds are invalid.");
   }
   const response = await fetchRelease(origin, assertReleaseArtifactUrl(origin, artifactUrl), signal);
   const declared = declaredLength(response, maxBytes);
-  if (exactBytes !== undefined && declared !== exactBytes) throw new CcbError("CCB_SIGNATURE_INVALID", "Artifact Content-Length differs from signed metadata.");
-  if (!response.body) throw new CcbError("CCB_GATEWAY_UNAVAILABLE", "Release artifact body is missing.");
+  if (exactBytes !== undefined && declared !== exactBytes) throw new CcpError("CCP_SIGNATURE_INVALID", "Artifact Content-Length differs from signed metadata.");
+  if (!response.body) throw new CcpError("CCP_GATEWAY_UNAVAILABLE", "Release artifact body is missing.");
   const partial = `${destination}.partial`;
   mkdirSync(dirname(destination), { recursive: true, mode: 0o700 });
   rmSync(partial, { force: true });
@@ -168,7 +168,7 @@ export async function downloadReleaseArtifact(
       total += value.byteLength;
       if (total > declared) {
         await reader.cancel();
-        throw new CcbError("CCB_LIMIT_EXCEEDED", "Release artifact exceeded its declared size.");
+        throw new CcpError("CCP_LIMIT_EXCEEDED", "Release artifact exceeded its declared size.");
       }
       const chunk = Buffer.from(value);
       digest.update(chunk);
@@ -180,7 +180,7 @@ export async function downloadReleaseArtifact(
       output.end();
     });
     const sha256 = digest.digest("hex");
-    if (total !== declared || sha256 !== expectedSha256) throw new CcbError("CCB_SIGNATURE_INVALID", "Release artifact size or hash does not match signed metadata.");
+    if (total !== declared || sha256 !== expectedSha256) throw new CcpError("CCP_SIGNATURE_INVALID", "Release artifact size or hash does not match signed metadata.");
     renameSync(partial, destination);
     return { path: destination, bytes: total, sha256 };
   } catch (error) {

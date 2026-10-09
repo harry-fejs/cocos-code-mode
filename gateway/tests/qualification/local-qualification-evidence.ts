@@ -50,8 +50,8 @@ export class Evidence {
       "source/protected/protocol.ts", "source/protected/value-resolver.ts", "source/protected/schemas.ts",
     ]),
     gatewaySourceSha256: digestFiles([
-      "gateway/src/cc-bridge/execute-service.ts", "gateway/src/cc-bridge/planners/plan-create-tools.ts",
-      "gateway/src/cc-bridge/release-admin.ts", "gateway/src/cc-bridge/canary.ts",
+      "gateway/src/ccp/execute-service.ts", "gateway/src/ccp/planners/plan-create-tools.ts",
+      "gateway/src/ccp/release-admin.ts", "gateway/src/ccp/canary.ts",
     ]),
   };
   failed = 0;
@@ -59,7 +59,7 @@ export class Evidence {
   private bytes = 0;
   private rows = 0;
   constructor() {
-    this.path = resolve(process.env.CCB_QUAL_EVIDENCE ?? `reports/evidence/local-qualification-${this.runId}.ndjson`);
+    this.path = resolve(process.env.CCP_QUAL_EVIDENCE ?? `reports/evidence/local-qualification-${this.runId}.ndjson`);
     mkdirSync(dirname(this.path), { recursive: true });
     this.fd = openSync(this.path, "wx", 0o600);
     this.emit({ type: "identity", ...this.identity });

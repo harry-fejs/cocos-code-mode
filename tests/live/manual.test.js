@@ -10,7 +10,7 @@ describe('live: manual & server — migrated from scripts/smoke-utcp.js', () => 
   let health;
   before(async () => { health = await healthCheck(); });
   function skipIfDown(t) {
-    if (!health || !health.ok) { t.skip(`editor not running: ${health ? health.reason : 'no health'} — start Creator 3.7 + cc-bridge-3x`); return true; }
+    if (!health || !health.ok) { t.skip(`editor not running: ${health ? health.reason : 'no health'} — start Creator 3.7 + ccp3x`); return true; }
     return false;
   }
 
@@ -22,17 +22,17 @@ describe('live: manual & server — migrated from scripts/smoke-utcp.js', () => 
     assert.equal(r.body.tools.some((tool) => tool.name === 'executeJavascript'), false);
   });
 
-  it('config has ccb3x template, no duplicate ccb* URL', async (t) => {
+  it('config has per-port CCP template, no duplicate Pilot URL', async (t) => {
     if (skipIfDown(t)) return;
     const cfgPath = process.env.UTCP_CONFIG_FILE || path.join(os.homedir(), '.utcp_config.json');
     const raw = fs.readFileSync(cfgPath, 'utf8');
     const cfg = JSON.parse(raw);
     const names = (cfg.manual_call_templates || []).map(x => x.name);
-    const has3x = names.some(n => /^ccb3x(_\d+)?$/.test(n));
-    assert.ok(has3x, `ccb3x template present, found ${names.join(',')}`);
-    const isCcb = (n) => /^ccb[23]x(_\d+)?$/.test(n);
-    const urls = (cfg.manual_call_templates || []).filter(x => isCcb(x.name)).map(x => (x.url || '').replace(/\/utcp\/?$/, ''));
-    assert.equal(new Set(urls).size, urls.length, `ccb* duplicate URL: ${urls.join(',')}`);
+    const has3x = names.some(n => /^ccp3x_\d+$/.test(n));
+    assert.ok(has3x, `ccp3x_<port> template present, found ${names.join(',')}`);
+    const isPilot = (n) => /^ccp[23]x_\d+$/.test(n);
+    const urls = (cfg.manual_call_templates || []).filter(x => isPilot(x.name)).map(x => (x.url || '').replace(/\/utcp\/?$/, ''));
+    assert.equal(new Set(urls).size, urls.length, `CCP duplicate URL: ${urls.join(',')}`);
   });
 
   it('GET /build-info has commit/branch', async (t) => {

@@ -30,10 +30,10 @@ function key(id) {
 function signed(kind, body, signer, additionalSigners = []) {
   const payload = Buffer.from(canonicalize(body), 'utf8');
   const prefix = Buffer.from(kind === 'root'
-    ? 'CCB1 release-root\n'
+    ? 'CCP1 release-root\n'
     : kind === 'target'
-      ? 'CCB1 release-targets\n'
-      : 'CCB1 rollout-policy\n');
+      ? 'CCP1 release-targets\n'
+      : 'CCP1 rollout-policy\n');
   return {
     payload: payload.toString('base64url'),
     signatures: [signer, ...additionalSigners].map((entry) => ({
@@ -50,7 +50,7 @@ function fixture(nowMs) {
   const iso = (offset) => new Date(nowMs + offset).toISOString();
   const root = {
     schemaVersion: 1,
-    product: 'cc-bridge-3x',
+    product: 'ccp3x',
     rootVersion: 1,
     issuedAt: iso(-60_000),
     expiresAt: iso(86_400_000),
@@ -72,8 +72,8 @@ function fixture(nowMs) {
     issuedAt: iso(-30_000),
     expiresAt: iso(3_600_000),
     package: {
-      name: 'cc-bridge-3x', version: '2.1.0', sha256: 'a'.repeat(64), size: 123,
-      url: 'https://releases.example.test/cc-bridge-3x.zip',
+      name: 'ccp3x', version: '2.1.0', sha256: 'a'.repeat(64), size: 123,
+      url: 'https://releases.example.test/ccp3x.zip',
       packageManifestSha256: 'b'.repeat(64), sbomSha256: 'c'.repeat(64), provenanceSha256: 'd'.repeat(64),
     },
     compatibility: { protocol: { min: 1, max: 1 }, creator: '>=3.7.0', os: ['win32'], arch: ['x64'] },
@@ -96,7 +96,7 @@ describe('signed update trust transaction', () => {
   };
 
   it('accepts bound target/policy bytes and persists monotonic digests', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ccb-update-trust-'));
+    const dir = mkdtempSync(join(tmpdir(), 'ccp-update-trust-'));
     try {
       const data = fixture(nowMs);
       const store = new UpdateStateStore(join(dir, 'state.json'));
@@ -107,7 +107,7 @@ describe('signed update trust transaction', () => {
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
   it('binds the installed signed target before the first update so health rollback is permitted', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ccb-update-trust-'));
+    const dir = mkdtempSync(join(tmpdir(), 'ccp-update-trust-'));
     try {
       const data = fixture(nowMs);
       const installedTarget = 'e'.repeat(64);
@@ -121,7 +121,7 @@ describe('signed update trust transaction', () => {
   });
 
   it('rejects mix-and-match target bytes and same-sequence different policy bytes', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ccb-update-trust-'));
+    const dir = mkdtempSync(join(tmpdir(), 'ccp-update-trust-'));
     try {
       const data = fixture(nowMs);
       const store = new UpdateStateStore(join(dir, 'state.json'));
@@ -135,7 +135,7 @@ describe('signed update trust transaction', () => {
   });
 
   it('persists a verified emergency policy high-water before denying execution', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ccb-update-trust-'));
+    const dir = mkdtempSync(join(tmpdir(), 'ccp-update-trust-'));
     try {
       const data = fixture(nowMs);
       const store = new UpdateStateStore(join(dir, 'state.json'));

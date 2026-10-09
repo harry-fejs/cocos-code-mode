@@ -14,6 +14,6 @@ export function recordVerifiedSession({ root = process.cwd(), project, bundle, s
     age_ms: 0,
     verified: true,
   };
-  writeJsonAtomic(join(root, '.claude', 'ccb-session.json'), artifact);
+  writeJsonAtomic(join(root, '.claude', 'ccp-session.json'), artifact);
   return artifact;
 }

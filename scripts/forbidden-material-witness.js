@@ -7,7 +7,7 @@ const approvedAclOutput = fixedAclOutput(dist);
 const forbidden = [
   /new Function\s*\(/,
   /\beval\s*\(/,
-  /CCB_EXECUTION_PRIVATE_KEY/,
+  /CCP_EXECUTION_PRIVATE_KEY/,
   /planCreateUiNode/,
   /sourceMappingURL=data:/,
   /"sourcesContent"\s*:/,

@@ -8,7 +8,7 @@ const { test } = require('node:test');
 const { readCredential } = require('../../scripts/credential-input');
 
 test('credential input reads one bounded token from an absolute file', () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ccb-credential-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ccp-credential-'));
   try {
     const file = path.join(directory, 'member.jwt');
     fs.writeFileSync(file, 'header.payload.signature\n', { mode: 0o600 });

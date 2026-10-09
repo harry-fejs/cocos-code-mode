@@ -9,12 +9,13 @@ function creditOperation(operation, scenario, events, run) {
   const boundary = httpRows.length === 1 ? httpRows[0] : null;
   if (!operation.http || !boundary || !boundary.finished || boundary.resultBoundary !== 'local-http-response-bytes' || boundary.toolId !== operation.toolId || boundary.status !== operation.http.status || boundary.bytes !== operation.http.bytes || boundary.sha256 !== operation.http.sha256 || !HASH.test(boundary.sha256)) gaps.push('independent HTTP client/server boundary mismatch or unavailable');
   if (scenario.workflow === 'local-screenshot') {
-    if (dispatchRows.length || boundary?.requestId !== null || operation.http?.status !== 200 || !operation.screenshot || !boundary?.screenshot || JSON.stringify(operation.screenshot) !== JSON.stringify(boundary.screenshot) || !HASH.test(operation.screenshot.sha256) || !nonnegative(operation.screenshot.bytes) || !operation.screenshot.bytes) gaps.push('actual local screenshot unavailable; no Gateway round trip is credited');
+    if (dispatchRows.length || boundary?.requestId !== null || operation.http?.status !== 200 || !operation.screenshot || !boundary?.screenshot || ['bytes', 'sha256', 'mimeType'].some(key => operation.screenshot[key] !== boundary.screenshot[key]) || !HASH.test(operation.screenshot.sha256) || !nonnegative(operation.screenshot.bytes) || !operation.screenshot.bytes) gaps.push('actual local screenshot unavailable; no Gateway round trip is credited');
     return { id: operation.id, toolId: operation.toolId, pass: gaps.length === 0, gaps, resultBoundary: 'local-only-screenshot', http: operation.http, screenshot: operation.screenshot };
   }
   const record = dispatchRows.length === 1 ? dispatchRows[0].record : null;
-  if (!record || record.schemaVersion !== 2 || record.traceComplete !== true || record.evidenceErrors?.length !== 0 || boundary?.requestId !== record.requestId || record.toolId !== operation.toolId || record.binding?.projectId !== run.connection.gateway.projectId || record.binding?.relayInstanceId !== run.connection.relayInstanceId || record.binding?.relay?.packageHash !== run.packageBinding.packageHash || record.binding?.relay?.build !== run.packageBinding.version || record.binding?.relay?.creatorVersion !== run.identity.creatorVersion || record.inputSha256 !== operation.inputSha256) gaps.push('instrumented protected dispatch unavailable or binding mismatch');
+  if (!record || record.schemaVersion !== 2 || !Array.isArray(record.evidenceErrors) || record.evidenceErrors.length !== 0 || boundary?.requestId !== record.requestId || record.toolId !== operation.toolId || record.binding?.projectId !== run.connection.gateway.projectId || record.binding?.relayInstanceId !== run.connection.relayInstanceId || record.binding?.relay?.packageHash !== run.packageBinding.packageHash || record.binding?.relay?.build !== run.packageBinding.version || record.binding?.relay?.creatorVersion !== run.identity.creatorVersion || record.inputSha256 !== operation.inputSha256) gaps.push('instrumented protected dispatch unavailable or binding mismatch');
   if (record) {
+    if (record.traceComplete !== true && record.request?.pointerTruncated !== true) gaps.push('instrumented trace is incomplete beyond the bounded pointer audit');
     if (record.outcome !== scenario.expectedOutcome) gaps.push('observed protected outcome differs from requested scenario');
     const c = record.creator; const g = record.gateway;
     if (!c || !['totalIpc', 'observationIpc', 'postGatewayIpc'].every(k => nonnegative(c[k])) || c.totalIpc !== c.observationIpc + c.postGatewayIpc) gaps.push('actual Creator IPC counters unavailable');
@@ -34,14 +35,16 @@ function creditOperation(operation, scenario, events, run) {
     if (record.kind === 'result' && c?.postGatewayIpc !== 0) gaps.push('finite result unexpectedly reached Creator IPC');
     if (scenario.workflow === 'large-result' && (!Number.isSafeInteger(scenario.minimumHttpBytes) || scenario.minimumHttpBytes < 65536 || operation.http?.bytes < scenario.minimumHttpBytes)) gaps.push('large independent HTTP result threshold not actually observed');
     if (record.outcome === 'completed' && (operation.http?.status !== 200 || !HASH.test(record.result?.sha256 || '') || !nonnegative(record.result?.bytes) || !record.result.bytes)) gaps.push('completed result not observed at both boundaries');
-    if (scenario.workflow === 'ten-step' && record.executionCommandCount !== 10) gaps.push('ten executed commands not actually measured');
-    if (scenario.workflow === 'mutation' && (record.kind !== 'execute' || !(c?.postGatewayIpc > 0))) gaps.push('actual mutation execution unavailable');
+    if (scenario.workflow === 'ten-step' && scenario.expectedOutcome === 'completed' && record.executionCommandCount !== 10) gaps.push('ten executed commands not actually measured');
+    if (scenario.workflow === 'mutation' && scenario.expectedOutcome === 'completed' && (record.kind !== 'execute' || !(c?.postGatewayIpc > 0))) gaps.push('actual mutation execution unavailable');
   }
   return { id: operation.id, toolId: operation.toolId, pass: gaps.length === 0, gaps, http: operation.http,
-    observed: record ? { requestId: record.requestId, outcome: record.outcome, kind: record.kind, creator: record.creator, gateway: record.gateway, phases: record.phases, executionCommandCount: record.executionCommandCount, result: record.result } : null };
+    observed: record ? { requestId: record.requestId, outcome: record.outcome, kind: record.kind, creator: record.creator, gateway: record.gateway, phases: record.phases, executionCommandCount: record.executionCommandCount, result: record.result,
+      payloadProjectionVerified: record.traceComplete === true && record.request?.pointerTruncated === false } : null };
 }
 function verify(configPath) {
   const config = json(configPath); const run = json(config.runPath);
+  const reportPath = process.env.CCP_INSTALLED_LIVE_REPORT_PATH || config.reportPath;
   if (run.schemaVersion !== 1 || run.evidenceScope !== 'installed-live' || run.resultBoundary !== 'independent-local-http-client' || run.runId !== config.runId || run.configSha256 !== sha(read(configPath)) || !Array.isArray(run.operations) || run.operations.length !== config.scenarios.length || new Set(run.operations.map(o => o.callId)).size !== run.operations.length) throw new Error('source fixture or invalid installed-live run');
   const { projectIdentity } = require('../dist/utcp/project-connection');
   const project = projectIdentity(config.projectPath);
@@ -57,12 +60,13 @@ function verify(configPath) {
   });
   const gaps = [];
   const passed = s => items.some(i => i.id === s.id && i.pass);
-  for (const workflow of ['read', 'mutation', 'ten-step', 'local-screenshot']) if (!config.scenarios.some(s => s.workflow === workflow && passed(s))) gaps.push('missing verified workflow: ' + workflow);
+  for (const workflow of ['read', 'mutation', 'ten-step', 'local-screenshot']) if (!config.scenarios.some(s => s.workflow === workflow && s.expectedOutcome === 'completed' && passed(s))) gaps.push('missing verified completed workflow: ' + workflow);
   if (!config.scenarios.some(s => s.expectedOutcome === 'denied' && passed(s))) gaps.push('missing verified denied zero IPC scenario');
   if (!items.every(i => i.pass)) gaps.push('one or more scenarios unverified');
+  if (items.some(item => item.observed && item.observed.payloadProjectionVerified !== true)) gaps.push('bounded request pointer audit incomplete; runtime credit does not qualify payload projection');
   let surfaceReports = []; let canariesVerified = false;
   try {
-    const surfaces = scan(config, [configPath, config.runPath, config.reportPath, config.liveTracePath, config.sourceTracePath, config.markersPath, config.surfacesPath].filter(Boolean));
+    const surfaces = scan(config, [configPath, config.runPath, reportPath, config.liveTracePath, config.sourceTracePath, config.markersPath, config.surfacesPath].filter(Boolean));
     surfaceReports = surfaces.reports;
     const sources = { 'operation-input': 'inputs', 'creator-observation': 'observation', 'local-result': 'result' };
     for (const marker of surfaces.markers) {
@@ -81,13 +85,13 @@ function verify(configPath) {
   if (!telemetry.length) gaps.push('no observed next-request completion telemetry');
   const report = { schemaVersion: 1, evidenceScope: 'installed-live', qualificationStatus: gaps.length ? 'installed-live-partial' : 'installed-live-qualified', pass: gaps.length === 0, signedLiveAcceptance: gaps.length === 0,
     runId: run.runId, packageBinding, resultBoundary: 'independent-local-http-client-and-signed-server-response', items, surfaces: surfaceReports, canariesVerified, telemetry, gaps,
-    limitations: ['Device signatures authenticate local instrumented records, not an independent hardware attestation of Creator.', 'Surface scans prove bytes of the supplied captured artifacts, not completeness of inaccessible databases, logs, or metrics.', 'Local screenshots are never represented as Gateway round trips; image bytes and raw protected payloads are not retained.', 'No unavailable counters are inferred zero. Source fixture reports cannot satisfy this verifier.'] };
+    limitations: ['Device signatures authenticate local instrumented records, not an independent hardware attestation of Creator.', 'Surface scans prove bytes of the supplied captured artifacts, not completeness of inaccessible databases, logs, or metrics.', 'Observed completion telemetry means a signed next-request carrier, not proof of Gateway database persistence.', 'Local screenshots are never represented as Gateway round trips; image bytes and raw protected payloads are not retained.', 'No unavailable counters are inferred zero. Source fixture reports cannot satisfy this verifier.'] };
   const output = JSON.stringify(report);
   if (config.markersPath && json(config.markersPath).some(m => output.includes(m.value))) throw new Error('report would retain canary material');
-  write(config.reportPath, report); return report;
+  write(reportPath, report); return report;
 }
 if (require.main === module) {
-  try { const report = verify(process.env.CCB_INSTALLED_LIVE_CONFIG_PATH); console.log(JSON.stringify({ pass: report.pass, signedLiveAcceptance: report.signedLiveAcceptance, items: report.items.map(i => ({ id: i.id, pass: i.pass })), gaps: report.gaps })); if (!report.pass) process.exitCode = 2; }
+  try { const report = verify(process.env.CCP_INSTALLED_LIVE_CONFIG_PATH); console.log(JSON.stringify({ pass: report.pass, signedLiveAcceptance: report.signedLiveAcceptance, items: report.items.map(i => ({ id: i.id, pass: i.pass })), gaps: report.gaps })); if (!report.pass) process.exitCode = 2; }
   catch { console.error('installed-live verifier rejected evidence (unsigned/source-only, stale binding, unsafe artifact, or invalid contract)'); process.exitCode = 1; }
 }
 module.exports = { creditOperation, verify };

@@ -308,14 +308,14 @@ function scanSurfaces(surfaces, markers) {
 }
 function validateQualification() {
   readBudget = { bytes: 0, files: 0 };
-  const scope = process.env.CCB_QUALIFICATION_SCOPE;
-  if (scope !== "source-qualification" && scope !== "signed-live") fail("CCB_QUALIFICATION_SCOPE must be explicitly source-qualification or signed-live");
+  const scope = process.env.CCP_QUALIFICATION_SCOPE;
+  if (scope !== "source-qualification" && scope !== "signed-live") fail("CCP_QUALIFICATION_SCOPE must be explicitly source-qualification or signed-live");
   if (scope === "signed-live") fail("signed-live acceptance is false: independent external evidence is required");
-  const tracePath = absEnv("CCB_QUALIFICATION_TRACE_PATH");
-  const markerPath = absEnv("CCB_QUALIFICATION_MARKERS_PATH");
-  const surfacePath = absEnv("CCB_QUALIFICATION_SURFACES_PATH");
-  const runPath = absEnv("CCB_QUALIFICATION_RUN_PATH");
-  const reportPath = absEnv("CCB_QUALIFICATION_REPORT_PATH");
+  const tracePath = absEnv("CCP_QUALIFICATION_TRACE_PATH");
+  const markerPath = absEnv("CCP_QUALIFICATION_MARKERS_PATH");
+  const surfacePath = absEnv("CCP_QUALIFICATION_SURFACES_PATH");
+  const runPath = absEnv("CCP_QUALIFICATION_RUN_PATH");
+  const reportPath = absEnv("CCP_QUALIFICATION_REPORT_PATH");
   const manifestPath = path.resolve(__dirname, "../source/protected/public-tool-manifest.json");
   const controls = [tracePath, markerPath, surfacePath, runPath, reportPath, manifestPath].map((value) => safePath(value, "control path", false));
   if (new Set(controls.map((file) => process.platform === "win32" ? file.toLowerCase() : file)).size !== controls.length) fail("control inputs overlap each other");
@@ -341,7 +341,7 @@ function validateQualification() {
   validateInjections(run, markerList, controls);
   const markerByLabel = new Map(markerList.map((marker) => [marker.label, marker]));
   const records = trace.records.map((record) => validateRecord(record, tools, run, markerByLabel));
-  const requiredTools = new Set([...REQUIRED_TOOLS, ...(process.env.CCB_QUALIFICATION_REQUIRED_TOOLS || "").split(",").filter(Boolean)]);
+  const requiredTools = new Set([...REQUIRED_TOOLS, ...(process.env.CCP_QUALIFICATION_REQUIRED_TOOLS || "").split(",").filter(Boolean)]);
   for (const toolId of requiredTools) if (!records.some((record) => record.toolId === toolId && record.kind !== "denied" && record.outcome === "completed")) fail(`missing required completed scenario`);
   if (!records.some((record) => record.kind === "denied" && record.outcome === "denied")) fail("missing required denied scenario");
   const ordered = [...trace.records].sort((a, b) => a.phases["request-built"] - b.phases["request-built"]);

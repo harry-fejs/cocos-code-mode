@@ -8,9 +8,9 @@ const test = require('node:test');
 
 const root = join(__dirname, '..', '..');
 const relay = JSON.parse(readFileSync(join(root, 'source', 'protected', 'public-tool-manifest.json'), 'utf8'));
-const gateway = JSON.parse(readFileSync(join(root, 'gateway', 'src', 'cc-bridge', 'public-tool-manifest.json'), 'utf8'));
+const gateway = JSON.parse(readFileSync(join(root, 'gateway', 'src', 'ccp', 'public-tool-manifest.json'), 'utf8'));
 const relayFixture = JSON.parse(readFileSync(join(root, 'tests', 'fixtures', 'protected', 'v1', 'public-tool-manifest.json'), 'utf8'));
-const gatewayFixture = JSON.parse(readFileSync(join(root, 'gateway', 'tests', 'fixtures', 'cc-bridge', 'v1', 'public-tool-manifest.json'), 'utf8'));
+const gatewayFixture = JSON.parse(readFileSync(join(root, 'gateway', 'tests', 'fixtures', 'ccp', 'v1', 'public-tool-manifest.json'), 'utf8'));
 
 function canonicalize(value) {
   if (value === null || typeof value === 'boolean' || typeof value === 'string' || typeof value === 'number') return JSON.stringify(value);

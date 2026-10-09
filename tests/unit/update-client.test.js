@@ -35,7 +35,7 @@ describe('bounded release client', { concurrency: false }, () => {
 
   it('streams an exact artifact to an atomic destination and removes a bad partial', async () => {
     const prior = global.fetch;
-    const root = mkdtempSync(join(tmpdir(), 'ccb-download-'));
+    const root = mkdtempSync(join(tmpdir(), 'ccp-download-'));
     const body = Buffer.from('signed release artifact');
     const sha256 = createHash('sha256').update(body).digest('hex');
     try {

@@ -82,7 +82,7 @@ Message does not exist: project - set-config
 `export-config`, nhưng **không cái nào ghi một dotted path đơn lẻ** — cái đầu chỉ đụng script
 settings, hai cái sau chuyển cả file. Map bừa = ghi sai key **im lặng**, nguy hiểm hơn là báo lỗi.
 Nguyên tắc đã chốt: **fail-loud > map sai**. Đọc vẫn OK (`projectManage get` verify chạy tốt).
-Từ 2026-09-04, CC Bridge nâng cấp cơ chế: probe IPC capability khi khởi động/gọi hàm; nếu là Creator 3.8.x thì dùng IPC chuẩn `(project, dotPath, value)`, còn trên Creator 3.7.x thì trả HTTP 422 `UNSUPPORTED_EDITOR_API` kèm recovery action rõ ràng cho Agent.
+Từ 2026-09-04, CCP nâng cấp cơ chế: probe IPC capability khi khởi động/gọi hàm; nếu là Creator 3.8.x thì dùng IPC chuẩn `(project, dotPath, value)`, còn trên Creator 3.7.x thì trả HTTP 422 `UNSUPPORTED_EDITOR_API` kèm recovery action rõ ràng cho Agent.
 ## 2b. `scene/query-uuid` — bug sẵn có, KHÔNG phải drift
 
 Message này **không tồn tại ở cả 3.7.3 lẫn 3.8.7** (grep typed `scene/@types/message.d.ts` = 0 hit).

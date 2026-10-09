@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { canonicalize, decodeBase64UrlStrict } = require('./sign-release');
 
-const ROOT_PREFIX = Buffer.from('CCB1 release-root\n', 'utf8');
+const ROOT_PREFIX = Buffer.from('CCP1 release-root\n', 'utf8');
 const KEY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const projectRoot = path.join(__dirname, '..');
 
@@ -21,7 +21,7 @@ function readCanonicalRoot(filePath) {
   try { body = JSON.parse(bytes.toString('utf8')); } catch { throw new Error('release root payload is not valid JSON'); }
   const canonical = Buffer.from(canonicalize(body), 'utf8');
   if (!bytes.equals(canonical)) throw new Error('release root payload must be canonical JSON without trailing bytes');
-  if (body.schemaVersion !== 1 || body.product !== 'cc-bridge-3x' || !Number.isSafeInteger(body.rootVersion) || body.rootVersion < 1) {
+  if (body.schemaVersion !== 1 || body.product !== 'ccp3x' || !Number.isSafeInteger(body.rootVersion) || body.rootVersion < 1) {
     throw new Error('release root identity is invalid');
   }
   return bytes;
@@ -48,14 +48,14 @@ function existingSignatures(filePath, payload) {
   return wrapper.signatures;
 }
 function main() {
-  const payloadPath = path.resolve(requiredEnv('CCB_RELEASE_ROOT_PATH'));
+  const payloadPath = path.resolve(requiredEnv('CCP_RELEASE_ROOT_PATH'));
   const payload = readCanonicalRoot(payloadPath);
   const prior = existingSignatures(process.argv[2] ? path.resolve(process.argv[2]) : undefined, payload);
   const signature = signRoot(
     payload,
-    requiredEnv('CCB_RELEASE_ROOT_KEY_ID'),
-    requiredEnv('CCB_RELEASE_ROOT_PRIVATE_KEY'),
-    process.env.CCB_RELEASE_ROOT_PUBLIC_KEY,
+    requiredEnv('CCP_RELEASE_ROOT_KEY_ID'),
+    requiredEnv('CCP_RELEASE_ROOT_PRIVATE_KEY'),
+    process.env.CCP_RELEASE_ROOT_PUBLIC_KEY,
   );
   if (prior.some((entry) => entry && entry.keyId === signature.keyId)) throw new Error('root wrapper already contains this key ID');
   const wrapper = { payload: payload.toString('base64url'), signatures: [...prior, signature] };

@@ -16,7 +16,7 @@ const { SignedRequestCache } = require("../../dist/protected/request-builder.js"
 const manifest = require("../../source/protected/public-tool-manifest.json");
 
 async function surface(run) {
-  const directory = mkdtempSync(join(homedir(), ".ccb-trace-http-"));
+  const directory = mkdtempSync(join(homedir(), ".ccp-trace-http-"));
   const tracePath = join(directory, "trace.ndjson");
   const markerPath = join(directory, "markers.json");
   writeFileSync(markerPath, JSON.stringify([{ label: "approved-name", value: "APPROVED_MARKER_1234" }]));
@@ -36,7 +36,7 @@ async function surface(run) {
     res.setHeader("content-type", "application/json");
     if (request.tool.id === "nodeCreate") {
       res.statusCode = 422;
-      res.end(JSON.stringify({ code: "CCB_PROJECT_DENIED", error: "denied", details: {}, recovery: "Request a scoped grant." }));
+      res.end(JSON.stringify({ code: "CCP_PROJECT_DENIED", error: "denied", details: {}, recovery: "Request a scoped grant." }));
       return;
     }
     const tool = manifest.tools.find(t => t.name === request.tool.id);
@@ -77,7 +77,7 @@ test("real transport records read execution and denied mutation without fabricat
   await surface(async ({ context, tracePath, resetIpc, requests }) => {
     assert.deepEqual(await dispatchProtectedTool(context, manifest, "sceneGetInfo", {}), { dirty: false });
     resetIpc();
-    await assert.rejects(dispatchProtectedTool(context, manifest, "nodeCreate", { name: "APPROVED_MARKER_1234" }, { idempotencyKey: randomUUID() }), e => e.body.code === "CCB_PROJECT_DENIED");
+    await assert.rejects(dispatchProtectedTool(context, manifest, "nodeCreate", { name: "APPROVED_MARKER_1234" }, { idempotencyKey: randomUUID() }), e => e.body.code === "CCP_PROJECT_DENIED");
     const raw = readFileSync(tracePath, "utf8");
     const [read, denied] = raw.trim().split(/\r?\n/).map(JSON.parse);
     assert.equal(requests(), 2);
@@ -109,8 +109,8 @@ test("completion telemetry is attached to the next non-idempotent protected requ
 test("gateway denials are not reported as Creator completion failures", async () => {
   await surface(async ({ context, payloads }) => {
     const retryKey = randomUUID();
-    await assert.rejects(dispatchProtectedTool(context, manifest, "nodeCreate", { name: "APPROVED_MARKER_1234" }, { idempotencyKey: retryKey }), e => e.body.code === "CCB_PROJECT_DENIED");
-    await assert.rejects(dispatchProtectedTool(context, manifest, "nodeCreate", { name: "APPROVED_MARKER_1234" }, { idempotencyKey: retryKey }), e => e.body.code === "CCB_PROJECT_DENIED");
+    await assert.rejects(dispatchProtectedTool(context, manifest, "nodeCreate", { name: "APPROVED_MARKER_1234" }, { idempotencyKey: retryKey }), e => e.body.code === "CCP_PROJECT_DENIED");
+    await assert.rejects(dispatchProtectedTool(context, manifest, "nodeCreate", { name: "APPROVED_MARKER_1234" }, { idempotencyKey: retryKey }), e => e.body.code === "CCP_PROJECT_DENIED");
     await dispatchProtectedTool(context, manifest, "sceneGetInfo", {});
     assert.equal(payloads().length, 3);
     assert.equal(payloads()[0].priorTelemetry, undefined);
@@ -122,8 +122,8 @@ test("gateway denials are not reported as Creator completion failures", async ()
 test("idempotent cache hits do not fabricate Creator completion telemetry", async () => {
   await surface(async ({ context, payloads }) => {
     const retryKey = randomUUID();
-    await assert.rejects(dispatchProtectedTool(context, manifest, "nodeCreate", { name: "APPROVED_MARKER_1234" }, { idempotencyKey: retryKey }), e => e.body.code === "CCB_PROJECT_DENIED");
-    await assert.rejects(dispatchProtectedTool(context, manifest, "nodeCreate", { name: "APPROVED_MARKER_1234" }, { idempotencyKey: retryKey }), e => e.body.code === "CCB_PROJECT_DENIED");
+    await assert.rejects(dispatchProtectedTool(context, manifest, "nodeCreate", { name: "APPROVED_MARKER_1234" }, { idempotencyKey: retryKey }), e => e.body.code === "CCP_PROJECT_DENIED");
+    await assert.rejects(dispatchProtectedTool(context, manifest, "nodeCreate", { name: "APPROVED_MARKER_1234" }, { idempotencyKey: retryKey }), e => e.body.code === "CCP_PROJECT_DENIED");
     await dispatchProtectedTool(context, manifest, "sceneGetInfo", {});
     assert.equal(payloads().length, 3);
     assert.equal(payloads()[1].requestId, payloads()[0].requestId);

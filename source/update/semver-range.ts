@@ -1,4 +1,4 @@
-import { CcbError } from "../protected/errors";
+import { CcpError } from "../protected/errors";
 
 type Identifier = number | string;
 interface Version {
@@ -27,18 +27,18 @@ function identifiers(value: string | undefined): Identifier[] {
 
 function parseVersion(value: string): Version {
   const match = /^\s*[vV]?((?:0|[1-9]\d*))\.((?:0|[1-9]\d*))\.((?:0|[1-9]\d*))(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?\s*$/.exec(value);
-  if (!match) throw new CcbError("CCB_CREATOR_INCOMPATIBLE", `Creator version is not valid SemVer: ${value}`);
+  if (!match) throw new CcpError("CCP_CREATOR_INCOMPATIBLE", `Creator version is not valid SemVer: ${value}`);
   return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]), prerelease: identifiers(match[4]) };
 }
 
 function parsePartial(value: string): PartialVersion {
   const match = /^[vV]?(x|X|\*|0|[1-9]\d*)(?:\.(x|X|\*|0|[1-9]\d*))?(?:\.(x|X|\*|0|[1-9]\d*))?(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.exec(value);
-  if (!match) throw new CcbError("CCB_CANONICAL_INVALID", `Creator compatibility is not a valid SemVer range: ${value}`);
+  if (!match) throw new CcpError("CCP_CANONICAL_INVALID", `Creator compatibility is not a valid SemVer range: ${value}`);
   const number = (part: string | undefined): number | undefined => !part || /^[xX*]$/.test(part) ? undefined : Number(part);
   const major = number(match[1]);
   const minor = major === undefined ? undefined : number(match[2]);
   const patch = minor === undefined ? undefined : number(match[3]);
-  if (match[4] && patch === undefined) throw new CcbError("CCB_CANONICAL_INVALID", "Prerelease Creator ranges require major.minor.patch.");
+  if (match[4] && patch === undefined) throw new CcpError("CCP_CANONICAL_INVALID", "Prerelease Creator ranges require major.minor.patch.");
   return { major, minor, patch, prerelease: identifiers(match[4]) };
 }
 
@@ -88,7 +88,7 @@ function expandPlain(operator: Comparator["operator"], partial: PartialVersion):
 function expandToken(token: string): Comparator[] {
   if (!token || token === "*" || /^[xX]$/.test(token)) return [];
   const match = /^(<=|>=|<|>|=|~|\^)?(.+)$/.exec(token);
-  if (!match) throw new CcbError("CCB_CANONICAL_INVALID", `Invalid Creator range token: ${token}`);
+  if (!match) throw new CcpError("CCP_CANONICAL_INVALID", `Invalid Creator range token: ${token}`);
   const operator = (match[1] ?? "=") as Comparator["operator"] | "~" | "^";
   const partial = parsePartial(match[2]);
   if (operator !== "~" && operator !== "^") return expandPlain(operator, partial);
@@ -132,7 +132,7 @@ function passes(version: Version, comparator: Comparator): boolean {
 
 export function satisfiesSemverRange(versionText: string, rangeText: string): boolean {
   const version = parseVersion(versionText);
-  if (!rangeText.trim()) throw new CcbError("CCB_CANONICAL_INVALID", "Creator compatibility range is empty.");
+  if (!rangeText.trim()) throw new CcpError("CCP_CANONICAL_INVALID", "Creator compatibility range is empty.");
   return rangeText.split("||").some((rawSet) => {
     const normalizedSet = expandHyphen(rawSet.trim())
       .replace(/,/g, " ")

@@ -12,7 +12,7 @@ const { rollbackTargets } = require('../../scripts/sign-policy');
 const { generateKeyPairSync } = require('node:crypto');
 
 function fixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ccb-release-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ccp-release-'));
   for (const directory of ['@types', 'dist', 'i18n', 'static', 'scripts', 'node_modules/prod', 'node_modules/dev']) {
     fs.mkdirSync(path.join(root, directory), { recursive: true });
   }
@@ -28,17 +28,17 @@ function fixture() {
   fs.writeFileSync(path.join(root, 'node_modules', 'prod', 'index.js'), 'module.exports = 1;');
   fs.writeFileSync(path.join(root, 'node_modules', 'dev', 'index.js'), 'module.exports = 2;');
   const lock = {
-    name: 'cc-bridge-3x',
+    name: 'ccp3x',
     version: '2.0.0',
     lockfileVersion: 3,
     packages: {
-      '': { name: 'cc-bridge-3x', version: '2.0.0' },
+      '': { name: 'ccp3x', version: '2.0.0' },
       'node_modules/prod': { name: 'prod', version: '1.2.3', integrity: `sha512-${Buffer.alloc(64, 1).toString('base64')}` },
       'node_modules/dev': { name: 'dev', version: '9.9.9', dev: true },
     },
   };
   fs.writeFileSync(path.join(root, 'package-lock.json'), JSON.stringify(lock));
-  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'cc-bridge-3x', version: '2.0.0' }));
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'ccp3x', version: '2.0.0' }));
   return root;
 }
 const fixtureInputs = {
@@ -57,14 +57,14 @@ describe('deterministic release inventory', () => {
   it('archives only sorted production entries and emits mode-bearing manifest rows', () => {
     const root = fixture();
     try {
-      const entries = collectPackageEntries(root, 'cc-bridge-3x', { name: 'cc-bridge-3x', version: '2.0.0-dev.abc1234' }, fixtureInputs);
+      const entries = collectPackageEntries(root, 'ccp3x', { name: 'ccp3x', version: '2.0.0-dev.abc1234' }, fixtureInputs);
       const paths = entries.map((entry) => entry.archivePath);
       assert.deepEqual(paths, [...paths].sort((a, b) => a < b ? -1 : a > b ? 1 : 0));
-      assert(paths.includes('cc-bridge-3x/node_modules/prod/index.js'));
-      assert(paths.includes('cc-bridge-3x/scripts/install-update.ps1'));
+      assert(paths.includes('ccp3x/node_modules/prod/index.js'));
+      assert(paths.includes('ccp3x/scripts/install-update.ps1'));
       assert(!paths.some((value) => value.includes('/node_modules/dev/')));
       assert(!paths.some((value) => value.endsWith('.map') || value.endsWith('/package-manifest.json')));
-      const manifest = createPackageManifest('cc-bridge-3x', '2.0.0-dev.abc1234', entries);
+      const manifest = createPackageManifest('ccp3x', '2.0.0-dev.abc1234', entries);
       assert(manifest.files.every((entry) => entry.mode === 0o644 && /^[0-9a-f]{64}$/.test(entry.sha256)));
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
@@ -73,7 +73,7 @@ describe('deterministic release inventory', () => {
 
   it('rejects case-colliding archive paths independently of host filesystem casing', () => {
     const entries = [{ relativePath: 'static/index.html' }, { relativePath: 'static/INDEX.HTML' }];
-    assert.throws(() => assignArchivePaths(entries, 'cc-bridge-3x'), /case-colliding/);
+    assert.throws(() => assignArchivePaths(entries, 'ccp3x'), /case-colliding/);
   });
 
   it('rejects relevant untracked static and undeclared dist inputs', () => {
@@ -81,13 +81,13 @@ describe('deterministic release inventory', () => {
     try {
       fs.writeFileSync(path.join(root, 'static', 'injected.js'), 'module.exports = 1;');
       assert.throws(
-        () => collectPackageEntries(root, 'cc-bridge-3x', { name: 'cc-bridge-3x', version: '2.0.0' }, fixtureInputs),
+        () => collectPackageEntries(root, 'ccp3x', { name: 'ccp3x', version: '2.0.0' }, fixtureInputs),
         /untracked packaged input: static\/injected\.js/,
       );
       fs.rmSync(path.join(root, 'static', 'injected.js'));
       fs.writeFileSync(path.join(root, 'dist', 'injected.js'), 'module.exports = 1;');
       assert.throws(
-        () => collectPackageEntries(root, 'cc-bridge-3x', { name: 'cc-bridge-3x', version: '2.0.0' }, fixtureInputs),
+        () => collectPackageEntries(root, 'ccp3x', { name: 'ccp3x', version: '2.0.0' }, fixtureInputs),
         /undeclared generated packaged input: dist\/injected\.js/,
       );
     } finally {
@@ -100,7 +100,7 @@ describe('release sidecar contracts', () => {
   it('emits a production-only CycloneDX inventory with hexadecimal hashes', () => {
     const root = fixture();
     try {
-      const sbom = createSbom(root, 'cc-bridge-3x', '2.0.0', 'a'.repeat(64));
+      const sbom = createSbom(root, 'ccp3x', '2.0.0', 'a'.repeat(64));
       assert.equal(sbom.specVersion, '1.6');
       assert.deepEqual(sbom.components.map((component) => component.name), ['prod']);
       assert.match(sbom.components[0].hashes[0].content, /^[0-9a-f]{128}$/);
@@ -112,7 +112,7 @@ describe('release sidecar contracts', () => {
   it('binds clean source, lockfiles, ZIP, manifest, and SBOM in provenance', () => {
     const root = fixture();
     try {
-      const zipPath = path.join(root, 'cc-bridge-3x.zip');
+      const zipPath = path.join(root, 'ccp3x.zip');
       fs.writeFileSync(zipPath, 'zip');
       const manifest = writeCanonicalJson(path.join(root, 'manifest.json'), { files: [] });
       const sbom = writeCanonicalJson(path.join(root, 'sbom.json'), { components: [] });
@@ -141,15 +141,15 @@ describe('offline target signer primitives', () => {
 
 describe('rollout policy signer inputs', () => {
   it('accepts only a bounded unique rollback-target allowlist', () => {
-    const previous = process.env.CCB_POLICY_ROLLBACK_TARGET_SHA256;
+    const previous = process.env.CCP_POLICY_ROLLBACK_TARGET_SHA256;
     try {
-      process.env.CCB_POLICY_ROLLBACK_TARGET_SHA256 = `${'a'.repeat(64)}, ${'b'.repeat(64)},${'a'.repeat(64)}`;
+      process.env.CCP_POLICY_ROLLBACK_TARGET_SHA256 = `${'a'.repeat(64)}, ${'b'.repeat(64)},${'a'.repeat(64)}`;
       assert.deepEqual(rollbackTargets(), ['a'.repeat(64), 'b'.repeat(64)]);
-      process.env.CCB_POLICY_ROLLBACK_TARGET_SHA256 = 'not-a-digest';
+      process.env.CCP_POLICY_ROLLBACK_TARGET_SHA256 = 'not-a-digest';
       assert.throws(() => rollbackTargets(), /at most 8 comma-separated/);
     } finally {
-      if (previous === undefined) delete process.env.CCB_POLICY_ROLLBACK_TARGET_SHA256;
-      else process.env.CCB_POLICY_ROLLBACK_TARGET_SHA256 = previous;
+      if (previous === undefined) delete process.env.CCP_POLICY_ROLLBACK_TARGET_SHA256;
+      else process.env.CCP_POLICY_ROLLBACK_TARGET_SHA256 = previous;
     }
   });
 });

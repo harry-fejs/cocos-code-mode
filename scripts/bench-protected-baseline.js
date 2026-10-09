@@ -95,7 +95,7 @@ function collectReferences(tree, limit) {
 async function mutationBaseline(baseUrl, manualByName) {
   const before = await requestTool(baseUrl, manualByName, 'sceneGetInfo');
   if (before.body.dirty) throw new Error('Refusing mutation baseline: active scene was already dirty');
-  const name = `__ccb_baseline_${Date.now()}`;
+  const name = `__ccp_baseline_${Date.now()}`;
   const created = await requestTool(baseUrl, manualByName, 'nodeCreate', { name });
   const removed = await requestTool(baseUrl, manualByName, 'nodeOperate', { operation: 'delete', reference: created.body.reference });
   const undoDelete = await requestTool(baseUrl, manualByName, 'editorHistory', { operation: 'undo' });

@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 function makeTempProject() {
-  const tempPath = fs.mkdtempSync(path.join(os.tmpdir(), 'ccb3x-link-'));
+  const tempPath = fs.mkdtempSync(path.join(os.tmpdir(), 'ccp3x-link-'));
   tempPaths.push(tempPath);
   const sourcePath = path.join(tempPath, 'extension-source');
   const projectPath = path.join(tempPath, 'project');
@@ -30,7 +30,7 @@ describe('linkProjectExtension', () => {
     const { sourcePath, projectPath } = makeTempProject();
 
     const result = linkProjectExtension({ projectPath, sourcePath });
-    const destination = path.join(projectPath, 'extensions', 'cc-bridge-3x');
+    const destination = path.join(projectPath, 'extensions', 'ccp3x');
 
     assert.equal(result.destination, destination);
     assert.equal(fs.realpathSync(destination), fs.realpathSync(sourcePath));
@@ -38,7 +38,7 @@ describe('linkProjectExtension', () => {
 
   it('refuses to replace an installed extension without explicit replace permission', () => {
     const { sourcePath, projectPath } = makeTempProject();
-    const destination = path.join(projectPath, 'extensions', 'cc-bridge-3x');
+    const destination = path.join(projectPath, 'extensions', 'ccp3x');
     fs.mkdirSync(destination, { recursive: true });
 
     assert.throws(
@@ -49,7 +49,7 @@ describe('linkProjectExtension', () => {
 
   it('backs up an installed extension before linking when replace is explicit', () => {
     const { sourcePath, projectPath } = makeTempProject();
-    const destination = path.join(projectPath, 'extensions', 'cc-bridge-3x');
+    const destination = path.join(projectPath, 'extensions', 'ccp3x');
     fs.mkdirSync(destination, { recursive: true });
     fs.writeFileSync(path.join(destination, 'package.json'), '{}');
 

@@ -43,11 +43,11 @@ async function run(configPath) {
   const connection = state.projects[selection.projectId];
   if (!connection || !connection.active || connection.projectPath !== selection.projectPath || !ownerIsAlive(connection.ownerPid) || !connection.gateway.origin || !connection.gateway.projectId) throw new Error('no active exact project/Gateway connection');
   const tokenEntries = new Map(read(connection.tokenPath, 4096).toString('utf8').split(/\r?\n/).filter(line => line && !line.startsWith('#')).map(line => { const p = line.indexOf('='); return [line.slice(0, p), line.slice(p + 1)]; }));
-  const prefix = `ccb3x_${connection.port}_`;
+  const prefix = `ccp3x__${connection.port}_`;
   const get = key => tokenEntries.get(prefix + key);
-  if (get('CCB_RELAY_INSTANCE_ID') !== connection.relayInstanceId || get('CCB_BOUND_PORT') !== String(connection.port) || get('CCB_LOCAL_PROJECT_ID') !== selection.projectId || !get('CCB_LOCAL_TOKEN')) throw new Error('project token binding mismatch');
-  const headers = { 'x-ccb-local-token': get('CCB_LOCAL_TOKEN'), 'x-ccb-relay-instance': connection.relayInstanceId, 'x-ccb-bound-port': String(connection.port), 'x-ccb-project-id': selection.projectId };
-  const remote = await request(connection.port, '/connection');
+  if (get('CCP_RELAY_INSTANCE_ID') !== connection.relayInstanceId || get('CCP_BOUND_PORT') !== String(connection.port) || get('CCP_LOCAL_PROJECT_ID') !== selection.projectId || !get('CCP_LOCAL_TOKEN')) throw new Error('project token binding mismatch');
+  const headers = { 'x-ccp-local-token': get('CCP_LOCAL_TOKEN'), 'x-ccp-relay-instance': connection.relayInstanceId, 'x-ccp-bound-port': String(connection.port), 'x-ccp-project-id': selection.projectId };
+  const remote = await request(connection.port, '/connection', 'GET', headers);
   if (remote.status !== 200 || remote.value.projectPath !== selection.projectPath || remote.value.projectId !== selection.projectId || remote.value.port !== connection.port || remote.value.relayInstanceId !== connection.relayInstanceId || JSON.stringify(remote.value.gateway) !== JSON.stringify(connection.gateway)) throw new Error('HTTP project connection identity mismatch');
   const identity = (await request(connection.port, '/qualification/identity', 'GET', headers)).value;
   if (identity.runId !== config.runId || identity.packageHash !== packageBinding.packageHash || identity.targetPayloadHash !== packageBinding.targetPayloadHash || identity.publicKeyDer !== config.devicePublicKeyDer || identity.build.version !== packageBinding.version || ['commit', 'builtAt', 'branch', 'dirty'].some(k => identity.build[k] !== packageBinding.build[k])) throw new Error('installed runtime/run/build identity mismatch');
@@ -70,8 +70,8 @@ async function run(configPath) {
     }
     const started = Date.now();
     try {
-      const result = await request(connection.port, url, method, { ...headers, 'x-ccb-qualification-call': callId, 'x-ccb-qualification-run': config.runId,
-        ...((scenario.workflow === 'mutation' || scenario.workflow === 'ten-step' || scenario.expectedOutcome === 'denied' || scenario.idempotencyKey) ? { 'x-ccb-idempotency-key': scenario.idempotencyKey || crypto.randomUUID() } : {}) }, method === 'GET' ? undefined : inputs);
+      const result = await request(connection.port, url, method, { ...headers, 'x-ccp-qualification-call': callId, 'x-ccp-qualification-run': config.runId,
+        ...((scenario.workflow === 'mutation' || scenario.workflow === 'ten-step' || scenario.expectedOutcome === 'denied' || scenario.idempotencyKey) ? { 'x-ccp-idempotency-key': scenario.idempotencyKey || crypto.randomUUID() } : {}) }, method === 'GET' ? undefined : inputs);
       results.set(scenario.id, result.value);
       let screenshot = null;
       if (scenario.workflow === 'local-screenshot') {
@@ -85,11 +85,11 @@ async function run(configPath) {
       operations.push({ id: scenario.id, toolId: scenario.toolId, callId, method, startedAt: started, finishedAt: Date.now(), inputSha256: sha(canonicalizeToBytes(inputs)), http: { status: result.status, bytes: result.bytes, sha256: result.sha256 }, errorCode: result.status >= 400 && /^[A-Z][A-Z0-9_]{0,63}$/.test(result.value?.code) ? result.value.code : null, screenshot });
     } catch { operations.push({ id: scenario.id, toolId: scenario.toolId, callId, method, startedAt: started, finishedAt: Date.now(), http: null, transportError: 'HTTP boundary unavailable', screenshot: null }); }
   }
-  const finalConnection = await request(connection.port, '/connection');
+  const finalConnection = await request(connection.port, '/connection', 'GET', headers);
   if (JSON.stringify(finalConnection.value) !== JSON.stringify(remote.value)) throw new Error('connection changed during qualification');
   const runArtifact = { schemaVersion: 1, evidenceScope: 'installed-live', resultBoundary: 'independent-local-http-client', runId: config.runId, configSha256: sha(read(configPath)), packageBinding, identity, connection: { ...remote.value, ownerPid: connection.ownerPid }, operations, liveTraceSha256: sha(read(config.liveTracePath)) };
   write(config.runPath, runArtifact);
   return { operations: operations.length, httpResults: operations.filter(o => o.http).length, signedLiveAcceptance: false };
 }
-if (require.main === module) run(process.env.CCB_INSTALLED_LIVE_CONFIG_PATH).then(r => console.log(JSON.stringify(r))).catch(() => { console.error('installed-live runner failed; check explicit config, trusted installed package, project connection, and qualification opt-in'); process.exitCode = 1; });
+if (require.main === module) run(process.env.CCP_INSTALLED_LIVE_CONFIG_PATH).then(r => console.log(JSON.stringify(r))).catch(() => { console.error('installed-live runner failed; check explicit config, trusted installed package, project connection, and qualification opt-in'); process.exitCode = 1; });
 module.exports = { request, materialize, run };

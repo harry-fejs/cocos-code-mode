@@ -1,4 +1,4 @@
-import { CcbError } from "./errors";
+import { CcpError } from "./errors";
 import { assertIJson, canonicalizeToBytes, type IJson } from "./canonical-json";
 import type { ExecutionEnvelope, PrimitiveCommand } from "./primitive-contract";
 import type { ProtectedRequest } from "./protocol";
@@ -14,20 +14,20 @@ export interface ConcreteHandle {
 export type HandleTable = Map<string, ConcreteHandle>;
 
 function resolvePointer(root: unknown, pointer: string): unknown {
-  if (!pointer.startsWith("/")) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Value pointer is not a JSON pointer.");
+  if (!pointer.startsWith("/")) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Value pointer is not a JSON pointer.");
   let current = root;
   for (const encoded of pointer.slice(1).split("/")) {
-    if (/~(?:[^01]|$)/.test(encoded)) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Value pointer contains an invalid escape.");
+    if (/~(?:[^01]|$)/.test(encoded)) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Value pointer contains an invalid escape.");
     const segment = encoded.replace(/~1/g, "/").replace(/~0/g, "~");
     if (Array.isArray(current)) {
-      if (!/^(?:0|[1-9]\d*)$/.test(segment)) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Value pointer does not select an array element.");
+      if (!/^(?:0|[1-9]\d*)$/.test(segment)) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Value pointer does not select an array element.");
       const index = Number(segment);
-      if (!Number.isSafeInteger(index) || index >= current.length) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Value pointer is outside the selected array.");
+      if (!Number.isSafeInteger(index) || index >= current.length) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Value pointer is outside the selected array.");
       current = current[index];
     } else if (current && typeof current === "object" && Object.prototype.hasOwnProperty.call(current, segment)) {
       current = (current as Record<string, unknown>)[segment];
     } else {
-      throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Value pointer does not exist.", { pointer });
+      throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Value pointer does not exist.", { pointer });
     }
   }
   return current;
@@ -38,12 +38,12 @@ function resolveConstant(constants: IJson, id: string): unknown {
   for (const segment of id.split(".")) {
     if (Array.isArray(current) && /^(?:0|[1-9]\d*)$/.test(segment)) {
       const index = Number(segment);
-      if (index >= current.length) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Public constant index is outside its array.", { id });
+      if (index >= current.length) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Public constant index is outside its array.", { id });
       current = current[index];
     } else if (current && typeof current === "object" && !Array.isArray(current) && Object.prototype.hasOwnProperty.call(current, segment)) {
       current = (current as Record<string, unknown>)[segment];
     } else {
-      throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Public constant is not declared by this tool contract.", { id });
+      throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Public constant is not declared by this tool contract.", { id });
     }
   }
   return current;
@@ -78,7 +78,7 @@ function resolveValue(value: unknown, context: ResolveContext, path: readonly (s
       return resolvePointer(context.request, value.jsonPointer);
     }
     if (value.source === "observation" && "jsonPointer" in value && typeof value.jsonPointer === "string") {
-      if (!context.request.observation) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Observation value was referenced without an observation.");
+      if (!context.request.observation) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Observation value was referenced without an observation.");
       return resolvePointer(context.request.observation, value.jsonPointer);
     }
     if (value.source === "public-contract-constant" && "id" in value && typeof value.id === "string") {
@@ -86,16 +86,16 @@ function resolveValue(value: unknown, context: ResolveContext, path: readonly (s
     }
     if (value.source === "handle" && "handle" in value && typeof value.handle === "string") {
       const concrete = context.handles?.get(value.handle);
-      if (!concrete) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Command handle has no concrete Creator result.", { handle: value.handle });
+      if (!concrete) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Command handle has no concrete Creator result.", { handle: value.handle });
       if (context.command) {
         const expected = expectedHandleKind(context.command, path);
         if (expected && concrete.kind !== expected) {
-          throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Command handle has the wrong Creator entity type.", { handle: value.handle, expected, actual: concrete.kind });
+          throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Command handle has the wrong Creator entity type.", { handle: value.handle, expected, actual: concrete.kind });
         }
       }
       return concrete.id;
     }
-    throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Unknown or malformed value provenance reference.");
+    throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Unknown or malformed value provenance reference.");
   }
   if (Array.isArray(value)) return value.map((item, index) => resolveValue(item, context, [...path, index]));
   const resolved: Record<string, unknown> = {};
@@ -126,7 +126,7 @@ function visitReferences(value: unknown, found: unknown[], request: ProtectedReq
       return;
     }
     if (value.source === "observation" && "jsonPointer" in value && typeof value.jsonPointer === "string") {
-      if (!request.observation) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Observation value was referenced without an observation.");
+      if (!request.observation) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Observation value was referenced without an observation.");
       resolvePointer(request.observation, value.jsonPointer);
       return;
     }
@@ -135,7 +135,7 @@ function visitReferences(value: unknown, found: unknown[], request: ProtectedReq
       return;
     }
     if (value.source === "handle") return;
-    throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Unknown or malformed value provenance reference.");
+    throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Unknown or malformed value provenance reference.");
   }
   for (const child of Object.values(value)) visitReferences(child, found, request, publicConstants);
 }
@@ -149,7 +149,7 @@ export function preflightReferencedInputBytes(envelope: ExecutionEnvelope, reque
     bytes += canonicalizeToBytes(value).byteLength;
   }
   if (bytes > envelope.limits.inputBytes) {
-    throw new CcbError("CCB_LIMIT_EXCEEDED", "Canonical referenced input exceeds the signed envelope limit.", { actualBytes: bytes, maxBytes: envelope.limits.inputBytes });
+    throw new CcpError("CCP_LIMIT_EXCEEDED", "Canonical referenced input exceeds the signed envelope limit.", { actualBytes: bytes, maxBytes: envelope.limits.inputBytes });
   }
   return bytes;
 }
@@ -158,7 +158,7 @@ function kindCreatedBy(command: PrimitiveCommand): HandleKind {
   if (command.op === "scene.createNode" || command.op === "scene.createPrimitive" || (command.op === "scene.operateNode" && command.args.action === "copy")) return "node";
   if (command.op === "scene.addComponent") return "component";
   if (command.op === "asset.operate" && command.args.action === "copy") return "asset";
-  throw new CcbError("CCB_CONTRACT_MISMATCH", "Primitive declared a handle without a finite handle result type.", { op: command.op });
+  throw new CcpError("CCP_CONTRACT_MISMATCH", "Primitive declared a handle without a finite handle result type.", { op: command.op });
 }
 
 function resultReference(result: unknown): { id: string; type: string } {
@@ -172,12 +172,12 @@ function resultReference(result: unknown): { id: string; type: string } {
     const type = "type" in candidate && typeof candidate.type === "string" && candidate.type ? candidate.type : "unknown";
     return { id: candidate.id, type };
   }
-  throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Creator did not return a concrete reference for the declared handle.");
+  throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Creator did not return a concrete reference for the declared handle.");
 }
 
 export function registerCommandHandle(table: HandleTable, command: PrimitiveCommand, result: unknown): void {
   if (!command.createsHandle) return;
-  if (table.has(command.createsHandle)) throw new CcbError("CCB_VALUE_PROVENANCE_INVALID", "Creator handle was produced more than once.", { handle: command.createsHandle });
+  if (table.has(command.createsHandle)) throw new CcpError("CCP_VALUE_PROVENANCE_INVALID", "Creator handle was produced more than once.", { handle: command.createsHandle });
   const reference = resultReference(result);
   table.set(command.createsHandle, { ...reference, kind: kindCreatedBy(command) });
 }

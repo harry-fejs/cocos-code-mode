@@ -38,22 +38,21 @@ async function main() {
         assert.ok(!m.tools.some((tool) => tool.name === 'executeJavascript'), 'executeJavascript must be absent');
         assert.ok(m.tools.every((tool) => !Object.hasOwn(tool, 'annotations')), 'manual tools must not expose annotations');
         ok(`manual valid: ${n} tools, keys ${keys.join(',')}`);
-        // check ccb3x template present (bare or per-port) + no duplicate URL among
-        // new-format ccb* names — dup URL is what caused double tool registration.
-        // Legacy names are purged by ConfigManager on read, so they never appear here.
+        // Active CCP registrations are per-port only. Duplicate endpoint
+        // registrations must be reconciled explicitly, never silently purged.
         try {
             const cfgPath = process.env.UTCP_CONFIG_FILE || join(homedir(), '.utcp_config.json');
             const raw = readFileSync(cfgPath, 'utf8');
             const cfg = JSON.parse(raw);
             const templates = cfg.manual_call_templates || [];
             const names = templates.map(t => t.name);
-            const has3x = names.some(n => /^ccb3x(_\d+)?$/.test(n));
-            assert.ok(has3x, `ccb3x template present, found ${names.join(',')}`);
-            const isCcb = (n) => /^ccb[23]x(_\d+)?$/.test(n);
-            const urls = templates.filter(t => isCcb(t.name)).map(t => (t.url || '').replace(/\/utcp\/?$/, ''));
-            assert.equal(new Set(urls).size, urls.length, `ccb* dup URL, got ${urls.join(',')}`);
-            ok('config has ccb3x template, no dup URL');
-        } catch (e) { skipped('config ccb3x check', e.message); }
+            const has3x = names.some(n => /^ccp3x_\d+$/.test(n));
+            assert.ok(has3x, `ccp3x_<port> template present, found ${names.join(',')}`);
+            const isPilot = (n) => /^ccp[23]x_\d+$/.test(n);
+            const urls = templates.filter(t => isPilot(t.name)).map(t => (t.url || '').replace(/\/utcp\/?$/, ''));
+            assert.equal(new Set(urls).size, urls.length, `CCP duplicate URL, got ${urls.join(',')}`);
+            ok('config has per-port CCP template, no duplicate URL');
+        } catch (e) { skipped('config CCP check', e.message); }
     } catch (e) { bad('manual', e.message); }
 
     // 2 — build-info matches HEAD (catches stale dist)

@@ -17,7 +17,7 @@ function canonicalize(value) {
 function hash(bytes) { return createHash('sha256').update(bytes).digest('hex'); }
 
 function writeFixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ccb-verify-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ccp-verify-'));
   const origin = 'https://192.168.20.100:8788/';
   const artifactBytes = {
     'release.zip': Buffer.from('zip'),
@@ -28,7 +28,7 @@ function writeFixture() {
   for (const [name, bytes] of Object.entries(artifactBytes)) fs.writeFileSync(path.join(root, name), bytes);
   const targetBody = {
     package: {
-      name: 'cc-bridge-3x',
+      name: 'ccp3x',
       version: '2.0.0',
       url: `${origin}release.zip`,
       sha256: hash(artifactBytes['release.zip']),
@@ -53,7 +53,7 @@ test('release verifier accepts a complete consistently bound release set', () =>
   const fixture = writeFixture();
   const result = spawnSync(process.execPath, [script], {
     cwd: path.resolve(__dirname, '..', '..'),
-    env: { ...process.env, CCB_RELEASE_DIRECTORY: fixture.root, CCB_RELEASE_ORIGIN: fixture.origin },
+    env: { ...process.env, CCP_RELEASE_DIRECTORY: fixture.root, CCP_RELEASE_ORIGIN: fixture.origin },
     encoding: 'utf8',
   });
   assert.equal(result.status, 0, result.stderr);
@@ -63,9 +63,9 @@ test('release verifier accepts a complete consistently bound release set', () =>
 test('release verifier fails closed when the release origin is not configured', () => {
   const result = spawnSync(process.execPath, [script], {
     cwd: path.resolve(__dirname, '..', '..'),
-    env: { ...process.env, CCB_RELEASE_DIRECTORY: fs.mkdtempSync(path.join(os.tmpdir(), 'ccb-verify-')), CCB_RELEASE_ORIGIN: '' },
+    env: { ...process.env, CCP_RELEASE_DIRECTORY: fs.mkdtempSync(path.join(os.tmpdir(), 'ccp-verify-')), CCP_RELEASE_ORIGIN: '' },
     encoding: 'utf8',
   });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /CCB_RELEASE_ORIGIN/);
+  assert.match(result.stderr, /CCP_RELEASE_ORIGIN/);
 });

@@ -10,7 +10,7 @@ const ACL_RENAMED_OUTPUT = 'protected/7472474b.js';
 // protected current-user + SYSTEM DACL and fail-closed verification. Pin the WHOLE
 // emitted module: extra launches, command changes or weaker ACLs invalidate it.
 // Never regenerate this digest automatically; source/toolchain changes need review.
-const ACL_MODULE_SHA256 = 'b19cadc7a608fbde4b4049a2068092c54d68106cb09f65bcac95d68cd4d8a160';
+const ACL_MODULE_SHA256 = 'e31eef3a241ff53edae1bc509d840141a67bed4534d65c17b5a3b46d91010521';
 
 function fixedAclOutput(dist) {
   const mapPath = path.join(dist, '.rename-map.json');

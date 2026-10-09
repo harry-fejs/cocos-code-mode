@@ -5,9 +5,9 @@ const path = require('node:path');
 const { createHash } = require('node:crypto');
 
 const projectRoot = path.join(__dirname, '..');
-const outputRoot = path.resolve(process.env.CCB_RELEASE_DIRECTORY || path.join(projectRoot, 'release-set'));
-const rootMetadataPath = process.env.CCB_RELEASE_ROOT_METADATA_PATH;
-const releaseZip = path.resolve(process.argv[2] || process.env.CCB_RELEASE_ZIP || '');
+const outputRoot = path.resolve(process.env.CCP_RELEASE_DIRECTORY || path.join(projectRoot, 'release-set'));
+const rootMetadataPath = process.env.CCP_RELEASE_ROOT_METADATA_PATH;
+const releaseZip = path.resolve(process.argv[2] || process.env.CCP_RELEASE_ZIP || '');
 
 const files = [
   ['target', path.join(projectRoot, 'dist', 'release-target.signed.json')],
@@ -36,7 +36,7 @@ function writeExclusive(relative, bytes) {
   return { path: relative, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
 function main() {
-  if (!rootMetadataPath) fail('CCB_RELEASE_ROOT_METADATA_PATH is required');
+  if (!rootMetadataPath) fail('CCP_RELEASE_ROOT_METADATA_PATH is required');
   const sources = [
     ['metadata/root.json', path.resolve(rootMetadataPath), 'signed root metadata'],
     ['metadata/target.json', files[0][1], 'signed target metadata'],
@@ -47,8 +47,8 @@ function main() {
   const prepared = sources.map(([relative, source, label]) => ({ relative, bytes: regular(source, label), label }));
   for (const item of prepared.slice(0, 3)) signedWrapper(item.bytes, item.label);
   if (fs.existsSync(outputRoot)) {
-    if (!fs.statSync(outputRoot).isDirectory()) fail('CCB_RELEASE_DIRECTORY must be a directory');
-    if (fs.readdirSync(outputRoot).length > 0) fail('CCB_RELEASE_DIRECTORY must be empty for an immutable assembly');
+    if (!fs.statSync(outputRoot).isDirectory()) fail('CCP_RELEASE_DIRECTORY must be a directory');
+    if (fs.readdirSync(outputRoot).length > 0) fail('CCP_RELEASE_DIRECTORY must be empty for an immutable assembly');
   }
   const artifacts = prepared.map(({ relative, bytes }) => writeExclusive(relative, bytes));
   console.log(JSON.stringify({ outputRoot, artifacts }, null, 2));

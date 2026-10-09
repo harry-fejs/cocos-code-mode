@@ -9,7 +9,7 @@ import {
 import {
   createMemberAuthMiddleware,
   requireCcBridgeProduct,
-} from "../../src/cc-bridge/auth-middleware.ts";
+} from "../../src/ccp/auth-middleware.ts";
 
 const issuer = "mcpdocs";
 let privateKey: KeyLike;
@@ -36,7 +36,7 @@ async function signToken(options: {
   const jwt = new SignJWT({
     label: "fixture member",
     role: "admin",
-    products: options.products ?? ["cc_bridge"],
+    products: options.products ?? ["ccp"],
     ...options.extra,
   })
     .setProtectedHeader({ alg: algorithm, typ: "JWT" })
@@ -77,7 +77,7 @@ describe("independent member JWT verification", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       memberId: "member-1",
-      products: ["cc_bridge"],
+      products: ["ccp"],
       clearance: "restricted",
     });
   });
@@ -88,10 +88,10 @@ describe("independent member JWT verification", () => {
     expect(await response.json()).toMatchObject({ clearance: "internal" });
   });
 
-  it("denies a valid identity token without the cc_bridge product", async () => {
+  it("denies a valid identity token without the ccp product", async () => {
     const response = await requestThroughAuth(await signToken({ products: ["mcpdocs"] }));
     expect(response.status).toBe(401);
-    expect(await response.json()).toMatchObject({ code: "CCB_PRODUCT_DENIED" });
+    expect(await response.json()).toMatchObject({ code: "CCP_PRODUCT_DENIED" });
   });
 
   it.each([
@@ -99,13 +99,13 @@ describe("independent member JWT verification", () => {
     ["HS256", async () => signToken({ algorithm: "HS256" })],
     ["wrong issuer", async () => signToken({ issuer: "other-product" })],
     ["expired", async () => signToken({ expiresInSeconds: -1 })],
-    ["mixed-type products", async () => signToken({ products: ["cc_bridge", 1] })],
+    ["mixed-type products", async () => signToken({ products: ["ccp", 1] })],
   ])("denies %s before entering the protected handler", async (_name, tokenFactory) => {
     const token = typeof tokenFactory === "function" ? await tokenFactory() : undefined;
     const response = await requestThroughAuth(token);
     expect(response.status).toBe(401);
     expect(await response.json()).toMatchObject({
-      code: token ? "CCB_AUTH_INVALID" : "CCB_AUTH_REQUIRED",
+      code: token ? "CCP_AUTH_INVALID" : "CCP_AUTH_REQUIRED",
     });
   });
 });

@@ -15,7 +15,7 @@ let approvedBytes;
 let approvedRelative;
 
 function fixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ccb-acl-witness-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ccp-acl-witness-'));
   fs.mkdirSync(path.join(root, 'scripts'));
   fs.mkdirSync(path.join(root, 'dist', 'protected'), { recursive: true });
   for (const name of ['forbidden-material-witness.js', 'fixed-acl-witness.js', 'obfuscate-dist.js', 'rename-dist.js']) {
@@ -48,7 +48,7 @@ function withApprovedFixture(check) {
 
 function inventory(root, output) {
   const relativePath = path.relative(root, output).split(path.sep).join('/');
-  return [{ relativePath, archivePath: `cc-bridge-3x/${relativePath}`, sourcePath: output }];
+  return [{ relativePath, archivePath: `ccp3x/${relativePath}`, sourcePath: output }];
 }
 
 before(() => {
@@ -93,7 +93,7 @@ describe('fixed Windows ACL release exception', () => {
     ['an additional arbitrary process launch', (text) => `${text};require("child_process").spawn("cmd.exe",["/c","whoami"]);`],
     ['a weakened inherited DACL', (text) => text.replace('$acl.SetAccessRuleProtection($true,$false)', '$acl.SetAccessRuleProtection($false,$true)')],
     ['a changed PowerShell command', (text) => text.replace('-NoProfile', '-EncodedCommand')],
-    ['dynamic command replacement', (text) => text.replace('"-Command",n]', '"-Command",process.env.CCB_COMMAND]')],
+    ['dynamic command replacement', (text) => text.replace('"-Command",n]', '"-Command",process.env.CCP_COMMAND]')],
   ]) {
     it(`rejects ${name} inside the approved security module at both gates`, () => {
       withApprovedFixture((root, output) => {
