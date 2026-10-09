@@ -94,3 +94,23 @@ it('ignores legacy serverPort while fixedServerPort remains explicit', async () 
     await assert.rejects(manager.setConfiguredPort(-1));
   } finally { global.Editor = original; }
 });
+
+it('internal publication preserves offline authenticated relay registrations and refuses their port', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ccp-protected-registry-'));
+  const configPath = path.join(dir, 'config.json');
+  const original = global.Editor;
+  global.Editor = { Profile: { setConfig: async () => {} } };
+  const protectedTemplate = { name: 'ccp3x_42111', call_template_type: 'http',
+    url: 'http://localhost:42111/utcp', http_method: 'GET', headers: { 'x-ccp-project-id': '${CCP_LOCAL_PROJECT_ID}' } };
+  const loader = { variable_loader_type: 'dotenv', env_file_path: path.join(dir, 'private.env') };
+  try {
+    fs.writeFileSync(configPath, JSON.stringify({ manual_call_templates: [protectedTemplate], load_variables_from: [loader] }));
+    const manager = UtcpConfigManager.getInstance();
+    await manager.setConfigPath(configPath);
+    await manager.ensureCocosEditorTemplate(42112, 'b'.repeat(32));
+    assert.deepEqual(manager.readConfig().manual_call_templates.find(t => t.name === protectedTemplate.name), protectedTemplate);
+    assert.deepEqual(manager.readConfig().load_variables_from, [loader]);
+    await assert.rejects(manager.ensureCocosEditorTemplate(42111, 'c'.repeat(32)), /authenticated project relay/);
+    assert.deepEqual(manager.readConfig().manual_call_templates.find(t => t.name === protectedTemplate.name), protectedTemplate);
+  } finally { global.Editor = original; fs.rmSync(dir, { recursive: true, force: true }); }
+});

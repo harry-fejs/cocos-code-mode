@@ -45,7 +45,7 @@ export function resolveProjectGraphCache(projectPath: unknown): { project: strin
         }
         const realGraphRoot = fs.realpathSync(graphRoot);
         if (!contained(project, realGraphRoot)) throw new Error('graph cache root escapes the project');
-        const cacheRoot = path.resolve(realGraphRoot, 'cocos-pilot');
+        const cacheRoot = path.resolve(realGraphRoot, 'ccp');
         if (!fs.existsSync(cacheRoot)) fs.mkdirSync(cacheRoot);
         const outDir = fs.realpathSync(cacheRoot);
         if (!contained(project, outDir) || !contained(realGraphRoot, outDir)) throw new Error('graph cache namespace escapes the project');
@@ -59,7 +59,7 @@ export function resolveProjectGraphCache(projectPath: unknown): { project: strin
 export function runGraphWorker(operation: string, input: GraphOperationInput): Promise<unknown> {
     const workerPath = path.resolve(__dirname, '../cocos-graph/runtime-worker.mjs');
     if (!fs.existsSync(workerPath)) {
-        throw new ToolError({ code: 'GRAPH_BUILD_FAILED', status: 500, message: 'The packaged Cocos Graph runtime worker is missing.', recovery: 'Rebuild and reinstall the Cocos Pilot extension package.' });
+        throw new ToolError({ code: 'GRAPH_BUILD_FAILED', status: 500, message: 'The packaged Cocos Graph runtime worker is missing.', recovery: 'Rebuild and reinstall the CCP extension package.' });
     }
     const timeoutMs = operation === 'build' ? 5 * 60 * 1000 : 60 * 1000;
     return new Promise((resolve, reject) => {

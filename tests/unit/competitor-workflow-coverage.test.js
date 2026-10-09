@@ -30,7 +30,7 @@ describe('frozen competitor workflow coverage ledger', () => {
     assert.equal(report.denominator.consolidatedCcbContractSignatures, 106);
   });
 
-  it('references only current Cocos Pilot tools and source files', () => {
+  it('references only current CCP tools and source files', () => {
     const registered = registeredTools();
     for (const row of report.rows) {
       for (const tool of row.ccbTools) assert.ok(registered.has(tool), `${row.competitorTool}: missing ${tool}`);

@@ -46,7 +46,7 @@ describe('final asset/import authoring wave', () => {
     }
   });
 
-  it('keeps Pilot preferences scoped and reads/writes arbitrary package preferences through preferences IPC', async () => {
+  it('keeps CCP preferences scoped and reads/writes arbitrary package preferences through preferences IPC', async () => {
     const previous = global.Editor;
     const values = new Map();
     global.Editor = {

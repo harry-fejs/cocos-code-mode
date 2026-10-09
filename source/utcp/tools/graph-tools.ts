@@ -76,7 +76,7 @@ function invalid(message: string): never {
 }
 
 export class GraphTools {
-    @utcpTool('graphManage', 'Build, inspect, and query the active Cocos project structural graph. Graph identity and hierarchy are T0/T1 evidence only; always verify the same target through live Cocos Pilot tools before any mutation.', {
+    @utcpTool('graphManage', 'Build, inspect, and query the active Cocos project structural graph. Graph identity and hierarchy are T0/T1 evidence only; always verify the same target through live CCP tools before any mutation.', {
         type: 'object', additionalProperties: false,
         properties: {
             operation: { type: 'string', enum: ['status', 'build', 'query', 'resolve', 'navigate', 'refs', 'validate'] },

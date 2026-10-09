@@ -88,7 +88,7 @@ export async function manageBuildProfiles(args: BuildProfileArgs) {
     requireProfileApi(['getProject']);
     if (args.operation === 'list') {
         const stored = await profiles();
-        return { profiles: Object.entries(stored).map(([name, options]) => ({ name, platform: options.platform })), total: Object.keys(stored).length, storage: 'cocos-pilot project profiles; not Creator build task history' };
+        return { profiles: Object.entries(stored).map(([name, options]) => ({ name, platform: options.platform })), total: Object.keys(stored).length, storage: 'ccp project profiles; not Creator build task history' };
     }
     if (!args.name || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(args.name) || ['constructor', 'prototype'].includes(args.name)) invalid('Profile name must be 1..64 alphanumeric, underscore or hyphen characters.');
     if (!['get', 'save', 'delete'].includes(args.operation)) invalid('Unknown build profile operation.');

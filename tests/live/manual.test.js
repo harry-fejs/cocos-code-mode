@@ -10,7 +10,7 @@ describe('live: manual & server — migrated from scripts/smoke-utcp.js', () => 
   let health;
   before(async () => { health = await healthCheck(); });
   function skipIfDown(t) {
-    if (!health || !health.ok) { t.skip(`editor not running: ${health ? health.reason : 'no health'} — start Creator 3.7 + cocos-pilot-3x`); return true; }
+    if (!health || !health.ok) { t.skip(`editor not running: ${health ? health.reason : 'no health'} — start Creator 3.7 + ccp3x`); return true; }
     return false;
   }
 
@@ -32,9 +32,9 @@ describe('live: manual & server — migrated from scripts/smoke-utcp.js', () => 
     const raw = fs.readFileSync(cfgPath, 'utf8');
     const cfg = JSON.parse(raw);
     const names = (cfg.manual_call_templates || []).map(x => x.name);
-    const has3x = names.some(n => /^ccp3x(_\d+)?$/.test(n));
+    const has3x = names.some(n => /^ccp3x_\d+$/.test(n));
     assert.ok(has3x, `ccp3x template present, found ${names.join(',')}`);
-    const isCcp = (n) => /^ccb[23]x(_\d+)?$/.test(n);
+    const isCcp = (n) => /^ccp[23]x_\d+$/.test(n);
     const urls = (cfg.manual_call_templates || []).filter(x => isCcp(x.name)).map(x => (x.url || '').replace(/\/utcp\/?$/, ''));
     assert.equal(new Set(urls).size, urls.length, `ccp* duplicate URL: ${urls.join(',')}`);
   });

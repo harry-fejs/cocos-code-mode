@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const extensionName = 'cocos-pilot-3x';
+const extensionName = 'ccp3x';
 const repositoryRoot = path.resolve(__dirname, '..');
 
 function backupPathFor(destination) {
@@ -17,6 +17,8 @@ function linkProjectExtension({ projectPath, sourcePath = repositoryRoot, replac
   const project = path.resolve(projectPath);
   const source = path.resolve(sourcePath);
   const destination = path.join(project, 'extensions', extensionName);
+    // Explicit install migration inputs: never leave a legacy package active alongside CCP.
+    const legacyDestinations = ['cocos-pilot-3x', 'cc-bridge-3x'].map(name => path.join(project, 'extensions', name));
 
   if (!fs.statSync(project).isDirectory()) {
     throw new Error(`Cocos project directory does not exist: ${project}`);
@@ -24,13 +26,24 @@ function linkProjectExtension({ projectPath, sourcePath = repositoryRoot, replac
   if (!fs.statSync(source).isDirectory()) {
     throw new Error(`Extension source directory does not exist: ${source}`);
   }
+    const legacyInstalled = legacyDestinations.filter(destination => {
+      try { fs.lstatSync(destination); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+    });
+    if (legacyInstalled.length && !replace) {
+      throw new Error('Legacy extension installation found. Re-run with --replace to preserve it as an inactive timestamped backup before linking CCP.');
+    }
+    const legacyBackups = legacyInstalled.map(destination => {
+      const backup = backupPathFor(destination);
+      fs.renameSync(destination, backup);
+      return backup;
+    });
 
   fs.mkdirSync(path.dirname(destination), { recursive: true });
 
   let backup;
   if (fs.existsSync(destination)) {
     if (fs.realpathSync(destination) === fs.realpathSync(source)) {
-      return { destination, status: 'already-linked' };
+      return { destination, legacyBackups, status: 'already-linked' };
     }
     if (!replace) {
       throw new Error(`Extension destination already exists: ${destination}. Re-run with --replace to preserve it as a backup and create the junction.`);
@@ -41,14 +54,14 @@ function linkProjectExtension({ projectPath, sourcePath = repositoryRoot, replac
   }
 
   fs.symlinkSync(source, destination, process.platform === 'win32' ? 'junction' : 'dir');
-  return { destination, backup, status: 'linked' };
+  return { destination, backup, legacyBackups, status: 'linked' };
 }
 
 function usage() {
   return [
     'Usage: npm run link:project -- <path-to-cocos-project> [--replace]',
     '',
-    '--replace  Rename an existing cocos-pilot-3x directory to a timestamped backup before linking.',
+    '--replace  Preserve any existing ccp3x or legacy extension installation as timestamped backups before linking.',
   ].join('\n');
 }
 
@@ -65,6 +78,7 @@ if (require.main === module) {
       const result = linkProjectExtension({ projectPath, replace });
       console.log(`${result.status}: ${result.destination}`);
       if (result.backup) console.log(`backup: ${result.backup}`);
+      for (const backup of result.legacyBackups || []) console.log(`legacy backup: ${backup}`);
       console.log('Run npm run build, then reload the extension or restart Creator before testing cached modules.');
     } catch (error) {
       console.error(`link:project failed: ${error.message}`);

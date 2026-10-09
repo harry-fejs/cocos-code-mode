@@ -108,7 +108,7 @@ async function performAction(panel: StatusPanel, label: string, message: string,
 
 export const statusPanelDefinition = {
     template: `<main id="status-root">
-        <header><div><h1>Cocos Pilot 3x</h1><p class="subtitle">Extension status</p></div><button id="check" type="button">Check Status</button></header>
+        <header><div><h1>CCP 3x</h1><p class="subtitle">Extension status</p></div><button id="check" type="button">Check Status</button></header>
         <div class="check-summary"><p id="state" role="status" aria-live="polite">Status not checked.</p><p id="checked">Not checked yet</p></div>
         <p class="note">Live snapshot refreshes while this panel is open. HTTP checks verify this editor instance, not agent connectivity.</p>
         <div id="groups"></div>

@@ -18,17 +18,18 @@ async function discoverPort() {
         const cfgPath = process.env.UTCP_CONFIG_FILE || join(homedir(), '.utcp_config.json');
         const raw = readFileSync(cfgPath, 'utf8');
         const cfg = JSON.parse(raw);
-        for (const t of cfg.manual_call_templates || []) {
-            const m = String(t.url || '').match(/localhost:(\d+)/);
-            if (m) return Number(m[1]);
-        }
+        const candidates = (cfg.manual_call_templates || []).filter(t => /^ccp3x_\d+$/.test(t.name));
+        if (candidates.length !== 1) throw new Error('Pass the intended CCP 3x port explicitly.');
+        const endpoint = new URL(candidates[0].url);
+        if (endpoint.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(endpoint.hostname)
+          && candidates[0].name === `ccp3x_${Number(endpoint.port || 80)}`) return Number(endpoint.port || 80);
     } catch {}
     // 2) build-info artifact (next best)
     try {
         const raw2 = readFileSync(join(__dirname, '..', 'dist', 'build-info.json'), 'utf8');
         void raw2;
     } catch {}
-    throw new Error('Cannot discover UTCP port: is the editor running cocos-pilot-3x?');
+    throw new Error('Cannot discover UTCP port: is the editor running ccp3x?');
 }
 
 async function main() {

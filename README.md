@@ -1,6 +1,6 @@
-# Cocos Pilot 3x — Cocos Creator 3.7 (UTCP)
+# CCP 3x — Cocos Creator 3.7 (UTCP)
 
-**Cocos Pilot 3x** (formerly `cocos-code-mode-3x7`) turns the Cocos Creator Editor into an AI-controllable tool. It runs an HTTP server inside the editor that exposes scene manipulation, asset management, and property inspection as structured tool calls via [UTCP Protocol](https://www.utcp.io/) — letting AI agents build, inspect, and modify Cocos Creator projects the same way a developer would through the UI.
+**CCP 3x** (formerly `cocos-code-mode-3x7`) turns the Cocos Creator Editor into an AI-controllable tool. It runs an HTTP server inside the editor that exposes scene manipulation, asset management, and property inspection as structured tool calls via [UTCP Protocol](https://www.utcp.io/) — letting AI agents build, inspect, and modify Cocos Creator projects the same way a developer would through the UI.
 These tools are combined in [UTCP Code Mode](https://github.com/universal-tool-calling-protocol/code-mode/) environment to achieve maximum performance and token efficiency for AI agents, letting them call the tools in isolated JS sandbox.
 
 ## Quickstart
@@ -65,7 +65,7 @@ You can read more about Code Mode concept in papers from [Anthropic](https://www
 
 `buildSettingsManage` reads or writes allowlisted Creator `builder` preferences through `Editor.Profile`, with explicit `local` (default) or `global` scope. Supported keys are `common.name`, `common.server`, `common.platform`, `common.buildPath`, `common.debug`, `common.md5Cache`, `common.skipCompressTexture`, `common.sourceMaps`, `useBuildAssetCache`, `useBuildEngineCache`, `useBuildTextureCompressCache`, `useBuildAutoAtlasCache`, `supportTaskQueue`, and `serializedOptions.keepNodeUuid`. These defaults do not change existing task options. No SDK/NDK, signing credentials, project-settings filesystem fallback, or automatic build dispatch is provided.
 
-`buildProfileManage` supports `list`, `get`, `save`, and `delete` for reusable **Cocos Pilot-owned project profiles**, not native Creator task/preset assets. Each profile contains a supported `platform` and audited build options, with at most 32 profiles and 32 KiB per profile. Nested credential fields are rejected. Writes verify read-back and attempt restoration on failure; failed restoration returns `BUILD_PROFILE_ROLLBACK_FAILED`. Concurrent writes are rejected while one is pending. Retrieve profile `options` and explicitly pass them to `buildManage({operation:'trigger', options})` only when a build is intended. Creator-live persistence and actual build output qualification remain separate from offline/HTTP verification.
+`buildProfileManage` supports `list`, `get`, `save`, and `delete` for reusable **CCP-owned project profiles**, not native Creator task/preset assets. Each profile contains a supported `platform` and audited build options, with at most 32 profiles and 32 KiB per profile. Nested credential fields are rejected. Writes verify read-back and attempt restoration on failure; failed restoration returns `BUILD_PROFILE_ROLLBACK_FAILED`. Concurrent writes are rejected while one is pending. Retrieve profile `options` and explicitly pass them to `buildManage({operation:'trigger', options})` only when a build is intended. Creator-live persistence and actual build output qualification remain separate from offline/HTTP verification.
 
 `buildTemplate({operation:'list'})` lists six targets: `web-mobile`, `web-desktop`, `android`, `ios`, `windows`, `mac`. `create` requires `platform`, `name` and real scene UUID/URL pairs; `startScene` defaults to the first supplied scene and must belong to that list. Debug templates enable source maps; release templates disable debug/source maps and Android debug signing. Android/iOS require a real `packageName` and put target options in `packages[platform]`. Android defaults to arm64-v8a; iOS targets iphoneos with Metal. Orientation defaults to landscape. Scene existence, remote bundle configuration, SDK/NDK/Xcode and release signing are not verified by generation; response requirements/readiness state those limits. Generate → save with `buildProfileManage` → inspect options → explicitly trigger is the intended workflow. Templates never persist or dispatch by themselves.
 
@@ -102,16 +102,16 @@ This extension architecture follows a **discover, then act** pattern. AI agents 
 ### Example
 
 ```typescript
-// Preferred (consolidated): discover → set in one session
-const tree = ccp3x.nodeGetTree({ maxDepth: 2, fields: ['name', 'active'] });
+// Example selected manual ccp3x_49650: register it and handshake before this chain.
+const tree = ccp3x_49650.nodeGetTree({ maxDepth: 2, fields: ['name', 'active'] });
 const ref = tree.children[0].reference;
 
 // Single-class definition instead of full dump
-const { definition } = await ccp3x.inspectorGetDefinition({ target: 'instance', reference: ref, section: 'UITransform' });
+const { definition } = await ccp3x_49650.inspectorGetDefinition({ target: 'instance', reference: ref, section: 'UITransform' });
 
 // Unified get/set — no need to pick inspector*Instance vs inspector*Settings
-const { dump } = await ccp3x.inspectorGet({ target: 'instance', reference: ref, fields: ['position'] });
-await ccp3x.inspectorSet({ target: 'instance', reference: ref, propertyPaths: ['position.x'], values: [120] });
+const { dump } = await ccp3x_49650.inspectorGet({ target: 'instance', reference: ref, fields: ['position'] });
+await ccp3x_49650.inspectorSet({ target: 'instance', reference: ref, propertyPaths: ['position.x'], values: [120] });
 
 // 2.0.0: legacy removed — use consolidated names above.
 ```
@@ -121,9 +121,9 @@ await ccp3x.inspectorSet({ target: 'instance', reference: ref, propertyPaths: ['
 Use the read-only scan first. It walks the open scene/prefab, compares each serialized component class against the editor's currently registered component classes, and returns the exact node path, component UUID, and class ID. Repair is deliberately explicit: pass the affected node plus component reference (or expected class ID), then provide either the replacement class ID or a script asset reference. The bridge verifies the replacement is registered, removes only the selected component, adds the replacement, snapshots for undo, and reads back the created component. A missing source script cannot be recreated automatically; restore the script asset or choose an existing registered replacement.
 
 ```typescript
-const report = await ccp3x.sceneScriptHealthScan({ limit: 200 });
+const report = await ccp3x_49650.sceneScriptHealthScan({ limit: 200 });
 const finding = report.findings[0];
-await ccp3x.sceneScriptRepair({
+await ccp3x_49650.sceneScriptRepair({
   nodeReference: finding.nodeReference,
   componentReference: finding.componentReference,
   expectedClassId: finding.classId,
@@ -133,11 +133,11 @@ await ccp3x.sceneScriptRepair({
 
 ## Architecture
 
-Identity glossary: `docs/architecture-identity.md` — `cce`/`ccbe`/`ccbi:ccp3x_<port>`/`ccbr`/`ccbt`/`cm`/`cmm`/`bd`/`prs` (C1-C4). Cấm dùng `ccb` trần. Chi tiết bootstrap/handshake/presence xem `docs/cocos-pilot-code-mode-usage.md`.
+Identity glossary: `docs/architecture-identity.md` — `cce`/`ccpe`/`ccpi:ccp3x_<port>`/`ccpr`/`ccpt`/`cm`/`cmm`/`bd`/`prs` (C1-C4). Use explicit architecture roles. Chi tiết bootstrap/handshake/presence xem `docs/ccp-code-mode-usage.md`.
 
-### Tool Execution (`ccbi` → `cce`, C3)
+### Tool Execution (`ccpi` → `cce`, C3)
 
-The extension (`ccbe`) runs an Express.js HTTP server (`exs`) on a configurable port (default: auto-assigned). Tool handlers (`ccbt`) execute asynchronously using Cocos Creator's Editor Message API — all editor interactions go through `Editor.Message.request`, which marshals calls to the appropriate editor subsystem.
+The extension (`ccpe`) runs an Express.js HTTP server (`exs`) on a configurable port (default: auto-assigned). Tool handlers (`ccpt`) execute asynchronously using Cocos Creator's Editor Message API — all editor interactions go through `Editor.Message.request`, which marshals calls to the appropriate editor subsystem.
 
 - **Read tools** (GET) — query scene state and return structured data immediately.
 - **Write tools** (POST) — mutate scene state and call `Editor.Message.request('scene', 'snapshot')` to register the change as an undoable step.
@@ -223,7 +223,7 @@ cd cocos-code-mode
 npm i
 npm run package
 ```
-4. If everything builds fine, `cocos-pilot-3x.zip` file should appear in repository root.
+4. If everything builds fine, `ccp3x.zip` file should appear in repository root.
 5. Install it in Cocos Creator with **Extension Manager**.
 
 ### Development testing
@@ -234,7 +234,7 @@ For rapid iteration, link the project extension directory directly to this repos
 npm run link:project -- "G:\path\to\cocos-project"
 ```
 
-If the project already has an imported `cocos-pilot-3x`, preserve it as a timestamped backup while replacing it:
+If the project already has an imported `ccp3x`, preserve it as a timestamped backup while replacing it:
 
 ```powershell
 npm run link:project -- "G:\path\to\cocos-project" --replace
@@ -243,6 +243,12 @@ npm run link:project -- "G:\path\to\cocos-project" --replace
 Then build from this repository with `npm run build`. Reload the extension from **Extension Manager** for ordinary changes. Restart Creator before testing changes that touch tool modules and scene scripts together: their module caches do not reload as one unit.
 
 Do not use **Delete** in Extension Manager while the extension path is a junction; remove the junction from the filesystem instead.
+
+### Breaking CCP identity migration
+
+CCP uses package/profile namespace `ccp3x`, MCP key `ccp`, declaration `ccp3x.d.ts` (type-only namespace), per-port runtime manuals, and `.cocos-graph/ccp/`. No old package or declaration alias remains active. `link:project --replace` preserves old `cocos-pilot-3x` / `cc-bridge-3x` installs as inactive timestamped backups; bootstrap discards old metadata cache files rather than relabeling them as qualified CCP evidence.
+
+Before installation, export settings from the old extension profile. Creator profile values are **not automatically migrated**: explicitly restore reviewed preferences (port, UTCP config path, tool profile, logging policy), saved build profiles, and reference-image records under the new `ccp3x` package. Existing old profile data is left intact, not deleted or silently claimed as migrated. Do not copy credentials or trust settings. Rebuild graph caches and register/handshake each intended endpoint again after the authorized cutover. Frozen reports, workflow ledgers, witness contracts, hashes, and generated historical catalogs describe the prior artifacts; their qualification does not transfer to renamed CCP source.
 
 ## Adding Custom Tools
 
@@ -280,7 +286,7 @@ Register the class by importing it in `utcp-server.ts`. Tools are served automat
 
 ## UTCP Call Templates Configuration
 
-The extension provides a **Configuration** panel in the **Cocos Pilot 3x** menu. It shows the current server port, the path to the UTCP config file, and lets you manage additional UTCP call templates for the Code Mode MCP.
+The extension provides a **Configuration** panel in the **CCP 3x** menu. It shows the current server port, the path to the UTCP config file, and lets you manage additional UTCP call templates for the Code Mode MCP.
 
 You can find Call Template structures in [UTCP documentation](https://www.utcp.io/protocols):
 - [MCP Call Template](https://utcp.io/protocols/mcp#call-template-structure)
@@ -288,14 +294,14 @@ You can find Call Template structures in [UTCP documentation](https://www.utcp.i
 - [CLI Call Template](https://utcp.io/protocols/cli#call-template-structure)
 - [Text Call Template](http://utcp.io/protocols/text#call-template-structure)
 
-The extension registers itself in `~/.utcp_config.json` as a `ccp3x` entry (latest pointer) plus a `ccp3x_<port>` entry per running editor, so two Cocos projects opened at once each stay reachable without colliding. The file must hold at most one template per URL — duplicates cause double tool registration. Only the new-format names (`ccp3x`, `ccp3x_<port>`, `ccp2x`, `ccp2x_<port>`) are supported; legacy names (`cocos-pilot-3x`, `cc3x7`, `ccp-3x`, etc.) are purged on read.
+The extension publishes only `ccp3x_<port>` in `~/.utcp_config.json`; Creator 2.x uses `ccp2x_<port>`. There is no bare latest runtime alias. Internal API publication migrates bare `ccp3x` entries to their URL port and explicitly removes obsolete discovery names while preserving authenticated relay templates. Select the intended endpoint/project and register that exact per-port manual for each MCP session.
 
 ## Agent Prompt Guidance
 
-Use the copy-ready instruction and mandatory `register_manual` bootstrap in the [Cocos Pilot with Code Mode MCP guide](docs/cocos-pilot-code-mode-usage.md). The output rules below further reduce raw tree dumps by 50-80% while retaining useful references.
+Use the copy-ready instruction and mandatory `register_manual` bootstrap in the [CCP with Code Mode MCP guide](docs/ccp-code-mode-usage.md). The output rules below further reduce raw tree dumps by 50-80% while retaining useful references.
 
 ```text
-When returning data from ccp3x tools (manual `ccp3x`):
+When returning data from CCP 3x tools (manual `ccp3x_<port>`):
 - Return stats/aggregates (counts, top-N) unless the question needs items.
 - User asks list/find/which/show → return capped list with .slice(0, N), not count.
 - Drop empty arrays/objects and deep subtrees a summary already answers.
@@ -306,22 +312,22 @@ When returning data from ccp3x tools (manual `ccp3x`):
 Full failure-mode analysis and trade-offs: [`docs/prompt-guidance-risks.md`](docs/prompt-guidance-risks.md).
 Migration for consolidated tools (A1 shims → 45): [`docs/consolidated-migration.md`](docs/consolidated-migration.md).
 
-See [Cocos Pilot with Code Mode MCP](docs/cocos-pilot-code-mode-usage.md) for connection setup, manual registration, workflows, and troubleshooting.
+See [CCP with Code Mode MCP](docs/ccp-code-mode-usage.md) for connection setup, manual registration, workflows, and troubleshooting.
 
 ### Graph-assisted scene changes
 
-When available on the selected `ccbi:ccp3x_<port>`, use `graphManage(query/resolve)` for bounded T0/T1 lookup, then verify the candidate against that same endpoint/project and current `bd.iid` using `sceneGetInfo` plus `nodeGetTree` or inspector. The graph is advisory, never write authority. Resolve `<file>#<uuid>` to a bare engine UUID; never pass the composite handle to a live mutation tool. Make a narrow change with the live tool and read it back through the same endpoint. Cache is project-scoped at `<project>/.cocos-graph/cocos-pilot/`. This is workflow guidance, not evidence of registered tools or live release qualification; retain the `cmm` registration and handshake bootstrap above.
+When available on the selected `ccpi:ccp3x_<port>`, use `graphManage(query/resolve)` for bounded T0/T1 lookup, then verify the candidate against that same endpoint/project and current `bd.iid` using `sceneGetInfo` plus `nodeGetTree` or inspector. The graph is advisory, never write authority. Resolve `<file>#<uuid>` to a bare engine UUID; never pass the composite handle to a live mutation tool. Make a narrow change with the live tool and read it back through the same endpoint. Cache is project-scoped at `<project>/.cocos-graph/ccp/`. This is workflow guidance, not evidence of registered tools or live release qualification; retain the `cmm` registration and handshake bootstrap above.
 
 ## Code Mode MCP Integration
 
-Cocos Pilot exposes its Cocos Creator tools through a UTCP manual. The [Code Mode MCP server](https://github.com/universal-tool-calling-protocol/code-mode/?tab=readme-ov-file#even-easier-ready-to-use-mcp-server) registers that manual for an AI client. Configure Cocos Pilot, then have the agent call `register_manual` and verify with `list_tools`.
+CCP exposes its Cocos Creator tools through a UTCP manual. The [Code Mode MCP server](https://github.com/universal-tool-calling-protocol/code-mode/?tab=readme-ov-file#even-easier-ready-to-use-mcp-server) registers that manual for an AI client. Configure CCP, then have the agent call `register_manual` and verify with `list_tools`.
 
 ### MCP Server Config
 
 ```json
 {
   "mcpServers": {
-    "cc-pilot": {
+    "ccp": {
       "command": "npx",
       "args": ["@utcp/code-mode-mcp"],
       "env": {
@@ -338,10 +344,10 @@ To register Code Mode MCP for a Claude Code agent, open your project and run:
 
 Linux/MacOS:
 ``` bash
-claude mcp add --transport stdio --env UTCP_CONFIG_FILE="~/.utcp_config.json" -- cc-pilot npx @utcp/code-mode-mcp
+claude mcp add --transport stdio --env UTCP_CONFIG_FILE="~/.utcp_config.json" -- ccp npx @utcp/code-mode-mcp
 ```
 
 Windows:
 ``` powershell
-claude mcp add --transport stdio --env UTCP_CONFIG_FILE="%userprofile%/.utcp_config.json" -- cc-pilot cmd /c npx @utcp/code-mode-mcp
+claude mcp add --transport stdio --env UTCP_CONFIG_FILE="%userprofile%/.utcp_config.json" -- ccp cmd /c npx @utcp/code-mode-mcp
 ```

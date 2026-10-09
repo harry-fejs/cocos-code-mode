@@ -43,8 +43,8 @@ User prompt: "dung code mode set vi tri node X"
 ### 4.1 Files cham
 
 - `.claude/skills/cc-code-mode/SKILL.md` (moi) — instruction cho agent: khi nao auto-register, khi nao dung cache, khi nao refresh.
-- `scripts/cocos-pilot-bootstrap.js` (mới, ~40 dòng) — đọc `~/.utcp_config.json` → cache tool metadata vào `.claude/cocos-pilot-cache.json` (optional, persist qua session).
-- `.claude/skills/cocos-pilot/SKILL.md` — workflow bootstrap và binding chính thức.
+- `scripts/ccp-bootstrap.js` (mới, ~40 dòng) — đọc `~/.utcp_config.json` → cache tool metadata vào `.claude/ccp-cache.json` (optional, persist qua session).
+- `.claude/skills/ccp3x/SKILL.md` — workflow bootstrap và binding chính thức.
 
 ### 4.2 Cache invalidation
 

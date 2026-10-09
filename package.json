@@ -1,7 +1,7 @@
 {
   "$schema": "./@types/schema/package/index.json",
   "package_version": 2,
-  "name": "cocos-pilot-3x",
+  "name": "ccp3x",
   "version": "2.1.0",
   "author": "cst by hzi for cc3.7",
   "editor": ">=3.7.0",
@@ -19,12 +19,12 @@
     "check:creator-load": "node scripts/check-creator-load.js",
     "session:run": "node scripts/session-presence/cli.js",
     "session:stdio": "node scripts/session-presence/stdio.js",
-    "test:session": "node --test tests/unit/session-presence.test.js tests/unit/cocos-pilot-session.test.js tests/unit/cocos-pilot-session-supervisor.test.js tests/unit/cocos-pilot-session-host.test.js tests/unit/cocos-pilot-session-manager.test.js",
+    "test:session": "node --test tests/unit/session-presence.test.js tests/unit/ccp-session.test.js tests/unit/ccp-session-supervisor.test.js tests/unit/ccp-session-host.test.js tests/unit/ccp-session-manager.test.js",
     "audit:portfolio": "node scripts/audit-tool-portfolio.js",
     "audit:live": "node scripts/audit-live-qualification.js",
     "audit:portfolio:ready": "node scripts/audit-tool-portfolio.js --require-ready"
   },
-  "description": "i18n:cocos-pilot-3x.description",
+  "description": "i18n:ccp3x.description",
   "main": "./dist/main.js",
   "dependencies": {
     "@types/sharp": "^0.31.1",
@@ -47,7 +47,7 @@
   },
   "panels": {
     "status": {
-      "title": "Cocos Pilot 3x Status",
+      "title": "CCP 3x Status",
       "type": "dockable",
       "main": "dist/panels/status",
       "size": {
@@ -97,27 +97,27 @@
     },
     "menu": [
       {
-        "path": "Cocos Pilot 3x",
+        "path": "CCP 3x",
         "label": "Status",
         "message": "open-status"
       },
       {
-        "path": "Cocos Pilot 3x",
+        "path": "CCP 3x",
         "label": "Restart Server",
         "message": "restart-server"
       },
       {
-        "path": "Cocos Pilot 3x",
+        "path": "CCP 3x",
         "label": "Toggle Debug Logging",
         "message": "toggle-debug"
       },
       {
-        "path": "Cocos Pilot 3x",
+        "path": "CCP 3x",
         "label": "Open Logs",
         "message": "open-debug-folder"
       },
       {
-        "path": "Cocos Pilot 3x",
+        "path": "CCP 3x",
         "label": "Settings",
         "message": "open-panel"
       }

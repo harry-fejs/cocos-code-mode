@@ -63,7 +63,7 @@ export class P4ContractTools {
         let result: unknown;
         try {
             result = await Editor.Message.request('scene', 'execute-scene-script', {
-                name: 'cocos-pilot-3x',
+                name: 'ccp3x',
                 method: 'particlePlaybackControl',
                 args: [args.nodeReference.id, args.operation],
             });

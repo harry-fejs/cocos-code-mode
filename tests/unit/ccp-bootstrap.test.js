@@ -5,7 +5,7 @@ const path = require('path');
 
 // Require the bootstrap module for its exported pure core.
 // Do not trigger main() — it only runs when require.main === module.
-const bootstrap = require(path.join(__dirname, '..', '..', 'scripts', 'cocos-pilot-bootstrap.js'));
+const bootstrap = require(path.join(__dirname, '..', '..', 'scripts', 'ccp-bootstrap.js'));
 const { buildCache, isLiveProbe, computeAgeMs } = bootstrap;
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ describe('bootstrap handshake evidence', () => {
 
 // ── isLiveProbe unit ─────────────────────────────────────────────────────
 
-describe('cocos-pilot-bootstrap — isLiveProbe liveness gate', () => {
+describe('ccp-bootstrap — isLiveProbe liveness gate', () => {
   it('live when fetch succeeded, toolCount>0, provenance present', () => {
     assert.equal(isLiveProbe(LIVE_MANUAL, LIVE_BUILD, LIVE_MANUAL.tools.length), true);
   });
@@ -133,7 +133,7 @@ describe('cocos-pilot-bootstrap — isLiveProbe liveness gate', () => {
   });
 });
 
-describe('cocos-pilot-bootstrap — computeAgeMs', () => {
+describe('ccp-bootstrap — computeAgeMs', () => {
   it('computes age_ms = now - fetchedAt', () => {
     const fetchedAt = new Date('2026-09-03T00:00:00.000Z').toISOString();
     const nowMs = Date.parse('2026-09-03T01:00:00.000Z');
@@ -154,7 +154,7 @@ describe('cocos-pilot-bootstrap — computeAgeMs', () => {
 
 // ── buildCache — the regression suite ────────────────────────────────────
 
-describe('cocos-pilot-bootstrap — buildCache probe gate (regression)', () => {
+describe('ccp-bootstrap — buildCache probe gate (regression)', () => {
   it('dead-editor fetch never overwrites good cache (retains prior, marks stale)', async () => {
     const prior = { updatedAt: new Date().toISOString(), manuals: { ccp3x: makePriorEntry({ toolCount: 50 }) } };
     const cfg = utcpConfigFor([{ name: 'ccp3x', port: 11111 }]);
@@ -295,9 +295,9 @@ describe('cocos-pilot-bootstrap — buildCache probe gate (regression)', () => {
     assert.equal(result.manuals.ccp3x_11111.live, false);
     assert.equal(result.manuals.ccp3x_11111.stale, true);
     // ccp2x freshly written
-    assert.equal(result.manuals.ccp2x.toolCount, 3);
-    assert.equal(result.manuals.ccp2x.live, true);
-    assert.equal(result.manuals.ccp2x.authoritative, true);
+    assert.equal(result.manuals.ccp2x_22222.toolCount, 3);
+    assert.equal(result.manuals.ccp2x_22222.live, true);
+    assert.equal(result.manuals.ccp2x_22222.authoritative, true);
   });
 
   it('ccp3x live does not resurrect a dead ccp2x tombstone into authoritative', async () => {
@@ -316,8 +316,8 @@ describe('cocos-pilot-bootstrap — buildCache probe gate (regression)', () => {
     });
     assert.equal(result.manuals.ccp3x_11111.authoritative, true);
     assert.equal(result.manuals.ccp3x_11111.toolCount, 3);
-    assert.equal(result.manuals.ccp2x.authoritative, false);
-    assert.equal(result.manuals.ccp2x.toolCount, 0);
+    assert.equal(result.manuals.ccp2x_22222.authoritative, false);
+    assert.equal(result.manuals.ccp2x_22222.toolCount, 0);
   });
 
   it('prior key not probed this run is retained with refreshed age_ms', async () => {
@@ -338,9 +338,9 @@ describe('cocos-pilot-bootstrap — buildCache probe gate (regression)', () => {
       }),
       now,
     });
-    assert.ok(result.manuals.ccp2x, 'unprobed prior key must be retained');
-    assert.equal(result.manuals.ccp2x.toolCount, 30);
-    assert.ok(result.manuals.ccp2x.age_ms >= 4000, `age_ms should reflect ~5s elapsed, got ${result.manuals.ccp2x.age_ms}`);
+    assert.ok(result.manuals.ccp2x_22222, 'unprobed prior key must be retained');
+    assert.equal(result.manuals.ccp2x_22222.toolCount, 30);
+    assert.ok(result.manuals.ccp2x_22222.age_ms >= 4000, `age_ms should reflect ~5s elapsed, got ${result.manuals.ccp2x_22222.age_ms}`);
   });
 
   it('max-age: prior older than 24h without successful probe is marked stale (max_age)', async () => {
@@ -418,7 +418,7 @@ describe('cocos-pilot-bootstrap — buildCache probe gate (regression)', () => {
   });
 });
 
-describe('cocos-pilot-bootstrap — regression: reverting the guard must fail', () => {
+describe('ccp-bootstrap — regression: reverting the guard must fail', () => {
   it('the old buggy guard (existing.toolCount>0 only when prior exists) would let first-run 0 persist; new code must not', async () => {
     // This is the exact scenario the original bug report describes: first run,
     // no prior file on disk, editor dead → old code did:
@@ -563,4 +563,23 @@ describe('bootstrap HTTP deadline', () => {
       await new Promise((resolve) => server.close(resolve));
     }
   });
+});
+
+it('rejects responsive handshake evidence from a replacement instance or wrong project', async () => {
+  const cfg = utcpConfigFor([{ name: 'ccp3x_11111', port: 11111 }]);
+  cfg.variables = { CCP3X_PROJECT_11111: 'G:/project', CCP3X_OWNER_11111: 'expected-instance' };
+  for (const [instanceId, projectMatches, status] of [
+    ['replacement-instance', true, 'unverified'],
+    ['expected-instance', false, 'unverified'],
+    ['expected-instance', true, 'responsive'],
+  ]) {
+    const cache = await buildCache({ utcpConfig: cfg, priorCache: null, now: new Date(), fetchJson: async url => {
+      if (url.endsWith('/utcp')) return { ...LIVE_MANUAL, tools: [{ name: 'editorHandshake' }] };
+      if (url.endsWith('/build-info')) return LIVE_BUILD;
+      assert.equal(new URL(url).searchParams.get('expectedProjectPath'), 'G:/project');
+      return { instanceId, projectMatches, probe: { status: 'responsive', sceneReady: true } };
+    } });
+    assert.equal(cache.manuals.ccp3x_11111.handshake.status, status);
+    if (status === 'unverified') assert.equal(cache.manuals.ccp3x_11111.handshake.result, null);
+  }
 });

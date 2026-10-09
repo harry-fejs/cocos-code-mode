@@ -81,7 +81,7 @@ describe('localizationValidate', () => {
     assert.deepEqual(calls, [[
       'scene',
       'execute-scene-script',
-      { name: 'cocos-pilot-3x', method: 'validateLocalization', args: [['present', 'missing-a', 'missing-b']] },
+      { name: 'ccp3x', method: 'validateLocalization', args: [['present', 'missing-a', 'missing-b']] },
     ]]);
     assert.deepEqual(result, {
       supported: true,

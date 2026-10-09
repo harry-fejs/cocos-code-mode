@@ -362,7 +362,7 @@ describe('Spine scene inspection', () => {
       const result = await new AnimationTools().spineSceneInspect({ nodeReference: { id: 'node' }, maxItems: 3 });
       assert.equal(result.total, 1);
       assert.deepEqual(request, ['scene', 'execute-scene-script', {
-        name: 'cocos-pilot-3x',
+        name: 'ccp3x',
         method: 'spineSceneInspect',
         args: [{ nodeUuid: 'node', maxItems: 3 }],
       }]);

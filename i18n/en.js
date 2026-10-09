@@ -1,1 +1,1 @@
-"use strict"; module.exports = { open_panel: "Configuration", description: "Cocos Pilot 3x — Cocos Pilot for Cocos Creator 3.7.x" };
+"use strict"; module.exports = { open_panel: "Configuration", description: "CCP 3x — CCP for Cocos Creator 3.7.x" };

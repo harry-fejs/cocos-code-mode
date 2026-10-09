@@ -63,7 +63,7 @@ module.exports = Editor.Panel.define({
         const show = (settings: Settings) => {
             port.value = String(settings.fixedPort);
             path.value = settings.configPath;
-            mcp.value = JSON.stringify({ mcpServers: { 'cc-pilot': {
+            mcp.value = JSON.stringify({ mcpServers: { 'ccp': {
                 command: 'npx', args: ['-y', '@utcp/code-mode-mcp'], env: { UTCP_CONFIG_FILE: settings.configPath },
             } } }, null, 2);
             loaded = true;

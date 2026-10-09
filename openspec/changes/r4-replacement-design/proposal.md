@@ -4,6 +4,8 @@ The frozen `api-capability-resume` change deliberately deferred lane R4 because 
 
 The proposal preserves the distinction between an agent-useful workflow and a native Creator capability. A replacement may be considered only when its observable contract is explicit, its ownership boundary is honest, and fresh evidence proves the route on the target Creator version.
 
+**Owner update — 2026-10-08:** the original proposal-only boundary below is historical for the frozen replacement inventory. The owner separately selected native prefab override/apply follow-through (implementation commit 72c3bc3; live qualification pending) and tween project-code static development. Tilemap remains deferred; tween runtime control/validation remains pending with R1. See tasks.md and api-capability-resume/tasks.md for approved delivery order. No new native asset type, portfolio state or threshold change is authorized.
+
 ## Scope
 
 Rows in scope, all remaining `replace` and pending:

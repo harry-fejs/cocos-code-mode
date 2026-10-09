@@ -36,23 +36,39 @@ export class UtcpConfigManager {
     }
     async ensureCocosEditorTemplate(port: number, instanceId: string, projectPath?: string): Promise<boolean> {
         if (!Number.isInteger(port) || port < 1 || port > 65535 || !/^[a-f0-9]{32}$/.test(instanceId)) {
-            throw new Error('Publishing Cocos Pilot requires a bound port and a valid instanceId.');
+            throw new Error('Publishing CCP requires a bound port and a valid instanceId.');
         }
-        const closed = await this.findClosedCcbPorts();
+        const closed = await this.findClosedCcpPorts();
         const project = typeof projectPath === 'string' && projectPath ? normalize(projectPath) : undefined;
+        const name = 'ccp3x_' + port;
         return this.mutateConfig(config => {
+            const existing = config.manual_call_templates.find(template => template.name === name
+                || template.url?.replace(/\/utcp\/?$/, '') === 'http://localhost:' + port
+                || template.url?.replace(/\/utcp\/?$/, '') === 'http://127.0.0.1:' + port);
+            if (existing && (existing.headers || existing.auth)) {
+                throw new Error('Port belongs to an authenticated project relay; select a different port.');
+            }
             const templates = new Map<string, Registry['manual_call_templates'][number]>();
             const others: Registry['manual_call_templates'] = [];
             for (const template of config.manual_call_templates) {
-                if (['cocos-pilot-3x', 'cc3x7', 'ccp-3x', 'ccp_3x'].includes(template.name)) continue;
+                // Legacy migration inputs only; authenticated relays require their own protocol cutover.
+                if (['cocos-pilot-3x', 'cc-bridge-3x', 'ccb3x', 'cc3x7', 'ccp-3x', 'ccp_3x'].includes(template.name)
+                    || /^(?:ccb3x|cocos-pilot-3x|cc-bridge-3x)_\d+$/.test(template.name)) {
+                    if (template.headers || template.auth) others.push(template);
+                    continue;
+                }
                 if (template.name === 'ccp3x' || /^ccp3x_\d+$/.test(template.name)) {
+                    if (template.headers || template.auth) {
+                        others.push(template);
+                        continue;
+                    }
                     const url = new URL(template.url ?? '');
                     const endpointPort = Number(url.port);
                     if (!['localhost', '127.0.0.1'].includes(url.hostname) || url.protocol !== 'http:' || endpointPort < 1) {
-                        throw new Error('Invalid Cocos Pilot endpoint in registry.');
+                        throw new Error('Invalid CCP endpoint in registry.');
                     }
                     const observedOwner = closed.get(endpointPort);
-                    if (endpointPort !== port && closed.has(endpointPort)
+                    if (!template.headers && !template.auth && endpointPort !== port && closed.has(endpointPort)
                         && config.variables?.['CCP3X_OWNER_' + endpointPort] === observedOwner) {
                         delete config.variables?.['CCP3X_OWNER_' + endpointPort];
                         delete config.variables?.['CCP3X_PROJECT_' + endpointPort];
@@ -62,7 +78,6 @@ export class UtcpConfigManager {
                     templates.set(name, { ...template, name });
                 } else others.push(template);
             }
-            const name = 'ccp3x_' + port;
             templates.set(name, {
                 name, call_template_type: 'http', url: 'http://localhost:' + port + '/utcp',
                 http_method: 'GET', content_type: 'application/json',
@@ -72,11 +87,12 @@ export class UtcpConfigManager {
             if (project) config.variables['CCP3X_PROJECT_' + port] = project;
         });
     }
-    private async findClosedCcbPorts(): Promise<Map<number, string | undefined>> {
+    private async findClosedCcpPorts(): Promise<Map<number, string | undefined>> {
         const config = this.readConfig();
         const candidates = new Map<number, string>();
         for (const template of config.manual_call_templates) {
             const match = /^ccp3x_(\d+)$/.exec(template.name);
+            if (template.headers || template.auth) continue;
             if (!match || typeof template.url !== 'string') continue;
             try {
                 const url = new URL(template.url);
@@ -111,6 +127,8 @@ export class UtcpConfigManager {
         return mutateRegistry(configPath, config => {
             const key = 'CCP3X_OWNER_' + port;
             if (!instanceId || config.variables?.[key] !== instanceId) return;
+            const template = config.manual_call_templates.find(t => t.name === 'ccp3x_' + port);
+            if (template?.headers || template?.auth) return;
             config.manual_call_templates = config.manual_call_templates.filter(t => t.name !== 'ccp3x_' + port);
             delete config.variables[key];
             delete config.variables?.['CCP3X_PROJECT_' + port];

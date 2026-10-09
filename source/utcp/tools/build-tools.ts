@@ -233,7 +233,7 @@ export class BuildTools {
     }, { type: 'object', properties: { scope: { type: 'string' }, settings: { type: 'object' }, success: { type: 'boolean' }, key: { type: 'string' }, value: {}, affectsExistingTasks: { type: 'boolean' } }, required: ['scope', 'affectsExistingTasks'] }, 'POST', ['build', 'settings', 'profile'])
     async buildSettingsManage(args: BuildSettingsArgs) { return manageBuildSettings(args); }
 
-    @utcpTool('buildProfileManage', 'List/get/save/delete reusable cocos-pilot-owned project build profiles. Not Creator task history or a native build preset asset. Validates with buildPresetAudit, refuses credential fields, verifies persistence and rollback. Max 32 profiles / 32KiB each. Does not trigger builds; get options then explicitly call buildManage trigger.', {
+    @utcpTool('buildProfileManage', 'List/get/save/delete reusable ccp-owned project build profiles. Not Creator task history or a native build preset asset. Validates with buildPresetAudit, refuses credential fields, verifies persistence and rollback. Max 32 profiles / 32KiB each. Does not trigger builds; get options then explicitly call buildManage trigger.', {
         type: 'object', additionalProperties: false,
         properties: { operation: { type: 'string', enum: ['list', 'get', 'save', 'delete'] }, name: { type: 'string', pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$' }, options: { type: 'object', maxProperties: 64 } },
         required: ['operation'], allOf: [{ if: { properties: { operation: { enum: ['get', 'save', 'delete'] } } }, then: { required: ['name'] } }, { if: { properties: { operation: { const: 'save' } } }, then: { required: ['options'] } }],

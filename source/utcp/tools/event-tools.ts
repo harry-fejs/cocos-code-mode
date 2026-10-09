@@ -5,7 +5,7 @@ import { utcpTool } from '../decorators';
 import { InstanceReferenceSchema, IInstanceReference } from '../schemas';
 import { ToolError } from '../tool-error';
 
-const EVENT_PACKAGE = 'cocos-pilot-3x';
+const EVENT_PACKAGE = 'ccp3x';
 
 async function ensureRuntimeNode(id: string): Promise<void> {
     const exists = await Editor.Message.request('scene', 'query-node', id);

@@ -4,7 +4,7 @@
 !.claude/skills/
 !.claude/skills/**
 !.claude/settings.json
-.claude/cocos-pilot-cache.json
+.claude/ccp-cache.json
 .cursor/
 .aider*
 .copilot/

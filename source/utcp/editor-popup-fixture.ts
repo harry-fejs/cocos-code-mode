@@ -4,7 +4,7 @@ import { ToolError } from './tool-error';
 
 const FIXTURE_MS = 300000;
 const TITLE_PREFIX = 'CCP3X Action Qualification ';
-const TRACKED_KEY = Symbol.for('cocos-pilot.editor-popup-fixture');
+const TRACKED_KEY = Symbol.for('ccp.editor-popup-fixture');
 type TrackedFixture = { title: string; expiresAt: number };
 const fixtureStore = globalThis as unknown as Record<symbol, TrackedFixture | null | undefined>;
 function trackedFixture(): TrackedFixture | null { return fixtureStore[TRACKED_KEY] ?? null; }

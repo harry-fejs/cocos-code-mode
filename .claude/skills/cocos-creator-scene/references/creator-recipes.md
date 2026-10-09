@@ -23,7 +23,7 @@ Exact lookup arguments:
 
 5. For `search_docs`, take the actual returned `result_id` and hit `idx` into `read_cached` with `window=1`, `max_tokens=2000`. For exact search, read the returned path using `read_doc`; do not assume exact search returns the same cache envelope.
 6. Check the returned version, heading, and truncation. Read missing adjacent context if it changes the answer; a search snippet alone is not knowledge retrieval completion.
-7. Answer a documentation question directly. For an implementation task, carry only the applicable constraints into the existing Cocos Pilot workflow.
+7. Answer a documentation question directly. For an implementation task, carry only the applicable constraints into the existing CCP workflow.
 
 ### Failure handling
 

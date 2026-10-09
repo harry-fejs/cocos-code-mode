@@ -48,7 +48,7 @@ You orchestrate tools to modify editor state in a controlled and verifiable way.
 
 ## Tool defenitions reference
 
-- Defenitions for Code Mode tools should be placed in `cocos-pilot-3x.d.ts` at project root
+- Defenitions for Code Mode tools should be placed in `ccp3x.d.ts` at project root
 - Create if not exists and use as quick reference guide
 - Document mostly used component or asset definitions you will use for current task
 
@@ -58,10 +58,10 @@ You orchestrate tools to modify editor state in a controlled and verifiable way.
 
 **Maximize efficiency per tool call — do MORE in single execution.**
 
-### Phase 1: Discover & Plan (cache-first — see `.claude/skills/cocos-pilot-3x/SKILL.md`)
-- If `CK_CODE_MODE=ready` or `.claude/cocos-pilot-cache.json` exists → **skip** `register_manual`/`list_tools`/`search_tools`/`tools_info`, go straight to `call_tool_chain("ccp3x.<tool>({ ... })")`.
-- Cache miss only (Cocos was closed at SessionStart): `register_manual` from `~/.utcp_config.json` → `list_tools` once → then cache hit thereafter.
-- On `manual not found` / `tool not found`: re-`register_manual` (re-read `~/.utcp_config.json` — port may have changed) → refresh cache → retry once.
+### Phase 1: Discover & Plan (see `.claude/skills/ccp3x/SKILL.md`)
+- Select the intended `ccp3x_<port>` endpoint from `~/.utcp_config.json`, register that exact manual, and confirm it with `list_tools` in the current MCP process.
+- Call `ccp3x_<port>.editorHandshake` with the intended project path; bind namespace, URL, project, and instance ID before mutation. Cache metadata never proves registration or readiness.
+- On reconnect or missing manual/tool, re-read the registry, re-register the same intended editor, and re-handshake. Never fall back to a bare latest alias or a different project.
 
 ### Phase 2: Inspect
 - Process tools output to get only required information

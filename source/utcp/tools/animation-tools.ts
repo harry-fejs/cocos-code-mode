@@ -728,7 +728,7 @@ export class AnimationTools {
         }
         const requestedMaxItems = args.maxItems ?? 200;
         const result = await Editor.Message.request('scene', 'execute-scene-script', {
-            name: 'cocos-pilot-3x',
+            name: 'ccp3x',
             method: 'spineSceneInspect',
             args: [{ nodeUuid: args.nodeReference?.id, maxItems: requestedMaxItems }],
         }) as Record<string, unknown> | null;
@@ -1264,7 +1264,7 @@ export class AnimationTools {
         }
         if (args.nodeReference) requireRef(args.nodeReference, 'nodeReference');
         const result = await Editor.Message.request('scene', 'execute-scene-script', {
-            name: 'cocos-pilot-3x',
+            name: 'ccp3x',
             method: 'animationUsageAnalyze',
             args: [{ nodeUuid: args.nodeReference?.id, maxNodes: args.maxNodes ?? 100 }],
         }) as Record<string, unknown> | null;
@@ -1291,7 +1291,7 @@ export class AnimationTools {
         const maxItems = args?.maxItems ?? 200;
         if (!Number.isInteger(maxItems) || maxItems < 1 || maxItems > 1000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'maxItems must be an integer from 1 to 1000.' });
         const result = await Editor.Message.request('scene', 'execute-scene-script', {
-            name: 'cocos-pilot-3x',
+            name: 'ccp3x',
             method: 'animationCatalogInspect',
             args: [{ nodeUuid: nodeId, maxItems }],
         }) as Record<string, unknown> | null;
@@ -1313,7 +1313,7 @@ export class AnimationTools {
         const info = await Editor.Message.request('asset-db', 'query-asset-info', clipId) as Record<string, unknown> | null;
         if (!info || (info.type !== 'cc.AnimationClip' && info.importer !== 'animation-clip')) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: `Reference ${clipId} is not an AnimationClip asset.` });
         try {
-            const result = await Editor.Message.request('scene', 'execute-scene-script', { name: 'cocos-pilot-3x', method: 'animationClipAssign', args: [{ nodeUuid: nodeId, clipUuid: clipId, clipName: args?.clipName }] }) as Record<string, unknown> | null;
+            const result = await Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'animationClipAssign', args: [{ nodeUuid: nodeId, clipUuid: clipId, clipName: args?.clipName }] }) as Record<string, unknown> | null;
             if (!result || result.success !== true || typeof result.clipName !== 'string' || !Array.isArray(result.clips)) throw new Error('Creator returned no AnimationClip assignment read-back.');
             return { ...result, nodeReference: { id: nodeId, type: args.nodeReference?.type ?? 'cc.Node' }, clipReference: { id: clipId, type: args.clipReference?.type ?? 'cc.AnimationClip' } };
         } catch (error) {
@@ -1331,7 +1331,7 @@ export class AnimationTools {
     async animationComponentsList(args: { nodeReference?: IInstanceReference, recursive?: boolean } = {}): Promise<Record<string, unknown>> {
         if (args.nodeReference) requireRef(args.nodeReference, 'nodeReference');
         try {
-            const result = await Editor.Message.request('scene', 'execute-scene-script', { name: 'cocos-pilot-3x', method: 'animationComponentsList', args: [{ nodeUuid: args.nodeReference?.id, recursive: args.recursive !== false }] }) as Record<string, unknown> | null;
+            const result = await Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'animationComponentsList', args: [{ nodeUuid: args.nodeReference?.id, recursive: args.recursive !== false }] }) as Record<string, unknown> | null;
             if (!result || !Array.isArray(result.animations)) throw new Error('Creator returned malformed animation component list.');
             return result;
         } catch (error) {
@@ -1351,7 +1351,7 @@ export class AnimationTools {
         let result: Record<string, unknown> | null;
         try {
             result = await Editor.Message.request('scene', 'execute-scene-script', {
-                name: 'cocos-pilot-3x',
+                name: 'ccp3x',
                 method: 'animationCompatibilityAudit',
                 args: [{ nodeUuid: nodeId }],
             }) as Record<string, unknown> | null;
@@ -1407,7 +1407,7 @@ export class AnimationTools {
         if (operation === 'set_mix' && (!args.fromAnimation || !args.toAnimation || args.duration === undefined || !Number.isFinite(args.duration) || args.duration < 0 || args.duration > 60)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'set_mix requires fromAnimation, toAnimation, and duration from 0 to 60.' });
         try {
             const result = await Editor.Message.request('scene', 'execute-scene-script', {
-                name: 'cocos-pilot-3x',
+                name: 'ccp3x',
                 method: 'spineRuntimeControl',
                 args: [{ ...args, nodeUuid: nodeId, nodeReference: undefined }],
             }) as Record<string, unknown> | null;
@@ -1529,7 +1529,7 @@ export class AnimationTools {
             const nodeUuid = (info as any)?.props?.node?.value?.uuid;
             if (typeof nodeUuid !== 'string' || !nodeUuid) throw new Error('Skeleton component has no owning node reference');
             const result = await Editor.Message.request('scene', 'execute-scene-script', {
-                name: 'cocos-pilot-3x',
+                name: 'ccp3x',
                 method: 'spineSocketConfigure',
                 args: [{ nodeUuid, sockets }],
             }) as Record<string, unknown> | null;
@@ -1578,7 +1578,7 @@ export class AnimationTools {
             const nodeUuid = requireRef(reference, 'nodeReferences[]');
             try {
                 const result = await Editor.Message.request('scene', 'execute-scene-script', {
-                    name: 'cocos-pilot-3x',
+                    name: 'ccp3x',
                     method: 'animationRuntimeControl',
                     args: [{ nodeUuid, operation, clipName: args.clipName, loop: args.loop, cacheMode: args.cacheMode }],
                 });
@@ -1708,7 +1708,7 @@ export class AnimationTools {
         let result: Record<string, unknown> | null;
         try {
             result = await Editor.Message.request('scene', 'execute-scene-script', {
-                name: 'cocos-pilot-3x',
+                name: 'ccp3x',
                 method: 'animationRuntimeControl',
                 args: [{ ...args, nodeUuid, nodeReference: undefined }],
             }) as Record<string, unknown> | null;

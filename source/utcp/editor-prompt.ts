@@ -80,7 +80,7 @@ function startPrompt(request: EditorInteractionRequest): Promise<EditorPromptRes
         };
         const timer = setTimeout(() => active.finish('timedOut'), Math.max(0, request.expiresAt - Date.now()));
         pending = active;
-        console.info(`[cx3][prompt] Agent request ${request.requestId} pending. Open Cocos Pilot 3x > Agent Inbox to respond before ${new Date(request.expiresAt).toISOString()}.`);
+        console.info(`[cx3][prompt] Agent request ${request.requestId} pending. Open CCP 3x > Agent Inbox to respond before ${new Date(request.expiresAt).toISOString()}.`);
         notify('editor-prompt-changed');
         if (request.openPanel !== true) return;
         // Opening may activate Creator's panel: only permitted by explicit opt-in.

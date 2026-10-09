@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// cocos-pilot-bootstrap — SessionStart hook: fetch live cocos-pilot manuals from
-// ~/.utcp_config.json and cache tool metadata to .claude/cocos-pilot-cache.json.
+// ccp-bootstrap — SessionStart hook: fetch live ccp manuals from
+// ~/.utcp_config.json and cache tool metadata to .claude/ccp-cache.json.
 // It never registers manuals in the Code Mode MCP process; agents do that per session.
 const fs = require('fs');
 const path = require('path');
@@ -15,7 +15,7 @@ const PERPORT_2X = /^ccp2x_\d+$/;
 // Max age before a cached entry that has not been re-probed live is marked stale.
 // Mirrors runbook §3 readiness: age_ms = now - fetchedAt; is_stale = age_ms > threshold.
 // Threshold env-overridable for tests. 24h matches plan P0 "without successful probe".
-const STALE_AFTER_MS = Number(process.env.COCOS_PILOT_CACHE_MAX_AGE_MS) || 24 * 60 * 60 * 1000;
+const STALE_AFTER_MS = Number(process.env.CCP_CACHE_MAX_AGE_MS) || 24 * 60 * 60 * 1000;
 
 function readJson(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } }
 
@@ -36,7 +36,12 @@ function fetchJson(url, timeoutMs = 2500) {
       req = http.get(url, (res) => {
         if (res.statusCode < 200 || res.statusCode >= 300) { finish(null); return; }
         let body = '';
-        res.on('data', (chunk) => (body += chunk));
+        let bytes = 0;
+        res.on('data', (chunk) => {
+          bytes += chunk.length;
+          if (bytes > 4 * 1024 * 1024) { finish(null); return; }
+          body += chunk;
+        });
         res.on('error', () => finish(null));
         res.on('aborted', () => finish(null));
         res.on('end', () => { try { finish(JSON.parse(body)); } catch { finish(null); } });
@@ -47,17 +52,20 @@ function fetchJson(url, timeoutMs = 2500) {
 }
 
 function is3x(m) { return m?.name === CANON_3X || PERPORT_3X.test(m?.name); }
+// Bare names are migration inputs only; cache/runtime identities are per-port.
 function is2x(m) { return m?.name === CANON_2X || PERPORT_2X.test(m?.name); }
 
-function endpoint3x(m) {
-  if (!is3x(m)) return null;
+function endpoint3x(m) { return endpointFor(m, CANON_3X, is3x); }
+function endpoint2x(m) { return endpointFor(m, CANON_2X, is2x); }
+function endpointFor(m, canonical, accepts) {
+  if (!accepts(m)) return null;
   try {
     const url = new URL(m.url);
     if (url.protocol !== 'http:' || !/^\/utcp\/?$/.test(url.pathname)
       || url.username || url.password || url.search || url.hash) return null;
     const port = Number(url.port || 80);
-    const name = `ccp3x_${port}`;
-    if (port < 1 || (m.name !== CANON_3X && m.name !== name)) return null;
+    const name = `${canonical}_${port}`;
+    if (port < 1 || port > 65535 || (m.name !== canonical && m.name !== name)) return null;
     url.pathname = '/utcp';
     const normalizedUrl = url.href;
     // The server binds IPv4 loopback; these two spellings identify one endpoint.
@@ -93,7 +101,7 @@ function computeAgeMs(fetchedAt, nowMs) {
 
 function cacheKeyFor(m) {
   if (is3x(m)) return endpoint3x(m)?.name || null;
-  return PERPORT_2X.test(m.name) ? m.name : CANON_2X;
+  return endpoint2x(m)?.name || null;
 }
 
 /**
@@ -112,11 +120,11 @@ async function buildCache({ utcpConfig, priorCache, fetchJson: doFetch, now }) {
   const priorRanks = new Map();
   const conflictingPrior = new Set();
   for (const [name, entry] of Object.entries(priorCache?.manuals || {})) {
-    if (!is3x({ name })) { priorManuals[name] = entry; continue; }
-    const endpoint = endpoint3x({ name, url: entry.url });
+    if (!is3x({ name }) && !is2x({ name })) continue;
+    const endpoint = is3x({ name }) ? endpoint3x({ name, url: entry.url }) : endpoint2x({ name, url: entry.url });
     if (!endpoint) continue;
     const existing = priorManuals[endpoint.name];
-    if (existing && endpoint3x({ name: endpoint.name, url: existing.url }).identity !== endpoint.identity) {
+    if (existing && (is3x({ name }) ? endpoint3x({ name: endpoint.name, url: existing.url }) : endpoint2x({ name: endpoint.name, url: existing.url }))?.identity !== endpoint.identity) {
       conflictingPrior.add(endpoint.name);
       continue;
     }
@@ -135,9 +143,9 @@ async function buildCache({ utcpConfig, priorCache, fetchJson: doFetch, now }) {
   const endpointsByName = new Map();
   const conflicts = new Set();
   for (const m of manualsIn) {
-    const endpoint = is3x(m) ? endpoint3x(m) : null;
-    if (is3x(m) && !endpoint) continue;
-    const base = (endpoint?.url || m.url || '').replace(/\/utcp\/?$/, '');
+    const endpoint = is3x(m) ? endpoint3x(m) : endpoint2x(m);
+    if (!endpoint) continue;
+    const base = endpoint.url.replace(/\/utcp\/?$/, '');
     if (!base) continue;
     const identity = endpoint?.identity || base;
     const name = endpoint?.name || cacheKeyFor(m);
@@ -145,7 +153,7 @@ async function buildCache({ utcpConfig, priorCache, fetchJson: doFetch, now }) {
     endpointsByName.set(name, identity);
     const key = `${is3x(m) ? '3x' : '2x'}:${identity}`;
     const existing = byEndpoint.get(key);
-    const preferred = endpoint ? m.name === name : m.name === CANON_2X;
+    const preferred = m.name === name;
     if (!existing || preferred) byEndpoint.set(key, { name, url: endpoint?.url || m.url, base });
   }
   const selectedNames = new Set();
@@ -171,20 +179,26 @@ async function buildCache({ utcpConfig, priorCache, fetchJson: doFetch, now }) {
     const live = isLiveProbe(manual, buildInfo, toolDefs.length);
     let handshake = { status: 'unavailable', checkedAt: nowIso, result: null };
     if (live && tools.includes('editorHandshake')) {
-      const response = await probe(`${base}/tools/editorHandshake?timeoutMs=1000`);
+      const expectedProjectPath = utcpConfig?.variables?.[`CCP3X_PROJECT_${new URL(base).port}`];
+      const expectedInstanceId = utcpConfig?.variables?.[`CCP3X_OWNER_${new URL(base).port}`];
+      const query = new URLSearchParams({ timeoutMs: '1000' });
+      if (expectedProjectPath) query.set('expectedProjectPath', expectedProjectPath);
+      const response = await probe(`${base}/tools/editorHandshake?${query}`);
       // Envelope mode is optional on the server. Never infer readiness from HTTP 200 alone.
       const result = response?.probe ? response : response?.ok === true && response?.tool === 'editorHandshake' ? response.data : null;
       const valid = result && typeof result.instanceId === 'string'
         && ['responsive', 'timeout', 'error', 'invalid-response'].includes(result.probe?.status)
         && (result.probe.status !== 'responsive' || typeof result.probe.sceneReady === 'boolean');
-      handshake = { status: valid ? result.probe.status : 'unverified', checkedAt: nowIso, result: valid ? result : null };
+      const bound = valid && (!expectedInstanceId || result.instanceId === expectedInstanceId)
+        && (!expectedProjectPath || result.projectMatches === true);
+      handshake = { status: bound ? result.probe.status : 'unverified', checkedAt: nowIso, result: bound ? result : null };
     } else if (live) {
       handshake.status = 'unsupported';
     }
 
     const cached = priorManuals[cKey];
-    const prior = !is3x(m) || (cached && endpoint3x({ name: cKey, url: cached.url })?.identity === endpoint3x(m)?.identity)
-      ? cached : null;
+    const endpointOf = is3x(m) ? endpoint3x : endpoint2x;
+    const prior = cached && endpointOf({ name: cKey, url: cached.url })?.identity === endpointOf(m)?.identity ? cached : null;
 
     if (live) {
       nextManuals[cKey] = {
@@ -260,7 +274,7 @@ async function buildCache({ utcpConfig, priorCache, fetchJson: doFetch, now }) {
     if (nextManuals[k] !== undefined) continue;
     const ageMs = computeAgeMs(v.fetchedAt || v.updatedAt || priorCache.updatedAt, nowMs);
     const retained = { ...v, handshake: { status: 'unverified', checkedAt: null, result: null } };
-    if (is3x({ name: k })) {
+    if (is3x({ name: k }) || is2x({ name: k })) {
       retained.live = false;
       retained.stale = true;
       retained.staleReason = conflicts.has(k) ? 'ambiguous_endpoint' : 'not_probed';
@@ -280,15 +294,17 @@ async function buildCache({ utcpConfig, priorCache, fetchJson: doFetch, now }) {
 
 async function main() {
   const home = os.homedir();
-  const utcpPath = path.join(home, '.utcp_config.json');
+  const configuredPath = process.env.UTCP_CONFIG_FILE || path.join(home, '.utcp_config.json');
+  const utcpPath = path.resolve(configuredPath.startsWith('~/') || configuredPath.startsWith('~\\')
+    ? path.join(home, configuredPath.slice(2)) : configuredPath);
   const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const claudeDir = path.join(projectRoot, '.claude');
-  // Official Cocos Pilot cutover: remove caches from pre-Pilot hooks even when
-  // the current registry is empty or no editor is running.
-  for (const legacyCacheName of ['cc-bridge-cache.json', 'cc-code-mode-cache.json']) {
+  // Explicit legacy cache cleanup; old metadata is never CCP qualification evidence.
+  // Run even when the current registry is empty or no editor is running.
+  for (const legacyCacheName of ['cocos-pilot-cache.json', 'cc-bridge-cache.json', 'cc-code-mode-cache.json']) {
     try { fs.rmSync(path.join(claudeDir, legacyCacheName), { force: true }); } catch {}
   }
-  const cachePath = path.join(claudeDir, 'cocos-pilot-cache.json');
+  const cachePath = path.join(claudeDir, 'ccp-cache.json');
   const utcp = readJson(utcpPath);
   const manuals = Array.isArray(utcp?.manual_call_templates)
     ? utcp.manual_call_templates.filter((m) => is3x(m) || is2x(m)) : [];
@@ -305,7 +321,7 @@ async function main() {
 
   const envFile = process.env.CLAUDE_ENV_FILE;
   if (envFile && fs.existsSync(path.dirname(envFile))) {
-    try { fs.appendFileSync(envFile, `CK_CODE_MODE=ready\n`); } catch {}
+    try { fs.appendFileSync(envFile, `CK_CODE_MODE=discovery-only\n`); } catch {}
     for (const [name, info] of Object.entries(cache.manuals)) {
       try { fs.appendFileSync(envFile, `CK_CODE_MODE_${name.toUpperCase().replace(/-/g, '_')}=${info.toolCount}\n`); } catch {}
     }
@@ -316,16 +332,16 @@ async function main() {
     .filter((v) => v.authoritative !== false && v.live !== false)
     .reduce((s, v) => s + (v.toolCount || 0), 0);
   const staleNote = Object.values(cache.manuals).some((v) => v.stale) ? ' (stale)' : '';
-  console.log(`[cocos-pilot-bootstrap] cached ${names} (${liveTotal} live tools) → .claude/cocos-pilot-cache.json${staleNote}`);
+  console.log(`[ccp-bootstrap] cached ${names} (${liveTotal} live tools) → .claude/ccp-cache.json${staleNote}`);
   for (const [name, info] of Object.entries(cache.manuals)) {
     if (info.handshake?.status === 'unsupported') {
-      console.log(`[cocos-pilot-bootstrap] ${name}: editorHandshake not advertised by this build; discovery is not IPC readiness. Update Cocos Pilot to use handshake.`);
+      console.log(`[ccp-bootstrap] ${name}: editorHandshake not advertised by this build; discovery is not IPC readiness. Update CCP to use handshake.`);
     } else {
-      console.log(`[cocos-pilot-bootstrap] ${name}: editorHandshake HTTP probe=${info.handshake?.status ?? 'unverified'}. Select one namespace and endpoint (${info.url}), then register_manual + list_tools and call ${name}.editorHandshake({timeoutMs:1000, expectedProjectPath:"<absolute Creator project path>"}) through call_tool_chain. Bind namespace + endpoint + projectPath + instanceId. Require projectMatches:true and a responsive probe before mutations; sceneReady:false means connected but scene not ready. Re-handshake after reconnect/restart and discard old references if instanceId changes. Never fall back to another editor or a latest alias. Cache/HTTP probe does not verify the Code Mode route. Do not loop on timeout; restart/reload Cocos Pilot to renew probes if IPC stays stuck.`);
+      console.log(`[ccp-bootstrap] ${name}: editorHandshake HTTP probe=${info.handshake?.status ?? 'unverified'}. Select one namespace and endpoint (${info.url}), then register_manual + list_tools and call ${name}.editorHandshake({timeoutMs:1000, expectedProjectPath:"<absolute Creator project path>"}) through call_tool_chain. Bind namespace + endpoint + projectPath + instanceId. Require projectMatches:true and a responsive probe before mutations; sceneReady:false means connected but scene not ready. Re-handshake after reconnect/restart and discard old references if instanceId changes. Never fall back to another editor or a latest alias. Cache/HTTP probe does not verify the Code Mode route. Do not loop on timeout; restart/reload CCP to renew probes if IPC stays stuck.`);
     }
   }
-  console.log('[cocos-pilot-bootstrap] During active work, optionally run node scripts/cocos-pilot-watchdog.js --url <selected endpoint> --project <absolute Creator project path> --instance <verified handshake instanceId> outside Creator. Stop mutations on unhealthy/stale observations; never retry a timed-out mutation blindly. Recovery requires read-back and a fresh Code Mode handshake. Monitoring does not enforce a server-side write lock or predict every freeze.');
-  console.log('[cocos-pilot-bootstrap] Status can show session presence via editorSessionHeartbeat. A session harness may supervise node scripts/session-presence/heartbeat.js --url <bound endpoint> --project <project> --instance <verified ID> --session <unique session ID>. Helper beats use no LLM calls and are labeled http-helper, not verified Code Mode connectivity. Terminate the helper with its chat session; never feed routine beats into model context.');
+  console.log('[ccp-bootstrap] During active work, optionally run node scripts/ccp-watchdog.js --url <selected endpoint> --project <absolute Creator project path> --instance <verified handshake instanceId> outside Creator. Stop mutations on unhealthy/stale observations; never retry a timed-out mutation blindly. Recovery requires read-back and a fresh Code Mode handshake. Monitoring does not enforce a server-side write lock or predict every freeze.');
+  console.log('[ccp-bootstrap] Status can show session presence via editorSessionHeartbeat. A session harness may supervise node scripts/session-presence/heartbeat.js --url <bound endpoint> --project <project> --instance <verified ID> --session <unique session ID>. Helper beats use no LLM calls and are labeled http-helper, not verified Code Mode connectivity. Terminate the helper with its chat session; never feed routine beats into model context.');
 }
 
 // Test seam: pure helpers + core. main() path stays fs/http-coupled as before.

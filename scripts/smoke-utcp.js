@@ -11,13 +11,14 @@ async function discoverBase() {
         const cfgPath = process.env.UTCP_CONFIG_FILE || join(homedir(), '.utcp_config.json');
         const raw = readFileSync(cfgPath, 'utf8');
         const cfg = JSON.parse(raw);
-        // Prefer the bare canonical (latest) entry; fall back to any cocos-pilot template.
-        const tpls = cfg.manual_call_templates || [];
-        const canon = tpls.find(t => /^(ccp3x|ccp2x)$/.test(t.name)) || tpls[0];
-        const m = String(canon?.url || '').match(/localhost:(\d+)/);
-        if (m) return `http://localhost:${m[1]}`;
+        // Per-port CCP 3x only; never select a bare latest alias or another generation.
+        const candidates = (cfg.manual_call_templates || []).filter(t => /^ccp3x_\d+$/.test(t.name));
+        if (candidates.length !== 1) throw new Error('Pass the intended CCP 3x port explicitly.');
+        const endpoint = new URL(candidates[0].url);
+        if (endpoint.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(endpoint.hostname)
+          && candidates[0].name === `ccp3x_${Number(endpoint.port || 80)}`) return endpoint.origin;
     } catch {}
-    throw new Error('Cannot discover UTCP port: is cocos-pilot-3x running? Pass port as arg.');
+    throw new Error('Cannot discover UTCP port: is ccp3x running? Pass port as arg.');
 }
 
 async function getJson(url) {

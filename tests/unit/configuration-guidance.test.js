@@ -9,12 +9,12 @@ const template = fs.readFileSync(path.join(root, 'static/template/configuration/
 const panel = fs.readFileSync(path.join(root, 'source/panels/configuration/index.ts'), 'utf8');
 const loggingControl = fs.readFileSync(path.join(root, 'source/panels/configuration/logging-control.ts'), 'utf8');
 describe('configuration guidance', () => {
-  it('identifies the MCP server as Cocos Pilot and exposes an agent instruction', () => {
-    assert.match(template, /Cocos Pilot/);
+  it('identifies the MCP server as CCP and exposes an agent instruction', () => {
+    assert.match(template, /CCP/);
     assert.match(template, /id="agent-instruction"/);
     assert.match(template, /MCP configuration/i);
-    assert.match(panel, /['"]cc-pilot['"]/);
-    assert.doesNotMatch(panel, /['"]cocos-pilot['"]/);
+    assert.match(panel, /['"]ccp['"]/);
+    assert.doesNotMatch(panel, /['"](?:cc-pilot|cocos-pilot|cc-bridge)['"]/);
     assert.doesNotMatch(panel, /['"]code-mode['"]/);
   });
 });

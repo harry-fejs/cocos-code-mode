@@ -91,7 +91,7 @@ Translate the user's wording into a focused query; aliases are retrieval hints, 
 | lag, stutter, excessive draw calls | `profiling batching draw calls` + affected component | Performance; do not infer cause |
 | no sound, autoplay not working | `AudioSource playback compatibility autoplay` | Audio; search platform name too |
 | differs from preview, build failure, mobile-only failure | `preview build platform compatibility` + exact error | Preview/publish + target platform |
-| connect MCP, tool not found, manual not found | `register_manual list_tools bootstrap` | Local `cocos-pilot-3x` skill, not engine corpus |
+| connect MCP, tool not found, manual not found | `register_manual list_tools bootstrap` | Local `ccp3x` skill, not engine corpus |
 | team slot framework, reel, GameMode | Framework class name | `fw_cc` corpus, not `cc_docs` |
 
 Read a known path directly when it fits; search only when selection is uncertain or an error needs context. Select one or two related routes, not the entire keyword list. Reuse already-read, matching-version context in the current task.

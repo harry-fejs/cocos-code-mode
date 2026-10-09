@@ -1,19 +1,19 @@
-# ALX Capability Comparison and Cocos Pilot Reimplementation Map
+# ALX Capability Comparison and CCP Reimplementation Map
 
 **Status:** Reference
 **Updated:** 2026-09-11
-**Scope:** Compare the external ALX tool inventory with the independent Cocos Pilot 3x implementation.
-**Source:** `G:\alx-tool-api.txt`; current Cocos Pilot source under `source/utcp/`.
+**Scope:** Compare the external ALX tool inventory with the independent CCP 3x implementation.
+**Source:** `G:\alx-tool-api.txt`; current CCP source under `source/utcp/`.
 
 ## Purpose
 
-ALX is treated as a functional reference only. Cocos Pilot does not depend on ALX source code, binaries, policies, transport, or runtime availability. The comparison identifies useful workflows and implementation ideas that Cocos Pilot can independently reproduce with its own contracts, safety model, and Creator 3.7.x qualification process.
+ALX is treated as a functional reference only. CCP does not depend on ALX source code, binaries, policies, transport, or runtime availability. The comparison identifies useful workflows and implementation ideas that CCP can independently reproduce with its own contracts, safety model, and Creator 3.7.x qualification process.
 
 ## Inventory
 
 The supplied ALX configuration contains **163 enabled tools** across 15 categories. Its surface is mostly granular:
 
-| ALX area | Count | Cocos Pilot interpretation |
+| ALX area | Count | CCP interpretation |
 |---|---:|---|
 | Project | 26 | Mostly covered by `projectManage`, asset tools, build tools, and preview/runtime tools |
 | Scene advanced | 23 | Mostly covered by scene/node consolidated tools; some transaction and readiness ideas remain |
@@ -26,22 +26,22 @@ The supplied ALX configuration contains **163 enabled tools** across 15 categori
 | Component | 7 | Covered by component and inspector tools |
 | Preferences | 7 | Partially covered by editor preference get/set |
 | Scene | 8 | Covered by scene management and scene information tools |
-| Broadcast | 5 | New observation capability; not yet implemented in Cocos Pilot |
+| Broadcast | 5 | New observation capability; not yet implemented in CCP |
 | Server | 6 | Mostly environment/transport diagnostics rather than Creator authoring capability |
-| Validation | 3 | Client/request formatting helpers; not a reason to expose more Cocos Pilot tools |
-| Template | 2 | Domain-specific slot-machine workflow; Cocos Pilot should own its own higher-level version |
+| Validation | 3 | Client/request formatting helpers; not a reason to expose more CCP tools |
+| Template | 2 | Domain-specific slot-machine workflow; CCP should own its own higher-level version |
 
 ## Coverage model
 
-Name differences do not imply capability gaps. Cocos Pilot intentionally consolidates related operations to reduce agent tool-selection noise and request-side schema cost.
+Name differences do not imply capability gaps. CCP intentionally consolidates related operations to reduce agent tool-selection noise and request-side schema cost.
 
 Examples:
 
-- ALX scene open/save/save-as/close → Cocos Pilot `sceneManage`.
-- ALX 20 scene-view tools → Cocos Pilot `editorViewport` operations.
-- ALX node property/transform/delete/move/duplicate → Cocos Pilot `nodeOperate`, `inspectorSet`, and `nodeBatchSet`.
-- ALX component add/remove/read/write → Cocos Pilot `nodeComponentManage`, `nodeComponentsGet`, `inspectorGet`, and `inspectorSet`.
-- ALX execute script → Cocos Pilot `executeJavascript`, protected by the Cocos Pilot safety guards and context rules.
+- ALX scene open/save/save-as/close → CCP `sceneManage`.
+- ALX 20 scene-view tools → CCP `editorViewport` operations.
+- ALX node property/transform/delete/move/duplicate → CCP `nodeOperate`, `inspectorSet`, and `nodeBatchSet`.
+- ALX component add/remove/read/write → CCP `nodeComponentManage`, `nodeComponentsGet`, `inspectorGet`, and `inspectorSet`.
+- ALX execute script → CCP `executeJavascript`, protected by the CCP safety guards and context rules.
 
 The correct comparison unit is therefore **workflow coverage plus contract quality**, not raw tool count.
 
@@ -49,7 +49,7 @@ The correct comparison unit is therefore **workflow coverage plus contract quali
 
 ### 1. Multi-node layout alignment
 
-ALX exposes `align_nodes` for world-space alignment and distribution. Cocos Pilot now exposes `uiLayoutAlign` with a stricter contract:
+ALX exposes `align_nodes` for world-space alignment and distribution. CCP now exposes `uiLayoutAlign` with a stricter contract:
 
 - `align` or `distribute` operation.
 - Horizontal or vertical axis.
@@ -68,7 +68,7 @@ Implementation:
 
 ### 2. Reverse hierarchy lookup
 
-ALX provides `get_node_path`. Cocos Pilot now exposes `nodeGetPath`:
+ALX provides `get_node_path`. CCP now exposes `nodeGetPath`:
 
 - UUID → hierarchy path.
 - Optional relative root.
@@ -80,7 +80,7 @@ This supports generated controller code using `getChildByPath` or equivalent sce
 
 ### 3. Reference-image workflow
 
-ALX has 12 granular reference-image tools. Cocos Pilot should not copy that surface one-for-one. The target is one bounded `referenceImageManage` tool with finite operations:
+ALX has 12 granular reference-image tools. CCP should not copy that surface one-for-one. The target is one bounded `referenceImageManage` tool with finite operations:
 
 - add
 - remove
@@ -94,13 +94,13 @@ The feature remains `probe-required` until Creator 3.7.3 exposes a stable, verif
 
 ### 4. Undo transaction boundaries
 
-ALX exposes begin/end/cancel undo recording. Cocos Pilot already uses snapshots and rollback patterns. The next step is to probe whether explicit transaction boundaries are stable in the target Creator version.
+ALX exposes begin/end/cancel undo recording. CCP already uses snapshots and rollback patterns. The next step is to probe whether explicit transaction boundaries are stable in the target Creator version.
 
 If qualified, use them internally around compound mutations first. Do not expose an unrestricted stateful transaction API until lifecycle, failure, nesting, and cleanup behavior are proven.
 
 ### 5. Persistent project-log search
 
-ALX separates project-log inspection from editor console inspection. Cocos Pilot's `editorGetLogs` already reads the project log file path, so the useful remaining idea is contract expansion:
+ALX separates project-log inspection from editor console inspection. CCP's `editorGetLogs` already reads the project log file path, so the useful remaining idea is contract expansion:
 
 - bounded `pattern` search;
 - explicit line order;
@@ -110,7 +110,7 @@ ALX separates project-log inspection from editor console inspection. Cocos Pilot
 
 ### 6. Broadcast observation
 
-ALX's broadcast tools suggest a useful asynchronous observation layer for asset import, script compilation, scene save, and build completion. Cocos Pilot should implement this as a bounded event buffer, not as unrestricted listener management:
+ALX's broadcast tools suggest a useful asynchronous observation layer for asset import, script compilation, scene save, and build completion. CCP should implement this as a bounded event buffer, not as unrestricted listener management:
 
 - allowlisted event names;
 - ring buffer with fixed event and byte limits;
@@ -125,11 +125,11 @@ ALX's broadcast tools suggest a useful asynchronous observation layer for asset 
 - Client-side JSON formatting helpers as public editor tools: belong in the caller or gateway.
 - Generic network-interface tools: useful for diagnostics but not core Creator authoring.
 - Raw execute-script fallback for every missing feature: weakens safety and makes qualification impossible.
-- Unbounded scene snapshots or logs: incompatible with Cocos Pilot response-size and truncation contracts.
+- Unbounded scene snapshots or logs: incompatible with CCP response-size and truncation contracts.
 
-## Cocos Pilot advantage to preserve
+## CCP advantage to preserve
 
-Cocos Pilot's differentiation is not raw CRUD coverage. Preserve and extend:
+CCP's differentiation is not raw CRUD coverage. Preserve and extend:
 
 - bounded contracts and explicit truncation;
 - typed fail-closed errors;
@@ -142,11 +142,11 @@ Cocos Pilot's differentiation is not raw CRUD coverage. Preserve and extend:
 
 ## Decision
 
-Use ALX as a **black-box feature catalog and workflow reference**. Reimplement only validated, high-value capabilities behind Cocos Pilot-native consolidated contracts. No Cocos Pilot module may import, invoke, or require ALX.
+Use ALX as a **black-box feature catalog and workflow reference**. Reimplement only validated, high-value capabilities behind CCP-native consolidated contracts. No CCP module may import, invoke, or require ALX.
 
 ## Related documents
 
-- [Independent Cocos Pilot strategy](./independent-cocos-pilot-strategy.md)
-- [Cocos Pilot usage](./cocos-pilot-code-mode-usage.md)
+- [Independent CCP strategy](./independent-ccp-strategy.md)
+- [CCP usage](./ccp-code-mode-usage.md)
 - [v2/v3 parity](./parity-v2-v3.md)
 - [Tool portfolio candidates](./tool-portfolio-candidates.json)

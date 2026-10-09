@@ -6,7 +6,7 @@ const { getJson, postTool, repeatTestcase, healthCheck, getCanvasReference } = r
 
 const SPRITE_FRAME = '20835ba4-6145-4fbc-a58a-051ce700aa3e@f9941';
 
-/** Live integration qualification: public Cocos Pilot APIs against Creator state. */
+/** Live integration qualification: public CCP APIs against Creator state. */
 describe('live: Sprite interactive asset workflow', { concurrency: false }, () => {
   let health;
   before(async () => { health = await healthCheck(); });

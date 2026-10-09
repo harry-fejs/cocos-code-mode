@@ -121,14 +121,14 @@ function transportAudit(files) {
     const source = fs.readFileSync(file, 'utf8');
     const relative = path.relative(root, file).replaceAll(path.sep, '/');
     if (!/require\(['"](?:\.\.\/|\.\/)+helpers\/utcp-client['"]\)/.test(source)) {
-      violations.push(`${relative}: must use the shared Cocos Pilot client`);
+      violations.push(`${relative}: must use the shared CCP client`);
     }
     if (!/\b(?:getJson|postTool|healthCheck|liveWitness)\s*\(/.test(source)) {
-      violations.push(`${relative}: has no observable Cocos Pilot call`);
+      violations.push(`${relative}: has no observable CCP call`);
     }
     if (/\bfetch\s*\(|\bhttps?\.request\s*\(|\baxios\b/.test(source)
         && !/\bfetchTargetUrl\s*\(/.test(source)) {
-      violations.push(`${relative}: bypasses the shared Cocos Pilot client`);
+      violations.push(`${relative}: bypasses the shared CCP client`);
     }
   }
   return { ok: violations.length === 0, checkedFiles: files.length, violations };
@@ -241,7 +241,7 @@ async function main() {
   if (staticAuditResult.ok === false) console.error(`portfolio audit: FAILED — ${staticAuditResult.error}`);
   else console.log(`portfolio: ${staticAuditResult.registeredToolCount} registered, ${staticAuditResult.approvedCount} approved/implemented, ready=${staticAuditResult.readyForBulkImplementation}`);
   if (!transportAuditResult.ok) console.error(`live transport audit: FAILED — ${transportAuditResult.violations.join('; ')}`);
-  else console.log(`live transport audit: ${transportAuditResult.checkedFiles} files use traced Cocos Pilot calls`);
+  else console.log(`live transport audit: ${transportAuditResult.checkedFiles} files use traced CCP calls`);
   console.log(`live suite: ${summary.pass} pass, ${summary.fail} fail, ${summary.skipped} skipped`);
   if (staticAuditResult.ok === false || !transportAuditResult.ok || runs.some((run) => run.code !== 0)) process.exitCode = 1;
 }

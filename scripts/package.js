@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { ZipArchive } = require('archiver'); // archiver v8: class-based API (cocos-pilot-3x Node >= 18)
+const { ZipArchive } = require('archiver'); // archiver v8: class-based API (ccp3x Node >= 18)
 
 const packageJsonPath = path.join(__dirname, '../package.json');
 if (!fs.existsSync(packageJsonPath)) {
@@ -16,7 +16,7 @@ const projectRoot = path.join(__dirname, '..');
 require('child_process').execFileSync(process.execPath, [path.join(__dirname, 'check-creator-load.js')], { cwd: projectRoot, stdio: 'inherit' });
 
 // Zip name carries version + build timestamp so artifacts from different
-// sessions never silently collide: cocos-pilot-3x-<version>-YYMMDD-HHMMSS.zip.
+// sessions never silently collide: ccp3x-<version>-YYMMDD-HHMMSS.zip.
 // Timestamp comes from dist/build-info.json (stamped at build time) so the
 // name always matches the packaged build; falls back to now.
 function buildTimestamp() {
@@ -67,9 +67,9 @@ const filesToInclude = [
 const outputPath = path.join(projectRoot, zipFileName);
 
 // Each package run supersedes the previous build (dist/ is overwritten anyway),
-// so drop any leftover cocos-pilot-3x*.zip first — artifacts must not pile up.
+// so drop any leftover ccp3x*.zip first — artifacts must not pile up.
 for (const old of fs.readdirSync(projectRoot)) {
-    if (old === zipFileName || !/^cocos-pilot-3x.*\.zip$/.test(old)) continue;
+    if (old === zipFileName || !/^ccp3x.*\.zip$/.test(old)) continue;
     fs.unlinkSync(path.join(projectRoot, old));
     console.log(`Removed old package: ${old}`);
 }

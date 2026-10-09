@@ -178,7 +178,7 @@ export class ExpansionTools {
     }
     @utcpTool('localizationInspect', 'Inspect bounded Creator localization runtime availability, languages and text direction.', { type: 'object', properties: {} }, { type: 'object', properties: { supported: { type: 'boolean' }, currentLanguage: { type: ['string', 'null'] }, languages: { type: 'array' }, directions: { type: 'object' }, error: { type: 'string' } }, required: ['supported', 'currentLanguage', 'languages', 'directions'] }, 'GET', ['localization', 'inspect'])
     async localizationInspect(): Promise<{ supported: boolean, currentLanguage: string | null, languages: string[], directions: Record<string, string>, error?: string }> {
-        return await Editor.Message.request('scene', 'execute-scene-script', { name: 'cocos-pilot-3x', method: 'inspectLocalization', args: [] }) as any;
+        return await Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'inspectLocalization', args: [] }) as any;
     }
 
     @utcpTool('particleValidate', 'Validate bounded particle system presence and serialized component configuration.', { type: 'object', properties: { reference: InstanceReferenceSchema } }, { type: 'object', properties: { valid: { type: 'boolean' }, issues: { type: 'array' }, checkedNodes: { type: 'integer' } }, required: ['valid', 'issues', 'checkedNodes'] }, 'GET', ['particle', 'validate'])
@@ -1319,7 +1319,7 @@ export class ExpansionTools {
         let raw: unknown;
         try {
             raw = await Editor.Message.request('scene', 'execute-scene-script', {
-                name: 'cocos-pilot-3x',
+                name: 'ccp3x',
                 method: 'validateLocalization',
                 args: [keys],
             });
@@ -1329,7 +1329,7 @@ export class ExpansionTools {
                 status: 502,
                 message: 'Creator scene transport failed while validating localization keys.',
                 details: { cause: String(error instanceof Error ? error.message : error).slice(0, 512) },
-                recovery: 'Retry after the Creator scene process and cocos-pilot-3x package are ready.',
+                recovery: 'Retry after the Creator scene process and ccp3x package are ready.',
             });
         }
 
@@ -1339,7 +1339,7 @@ export class ExpansionTools {
                 code: 'LOCALIZATION_INVALID_RESPONSE',
                 status: 502,
                 message: 'Creator localization validation returned an invalid response.',
-                recovery: 'Retry with a compatible cocos-pilot-3x scene package.',
+                recovery: 'Retry with a compatible ccp3x scene package.',
             });
         }
 
@@ -1367,7 +1367,7 @@ export class ExpansionTools {
                 code: 'LOCALIZATION_INVALID_RESPONSE',
                 status: 502,
                 message: 'Creator localization validation returned an invalid response.',
-                recovery: 'Retry with a compatible cocos-pilot-3x scene package.',
+                recovery: 'Retry with a compatible ccp3x scene package.',
             });
         }
 

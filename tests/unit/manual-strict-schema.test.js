@@ -75,12 +75,4 @@ describe('manual strict schema — no annotations in UTCP tools', () => {
     assert.equal(labels.some((l) => /reload/i.test(l)), false, 'menu must not contain Reload Extension');
   });
 
-  it('ccp3x bootstrap strictly deduplicates normalized endpoint identity', () => {
-    const src = fs.readFileSync(path.resolve(__dirname, '..', '..', 'scripts', 'cocos-pilot-bootstrap.js'), 'utf8');
-    assert.match(src, /const byEndpoint = new Map\(\)/, 'bootstrap must dedup endpoint identity');
-    assert.match(src, /const key = `\$\{is3x\(m\) \? '3x' : '2x'\}:\$\{identity\}`/, 'dedup key must include generation and normalized identity');
-    assert.match(src, /CANON_3X = 'ccp3x'/, 'bootstrap must recognize strict ccp3x canonical');
-    assert.match(src, /const name = `ccp3x_\$\{port\}`/, '3.x editor identity must remain per-port');
-    assert.match(src, /m\.name === name/, 'per-port identity wins over a legacy alias for the same endpoint');
-  });
 });

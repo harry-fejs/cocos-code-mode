@@ -4,7 +4,7 @@ const http = require('node:http');
 const path = require('node:path');
 const { performance } = require('node:perf_hooks');
 const { setTimeout: delay } = require('node:timers/promises');
-const { parseArgs: parseWatchdogArgs, requestHandshake } = require('../cocos-pilot-watchdog');
+const { parseArgs: parseWatchdogArgs, requestHandshake } = require('../ccp-watchdog');
 
 function parseArgs(argv) {
   const args = {};

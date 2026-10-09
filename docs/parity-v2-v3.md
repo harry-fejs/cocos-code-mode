@@ -2,7 +2,7 @@
 
 Tham chiếu sống cho câu hỏi "bản kia có tool tương đương không". Cập nhật mỗi khi port xong một dòng.
 
-**v3** `cocos-pilot-3x` (Creator 3.7.x/3.8.x, branch `feat/ccp3x-consolidated` / `cc-3x7`) = **86 tools** · **v2** `cocos-pilot-2x` (Creator 2.4.15, branch `cc-2x`) = **53 tools**
+**v3** `ccp3x` (Creator 3.7.x/3.8.x, branch `feat/ccp3x-consolidated` / `cc-3x7`) = **86 tools** · **v2** `ccp2x` (Creator 2.4.15, branch `cc-2x`) = **53 tools**
 **Cập nhật:** 2026-09-05 (Consolidated baseline @ `0483c4f`: Graph v4, Fail-Loud §2/§5/§7, strict UTCP manual 0-annotations, 3.8 project-config probe & IPC implementation, Lane C intake; unit tests 158/158 pass)
 **Đối chiếu message:** `docs/cc-3x7-message-registry.json` (416 msg / 20 module, dump 3.7.3) · coverage 131/416 xem `plans/reports/verify-260821-0939-cc3x7-api.md`
 
@@ -49,7 +49,7 @@ Tên khác nhau **không** đồng nghĩa thiếu chức năng — v3 gom 10 con
 | `findNodesWithMissingAssets` | `sceneSnapshot` + scan null ref | ⚠️ |
 | `inspectorGet` | `nodeQuery dump` + `componentQuery props` | ✅ |
 | `inspectorSet` | `nodeSetProperty` / `nodeSetPropertyUndo` | ✅ |
-| `inspectorGetDefinition` (gen d.ts runtime) | file tĩnh `cocos-pilot-2x.d.ts` | ✅ khác cơ chế, cùng nhu cầu |
+| `inspectorGetDefinition` (gen d.ts runtime) | file tĩnh `ccp2x.d.ts` | ✅ khác cơ chế, cùng nhu cầu |
 | `listComponentClasses` · `nodeGetAvailableComponentTypes` · `nodeComponentsGet` | `componentQuery classes` / `props` | ✅ |
 | `nodeGetTree` · `nodeGetAtPath` | `nodeQuery tree` / `at_path` · `sceneSnapshot` | ✅ |
 | `nodeOperate` move/copy/delete/apply_prefab | `nodeMove` · `nodeDuplicate` · `nodeRemove` · `prefabSync` | ✅ |
@@ -63,7 +63,7 @@ Tên khác nhau **không** đồng nghĩa thiếu chức năng — v3 gom 10 con
 | `propertyArrayElement` (remove/move phần tử array) | `nodeSetProperty` toàn array (read-modify-write) | ⚠️ không atomic |
 | `assetDbQuery` (databases/busy/mtime/data/db_info/meta/ready) | `assetResolve mount_info` + `assetQuery meta` | ⚠️ Lane C intake: 3x cover 7 IPC ops (missing-asset được bảo vệ qua `isMessageNotExposed`); 2x thiếu busy/mtime/raw data |
 | `materialQuery` (effects/effect/material/serialized/render_pipeline/physics_material) | `assetReadContent` file `.mtl` | ❌ Lane C intake: 3x cover 6 IPC ops (facade + registry 3.7.3); 2.4 không có effect/render-pipeline API |
-| `buildManage` (5 ops) | — | ❌ 2.4 Build panel không expose qua Cocos Pilot |
+| `buildManage` (5 ops) | — | ❌ 2.4 Build panel không expose qua CCP |
 | `editorQuery has_script` | — | ⚠️ Lane C intake: 3x kiểm tra component class có script hay không qua `scene/query-component-has-script`; 2x chưa có message tương đương |
 | `cocos-graph` (offline structural oracle) | — | ❌ v3 có bộ chỉ mục cấu trúc offline T0/T1 (`.cocos-graph/<namespace>/<bundle>/graph.json`, composite handles `{file, nodeUuid}`, writer locking, staleness tracking); 2.4 chưa có |
 

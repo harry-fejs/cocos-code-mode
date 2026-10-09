@@ -6,7 +6,7 @@ const path = require('node:path');
 const { performance } = require('node:perf_hooks');
 const { setTimeout: delay } = require('node:timers/promises');
 const { spawn } = require('node:child_process');
-const { parseArgs, Watchdog, run } = require('../../scripts/cocos-pilot-watchdog');
+const { parseArgs, Watchdog, run } = require('../../scripts/ccp-watchdog');
 const project = path.resolve('watchdog-project');
 
 function healthy(overrides = {}) {
@@ -161,7 +161,7 @@ it('aborting active polling closes the request without another probe or status',
 
 it('CLI once prints one JSONL status and exits without persistent polling', async t => {
   const options = await server(t, (req, res) => res.end(JSON.stringify(healthy())));
-  const child = spawn(process.execPath, [path.resolve('scripts/cocos-pilot-watchdog.js'), '--url', options.url,
+  const child = spawn(process.execPath, [path.resolve('scripts/ccp-watchdog.js'), '--url', options.url,
     '--project', project, '--instance', options.instance, '--once'], { stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(() => { if (child.exitCode === null) child.kill(); });
   let stdout = '', stderr = '';

@@ -166,7 +166,7 @@ it('OMP uses session lifecycle rather than agent idle, and branches close before
   assert.notEqual(app.fake.entries[1].options.session, first);
   assert.deepEqual(app.fake.operations.map(([operation]) => operation), ['open', 'closing', 'close', 'open']);
   assert.equal(app.fake.entries[1].options.project, project);
-  assert.ok(app.ui.some(({ text }) => text === 'Cocos Pilot Active: HTTP_HELPER_HEARTBEAT_ACCEPTED'));
+  assert.ok(app.ui.some(({ text }) => text === 'CCP Active: HTTP_HELPER_HEARTBEAT_ACCEPTED'));
   await app.fire('session_shutdown', ctx);
   await app.fire('session_switch', app.context('late'));
   assert.equal(app.fake.live.size, 0);
@@ -181,13 +181,13 @@ it('OMP honors explicit target and registry, supports headless status, and fails
   assert.equal(app.fake.entries[0].options.project, target);
   assert.equal(app.fake.entries[0].options.registryPath, registry);
   app.fake.entries[0].options.emit({ state: 'Closed', reason: 'HTTP_HELPER_CLOSE_UNCONFIRMED' });
-  assert.equal(app.log.at(-1), 'Cocos Pilot Closed: HTTP_HELPER_CLOSE_UNCONFIRMED');
+  assert.equal(app.log.at(-1), 'CCP Closed: HTTP_HELPER_CLOSE_UNCONFIRMED');
   assert.equal(app.fake.entries[0].options.namespace, 'ccp3x_3000');
-  assert.ok(app.log.includes('Cocos Pilot Active: HTTP_HELPER_HEARTBEAT_ACCEPTED'));
+  assert.ok(app.log.includes('CCP Active: HTTP_HELPER_HEARTBEAT_ACCEPTED'));
   await app.fire('session_shutdown', ctx);
   const invalidApp = ompHarness({ CCP_SESSION_PROJECT: 'relative' });
   await invalidApp.fire('session_start', invalidApp.context('a'));
   assert.equal(invalidApp.fake.entries.length, 0);
-  assert.equal(invalidApp.ui.at(-1).text, 'Cocos Pilot Error: INVALID_PROJECT');
+  assert.equal(invalidApp.ui.at(-1).text, 'CCP Error: INVALID_PROJECT');
   await invalidApp.fire('session_shutdown', invalidApp.context('a'));
 });

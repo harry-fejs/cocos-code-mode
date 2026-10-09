@@ -3,9 +3,11 @@ created: 2026-09-24
 status: pending
 lane: R4
 source_change: api-capability-resume
-scope: documentation-only
+scope: selected-prefab-follow-through-and-tween-static-planning
 portfolio_state_policy: do-not-edit
 creator_baseline: 3.7.3
+owner_decision: "2026-10-08: prefab native override/apply and tween static selected; tilemap deferred; tween runtime pending with R1"
+qualification: pending-clean-creator-live-witnesses
 replacement_rows:
   - prefabVariantCreate
   - tilemapCreate

@@ -103,8 +103,8 @@ function main() {
   }
 
   banner.push(stale
-    ? 'stale signal above: re-check ccp3x.sceneGetInfo().dirty and fall back to nodeGetTree before any write'
-    : 'dirty is unknown offline — call ccp3x.sceneGetInfo() before relying on structure for a write');
+    ? 'stale signal above: re-check the bound ccp3x_<port>.sceneGetInfo().dirty and fall back to nodeGetTree before any write'
+    : 'dirty is unknown offline — call the bound ccp3x_<port>.sceneGetInfo() before relying on structure for a write');
   return { banner, stale };
 }
 

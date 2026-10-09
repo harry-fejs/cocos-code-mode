@@ -1,7 +1,7 @@
 // Instance reference should newer be kept in memory
 // Agent-facing tool surface for Cocos Creator 3.7.x.
-// Manual: cocos-pilot-3x (UTCP, hyphen). JS: cocos_pilot_3x (underscore).
-// Short: ccp3x (compat: ccp-3x / ccp_3x). Recommended: ccp3x.
+// Type-only documentation namespace: ccp3x. Runtime manuals use ccp3x_<port>.
+// Register and call the exact per-port manual; no bare runtime latest alias exists.
 // STATIC hand-written. See source/utcp/tools/*.ts for impl.
 
 type InstanceReference = { id: string; type: string };
@@ -92,7 +92,7 @@ type Gradient = { colorKeys: Array<{ color: Array<number>, time: number }>, alph
  * Cocos Editor Tools — 46 tools (36 standalone + 10 consolidated)
  * Legacy inspector/scene/editor/build + preview/program/project shims removed in 2.0.x — use consolidated entry points.
  */
-declare namespace cocos_pilot_3x {
+declare namespace ccp3x {
     /** Remove or reorder ONE element of an array-valued property by index. Use instead of inspectorSet, which replaces the whole array and loses object references. */
     function propertyArrayElement(args: {
         operation: "remove" | "move",
@@ -332,7 +332,7 @@ declare namespace cocos_pilot_3x {
     /** Rejects with UNSUPPORTED_PREVIEW_IPC on Creator 3.7.3 because preview:set-resolution is not exposed. */
     function previewResolutionSet(args: { width: number, height: number }): { width: number, height: number, persisted: boolean, supported: boolean, readBack?: unknown };
     function editorUndoTransactionProbe(): { supported: boolean, boundaries: string[], clean: boolean };
-    function broadcastObserve(args: { topic: "cocos-pilot-3x:probe" | "scene:change" | "asset-db:change" }): { topic: string, supported: boolean, observed: boolean, lifecycle: string[], event: unknown, eventBytes: number, truncated: boolean, retainedListener: false };
+    function broadcastObserve(args: { topic: "ccp3x:probe" | "scene:change" | "asset-db:change" }): { topic: string, supported: boolean, observed: boolean, lifecycle: string[], event: unknown, eventBytes: number, truncated: boolean, retainedListener: false };
 
     /** Get list of globally available component types. */
     function nodeGetAvailableComponentTypes(args: {
@@ -661,7 +661,7 @@ declare namespace cocos_pilot_3x {
         unavailable: string[]
     };
 
-    /** Nonmodal Agent Inbox question by default, without opening/focusing the panel. User opens Cocos Pilot 3x > Agent Inbox. Native dialogs require explicit presentation:"native"; openPanel:true permits panel activation. Default buttons OK/Cancel, cancelId last button. Deadline 1-300000ms, default 60000. Native timeout does not dismiss the native window. */
+    /** Nonmodal Agent Inbox question by default, without opening/focusing the panel. User opens CCP 3x > Agent Inbox. Native dialogs require explicit presentation:"native"; openPanel:true permits panel activation. Default buttons OK/Cancel, cancelId last button. Deadline 1-300000ms, default 60000. Native timeout does not dismiss the native window. */
     function editorAsk(args: {
         title: string,
         message: string,
@@ -988,7 +988,7 @@ declare namespace cocos_pilot_3x {
         }>
     };
 
-    /** Candidate: validate 1-256 unique localization keys (each at most 256 characters) in the current Creator language through the fixed cocos-pilot-3x package scene seam. Unsupported localization packages return supported=false; this call never changes language or restarts Creator. */
+    /** Candidate: validate 1-256 unique localization keys (each at most 256 characters) in the current Creator language through the fixed ccp3x package scene seam. Unsupported localization packages return supported=false; this call never changes language or restarts Creator. */
     function localizationValidate(args: { keys: string[] }): {
         supported: true,
         language: string | null,
@@ -1006,7 +1006,7 @@ declare namespace cocos_pilot_3x {
     function buildTemplate(args: { operation: 'list' | 'create'; platform?: 'web-mobile' | 'web-desktop' | 'android' | 'ios' | 'windows' | 'mac'; mode?: 'debug' | 'release'; name?: string; scenes?: Array<{ uuid: string; url: string }>; startScene?: string; packageName?: string; orientation?: 'auto' | 'portrait' | 'landscape'; buildPath?: string; remoteServerAddress?: string }): { options?: Record<string, unknown>; platforms?: string[]; modes?: string[]; writes: false; readiness?: string; requirements?: string[] };
     /** Creator builder preferences only; does not mutate existing task options or trigger builds. */
     function buildSettingsManage(args: { operation: 'get' | 'set'; key?: string; value?: string | boolean; scope?: 'local' | 'global' }): Promise<{ scope: string; settings?: Record<string, unknown>; success?: boolean; affectsExistingTasks: false }>;
-    /** Persistent cocos-pilot-owned project profiles, not native Creator presets. Credentials forbidden; options validated and writes read back. */
+    /** Persistent ccp-owned project profiles, not native Creator presets. Credentials forbidden; options validated and writes read back. */
     function buildProfileManage(args: { operation: 'list' | 'get' | 'save' | 'delete'; name?: string; options?: Record<string, unknown> }): Promise<{ profiles?: Array<{ name: string; platform: string }>; total?: number; name?: string; options?: Record<string, unknown>; success?: boolean }>;
     /** Candidate: pure, read-only audit of bounded public Creator build options for six explicit targets. Reports normalized platform, supported/unsupported/unknown options, errors and warnings; it never dispatches a build or claims an artifact. Candidate remains unqualified. */
     function buildPresetAudit(args: {
@@ -1114,7 +1114,3 @@ declare namespace cocos_pilot_3x {
         assetUuid?: string; limit?: number; cursor?: number;
     }): any;
 }
-
-// Aliases: ccp3x is recommended short (no hyphen/underscore). ccp_3x / ccp-3x kept for compat.
-import ccp3x = cocos_pilot_3x;
-import ccp_3x = cocos_pilot_3x;

@@ -144,10 +144,10 @@ describe('editorNotify', () => {
     let opened = 0;
     api.Panel.open = async name => { opened += 1; assert.match(name, /\.prompt$/); return true; };
     const tool = new EditorTools();
-    const quiet = await tool.editorNotify({ level: 'error', title: 'Cocos Pilot command failed', message: 'Code execution failed.' });
+    const quiet = await tool.editorNotify({ level: 'error', title: 'CCP command failed', message: 'Code execution failed.' });
     assert.equal(quiet.level, 'error');
     assert.equal(opened, 0);
-    const visible = await tool.editorNotify({ level: 'error', title: 'Cocos Pilot command failed', message: 'Code execution failed.', openPanel: true });
+    const visible = await tool.editorNotify({ level: 'error', title: 'CCP command failed', message: 'Code execution failed.', openPanel: true });
     assert.equal(visible.level, 'error');
     assert.equal(opened, 1);
   });

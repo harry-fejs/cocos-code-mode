@@ -13,7 +13,7 @@ const item = (id, x, y, width, height, anchorX = 0.5, anchorY = 0.5) => ({
   worldRect: { x: x - width * anchorX, y: y - height * anchorY, width, height },
 });
 
-describe('ALX-inspired Cocos Pilot capabilities', () => {
+describe('ALX-inspired CCP capabilities', () => {
   it('aligns sibling UI rectangles by a shared edge while preserving other axes and Z', () => {
     const updates = calculateLayoutAlignment([
       item('wide', 20, 10, 20, 10),

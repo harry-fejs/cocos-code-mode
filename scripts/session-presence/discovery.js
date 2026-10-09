@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
-const { requestHandshake } = require('../cocos-pilot-watchdog');
+const { requestHandshake } = require('../ccp-watchdog');
 const { parseArgs } = require('./heartbeat');
 const PER_PORT_NAMESPACE = /^ccp3x_([1-9]\d{0,4})$/;
 const INSTANCE_ID = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$/;
@@ -37,13 +37,13 @@ function readEndpoints(registryPath, namespace) {
       if (count > 1048576) throw new Error('oversized');
       registry = JSON.parse(data.subarray(0, count).toString('utf8'));
     } finally { fs.closeSync(fd); }
-  } catch { throw new SessionLifecycleError('REGISTRY_UNAVAILABLE', 'Cannot read bounded Cocos Pilot registry.'); }
+  } catch { throw new SessionLifecycleError('REGISTRY_UNAVAILABLE', 'Cannot read bounded CCP registry.'); }
   if (!Array.isArray(registry?.manual_call_templates)) throw new SessionLifecycleError('REGISTRY_UNAVAILABLE', 'Invalid registry.');
   const byNamespace = new Map();
   for (const template of registry.manual_call_templates) {
     if (typeof template?.name !== 'string' || !PER_PORT_NAMESPACE.test(template.name) || (namespace && template.name !== namespace)) continue;
     const endpoint = parseEndpoint(template);
-    if (!endpoint) throw new SessionLifecycleError('BINDING_INVALID', 'Invalid Cocos Pilot namespace endpoint.');
+    if (!endpoint) throw new SessionLifecycleError('BINDING_INVALID', 'Invalid CCP namespace endpoint.');
     const owner = registry.variables?.[`CCP3X_OWNER_${Number(new URL(endpoint.url).port || 80)}`];
     if (owner !== undefined && (typeof owner !== 'string' || !INSTANCE_ID.test(owner))) throw new SessionLifecycleError('BINDING_INVALID', 'Invalid registry owner.');
     endpoint.owner = owner;
@@ -53,7 +53,7 @@ function readEndpoints(registryPath, namespace) {
   }
   const endpoints = [...byNamespace.values()];
   if (endpoints.length > 16) throw new SessionLifecycleError('BINDING_AMBIGUOUS', 'Too many endpoints; select an explicit namespace.');
-  if (!endpoints.length) throw new SessionLifecycleError('BINDING_UNAVAILABLE', 'No valid per-port Cocos Pilot endpoint.');
+  if (!endpoints.length) throw new SessionLifecycleError('BINDING_UNAVAILABLE', 'No valid per-port CCP endpoint.');
   return endpoints;
 }
 function validateBinding(binding, project) {

@@ -461,7 +461,7 @@ export class UiTools {
             if (typeof value === 'boolean') dirtyBefore = value;
         } catch (error) { console.warn('[cx3][ui] uiLayoutReport: failed to read dirty-before state', error); }
 
-        const raw = await Editor.Message.request('scene', 'execute-scene-script', { name: 'cocos-pilot-3x', method: 'uiLayoutReport', args: [args] }) as unknown;
+        const raw = await Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'uiLayoutReport', args: [args] }) as unknown;
         let dirtyAfter: boolean | undefined;
         try {
             const value = await Editor.Message.request('scene', 'query-dirty');
@@ -587,7 +587,7 @@ export class UiTools {
     )
     async uiAccessibilityAudit(args: UiAccessibilityAuditRequest): Promise<UiAccessibilityAuditResult> {
         return await Editor.Message.request('scene', 'execute-scene-script', {
-            name: 'cocos-pilot-3x',
+            name: 'ccp3x',
             method: 'uiAccessibilityAudit',
             args: [args],
         }) as UiAccessibilityAuditResult;
@@ -660,7 +660,7 @@ export class UiTools {
     )
     async uiSafeAreaInspect(args: UiSafeAreaInspectRequest): Promise<UiSafeAreaInspectResult> {
         return await Editor.Message.request('scene', 'execute-scene-script', {
-            name: 'cocos-pilot-3x', method: 'uiSafeAreaInspect', args: [args],
+            name: 'ccp3x', method: 'uiSafeAreaInspect', args: [args],
         }) as UiSafeAreaInspectResult;
     }
 
@@ -999,7 +999,7 @@ export class UiTools {
     async uiLayoutValidate(args: ({ reference?: IInstanceReference } & UiLayoutValidateRequest)): Promise<UiLayoutValidateResult | { valid: boolean, issues: string[], checkedNodes: number }> {
         if (isCandidateRequest(args)) {
             return await Editor.Message.request('scene', 'execute-scene-script', {
-                name: 'cocos-pilot-3x', method: 'uiLayoutValidate', args: [args],
+                name: 'ccp3x', method: 'uiLayoutValidate', args: [args],
             }) as UiLayoutValidateResult;
         }
         const legacyArgs = args as { reference?: IInstanceReference; maxNodes?: number };
@@ -1231,7 +1231,7 @@ export class UiTools {
         let geometry: unknown;
         try {
             geometry = await Editor.Message.request('scene', 'execute-scene-script', {
-                name: 'cocos-pilot-3x', method: 'uiLayoutInspectGeometry', args: [{ nodeIds: nodes.map((node) => node.reference.id) }],
+                name: 'ccp3x', method: 'uiLayoutInspectGeometry', args: [{ nodeIds: nodes.map((node) => node.reference.id) }],
             });
         } catch (error: unknown) {
             throw new ToolError({ code: 'UI_LAYOUT_QUERY_FAILED', status: 502, message: 'Could not read live UI geometry.', details: { cause: error instanceof Error ? error.message : String(error) } });

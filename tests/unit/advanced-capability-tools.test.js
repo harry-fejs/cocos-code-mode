@@ -462,7 +462,7 @@ describe('advanced capability tools', () => {
     }
   });
 
-  it('returns bounded Cocos Pilot listener inspection without inventing arbitrary listeners', async () => {
+  it('returns bounded CCP listener inspection without inventing arbitrary listeners', async () => {
     const result = await new AdvancedCapabilityTools().editorListenersInspect();
     assert.equal(result.supported, true);
     assert.deepEqual(result.listeners, []);

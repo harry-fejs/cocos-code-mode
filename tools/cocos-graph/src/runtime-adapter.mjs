@@ -12,7 +12,7 @@ export function resolveProjectCache(projectPath) {
     throw new Error('cocos-graph: project root must be an absolute path from the active Creator project');
   }
   const project = realpathSync(projectPath);
-  const outDir = resolve(project, '.cocos-graph', 'cocos-pilot');
+  const outDir = resolve(project, '.cocos-graph', 'ccp');
   mkdirSync(outDir, { recursive: true });
   const realOutDir = realpathSync(outDir);
   const rel = relative(project, realOutDir);

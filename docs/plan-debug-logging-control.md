@@ -35,7 +35,7 @@ Add a Configuration panel switch for per-project verbose interaction logging. De
 - `static/style/configuration/index.css` if needed
 - unit tests for server/main/panel contracts
 - live Creator smoke test
-- `docs/cocos-pilot-code-mode-usage.md`
+- `docs/ccp-code-mode-usage.md`
 
 ## Verification
 

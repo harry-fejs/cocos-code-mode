@@ -2,10 +2,10 @@
 const { SessionLifecycleHost } = require('./host');
 
 /** Optional OMP adapter; CommonJS default interop needs no OMP package dependency. */
-module.exports = function ccbSession(pi, { env = process.env, supervisorFactory } = {}) {
+module.exports = function ccpSession(pi, { env = process.env, supervisorFactory } = {}) {
   let context;
   const display = status => {
-    const text = `Cocos Pilot ${status.state}: ${status.reason}`;
+    const text = `CCP ${status.state}: ${status.reason}`;
     try {
       if (context?.hasUI && typeof context.ui?.setStatus === 'function') {
         context.ui.setStatus('ccp-session', text);
