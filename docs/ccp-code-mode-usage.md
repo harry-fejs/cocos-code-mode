@@ -83,6 +83,25 @@ return {
 
 Keep returned `reference` handles for the next mutation (valid only for current `bd.iid`). Prefer `sceneBatchGet`, `assetBatchQuery`, and `nodeBatchSet` for independent operations. Use `executeJavascript` only when no dedicated `ccpt` tool represents the required editor action.
 
+### Versioned engine discovery and bounded authoring
+
+`editorQuery({category:'component_schema',className:'cc.Widget',maxEntries:20,maxBytes:32768})` reads shipped metadata without creating a component. `inspectorGetDefinition({target:'class',className:'cc.Camera'})` provides the same version-bound class discovery. Default catalog version is3.7.3; `targetVersion:'3.8.8'` is comparison metadata only, never permission to invoke newer APIs on3.7.3.
+
+Follow `nextCursor` only when more records are needed; preserve the same version/class/filter. Cursors are catalog-bound. `qualified:false`, `runtimeVerified:false`, and `live.mutationAuthorized:false` are intentional: declaration presence and live class availability do not prove mutation/history/persistence. Supplying a component `reference` refreshes Inspector path evidence on every request instead of retaining stale script mappings.
+
+`listComponentMethods({reference:nodeReference})` returns attached component UUIDs, not class names as handles. `methods` is discovery; only `permittedMethods` is accepted by the existing finite `callComponentMethod` policy. Do not invoke lifecycle callbacks merely to prove discovery works.
+
+Selected authoring contracts:
+- `uiLayoutApply({operation:'reflow',reference,maxNodes:32,maxDepth:4,maxBytes:32768})` runs finite native Layout/Widget work in the edit scene. Full scope is checked before writes. Read `success`, `complete`, `changedNodeIds`, preservation and history; `sceneSaved:false` and `undoRedoVerified:false` remain separate from successful geometry readback. It is not a Game View responsive-render test.
+- `prefabApplyOverrides({operation:'removed_component_apply',reference,fileID,expectedSourceSha256})` and `prefabRevertOverrides({operation:'removed_component_revert',reference,fileID})` use an authoritative removed-component prefab identity. Do not pass a deleted component UUID as fileID or reinterpret arbitrary `paths` as selective restore. Refresh instance/source inspection before mutation.
+- Animation mask/variant settings use existing `assetImportSettingsGet/Set`. Mask `joints` changes selected existing `{path,enabled}` entries; variant `clipOverrides` changes selected existing `{original,replacement}` entries. Neither is arbitrary collection replacement.
+- Explicit native cached lifecycle uses `assetOperate` operations `stage_import_setting` (path/value), `apply_import_settings`, `restore_import_settings`. Staging does not persist source; apply/restore requires the adapter's bounded retained state. A no-op settings readback is not persistence proof. Inspect source/import output evidence separately.
+- `materialEdit` reports normalized requested-value equality and unaffected-pass checks. `persistence` retains unknown/unverified dimensions until reimport/reopen witnesses exist.
+- `animationGraphInspect` exposes native serialized layers/state machines/states/variables/conditions. `animationGraphValidate.valid` stays false because playable semantic/runtime verification is absent. `animationGraphEdit` refuses synthetic `nodes/transitions` mutations instead of saving JSON that Creator may not interpret.
+
+Never replay a mutation after timeout or an unknown outcome without independent inspection. Historical passing units, registered schemas and source catalogs are not installed workflow qualification.
+
+
 ### Surface Code Mode failures in Creator
 
 `ccp/call_tool_chain` is an MCP adapter call. The MCP envelope may report `success:true` even when the code sandbox reports `[ERROR] Code execution failed` in `logs`; that means the requested Cocos operation failed.

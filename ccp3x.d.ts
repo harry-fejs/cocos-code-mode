@@ -44,6 +44,23 @@ interface AssetImportSettingsResult {
 interface EngineApiDiscoveryArgs { className?: string; targetVersion?: '3.7.3' | '3.8.8'; domain?: string; filter?: string; reference?: InstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string }
 interface EngineApiDiscoveryResult { version: string; catalogHash: string; records: Array<Record<string, unknown>>; total: number; count: number; truncated: boolean; nextCursor: string | null; live: Record<string, unknown>; runtimeVerified: false; qualified: false }
 interface ImportOutputEvidence { kind: 'source' | 'library'; extension: string; path: string; status: 'verified' | 'missing' | 'unreadable' | 'too_large' | 'changed' | 'empty'; bytes: number | null; sha256: string | null }
+interface UiReflowEvidence {
+    success: boolean; operation: 'reflow'; sceneSaved: false; complete: boolean;
+    reference: InstanceReference; checkedNodes: number; changedNodeIds: string[];
+    restoration: 'not-needed' | 'confirmed' | 'partial' | 'unknown';
+    history: { status: 'not-requested' | 'snapshot-requested' | 'unknown'; undoRedoVerified: false };
+    preservation: 'confirmed' | 'unknown'; before?: Record<string, unknown>[]; after?: Record<string, unknown>[];
+    order?: Array<{ nodeId: string; componentType: 'cc.Layout' | 'cc.Widget' }>;
+    error?: { code: string; message: string; mutationStarted: boolean };
+}
+interface NativeGraphInspection {
+    reference: InstanceReference; format: 'native-creator-3.7' | 'legacy-synthetic' | 'unsupported';
+    nativeShape: boolean; structuralValid: boolean; semanticsVerified: false; runtimeVerified: false;
+    layers: Record<string, unknown>[]; stateMachines: Record<string, unknown>[]; states: Record<string, unknown>[];
+    transitions: Record<string, unknown>[]; variables: Record<string, unknown>[]; conditions: Record<string, unknown>[];
+    layerCount: number; stateMachineCount: number; stateCount: number; transitionCount: number; variableCount: number; conditionCount: number;
+    issues: Array<{ code: string; path: string }>; truncated: boolean; limits: Record<string, number>; verificationScope: string;
+}
 interface IAssetTree {
     filesystemPath?: string;
     reference: InstanceReference;
@@ -70,6 +87,10 @@ interface IExposedAttributes { type?: string, visible?: boolean, multiline?: boo
 declare function property(options: IExposedAttributes): any
 
 // Cocos types
+type Vector2 = { x: number; y: number };
+type Vector3 = { x: number; y: number; z: number };
+type Vector4 = { x: number; y: number; z: number; w: number };
+type Quaternion = { x: number; y: number; z: number; w: number };
 type Vec2 = Vector2;
 type Vec3 = Vector3;
 type Vec4 = Vector4;
@@ -268,13 +289,15 @@ declare namespace ccp3x {
 
     /** Perform operations on assets (move, copy, delete, open, refresh, reimport, save_meta). */
     function assetOperate(args: {
-        operation: "move" | "copy" | "delete" | "open" | "refresh" | "reimport" | "save_meta",
+        operation: "move" | "copy" | "delete" | "open" | "refresh" | "reimport" | "save_meta" | 'stage_import_setting' | 'apply_import_settings' | 'restore_import_settings',
         reference: InstanceReference,
         targetAssetPath?: string,
         /** save_meta only: meta object (or JSON string) read via assetDbQuery "meta", then mutated. */
         meta?: any,
+        path?: string,
+        value?: AssetImportSettingValue,
         options?: { overwrite?: boolean, rename?: boolean }
-    }): { reference: InstanceReference };
+    }): { reference: InstanceReference; lifecycle?: { cachedChanged?: true; sourcePersisted?: boolean; sourceSha256?: string; restored?: true; sourceBytesRestored?: true } };
 
     /** Import a bounded batch and return an outcome for every item. */
     function assetBatchImport(args: {
@@ -1102,6 +1125,14 @@ declare namespace ccp3x {
     /** Consolidated: TS definition (instance or settings). */
     function inspectorGetDefinition(args: EngineApiDiscoveryArgs & { target: 'class'; className: string }): EngineApiDiscoveryResult;
     function inspectorGetDefinition(args: { target: 'instance' | 'CommonTypes' | 'CurrentSceneGlobals' | 'ProjectSettings'; reference?: InstanceReference; section?: string }): { definition: string; sections: string[]; totalSections: number };
+    /** Reflow is edit-scene native Layout/Widget authoring, not Game View simulation; success does not imply save or verified undo. */
+    function uiLayoutApply(args: { operation: 'reflow'; reference: InstanceReference; maxNodes?: number; maxDepth?: number; maxBytes?: number }): UiReflowEvidence;
+    function uiLayoutApply(args: { operation?: 'apply'; reference: InstanceReference; position?: { x?: number; y?: number; z?: number }; size?: { width: number; height: number }; anchor?: { x: number; y: number }; active?: boolean }): { success: true; layout: Record<string, unknown> | null };
+    function materialEdit(args: { reference: InstanceReference; path: string; value: unknown }): { reference: InstanceReference; path: string; changed: boolean; before: unknown; after: unknown; requestedValue: unknown; readBackValue: unknown; passIndices: number[]; verification: { requestedValueMatched: boolean; unaffectedPassesUnchanged: boolean; unaffectedPassesApplicable: boolean }; persistence: { nativeApplyInvoked: boolean; sourceSaved: null; importCompleted: null; generatedOutputVerified: null; reimportVerified: false; reopenVerified: false } };
+    function animationGraphInspect(args: { reference: InstanceReference }): NativeGraphInspection;
+    function animationGraphValidate(args: { reference: InstanceReference }): NativeGraphInspection & { valid: false };
+    /** Refuses synthetic node/transition edits; no verified native graph serializer is implemented. */
+    function animationGraphEdit(args: { reference: InstanceReference; operations: Array<{ operation: 'add_node' | 'remove_node' | 'update_node' | 'add_transition' | 'remove_transition'; node?: unknown; nodeId?: string; transition?: unknown; transitionId?: string }> }): never;
     /** Consolidated: add/remove component on node. */
     function nodeComponentManage(args: { operation: "add" | "remove", reference: InstanceReference, componentType?: string }): { reference?: InstanceReference, success?: boolean };
     /** Consolidated: query editor state or vocabularies. Use instead of removed editorIntrospect/editorListTypes. Plus: shared_settings (= programming builtins) and sorted_plugins (typed after 3.7 — may report not-supported on 3.7.3). */
