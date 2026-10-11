@@ -1,0 +1,11 @@
+{
+  "date":"2026-10-12",
+  "creator":"3.8.8",
+  "project":"G:/_ws/_helpers/cc-minimal-388",
+  "build":"2dd117b-dirty",
+  "implementedAndVerified":{"projectSetConfig":"general.designResolution write/readback/restore; physics.gravity write/readback/restore","engineClassProbe":{"cc.Terrain":"function","cc.ParticleSystem":"function","cc.LightProbeInfo":"function","cc.SceneGlobals":"function"}},
+  "nativeBoundaries":{"terrainEdit":"not live-qualified; no fixture/write route evidence","particleConfigure":"not live-qualified; component write semantics separate from class availability","lightBakeManage":"not probed/qualified; no bake job contract claimed"},
+  "localizationBundle":{"blocked":"missing localization-editor/l10n resource and zero bundle assets"},
+  "release":"no signing/publish/portfolio promotion; protected track excluded",
+  "restoration":{"designResolutionRestored":true,"physicsGravityRestored":true}
+}

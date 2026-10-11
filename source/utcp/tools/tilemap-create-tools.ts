@@ -63,7 +63,7 @@ function projectPath(): string {
 }
 function normalizeAssetUrl(input: unknown): string {
     const value = text(input, 'assetPath', MAX_PATH).replace(/\\/g, '/');
-    if (!/^db:\/\/assets\/[A-Za-z0-9._/-]+\.tmx$/i.test(value) || value.includes('..') || value.includes('//')) fail('INVALID_ARGUMENT', 'assetPath must be a new db://assets/*.tmx path without traversal.');
+    if (!/^db:\/\/assets\/[A-Za-z0-9._/-]+\.tmx$/i.test(value)) fail('INVALID_ARGUMENT', 'assetPath must be a new db://assets/*.tmx path without traversal.');
     const segments = value.slice('db://assets/'.length).split('/');
     if (segments.some((segment) => !segment || segment === '.' || segment === '..' || !/^[A-Za-z0-9._-]+$/.test(segment))) fail('INVALID_ARGUMENT', 'assetPath contains an invalid path segment.');
     return value;
