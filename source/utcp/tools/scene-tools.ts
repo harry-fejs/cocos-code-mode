@@ -1225,30 +1225,25 @@ export class SceneTools {
             throw new Error(`listComponentMethods: query-component-function-of-node returned no payload for ${args.reference.id}`);
         }
 
-        // Result is untyped (facade returns `any`). Observed shape is a record keyed by
-        // component uuid whose value lists the method names, but tolerate an array of
-        // {uuid, functions} entries and plain string lists too.
-        const toMethods = (value: any): string[] => {
-            const source = Array.isArray(value)
-                ? value
-                : (value?.functions || value?.methods || (value && typeof value === 'object' ? Object.keys(value) : []));
-            return (Array.isArray(source) ? source : [])
-                .map((item: any) => typeof item === 'string' ? item : (item?.name || item?.functionName))
-                .filter((name: any): name is string => typeof name === 'string' && !!name);
+        const objectField = (value: unknown, key: string): unknown => value && typeof value === 'object' && !Array.isArray(value) ? Reflect.get(value, key) : undefined;
+        const toMethods = (value: unknown): string[] => {
+            const source = Array.isArray(value) ? value : objectField(value, 'functions') ?? objectField(value, 'methods');
+            if (!Array.isArray(source)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Creator returned an invalid component method collection.' });
+            return source.map(item => typeof item === 'string' ? item : objectField(item, 'name') ?? objectField(item, 'functionName')).filter((name): name is string => typeof name === 'string' && name.length > 0);
         };
-
-        const components: Array<{ reference: IInstanceReference, methods: string[] }> = [];
-        if (Array.isArray(raw)) {
-            for (const entry of raw) {
-                const id = typeof entry === 'object' ? (entry?.uuid || entry?.id) : undefined;
-                if (id) {
-                    components.push({ reference: { id, type: entry?.type || entry?.cid }, methods: toMethods(entry) });
-                }
-            }
-        } else if (typeof raw === 'object') {
-            for (const [id, value] of Object.entries(raw)) {
-                components.push({ reference: { id }, methods: toMethods(value) });
-            }
+        const dumps: unknown = objectField(queriedNode, '__comps__');
+        if (!Array.isArray(dumps)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Node dump omitted authoritative component identities.' });
+        const identities = dumps.map(dump => ({ id: componentUuid(dump), type: typeof objectField(dump, 'type') === 'string' ? String(objectField(dump, 'type')) : componentClassId(dump), classId: componentClassId(dump) }));
+        if (identities.some(identity => !identity.id || !identity.type)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Component identity/type is incomplete.' });
+        const entries: Array<{ selector: string; value: unknown }> = Array.isArray(raw)
+            ? raw.map(entry => ({ selector: String(objectField(entry, 'uuid') ?? objectField(entry, 'id') ?? objectField(entry, 'type') ?? ''), value: entry }))
+            : raw && typeof raw === 'object' ? Object.entries(raw).map(([selector, value]) => ({ selector, value })) : [];
+        const components: Array<{ reference: IInstanceReference; methods: string[] }> = [];
+        for (const entry of entries) {
+            const matched = identities.filter(identity => identity.id === entry.selector || identity.type === entry.selector || identity.classId === entry.selector);
+            if (!matched.length) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Discovered method class does not map to an attached component.' });
+            const methods = toMethods(entry.value);
+            for (const identity of matched) components.push({ reference: { id: identity.id!, type: identity.type! }, methods });
         }
 
         return { components: components.map(component => ({ ...component, permittedMethods: component.methods.filter(name => Object.prototype.hasOwnProperty.call(ALLOWED_COMPONENT_METHODS, name)), deniedMethods: component.methods.filter(name => !Object.prototype.hasOwnProperty.call(ALLOWED_COMPONENT_METHODS, name)), permissionReason: 'Only the existing finite invocation allowlist is permitted; discovered names do not grant execution rights.' })) };
