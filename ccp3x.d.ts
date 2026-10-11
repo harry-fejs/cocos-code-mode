@@ -316,8 +316,8 @@ declare namespace ccp3x {
     function prefabReferenceAudit(args: { reference: InstanceReference, maxReferences?: number }): { valid: boolean, nestedPrefabs: unknown[], missingReferences: unknown[], source: unknown };
     function sceneReferenceValidate(args: { reference: InstanceReference, maxReferences?: number }): { valid: boolean, references: string[], missingReferences: string[], source: unknown };
     function prefabInstantiate(args: { reference: InstanceReference, parentReference?: InstanceReference, name?: string }): { reference: InstanceReference, source: { id: string, url: string }, persisted: boolean, readBack?: unknown };
-    function prefabApplyOverrides(args: { reference: InstanceReference, expectedSourceSha256?: string }): { reference: InstanceReference, operation: "apply", persisted: boolean, readBack: unknown, sourceReadBack: { id: string, url: string, beforeSha256: string, afterSha256: string }, sourceChanges: Array<{ path: string; before: unknown; after: unknown }>, sourceDiffTruncated: boolean, sceneSaved: false };
-    function prefabInstanceInspect(args: { reference: InstanceReference; maxOverrides?: number }): { reference: InstanceReference; isPrefabInstance: boolean; prefabReference: InstanceReference | null; overrides: unknown[]; totalOverrides: number; truncated: boolean; source: { id: string; url: string; sha256: string } | null; readBack: unknown };
+    function prefabApplyOverrides(args: { reference: InstanceReference, expectedSourceSha256?: string, maxBytes?: number }): { reference: InstanceReference, operation: "apply", persisted: boolean, readBack: unknown, sourceReadBack: { id: string, url: string, beforeSha256: string, afterSha256: string }, sourceChanges: Array<{ path: string; before: unknown; after: unknown }>, sourceDiffTruncated: boolean, responseTruncated: boolean, readBackTruncated: boolean, sceneSaved: false };
+    function prefabInstanceInspect(args: { reference: InstanceReference; maxOverrides?: number; maxBytes?: number }): { reference: InstanceReference; isPrefabInstance: boolean; prefabReference: InstanceReference | null; overrides: unknown[]; mountedChildren: unknown[]; mountedComponents: unknown[]; removedComponents: unknown[]; overrideCounts: Record<'propertyOverrides' | 'mountedChildren' | 'mountedComponents' | 'removedComponents', number>; totalOverrides: number; truncated: boolean; responseTruncated: boolean; readBackTruncated: boolean; source: { id: string; url: string; sha256: string } | null; readBack: unknown };
     /** Creator 3.7.3 supports full restore only; non-empty paths rejects with UNSUPPORTED_SELECTIVE_REVERT. */
     function prefabRevertOverrides(args: { reference: InstanceReference, paths?: string[] }): { reference: InstanceReference, operation: "revert", persisted: boolean, readBack: unknown, sourceReadBack: { id: string, url: string, beforeSha256: string, afterSha256: string } };
     function prefabInfo(args: { reference?: InstanceReference, assetPath?: string }): { reference: InstanceReference, url: string, uuid: string, rootNode: unknown, totalEntries: number, components: string[], references: string[] };
@@ -1104,6 +1104,27 @@ declare namespace ccp3x {
     function projectManage(args: { operation: "get" | "set", type?: string, key?: string, path?: string, value?: any }): any;
     /** Consolidated: build panel/tasks/trigger/control. */
     function buildManage(args: { operation: "panel_open" | "tasks_info" | "get_task" | "trigger" | "control", panel?: string, taskId?: string | number, options?: Record<string, unknown>, control?: "break" | "remove" | "recompile" }): unknown;
+    /** Authoritative scene/target/bundle checks only; not toolchain or signing readiness. */
+    function buildPreflight(args: { options: Record<string, unknown> }): { valid: boolean; complete: boolean; targetAvailable: boolean; sceneCount: number; issues: Array<{ code: string; path: string }>; writes: false; toolchainVerified: false; signingVerified: false };
+    /** Registered SDK/NDK/Java configuration, paths redacted; never writes. */
+    function buildEnvironmentInspect(args?: {}): { programs: Record<string, { available: boolean; configured: boolean; pathRedacted: true }>; writes: false; toolchainVerified: false; signingVerified: false; javaInspection: string };
+    /** Guarded terminal-task update; native update-task is in-memory, not persistent preset storage. */
+    function buildTaskConfigManage(args: { operation: 'get' | 'set'; taskId: string | number; options?: Record<string, unknown>; expectedOptionsSha256?: string }): { taskId: string; options: Record<string, unknown>; optionsSha256: string; writes: boolean; persisted: false };
+    interface TweenSequenceDescriptor {
+        version: 1; id: string; target: { id: string; type: 'cc.Node' };
+        steps: Array<{ kind: 'delay'; duration: number } | { kind: 'to' | 'by'; duration: number; easing: 'linear' | 'quadIn' | 'quadOut' | 'quadInOut' | 'cubicIn' | 'cubicOut' | 'cubicInOut' | 'sineIn' | 'sineOut' | 'sineInOut'; properties: Partial<Record<'position' | 'scale' | 'eulerAngles', Vector3>> }>;
+        lifecycle: { start: 'manual' | 'on-enable'; stop: 'on-disable' | 'on-destroy'; repeat: number };
+    }
+    interface TweenSequenceInspection {
+        representation: 'project-code'; nativeAsset: false; inspectable: boolean;
+        sequence?: TweenSequenceDescriptor; durationSeconds?: number;
+        diagnostics: Array<{ code: string; path: string; message: string }>;
+        source: Record<string, unknown>; targetBinding: string;
+        runtime: { status: 'not-requested' | 'unavailable'; code?: string; message: string };
+    }
+    function tweenSequenceCreate(args: { filePath: string; sequence: TweenSequenceDescriptor; write: true }): TweenSequenceInspection & { created: boolean; bytesWritten: number };
+    function tweenSequenceInspect(args: { filePath: string; sequence?: never } | { sequence: TweenSequenceDescriptor; filePath?: never }): TweenSequenceInspection;
+    function tweenSequenceValidate(args: ({ filePath: string; sequence?: never } | { sequence: TweenSequenceDescriptor; filePath?: never }) & { runtime?: boolean }): TweenSequenceInspection & { valid: boolean; static: { valid: boolean; diagnostics: Array<{ code: string; path: string; message: string }>; targetChecked: boolean; generatedCode: 'canonical' | 'unsupported'; compilation: 'not-run' } };
     /** T0/T1 graph lookup. Verify a bare UUID through live tools before mutation; never mutate through a composite graph handle. */
     function graphManage(args: {
         operation: 'status' | 'build' | 'query' | 'resolve' | 'navigate' | 'refs' | 'validate';

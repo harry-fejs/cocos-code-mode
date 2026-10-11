@@ -46,6 +46,7 @@ import './tools/portfolio-validation-tools';
 import './tools/p4-contract-tools';
 import './tools/artifact-server-tools';
 import './tools/graph-tools';
+import './tools/tween-sequence-tools';
 import { registerAllImporters } from './utils/asset-importers';
 import { slimOutputsSchema } from './utils/schema-slimmer';
 import { trimResponse } from './utils/response-trimmer';

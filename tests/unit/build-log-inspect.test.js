@@ -114,7 +114,7 @@ describe('buildLogInspect', () => {
 
   it('rejects mandatory identity or state exhaustion rather than slicing required fields', async () => {
     const calls = [];
-    for (const oversized of [{ id: '雪"\\'.repeat(1000) }, { state: 'building'.repeat(1000) }]) {
+    for (const oversized of [{ id: '雪"\\'.repeat(80) }, { state: 'building'.repeat(1000) }]) {
       const task = { id: 'task-large', progress: 0.5, state: 'building', ...oversized };
       global.Editor = { Message: { request: async (...args) => { calls.push(args); return task; } } };
       await assert.rejects(

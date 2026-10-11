@@ -54,3 +54,23 @@ it('does not declare a truncated reference check valid when the omitted referenc
   assert.equal(full.complete, true);
   assert.deepEqual(full.missingReferences, [{ id: second }]);
 });
+it('counts mounted and removed overrides and bounds oversized read-back and override values', async () => {
+  fixture();
+  const original = Editor.Message.request;
+  Editor.Message.request = async (service, message, ...args) => {
+    // Creator wraps each override array, not only the prefab instance object.
+    if (message === 'query-node') return { uuid: 'instance', name: { value: 'Root' }, huge: '雪'.repeat(20000), __prefab__: { uuid: 'prefab', instance: { value: { propertyOverrides: { value: [{ value: '雪'.repeat(10000) }], type: 'cc.PropertyOverrideInfo' }, mountedChildren: { value: [{ nodes: ['child'] }], type: 'cc.MountedChildrenInfo' }, mountedComponents: { value: [{ components: ['component'] }], type: 'cc.MountedComponentsInfo' }, removedComponents: { value: [{ localID: ['removed'] }], type: 'cc.TargetInfo' } }, type: 'cc.PrefabInstance' } } };
+    return original(service, message, ...args);
+  };
+  const tools = new AdvancedCapabilityTools();
+  const result = await tools.prefabInstanceInspect({ reference: { id: 'instance' }, maxBytes: 2048 });
+  assert.deepEqual(result.overrideCounts, { propertyOverrides: 1, mountedChildren: 1, mountedComponents: 1, removedComponents: 1 });
+  assert.equal(result.totalOverrides, 4);
+  assert.equal(result.responseTruncated, true);
+  assert.equal(result.readBackTruncated, true);
+  assert.ok(Buffer.byteLength(JSON.stringify(result), 'utf8') <= 2048);
+  const applied = await tools.prefabApplyOverrides({ reference: { id: 'instance' }, expectedSourceSha256: result.source.sha256, maxBytes: 2048 });
+  assert.ok(Buffer.byteLength(JSON.stringify(applied), 'utf8') <= 2048);
+  assert.equal(applied.sourceReadBack.id, 'prefab');
+  assert.equal(applied.sceneSaved, false);
+});

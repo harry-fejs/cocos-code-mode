@@ -2,47 +2,28 @@
   "schemaVersion": 1,
   "denominatorVersion": "ccp3x-creator-3.7.3-windows-v1-authoring-first",
   "denominatorHash": "0c5a2efbb78ac590f1b69731822f19f51e20de206148844bdaaa593cc1a3e9e6",
+  "denominatorIdentityKind": "approved-historical",
+  "denominatorSemanticHash": "f704714bffb7580ff3e018ea289c15995e1cbba39a4117633030b0f00cf03468",
   "parentFullDenominatorHash": "9dd249158a8826bff1ba4021147302a7f34a60a84430344a5b4330053d517286",
-  "sourceInventoryHash": "e744a7acb91821654f3872025ae504ca7143a82f943162d0f89cb31cd505d2e1",
+  "sourceInventoryHash": "a0b18a5c0d1b2f12027134c7075c6deee0f40f09e08e6346c827a46c3a35a6ca",
   "sourceHashes": {
-    "docs/workflow-inventory.json": "e744a7acb91821654f3872025ae504ca7143a82f943162d0f89cb31cd505d2e1",
-    "docs/workflow-source-mapping.json": "02c381c03cee4988e87ef527769f07d00b99f066e540ffee695f9b8b44dfcf2a",
-    "docs/workflow-implementation-evidence.json": "d842e3493882e2717b825957bef4039b0a6ee90fe748c90bedd7e2de62bb0b4e",
-    "reports/workflow-coverage-report.json": "5e5a52870377692523ba7875455bb65965c0c688772d9e1853eedcad9fa97c1d",
-    "reports/workflow-closure-backlog.json": "6746ae5f0cec52f961486898cd54712d6e590fd28ce262e7d2b98450ff0d2c57"
+    "docs/workflow-inventory.json": "a0b18a5c0d1b2f12027134c7075c6deee0f40f09e08e6346c827a46c3a35a6ca",
+    "docs/workflow-source-mapping.json": "9cd60b0d8410e5ef262e815c0f5d7243d73827ad5c3dc839a155a2dc042eced1",
+    "docs/workflow-implementation-evidence.json": "2aade1bec8c1ca202040237e6836b986a0f5f858cabf085f24d39a8c3f142d31",
+    "reports/workflow-coverage-report.json": "e65bc992072bb34658745d004b89eef08d7e170b019ce933db7724b27482a32a",
+    "reports/workflow-closure-backlog.json": "7171849f2d212565e2424090a29bbf6866911f325ce81c9a61cb7fd1fbf1aa7c"
   },
   "status": "ready-for-authoring-implementation-reconciliation",
   "requiredFor90": 0,
   "rows": [
     {
-      "workflowId": "animation-graph.lane-1-wip-260908-tbd-child-p3-animation-skeletal-audio-animation-retarget-validate",
-      "domain": "animation-graph",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
-      "acceptance": "Check skeleton, joint and clip compatibility without claiming automatic retargeting. Prerequisites: `model-skeleton-metadata`.\nCheck bounded skeleton, joint and clip compatibility without claiming automatic retargeting; fail closed when metadata is unavailable.",
-      "limitations": [
-        "Check bounded skeleton, joint and clip compatibility without claiming automatic retargeting; fail closed when metadata is unavailable.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
-      ]
-    },
-    {
-      "workflowId": "animation.funplay-stop-animation",
-      "domain": "animation",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
-      "acceptance": "- *Tính năng:* Dừng phát animation trên node.\n   - *Inputs:* `nodeUuid: string`.\n   - *Outputs:* `{ stopped: boolean }`.\n   - *Cơ chế:* Gọi `animationComponent.stop()` trong context scene.",
-      "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
-      ]
-    },
-    {
       "workflowId": "asset.cocos-mcp-open-asset-external",
       "domain": "asset",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
+      "state": "partial",
+      "reason": "assetOpen verifies an imported asset opened inside Creator, not the requested external-application launch; retain this bounded outcome without complete credit.",
       "acceptance": "open_asset_external",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Opens the imported asset inside Creator; external OS application launching is not claimed."
       ]
     },
     {
@@ -56,33 +37,13 @@
       ]
     },
     {
-      "workflowId": "design-prefab.cocos-mcp-refresh-reference-image",
-      "domain": "design-prefab",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
-      "acceptance": "refresh_reference_image",
-      "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
-      ]
-    },
-    {
       "workflowId": "design-prefab.cocos-mcp-restore-prefab-node",
       "domain": "design-prefab",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
+      "state": "partial",
+      "reason": "prefabRestore evidences full linked-instance restoration, but the requested node-selective restoration is not evidenced; retain the bounded route without complete credit.",
       "acceptance": "restore_prefab_node",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
-      ]
-    },
-    {
-      "workflowId": "design-prefab.cocos-mcp-revert-prefab",
-      "domain": "design-prefab",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
-      "acceptance": "revert_prefab",
-      "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Full linked-instance restore only; restoring a selectively chosen nested node is not claimed."
       ]
     },
     {
@@ -126,16 +87,6 @@
       ]
     },
     {
-      "workflowId": "design-prefab.cocos-mcp-switch-reference-image",
-      "domain": "design-prefab",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
-      "acceptance": "switch_reference_image",
-      "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
-      ]
-    },
-    {
       "workflowId": "design-prefab.lane-1-wip-260908-tbd-child-p2-ui-prefab-tilemap-assets-prefab-revert-overrides",
       "domain": "design-prefab",
       "state": "partial",
@@ -147,13 +98,23 @@
       ]
     },
     {
+      "workflowId": "editor.cocos-mcp-end-undo-recording",
+      "domain": "editor",
+      "state": "missing",
+      "reason": "The historical completion referenced editorHistory, but its current registered contract exposes only undo, redo and abort; no exact end-recording operation is implemented.",
+      "acceptance": "end_undo_recording",
+      "limitations": [
+        "The historical bounded-complete label is retained for traceability, not credited against the current missing operation."
+      ]
+    },
+    {
       "workflowId": "editor.cocos-mcp-get-active-listeners",
       "domain": "editor",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
+      "state": "partial",
+      "reason": "editorListenersInspect exposes an intentionally empty ccp3x-owned inventory, not the requested arbitrary Creator active-listener enumeration; no complete credit is justified.",
       "acceptance": "get_active_listeners",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Creator 3.7.3 does not expose arbitrary listener enumeration; returned inventory is intentionally bounded and empty."
       ]
     },
     {
@@ -229,17 +190,6 @@
       "acceptance": "- *Tính năng:* Chạy script trực tiếp trong context của scene.\n    - *Inputs:* `script: string`.\n    - *Outputs:* `{ result: any }`.\n    - *Cơ chế:* `execute-scene-script` IPC message.",
       "limitations": [
         "Credit only if contract is narrowed to reviewed/safe execution; otherwise exclude source parity.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
-      ]
-    },
-    {
-      "workflowId": "scene.parent-compound-scene",
-      "domain": "scene",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
-      "acceptance": "Create complete scene/UI composition with stable node, component and asset identities.",
-      "limitations": [
-        "Create a complete scene/UI composition with stable identities.",
         "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
       ]
     },

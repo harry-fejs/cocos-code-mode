@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-11",
+  "scope": "Prefab technical implementation and native compiled-module verification; not clean packaged qualification",
+  "projectPath": "G:/_ws/_helpers/ccp3x-api-qualification-20261011",
+  "creator": "3.7.3",
+  "instanceId": "828466b7ffababdfa12d2c39bae6c274",
+  "loadedBuild": {
+    "commit": "f5f853f",
+    "dirty": true,
+    "builtAt": "2026-10-11T05:03:34.013Z"
+  },
+  "changedModuleSha256": "2c8c985468c67766c794eaa9d30c555758c0f275ce2455d7670833f2cd028b56",
+  "regression": {
+    "compile": true,
+    "testsPassed": 27,
+    "creatorLoad": true
+  },
+  "native": {
+    "outerAsset": "65c8ce5d-f1bc-421f-93c7-eb3e6e5e2166",
+    "nestedAsset": "7d685550-a0bc-4ca2-8597-8d5f7764df84",
+    "scene": "98bc1431-8017-40b7-a166-3efaf9cd2a3a",
+    "mountedCounts": {
+      "propertyOverrides": 4,
+      "mountedChildren": 1,
+      "mountedComponents": 1,
+      "removedComponents": 0
+    },
+    "removedCounts": {
+      "propertyOverrides": 4,
+      "mountedChildren": 0,
+      "mountedComponents": 0,
+      "removedComponents": 1
+    },
+    "inspectionBytes": 1805,
+    "mountedApplyBytes": 1946,
+    "removedApplyBytes": 2030,
+    "maxBytes": 2048,
+    "staleConflict": "PREFAB_SOURCE_CONFLICT",
+    "mountedSourceSha256": "4c30a808eb8808aa9883eceb36fd701336e1954d330c89652297e774d62d6506",
+    "removedSourceSha256": "a231569a674b4035bd94940231634142223986689ada6f6b309dc962114105c9",
+    "mountedChildPersisted": true,
+    "widgetRemoved": true,
+    "nestedLinkPreserved": true,
+    "saveReopenSceneClean": true,
+    "route": "fresh compiled module invoked inside Creator via executeJavascript; installed registry contract not reloaded during these mutations"
+  },
+  "rootCause": "Creator wraps each override array in a property descriptor; previous instance-only unwrap silently reported zero structural/property overrides",
+  "cleanup": {
+    "ownedCreatorStopped": true,
+    "remainingAssets": 0
+  },
+  "pending": "exact clean packaged installed-tool qualification remains package/release gate; no portfolio promotion"
+}

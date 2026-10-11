@@ -7,6 +7,10 @@ const crypto = require('node:crypto');
 
 const ROOT = path.resolve(__dirname, '..');
 const PARENT_FULL_DENOMINATOR_HASH = '9dd249158a8826bff1ba4021147302a7f34a60a84430344a5b4330053d517286';
+// This approved historical identifier predates byte-level provenance repair.
+// The separate semantic hash binds the exact unchanged current classifications.
+const APPROVED_AUTHORING_DENOMINATOR_HASH = '0c5a2efbb78ac590f1b69731822f19f51e20de206148844bdaaa593cc1a3e9e6';
+const APPROVED_AUTHORING_SEMANTIC_HASH = 'f704714bffb7580ff3e018ea289c15995e1cbba39a4117633030b0f00cf03468';
 const VERSION = 'ccp3x-creator-3.7.3-windows-v1-authoring-first';
 const INPUTS = [
   'docs/workflow-inventory.json',
@@ -107,7 +111,17 @@ function generate(root = ROOT) {
   }).sort((a, b) => a.id.localeCompare(b.id));
   if (new Set(rows.map(row => row.id)).size !== rows.length) throw new Error('duplicate workflow IDs in source inventory');
   const basis = makeBasis(rows);
-  const denominatorHash = digest(stableJson(basis));
+  const denominatorSemanticHash = digest(stableJson(basis));
+  if (denominatorSemanticHash !== APPROVED_AUTHORING_SEMANTIC_HASH) throw new Error('Approved authoring classifications changed; explicit denominator re-approval is required.');
+  const previousFile = path.join(root, OUTPUTS.inventory);
+  if (fs.existsSync(previousFile)) {
+    const previous = JSON.parse(fs.readFileSync(previousFile, 'utf8'));
+    if (previous.denominatorVersion !== VERSION || previous.parentFullDenominatorHash !== PARENT_FULL_DENOMINATOR_HASH
+        || stableJson(makeBasis(previous.rows)) !== stableJson(basis)) {
+      throw new Error('Existing authoring contract/classification basis changed; explicit denominator re-approval is required.');
+    }
+  }
+  const denominatorHash = APPROVED_AUTHORING_DENOMINATOR_HASH;
   const included = rows.filter(row => row.authoringDisposition === 'included');
   const deferred = rows.filter(row => row.authoringDisposition === 'deferred');
   const complete = included.filter(row => row.implementationState === 'complete');
@@ -130,6 +144,8 @@ function generate(root = ROOT) {
     schemaVersion: 1,
     denominatorVersion: VERSION,
     denominatorHash,
+    denominatorIdentityKind: 'approved-historical',
+    denominatorSemanticHash,
     parentFullDenominatorHash: PARENT_FULL_DENOMINATOR_HASH,
     sourceInventoryHash: sourceHashes['docs/workflow-inventory.json'],
     sourceHashes,
@@ -186,12 +202,13 @@ function generate(root = ROOT) {
     complete: complete.length,
     targetComplete,
     deficit: Math.max(0, targetComplete - complete.length),
-    denominatorHash,
+    approvedHistoricalDenominatorHash: denominatorHash,
+    currentDenominatorSemanticHash: denominatorSemanticHash,
     byDomain,
   };
 }
 
-module.exports = { generate, classify, makeBasis, digest, INPUTS, OUTPUTS, PARENT_FULL_DENOMINATOR_HASH };
+module.exports = { generate, classify, makeBasis, digest, INPUTS, OUTPUTS, PARENT_FULL_DENOMINATOR_HASH, APPROVED_AUTHORING_DENOMINATOR_HASH, APPROVED_AUTHORING_SEMANTIC_HASH };
 if (require.main === module) {
   try { console.log(JSON.stringify(generate(), null, 2)); }
   catch (error) { console.error(error.message); process.exitCode = 1; }

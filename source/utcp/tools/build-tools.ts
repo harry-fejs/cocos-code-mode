@@ -4,6 +4,8 @@ import { utcpTool } from '../decorators';
 import { ToolError } from '../tool-error';
 import { buildBuildPresetAudit, BuildPresetAuditResult } from '../../build-preset-audit';
 import { BUILD_SETTING_RULES, BuildProfileArgs, BuildSettingsArgs, BuildTemplateArgs, createBuildTemplate, manageBuildProfiles, manageBuildSettings } from '../build-profiles';
+import { inspectBuildPreflight, inspectBuildEnvironment } from '../build-preflight';
+import { BuildTaskConfigArgs, manageBuildTaskConfig } from '../build-task-config';
 // Slim view of a build task for agent consumption (full IBuildTaskItemJSON is huge)
 interface IBuildTaskSummary {
     id: string;
@@ -231,6 +233,15 @@ function slimTask(task: BuildTaskRecord): IBuildTaskSummary {
 }
 
 export class BuildTools {
+    @utcpTool('buildPreflight', 'Read-only authoritative scene UUID/URL/start-scene, registered target and bundle/server preflight. Does not dispatch or claim toolchain/signing readiness.', { type: 'object', additionalProperties: false, properties: { options: { type: 'object', maxProperties: 64 } }, required: ['options'] }, { type: 'object', properties: { valid: { type: 'boolean' }, complete: { type: 'boolean' }, targetAvailable: { type: 'boolean' }, sceneCount: { type: 'integer' }, issues: { type: 'array' }, writes: { type: 'boolean' }, toolchainVerified: { type: 'boolean' }, signingVerified: { type: 'boolean' } }, required: ['valid', 'complete', 'targetAvailable', 'sceneCount', 'issues', 'writes', 'toolchainVerified', 'signingVerified'] }, 'POST', ['build', 'preflight', 'read-only'])
+    async buildPreflight(args: { options: Record<string, unknown> }) { return inspectBuildPreflight(args.options); }
+
+    @utcpTool('buildEnvironmentInspect', 'Inspect registered Android SDK/NDK/Java program configuration through Creator APIs. Paths redacted; no credentials, writes, filesystem fallback or toolchain readiness claim.', { type: 'object', additionalProperties: false, properties: {} }, { type: 'object', properties: { programs: { type: 'object' }, writes: { type: 'boolean' }, toolchainVerified: { type: 'boolean' }, signingVerified: { type: 'boolean' }, javaInspection: { type: 'string' } }, required: ['programs', 'writes', 'toolchainVerified', 'signingVerified', 'javaInspection'] }, 'GET', ['build', 'environment', 'read-only'])
+    async buildEnvironmentInspect() { return inspectBuildEnvironment(); }
+
+    @utcpTool('buildTaskConfigManage', 'Get or guardedly replace a terminal native builder task options through update-task, with expected hash, preflight, read-back and rollback. Does not dispatch/rebuild or persist native task history; persisted:false is explicit. Not a native preset asset.', { type: 'object', additionalProperties: false, properties: { operation: { type: 'string', enum: ['get', 'set'] }, taskId: { type: ['string', 'integer'] }, options: { type: 'object', maxProperties: 64 }, expectedOptionsSha256: { type: 'string', pattern: '^[a-f0-9]{64}$' } }, required: ['operation', 'taskId'], allOf: [{ if: { properties: { operation: { const: 'set' } }, required: ['operation'] }, then: { required: ['options', 'expectedOptionsSha256'] } }] }, { type: 'object', properties: { taskId: { type: 'string' }, options: { type: 'object' }, optionsSha256: { type: 'string' }, writes: { type: 'boolean' }, persisted: { type: 'boolean' } }, required: ['taskId', 'options', 'optionsSha256', 'writes', 'persisted'] }, 'POST', ['build', 'task', 'config'])
+    async buildTaskConfigManage(args: BuildTaskConfigArgs) { return manageBuildTaskConfig(args); }
+
     @utcpTool('buildTemplate', 'List/create options-only debug/release templates for web-mobile, web-desktop, Android, iOS, Windows and macOS. Requires real scene UUID/URLs and native package IDs. Never writes settings, triggers builds or claims toolchain/signing readiness. Save generated options via buildProfileManage if needed.', {
         type: 'object', additionalProperties: false,
         properties: { operation: { type: 'string', enum: ['list', 'create'] }, platform: { type: 'string', enum: ['web-mobile', 'web-desktop', 'android', 'ios', 'windows', 'mac'] }, mode: { type: 'string', enum: ['debug', 'release'], default: 'debug' }, name: { type: 'string', minLength: 1, maxLength: 64 }, scenes: { type: 'array', minItems: 1, maxItems: 512, items: { type: 'object', additionalProperties: false, properties: { uuid: { type: 'string' }, url: { type: 'string' } }, required: ['uuid', 'url'] } }, startScene: { type: 'string' }, packageName: { type: 'string', maxLength: 256 }, orientation: { type: 'string', enum: ['auto', 'portrait', 'landscape'] }, buildPath: { type: 'string', maxLength: 512 }, remoteServerAddress: { type: 'string', maxLength: 2048 } }, required: ['operation'],

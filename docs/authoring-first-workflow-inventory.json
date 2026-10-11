@@ -2,14 +2,16 @@
   "schemaVersion": 1,
   "denominatorVersion": "ccp3x-creator-3.7.3-windows-v1-authoring-first",
   "denominatorHash": "0c5a2efbb78ac590f1b69731822f19f51e20de206148844bdaaa593cc1a3e9e6",
+  "denominatorIdentityKind": "approved-historical",
+  "denominatorSemanticHash": "f704714bffb7580ff3e018ea289c15995e1cbba39a4117633030b0f00cf03468",
   "parentFullDenominatorHash": "9dd249158a8826bff1ba4021147302a7f34a60a84430344a5b4330053d517286",
-  "sourceInventoryHash": "e744a7acb91821654f3872025ae504ca7143a82f943162d0f89cb31cd505d2e1",
+  "sourceInventoryHash": "a0b18a5c0d1b2f12027134c7075c6deee0f40f09e08e6346c827a46c3a35a6ca",
   "sourceHashes": {
-    "docs/workflow-inventory.json": "e744a7acb91821654f3872025ae504ca7143a82f943162d0f89cb31cd505d2e1",
-    "docs/workflow-source-mapping.json": "02c381c03cee4988e87ef527769f07d00b99f066e540ffee695f9b8b44dfcf2a",
-    "docs/workflow-implementation-evidence.json": "d842e3493882e2717b825957bef4039b0a6ee90fe748c90bedd7e2de62bb0b4e",
-    "reports/workflow-coverage-report.json": "5e5a52870377692523ba7875455bb65965c0c688772d9e1853eedcad9fa97c1d",
-    "reports/workflow-closure-backlog.json": "6746ae5f0cec52f961486898cd54712d6e590fd28ce262e7d2b98450ff0d2c57"
+    "docs/workflow-inventory.json": "a0b18a5c0d1b2f12027134c7075c6deee0f40f09e08e6346c827a46c3a35a6ca",
+    "docs/workflow-source-mapping.json": "9cd60b0d8410e5ef262e815c0f5d7243d73827ad5c3dc839a155a2dc042eced1",
+    "docs/workflow-implementation-evidence.json": "2aade1bec8c1ca202040237e6836b986a0f5f858cabf085f24d39a8c3f142d31",
+    "reports/workflow-coverage-report.json": "e65bc992072bb34658745d004b89eef08d7e170b019ce933db7724b27482a32a",
+    "reports/workflow-closure-backlog.json": "7171849f2d212565e2424090a29bbf6866911f325ce81c9a61cb7fd1fbf1aa7c"
   },
   "status": "generated",
   "qualificationProfile": {
@@ -174,8 +176,8 @@
       "sourceIds": [
         "lane:1-wip-260908__tbd-child-p3-animation-skeletal-audio:animationRetargetValidate"
       ],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
+      "implementationState": "complete",
+      "implementationReason": "qualified portfolio state + unique direct route + current Creator 3.7.3 evidence",
       "limitations": [
         "Check bounded skeleton, joint and clip compatibility without claiming automatic retargeting; fail closed when metadata is unavailable.",
         "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
@@ -294,10 +296,10 @@
       "sourceIds": [
         "funplay:stop_animation"
       ],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
+      "implementationState": "complete",
+      "implementationReason": "animationStop is a bounded alias over animationRuntimeControl stop and returns authoritative Animation state read-back on a disposable Creator 3.7.3 AnimationClip fixture.",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Editor-side Animation stop/read-back only; runtime Game View playback and audio/Spine event semantics are not claimed."
       ],
       "authoringDisposition": "included",
       "authoringReason": "Included authoring contract: animation is an editor-side authoring domain and the contract has no active-runtime or external-delivery prerequisite."
@@ -419,9 +421,9 @@
         "cocos-mcp:get_all_preferences"
       ],
       "implementationState": "complete",
-      "implementationReason": "getEditorPreference omitting key returns the complete bounded set of cocos-pilot-3x Editor.Profile preferences with explicit nulls for unset keys.",
+      "implementationReason": "getEditorPreference omitting key returns the complete bounded set of ccp3x Editor.Profile preferences with explicit nulls for unset keys.",
       "limitations": [
-        "Bounded to the cocos-pilot-3x known preference keys; arbitrary third-party package profiles are not claimed.",
+        "Bounded to the ccp3x known preference keys; arbitrary third-party package profiles are not claimed.",
         "Editor-side bounded evidence only; no Game View/runtime credit."
       ],
       "authoringDisposition": "included",
@@ -610,10 +612,10 @@
       "sourceIds": [
         "cocos-mcp:open_asset_external"
       ],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
+      "implementationState": "partial",
+      "implementationReason": "assetOpen verifies an imported asset opened inside Creator, not the requested external-application launch; retain this bounded outcome without complete credit.",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Opens the imported asset inside Creator; external OS application launching is not claimed."
       ],
       "authoringDisposition": "included",
       "authoringReason": "Included authoring contract: asset is an editor-side authoring domain and the contract has no active-runtime or external-delivery prerequisite."
@@ -1832,10 +1834,10 @@
       "sourceIds": [
         "cocos-mcp:refresh_reference_image"
       ],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
+      "implementationState": "complete",
+      "implementationReason": "referenceImageManage refresh reads the persisted active reference-image record and fails typed TARGET_NOT_FOUND when none exists.",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Refresh verifies persisted identity/path; native texture byte reload or transform refresh is not claimed."
       ],
       "authoringDisposition": "included",
       "authoringReason": "Included authoring contract: design-prefab is an editor-side authoring domain and the contract has no active-runtime or external-delivery prerequisite."
@@ -1883,10 +1885,10 @@
       "sourceIds": [
         "cocos-mcp:restore_prefab_node"
       ],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
+      "implementationState": "partial",
+      "implementationReason": "prefabRestore evidences full linked-instance restoration, but the requested node-selective restoration is not evidenced; retain the bounded route without complete credit.",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Full linked-instance restore only; restoring a selectively chosen nested node is not claimed."
       ],
       "authoringDisposition": "included",
       "authoringReason": "Included authoring contract: design-prefab is an editor-side authoring domain and the contract has no active-runtime or external-delivery prerequisite."
@@ -1900,10 +1902,10 @@
       "sourceIds": [
         "cocos-mcp:revert_prefab"
       ],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
+      "implementationState": "complete",
+      "implementationReason": "prefabRevertOverrides delegates full-instance restore to Creator 3.7.3 and verifies linked source and instance read-back.",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Selective path revert remains unsupported and fails closed with UNSUPPORTED_SELECTIVE_REVERT."
       ],
       "authoringDisposition": "included",
       "authoringReason": "Included authoring contract: design-prefab is an editor-side authoring domain and the contract has no active-runtime or external-delivery prerequisite."
@@ -1985,10 +1987,10 @@
       "sourceIds": [
         "cocos-mcp:switch_reference_image"
       ],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
+      "implementationState": "complete",
+      "implementationReason": "referenceImageManage switch atomically replaces the bounded scene/project image record through the proven set route and verifies persisted identity/path.",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Switch covers active image identity/path only; opacity, position, scale and native transform configuration remain unsupported."
       ],
       "authoringDisposition": "included",
       "authoringReason": "Included authoring contract: design-prefab is an editor-side authoring domain and the contract has no active-runtime or external-delivery prerequisite."
@@ -2156,9 +2158,10 @@
         "lane:1-wip-260908__tbd-child-p2-ui-prefab-tilemap-assets:prefabInstantiate"
       ],
       "implementationState": "complete",
-      "implementationReason": "Wave D evidence confirms prefabInstantiate validates source and parent identities, verifies created node and linked prefab identity, and cleans up failed disposable nodes.",
+      "implementationReason": "Exact Creator 3.7.3 evidence instantiates a deterministic current cc.Prefab fixture with source identity, linked node read-back, snapshot persistence, typed missing-source rejection and cleanup.",
       "limitations": [
-        "Focused prefab authoring evidence only; no runtime/Game View credit."
+        "The qualified Creator 3.7.3 follow-up supersedes the earlier READBACK_MISMATCH/test-pending classification; the Wave D implementation record is retained as distinct supporting evidence.",
+        "Editor-side prefab instantiation only; arbitrary prefab mutation and runtime/Game View behavior are not claimed."
       ],
       "authoringDisposition": "included",
       "authoringReason": "Included authoring contract: design-prefab is an editor-side authoring domain and the contract has no active-runtime or external-delivery prerequisite."
@@ -2618,9 +2621,9 @@
         "cocos-mcp:change_view_mode_2d_3d"
       ],
       "implementationState": "complete",
-      "implementationReason": "The registered editorViewport route exposes the documented editor operation/state with the same bounded observable outcome; focused editor evidence covers the route family.",
+      "implementationReason": "Preserves the existing bounded editorViewport set_2d_mode completion record through the current registered route and authoritative viewport state read-back.",
       "limitations": [
-        "Editor-side bounded evidence only; no Game View/runtime credit."
+        "Historical editor-side evidence is retained; this reconciliation does not freshly qualify the current running artifact or claim Game View/runtime behavior."
       ],
       "authoringDisposition": "included",
       "authoringReason": "Included authoring contract: editor is an editor-side authoring domain and the contract has no active-runtime or external-delivery prerequisite."
@@ -2634,10 +2637,10 @@
       "sourceIds": [
         "cocos-mcp:end_undo_recording"
       ],
-      "implementationState": "complete",
-      "implementationReason": "Ends the bounded editor undo recording lifecycle through exact native history IPC.",
+      "implementationState": "missing",
+      "implementationReason": "The historical completion referenced editorHistory, but its current registered contract exposes only undo, redo and abort; no exact end-recording operation is implemented.",
       "limitations": [
-        "Editor-side bounded evidence only; no Game View/runtime credit."
+        "The historical bounded-complete label is retained for traceability, not credited against the current missing operation."
       ],
       "authoringDisposition": "included",
       "authoringReason": "Included authoring contract: editor is an editor-side authoring domain and the contract has no active-runtime or external-delivery prerequisite."
@@ -2652,9 +2655,9 @@
         "cocos-mcp:focus_camera_on_nodes"
       ],
       "implementationState": "complete",
-      "implementationReason": "The registered editorViewport route exposes the documented editor operation/state with the same bounded observable outcome; focused editor evidence covers the route family.",
+      "implementationReason": "Preserves the existing bounded editorViewport focus completion record through the current scene focus-camera IPC route for declared node identities.",
       "limitations": [
-        "Editor-side bounded evidence only; no Game View/runtime credit."
+        "Historical editor-side evidence is retained; this reconciliation does not freshly qualify the current running artifact or claim Game View/runtime behavior."
       ],
       "authoringDisposition": "included",
       "authoringReason": "Included authoring contract: editor is an editor-side authoring domain and the contract has no active-runtime or external-delivery prerequisite."
@@ -2668,10 +2671,10 @@
       "sourceIds": [
         "cocos-mcp:get_active_listeners"
       ],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
+      "implementationState": "partial",
+      "implementationReason": "editorListenersInspect exposes an intentionally empty ccp3x-owned inventory, not the requested arbitrary Creator active-listener enumeration; no complete credit is justified.",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Creator 3.7.3 does not expose arbitrary listener enumeration; returned inventory is intentionally bounded and empty."
       ],
       "authoringDisposition": "included",
       "authoringReason": "Included authoring contract: editor is an editor-side authoring domain and the contract has no active-runtime or external-delivery prerequisite."
@@ -3412,12 +3415,10 @@
       "sourceIds": [
         "lane:1-wip-260908__tbd-child-p4-physics-particles:particlePlayback"
       ],
-      "implementationState": "complete",
-      "implementationReason": "qualified portfolio state + unique direct route + current Creator 3.7.3 evidence",
+      "implementationState": "unsupported",
+      "implementationReason": "The current portfolio explicitly owner-disables Game View qualification; historical particle playback success does not establish current complete credit while the runtime prerequisite remains deferred.",
       "limitations": [
-        "Play, stop, clear and completion observation in a named runtime session.",
-        "Historical qualified label alone is not complete-contract evidence.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Historical witness bytes are retained unchanged; runtime reopening and current live qualification are not part of this reconciliation."
       ],
       "authoringDisposition": "deferred",
       "authoringReason": "Deferred from authoring denominator: contract requires runtime/playback/preview or external delivery (/runtime[- ]session/i)."
@@ -4282,12 +4283,10 @@
       "sourceIds": [
         "lane:2-todo-260908__tbd-child-p6-localization-runtime-build:runtimeScenarioAssert"
       ],
-      "implementationState": "complete",
-      "implementationReason": "qualified portfolio state + unique direct route + current Creator 3.7.3 evidence",
+      "implementationState": "unsupported",
+      "implementationReason": "The current portfolio owner-disables the Game View qualification prerequisite; the historical runtimeScenarioAssert witness cannot supply current complete credit.",
       "limitations": [
-        "Independent state/image/event assertions rather than request echo.",
-        "Historical qualified label alone is not complete-contract evidence.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "State observation on an already manually attached preview may remain available, but current end-to-end runtime qualification is deferred."
       ],
       "authoringDisposition": "deferred",
       "authoringReason": "Deferred from authoring denominator: domain runtime-qa is runtime, delivery, diagnostics, build, localization, product, or other non-authoring scope."
@@ -4301,12 +4300,10 @@
       "sourceIds": [
         "lane:2-todo-260908__tbd-child-p6-localization-runtime-build:runtimeScenarioRun"
       ],
-      "implementationState": "complete",
-      "implementationReason": "qualified portfolio state + unique direct route + current Creator 3.7.3 evidence",
+      "implementationState": "unsupported",
+      "implementationReason": "The current portfolio owner-disables the Game View qualification prerequisite; the historical runtimeScenarioRun witness cannot supply current complete credit.",
       "limitations": [
-        "Execute finite named steps only; no code string or general method dispatch.",
-        "Historical qualified label alone is not complete-contract evidence.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "An already manually attached preview is not fresh evidence for the deferred runtime workflow."
       ],
       "authoringDisposition": "deferred",
       "authoringReason": "Deferred from authoring denominator: domain runtime-qa is runtime, delivery, diagnostics, build, localization, product, or other non-authoring scope."
@@ -4320,12 +4317,10 @@
       "sourceIds": [
         "lane:2-todo-260908__tbd-child-p6-localization-runtime-build:runtimeStateObserve"
       ],
-      "implementationState": "complete",
-      "implementationReason": "qualified portfolio state + unique direct route + current Creator 3.7.3 evidence",
+      "implementationState": "unsupported",
+      "implementationReason": "The current portfolio owner-disables the Game View qualification prerequisite; the historical runtimeStateObserve witness cannot supply current complete credit.",
       "limitations": [
-        "Bounded allow-listed observations tied to session identity and target kind.",
-        "Historical qualified label alone is not complete-contract evidence.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Read-only observation may remain implemented for manually attached preview state; current runtime qualification stays deferred."
       ],
       "authoringDisposition": "deferred",
       "authoringReason": "Deferred from authoring denominator: domain runtime-qa is runtime, delivery, diagnostics, build, localization, product, or other non-authoring scope."
@@ -5995,11 +5990,10 @@
       "sourceIds": [
         "parent:compound-scene"
       ],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
+      "implementationState": "complete",
+      "implementationReason": "Bounded compound UI authoring routes create complete ScrollView and input-form compositions with stable node/component identities, hierarchy read-back, snapshots and rollback-safe failure handling.",
       "limitations": [
-        "Create a complete scene/UI composition with stable identities.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Bounded editor/UI compositions only; arbitrary scene scripting, runtime preview and panel-click credit are not claimed."
       ],
       "authoringDisposition": "included",
       "authoringReason": "Included authoring contract: scene is an editor-side authoring domain and the contract has no active-runtime or external-delivery prerequisite."

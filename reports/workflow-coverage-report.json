@@ -2,27 +2,29 @@
   "schemaVersion": 2,
   "denominatorVersion": "ccp3x-creator-3.7.3-windows-v1-review",
   "denominatorHash": "9dd249158a8826bff1ba4021147302a7f34a60a84430344a5b4330053d517286",
+  "denominatorIdentityKind": "approved-historical",
+  "denominatorSemanticHash": "fce2c66c4f8c93c36839dfe845b0e9139f4e9930d477dfb1a94f356707260f1e",
   "status": "measurable",
   "candidateDenominator": 356,
   "denominator": 356,
-  "confirmedComplete": 236,
-  "implementationPercent": 66.29,
+  "confirmedComplete": 237,
+  "implementationPercent": 66.57,
   "targetPercent": 90,
   "targetComplete": 321,
-  "deficitTo90": 85,
+  "deficitTo90": 84,
   "unresolvedContracts": 0,
   "byDomain": {
     "animation-graph": {
       "total": 6,
-      "complete": 4,
+      "complete": 5,
       "unreviewed": 0,
-      "implementationPercent": 66.67
+      "implementationPercent": 83.33
     },
     "animation": {
       "total": 7,
-      "complete": 5,
+      "complete": 6,
       "unreviewed": 0,
-      "implementationPercent": 71.43
+      "implementationPercent": 85.71
     },
     "asset": {
       "total": 46,
@@ -56,9 +58,9 @@
     },
     "design-prefab": {
       "total": 33,
-      "complete": 23,
+      "complete": 26,
       "unreviewed": 0,
-      "implementationPercent": 69.7
+      "implementationPercent": 78.79
     },
     "diagnostics": {
       "total": 13,
@@ -68,9 +70,9 @@
     },
     "editor": {
       "total": 37,
-      "complete": 33,
+      "complete": 32,
       "unreviewed": 0,
-      "implementationPercent": 89.19
+      "implementationPercent": 86.49
     },
     "localization": {
       "total": 4,
@@ -86,9 +88,9 @@
     },
     "particles": {
       "total": 4,
-      "complete": 4,
+      "complete": 3,
       "unreviewed": 0,
-      "implementationPercent": 100
+      "implementationPercent": 75
     },
     "physics-2d": {
       "total": 6,
@@ -122,9 +124,9 @@
     },
     "runtime-qa": {
       "total": 3,
-      "complete": 3,
+      "complete": 0,
       "unreviewed": 0,
-      "implementationPercent": 100
+      "implementationPercent": 0
     },
     "runtime": {
       "total": 26,
@@ -134,9 +136,9 @@
     },
     "scene": {
       "total": 72,
-      "complete": 67,
+      "complete": 68,
       "unreviewed": 0,
-      "implementationPercent": 93.06
+      "implementationPercent": 94.44
     },
     "skeletal-animation": {
       "total": 5,

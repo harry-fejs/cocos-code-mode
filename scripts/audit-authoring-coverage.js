@@ -3,7 +3,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { classify, makeBasis, digest, INPUTS, OUTPUTS, PARENT_FULL_DENOMINATOR_HASH } = require('./generate-authoring-coverage');
+const { classify, makeBasis, digest, INPUTS, OUTPUTS, PARENT_FULL_DENOMINATOR_HASH, APPROVED_AUTHORING_DENOMINATOR_HASH, APPROVED_AUTHORING_SEMANTIC_HASH } = require('./generate-authoring-coverage');
 
 const ROOT = path.resolve(__dirname, '..');
 const fail = message => { throw new Error(message); };
@@ -20,10 +20,14 @@ function audit(root = ROOT) {
     if (artifact.parentFullDenominatorHash !== PARENT_FULL_DENOMINATOR_HASH) fail('parentFullDenominatorHash drift');
     if (!artifact.denominatorHash || !/^[a-f0-9]{64}$/.test(artifact.denominatorHash)) fail('missing or malformed authoring denominator hash');
     if (artifact.denominatorVersion !== authoring.denominatorVersion) fail('authoring denominator version drift');
+    if (artifact.denominatorIdentityKind !== 'approved-historical' || artifact.denominatorHash !== APPROVED_AUTHORING_DENOMINATOR_HASH) fail('approved historical authoring identity drift');
   }
   const sourceHashes = Object.fromEntries(INPUTS.map(file => [file, digest(fs.readFileSync(path.join(root, file)))]));
-  for (const [file, hash] of Object.entries(sourceHashes)) {
-    if (authoring.sourceHashes?.[file] !== hash) fail(`source hash drift: ${file}`);
+  for (const artifact of [authoring, coverage, backlog]) {
+    for (const [file, hash] of Object.entries(sourceHashes)) {
+      if (artifact.sourceHashes?.[file] !== hash) fail(`source hash drift: ${file}`);
+    }
+    if (artifact.sourceInventoryHash !== sourceHashes['docs/workflow-inventory.json']) fail('source inventory hash drift');
   }
   const fullById = new Map(full.rows.map(row => [row.id, row]));
   const rows = authoring.rows;
@@ -54,8 +58,8 @@ function audit(root = ROOT) {
   if (backlog.requiredFor90 !== Math.max(0, target - complete.length)) fail('backlog deficit mismatch');
   const basis = makeBasis(rows);
   const expectedHash = digest(stableJson(basis));
-  if (authoring.denominatorHash !== expectedHash || coverage.denominatorHash !== expectedHash || backlog.denominatorHash !== expectedHash) fail('authoring denominator hash mismatch');
-  const metrics = { total: rows.length, included: included.length, deferred: deferred.length, complete: complete.length, targetComplete: target, deficit: Math.max(0, target - complete.length), implementationPercent: percent, denominatorHash: expectedHash };
+  if (expectedHash !== APPROVED_AUTHORING_SEMANTIC_HASH || [authoring, coverage, backlog].some(artifact => artifact.denominatorSemanticHash !== expectedHash)) fail('current authoring semantic hash mismatch');
+  const metrics = { total: rows.length, included: included.length, deferred: deferred.length, complete: complete.length, targetComplete: target, deficit: Math.max(0, target - complete.length), implementationPercent: percent, approvedHistoricalDenominatorHash: APPROVED_AUTHORING_DENOMINATOR_HASH, currentDenominatorSemanticHash: expectedHash };
   return { ok: true, metrics };
 }
 

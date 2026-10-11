@@ -2,8 +2,10 @@
   "schemaVersion": 2,
   "denominatorVersion": "ccp3x-creator-3.7.3-windows-v1-review",
   "denominatorHash": "9dd249158a8826bff1ba4021147302a7f34a60a84430344a5b4330053d517286",
+  "denominatorIdentityKind": "approved-historical",
+  "denominatorSemanticHash": "fce2c66c4f8c93c36839dfe845b0e9139f4e9930d477dfb1a94f356707260f1e",
   "status": "ready-for-implementation-reconciliation",
-  "requiredFor90": 85,
+  "requiredFor90": 84,
   "rows": [
     {
       "workflowId": "animation-graph.lane-1-wip-260908-tbd-child-p3-animation-skeletal-audio-animation-graph-preview",
@@ -12,17 +14,6 @@
       "acceptance": "Run graph and observe transitions/events in a named runtime session. Prerequisites: `runtime-session`.\nRun graph and observe transitions/events in a named runtime session.",
       "limitations": [
         "Run graph and observe transitions/events in a named runtime session.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
-      ],
-      "dependencies": []
-    },
-    {
-      "workflowId": "animation-graph.lane-1-wip-260908-tbd-child-p3-animation-skeletal-audio-animation-retarget-validate",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
-      "acceptance": "Check skeleton, joint and clip compatibility without claiming automatic retargeting. Prerequisites: `model-skeleton-metadata`.\nCheck bounded skeleton, joint and clip compatibility without claiming automatic retargeting; fail closed when metadata is unavailable.",
-      "limitations": [
-        "Check bounded skeleton, joint and clip compatibility without claiming automatic retargeting; fail closed when metadata is unavailable.",
         "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
       ],
       "dependencies": []
@@ -38,22 +29,12 @@
       "dependencies": []
     },
     {
-      "workflowId": "animation.funplay-stop-animation",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
-      "acceptance": "- *Tính năng:* Dừng phát animation trên node.\n   - *Inputs:* `nodeUuid: string`.\n   - *Outputs:* `{ stopped: boolean }`.\n   - *Cơ chế:* Gọi `animationComponent.stop()` trong context scene.",
-      "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
-      ],
-      "dependencies": []
-    },
-    {
       "workflowId": "asset.cocos-mcp-open-asset-external",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
+      "state": "partial",
+      "reason": "assetOpen verifies an imported asset opened inside Creator, not the requested external-application launch; retain this bounded outcome without complete credit.",
       "acceptance": "open_asset_external",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Opens the imported asset inside Creator; external OS application launching is not claimed."
       ],
       "dependencies": []
     },
@@ -213,32 +194,12 @@
       "dependencies": []
     },
     {
-      "workflowId": "design-prefab.cocos-mcp-refresh-reference-image",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
-      "acceptance": "refresh_reference_image",
-      "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
-      ],
-      "dependencies": []
-    },
-    {
       "workflowId": "design-prefab.cocos-mcp-restore-prefab-node",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
+      "state": "partial",
+      "reason": "prefabRestore evidences full linked-instance restoration, but the requested node-selective restoration is not evidenced; retain the bounded route without complete credit.",
       "acceptance": "restore_prefab_node",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
-      ],
-      "dependencies": []
-    },
-    {
-      "workflowId": "design-prefab.cocos-mcp-revert-prefab",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
-      "acceptance": "revert_prefab",
-      "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Full linked-instance restore only; restoring a selectively chosen nested node is not claimed."
       ],
       "dependencies": []
     },
@@ -277,16 +238,6 @@
       "state": "unreviewed",
       "reason": "accepted contract identity; implementation route and evidence not yet bound",
       "acceptance": "set_reference_image_scale",
-      "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
-      ],
-      "dependencies": []
-    },
-    {
-      "workflowId": "design-prefab.cocos-mcp-switch-reference-image",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
-      "acceptance": "switch_reference_image",
       "limitations": [
         "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
       ],
@@ -436,12 +387,22 @@
       "dependencies": []
     },
     {
+      "workflowId": "editor.cocos-mcp-end-undo-recording",
+      "state": "missing",
+      "reason": "The historical completion referenced editorHistory, but its current registered contract exposes only undo, redo and abort; no exact end-recording operation is implemented.",
+      "acceptance": "end_undo_recording",
+      "limitations": [
+        "The historical bounded-complete label is retained for traceability, not credited against the current missing operation."
+      ],
+      "dependencies": []
+    },
+    {
       "workflowId": "editor.cocos-mcp-get-active-listeners",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
+      "state": "partial",
+      "reason": "editorListenersInspect exposes an intentionally empty ccp3x-owned inventory, not the requested arbitrary Creator active-listener enumeration; no complete credit is justified.",
       "acceptance": "get_active_listeners",
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Creator 3.7.3 does not expose arbitrary listener enumeration; returned inventory is intentionally bounded and empty."
       ],
       "dependencies": []
     },
@@ -623,6 +584,16 @@
         "Use dedicated skill-generation workflow or explicit fixed-path policy.",
         "Constrain path to skills and return created path.",
         "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+      ],
+      "dependencies": []
+    },
+    {
+      "workflowId": "particles.lane-1-wip-260908-tbd-child-p4-physics-particles-particle-playback",
+      "state": "unsupported",
+      "reason": "The current portfolio explicitly owner-disables Game View qualification; historical particle playback success does not establish current complete credit while the runtime prerequisite remains deferred.",
+      "acceptance": "Play, stop, clear and completion observation in a named runtime session. Prerequisites: `runtime-session`.\nPlay, stop, clear and completion observation in a named runtime session.",
+      "limitations": [
+        "Historical witness bytes are retained unchanged; runtime reopening and current live qualification are not part of this reconciliation."
       ],
       "dependencies": []
     },
@@ -929,6 +900,36 @@
       "limitations": [
         "Target-identified frame/render sampling with bounded results.",
         "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+      ],
+      "dependencies": []
+    },
+    {
+      "workflowId": "runtime-qa.lane-2-todo-260908-tbd-child-p6-localization-runtime-build-runtime-scenario-assert",
+      "state": "unsupported",
+      "reason": "The current portfolio owner-disables the Game View qualification prerequisite; the historical runtimeScenarioAssert witness cannot supply current complete credit.",
+      "acceptance": "Independent state/image/event assertions rather than request echo. Prerequisites: `runtime-session`.\nIndependent state/image/event assertions rather than request echo.",
+      "limitations": [
+        "State observation on an already manually attached preview may remain available, but current end-to-end runtime qualification is deferred."
+      ],
+      "dependencies": []
+    },
+    {
+      "workflowId": "runtime-qa.lane-2-todo-260908-tbd-child-p6-localization-runtime-build-runtime-scenario-run",
+      "state": "unsupported",
+      "reason": "The current portfolio owner-disables the Game View qualification prerequisite; the historical runtimeScenarioRun witness cannot supply current complete credit.",
+      "acceptance": "Execute finite named steps only; no code string or general method dispatch. Prerequisites: `runtime-session`.\nExecute finite named steps only; no code string or general method dispatch.",
+      "limitations": [
+        "An already manually attached preview is not fresh evidence for the deferred runtime workflow."
+      ],
+      "dependencies": []
+    },
+    {
+      "workflowId": "runtime-qa.lane-2-todo-260908-tbd-child-p6-localization-runtime-build-runtime-state-observe",
+      "state": "unsupported",
+      "reason": "The current portfolio owner-disables the Game View qualification prerequisite; the historical runtimeStateObserve witness cannot supply current complete credit.",
+      "acceptance": "Bounded allow-listed observations tied to session identity and target kind. Prerequisites: `runtime-session`.\nBounded allow-listed observations tied to session identity and target kind.",
+      "limitations": [
+        "Read-only observation may remain implemented for manually attached preview state; current runtime qualification stays deferred."
       ],
       "dependencies": []
     },
@@ -1249,17 +1250,6 @@
       "acceptance": "Original requirement: verify terminal build outputs, expected files, hashes and target metadata (`build-job`). Current `909e597` provides a project-local inventory with path/symlink checks, lexical ordering and truncation (7 focused tests passed). Terminal task association, hashes/expected manifest and target metadata are not implemented by this inventory and remain open.",
       "limitations": [
         "Original requirement: verify terminal build outputs, expected files, hashes and target metadata (`build-job`). Current `909e597` provides a project-local inventory with path/symlink checks, lexical ordering and truncation (7 focused tests passed). Terminal task association, hashes/expected manifest and target metadata are not implemented by this inventory and remain open.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
-      ],
-      "dependencies": []
-    },
-    {
-      "workflowId": "scene.parent-compound-scene",
-      "state": "unreviewed",
-      "reason": "accepted contract identity; implementation route and evidence not yet bound",
-      "acceptance": "Create complete scene/UI composition with stable node, component and asset identities.",
-      "limitations": [
-        "Create a complete scene/UI composition with stable identities.",
         "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
       ],
       "dependencies": []

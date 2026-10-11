@@ -2,6 +2,8 @@
   "schemaVersion": 2,
   "denominatorVersion": "ccp3x-creator-3.7.3-windows-v1-review",
   "denominatorHash": "9dd249158a8826bff1ba4021147302a7f34a60a84430344a5b4330053d517286",
+  "denominatorIdentityKind": "approved-historical",
+  "denominatorSemanticHash": "fce2c66c4f8c93c36839dfe845b0e9139f4e9930d477dfb1a94f356707260f1e",
   "status": "frozen-v1",
   "qualificationProfile": {
     "creator": "3.7.3",
@@ -10,6 +12,13 @@
     "artifactClass": "local-operator"
   },
   "inputHashes": {
+    "reports/original-competitor-intake-20260917.json": "40a578c1b061116760e71ee416ac2443e23fd782290d974b7e214d45dc2ca8e8",
+    "reports/original-lane-requirements-20260917.json": "5c7b9c2cf4610bfc27578fbbe6c0b4614a2ca95ef42d681f5321f7a1680fc338",
+    "docs/tool-portfolio-candidates.json": "2adf79f597d0491b58bee5a5e4aff07026806ba8a42803dae415b5cd02199cfb",
+    "docs/workflow-mapping-decisions.json": "4c57cb10fc577753efa913bd8ed17ef543ad0db7a3fb22eb7da15a6c5f3c1c9a",
+    "docs/workflow-contract-reviews.json": "711d312a846dfbb768d3b0520a4ee474a196a9b0756fe53fe84f9e28e6abfd31"
+  },
+  "denominatorInputHashes": {
     "reports/original-competitor-intake-20260917.json": "40a578c1b061116760e71ee416ac2443e23fd782290d974b7e214d45dc2ca8e8",
     "reports/original-lane-requirements-20260917.json": "cf713fa917d2300d2717ba9840e7e6fe373f7cd9fd5b947961f1afc1dc125663",
     "docs/tool-portfolio-candidates.json": "5ebe2ea6902357ea6689e2de5d725bd5080e40f28a61a9632b3cb92580b9fb87",
@@ -231,10 +240,17 @@
       "portfolioNames": [
         "animationRetargetValidate"
       ],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
-      "implementationRoute": [],
-      "evidenceArtifacts": [],
+      "implementationState": "complete",
+      "implementationReason": "qualified portfolio state + unique direct route + current Creator 3.7.3 evidence",
+      "implementationRoute": [
+        {
+          "tool": "animationRetargetValidate",
+          "file": "source/utcp/tools/portfolio-validation-tools.ts"
+        }
+      ],
+      "evidenceArtifacts": [
+        "reports/evidence/candidates/animationRetargetValidate/creator-3.7.3-f32ef7d.json"
+      ],
       "limitations": [
         "Check bounded skeleton, joint and clip compatibility without claiming automatic retargeting; fail closed when metadata is unavailable.",
         "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
@@ -490,12 +506,21 @@
         "funplay:stop_animation"
       ],
       "portfolioNames": [],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
-      "implementationRoute": [],
-      "evidenceArtifacts": [],
+      "implementationState": "complete",
+      "implementationReason": "animationStop is a bounded alias over animationRuntimeControl stop and returns authoritative Animation state read-back on a disposable Creator 3.7.3 AnimationClip fixture.",
+      "implementationRoute": [
+        {
+          "tool": "animationStop",
+          "file": "source/utcp/tools/animation-tools.ts"
+        }
+      ],
+      "evidenceArtifacts": [
+        "tests/unit/animation-tools.test.js",
+        "tests/unit/animation-runtime-control.test.js",
+        "tests/live/animation-editor-workflow.test.js"
+      ],
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Editor-side Animation stop/read-back only; runtime Game View playback and audio/Spine event semantics are not claimed."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -759,7 +784,7 @@
       ],
       "portfolioNames": [],
       "implementationState": "complete",
-      "implementationReason": "getEditorPreference omitting key returns the complete bounded set of cocos-pilot-3x Editor.Profile preferences with explicit nulls for unset keys.",
+      "implementationReason": "getEditorPreference omitting key returns the complete bounded set of ccp3x Editor.Profile preferences with explicit nulls for unset keys.",
       "implementationRoute": [
         {
           "tool": "getEditorPreference",
@@ -771,7 +796,7 @@
         "reports/p0-baseline-ledger-20260908.json"
       ],
       "limitations": [
-        "Bounded to the cocos-pilot-3x known preference keys; arbitrary third-party package profiles are not claimed.",
+        "Bounded to the ccp3x known preference keys; arbitrary third-party package profiles are not claimed.",
         "Editor-side bounded evidence only; no Game View/runtime credit."
       ],
       "reviewed": true,
@@ -1183,12 +1208,20 @@
         "cocos-mcp:open_asset_external"
       ],
       "portfolioNames": [],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
-      "implementationRoute": [],
-      "evidenceArtifacts": [],
+      "implementationState": "partial",
+      "implementationReason": "assetOpen verifies an imported asset opened inside Creator, not the requested external-application launch; retain this bounded outcome without complete credit.",
+      "implementationRoute": [
+        {
+          "tool": "assetOpen",
+          "file": "source/utcp/tools/asset-tools.ts"
+        }
+      ],
+      "evidenceArtifacts": [
+        "tests/unit/asset-authoring-exact.test.js",
+        "reports/authoring-asset-wave-20260920.json"
+      ],
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Opens the imported asset inside Creator; external OS application launching is not claimed."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -3610,7 +3643,7 @@
       "implementationRoute": [
         {
           "tool": "prefabInfo",
-          "file": "source/utcp/tools/advanced-capability-tools.ts"
+          "file": "source/utcp/tools/prefab-json-tools.ts"
         }
       ],
       "evidenceArtifacts": [
@@ -3800,12 +3833,21 @@
         "cocos-mcp:refresh_reference_image"
       ],
       "portfolioNames": [],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
-      "implementationRoute": [],
-      "evidenceArtifacts": [],
+      "implementationState": "complete",
+      "implementationReason": "referenceImageManage refresh reads the persisted active reference-image record and fails typed TARGET_NOT_FOUND when none exists.",
+      "implementationRoute": [
+        {
+          "tool": "referenceImageManage",
+          "file": "source/utcp/tools/advanced-capability-tools.ts"
+        }
+      ],
+      "evidenceArtifacts": [
+        "reports/evidence/candidates/referenceImageManage/creator-3.7.3-bc5f27f.json",
+        "tests/unit/advanced-capability-tools.test.js",
+        "tests/live/reference-image-qualification.test.js"
+      ],
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Refresh verifies persisted identity/path; native texture byte reload or transform refresh is not claimed."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -3907,12 +3949,20 @@
         "cocos-mcp:restore_prefab_node"
       ],
       "portfolioNames": [],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
-      "implementationRoute": [],
-      "evidenceArtifacts": [],
+      "implementationState": "partial",
+      "implementationReason": "prefabRestore evidences full linked-instance restoration, but the requested node-selective restoration is not evidenced; retain the bounded route without complete credit.",
+      "implementationRoute": [
+        {
+          "tool": "prefabRestore",
+          "file": "source/utcp/tools/advanced-capability-tools.ts"
+        }
+      ],
+      "evidenceArtifacts": [
+        "reports/authoring-final-prefab-editor-wave-20260920.json",
+        "tests/unit/advanced-capability-tools.test.js"
+      ],
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Full linked-instance restore only; restoring a selectively chosen nested node is not claimed."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -3937,12 +3987,20 @@
         "cocos-mcp:revert_prefab"
       ],
       "portfolioNames": [],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
-      "implementationRoute": [],
-      "evidenceArtifacts": [],
+      "implementationState": "complete",
+      "implementationReason": "prefabRevertOverrides delegates full-instance restore to Creator 3.7.3 and verifies linked source and instance read-back.",
+      "implementationRoute": [
+        {
+          "tool": "prefabRevertOverrides",
+          "file": "source/utcp/tools/advanced-capability-tools.ts"
+        }
+      ],
+      "evidenceArtifacts": [
+        "reports/authoring-prefab-wave-20260920.json",
+        "tests/unit/advanced-capability-tools.test.js"
+      ],
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Selective path revert remains unsupported and fails closed with UNSUPPORTED_SELECTIVE_REVERT."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -4087,12 +4145,21 @@
         "cocos-mcp:switch_reference_image"
       ],
       "portfolioNames": [],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
-      "implementationRoute": [],
-      "evidenceArtifacts": [],
+      "implementationState": "complete",
+      "implementationReason": "referenceImageManage switch atomically replaces the bounded scene/project image record through the proven set route and verifies persisted identity/path.",
+      "implementationRoute": [
+        {
+          "tool": "referenceImageManage",
+          "file": "source/utcp/tools/advanced-capability-tools.ts"
+        }
+      ],
+      "evidenceArtifacts": [
+        "reports/evidence/candidates/referenceImageManage/creator-3.7.3-bc5f27f.json",
+        "tests/unit/advanced-capability-tools.test.js",
+        "tests/live/reference-image-qualification.test.js"
+      ],
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Switch covers active image identity/path only; opacity, position, scale and native transform configuration remain unsupported."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -4472,7 +4539,7 @@
         "prefabInstantiate"
       ],
       "implementationState": "complete",
-      "implementationReason": "Wave D evidence confirms prefabInstantiate validates source and parent identities, verifies created node and linked prefab identity, and cleans up failed disposable nodes.",
+      "implementationReason": "Exact Creator 3.7.3 evidence instantiates a deterministic current cc.Prefab fixture with source identity, linked node read-back, snapshot persistence, typed missing-source rejection and cleanup.",
       "implementationRoute": [
         {
           "tool": "prefabInstantiate",
@@ -4480,11 +4547,14 @@
         }
       ],
       "evidenceArtifacts": [
+        "reports/api-prefab-instantiate-followup-20260920.json",
         "reports/authoring-prefab-wave-20260920.json",
+        "tests/live/read-only-candidate-qualification.test.js",
         "tests/unit/advanced-capability-tools.test.js"
       ],
       "limitations": [
-        "Focused prefab authoring evidence only; no runtime/Game View credit."
+        "The qualified Creator 3.7.3 follow-up supersedes the earlier READBACK_MISMATCH/test-pending classification; the Wave D implementation record is retained as distinct supporting evidence.",
+        "Editor-side prefab instantiation only; arbitrary prefab mutation and runtime/Game View behavior are not claimed."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -4677,7 +4747,7 @@
       "implementationRoute": [
         {
           "tool": "sceneHierarchyValidate",
-          "file": "source/utcp/tools/advanced-capability-tools.ts"
+          "file": "source/utcp/tools/scene-tools.ts"
         }
       ],
       "evidenceArtifacts": [
@@ -5414,11 +5484,12 @@
       ],
       "portfolioNames": [],
       "implementationState": "complete",
-      "implementationReason": "The registered editorViewport route exposes the documented editor operation/state with the same bounded observable outcome; focused editor evidence covers the route family.",
+      "implementationReason": "Preserves the existing bounded editorViewport set_2d_mode completion record through the current registered route and authoritative viewport state read-back.",
       "implementationRoute": [
         {
           "tool": "editorViewport",
-          "file": "source/utcp/tools/editor-tools.ts"
+          "file": "source/utcp/tools/editor-tools.ts",
+          "operation": "set_2d_mode"
         }
       ],
       "evidenceArtifacts": [
@@ -5427,7 +5498,7 @@
         "tests/live/read-only-tools.test.js"
       ],
       "limitations": [
-        "Editor-side bounded evidence only; no Game View/runtime credit."
+        "Historical editor-side evidence is retained; this reconciliation does not freshly qualify the current running artifact or claim Game View/runtime behavior."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -5452,8 +5523,8 @@
         "cocos-mcp:end_undo_recording"
       ],
       "portfolioNames": [],
-      "implementationState": "complete",
-      "implementationReason": "Ends the bounded editor undo recording lifecycle through exact native history IPC.",
+      "implementationState": "missing",
+      "implementationReason": "The historical completion referenced editorHistory, but its current registered contract exposes only undo, redo and abort; no exact end-recording operation is implemented.",
       "implementationRoute": [
         {
           "tool": "editorHistory",
@@ -5461,11 +5532,10 @@
         }
       ],
       "evidenceArtifacts": [
-        "reports/authoring-final-prefab-editor-wave-20260920.json",
-        "tests/unit/advanced-capability-tools.test.js"
+        "reports/authoring-final-prefab-editor-wave-20260920.json"
       ],
       "limitations": [
-        "Editor-side bounded evidence only; no Game View/runtime credit."
+        "The historical bounded-complete label is retained for traceability, not credited against the current missing operation."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -5491,11 +5561,12 @@
       ],
       "portfolioNames": [],
       "implementationState": "complete",
-      "implementationReason": "The registered editorViewport route exposes the documented editor operation/state with the same bounded observable outcome; focused editor evidence covers the route family.",
+      "implementationReason": "Preserves the existing bounded editorViewport focus completion record through the current scene focus-camera IPC route for declared node identities.",
       "implementationRoute": [
         {
           "tool": "editorViewport",
-          "file": "source/utcp/tools/editor-tools.ts"
+          "file": "source/utcp/tools/editor-tools.ts",
+          "operation": "focus"
         }
       ],
       "evidenceArtifacts": [
@@ -5504,7 +5575,7 @@
         "tests/live/read-only-tools.test.js"
       ],
       "limitations": [
-        "Editor-side bounded evidence only; no Game View/runtime credit."
+        "Historical editor-side evidence is retained; this reconciliation does not freshly qualify the current running artifact or claim Game View/runtime behavior."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -5529,12 +5600,20 @@
         "cocos-mcp:get_active_listeners"
       ],
       "portfolioNames": [],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
-      "implementationRoute": [],
-      "evidenceArtifacts": [],
+      "implementationState": "partial",
+      "implementationReason": "editorListenersInspect exposes an intentionally empty ccp3x-owned inventory, not the requested arbitrary Creator active-listener enumeration; no complete credit is justified.",
+      "implementationRoute": [
+        {
+          "tool": "editorListenersInspect",
+          "file": "source/utcp/tools/advanced-capability-tools.ts"
+        }
+      ],
+      "evidenceArtifacts": [
+        "tests/unit/advanced-capability-tools.test.js",
+        "reports/authoring-editor-ui-wave-20260920.json"
+      ],
       "limitations": [
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Creator 3.7.3 does not expose arbitrary listener enumeration; returned inventory is intentionally bounded and empty."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -7066,8 +7145,8 @@
       "portfolioNames": [
         "particlePlayback"
       ],
-      "implementationState": "complete",
-      "implementationReason": "qualified portfolio state + unique direct route + current Creator 3.7.3 evidence",
+      "implementationState": "unsupported",
+      "implementationReason": "The current portfolio explicitly owner-disables Game View qualification; historical particle playback success does not establish current complete credit while the runtime prerequisite remains deferred.",
       "implementationRoute": [
         {
           "tool": "particlePlayback",
@@ -7075,12 +7154,11 @@
         }
       ],
       "evidenceArtifacts": [
+        "reports/api-capability-preview-disabled-reconciliation-20260920.json",
         "reports/evidence/candidates/particlePlayback/creator-3.7.3-01635c7-dirty.json"
       ],
       "limitations": [
-        "Play, stop, clear and completion observation in a named runtime session.",
-        "Historical qualified label alone is not complete-contract evidence.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Historical witness bytes are retained unchanged; runtime reopening and current live qualification are not part of this reconciliation."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -8752,8 +8830,8 @@
       "portfolioNames": [
         "runtimeScenarioAssert"
       ],
-      "implementationState": "complete",
-      "implementationReason": "qualified portfolio state + unique direct route + current Creator 3.7.3 evidence",
+      "implementationState": "unsupported",
+      "implementationReason": "The current portfolio owner-disables the Game View qualification prerequisite; the historical runtimeScenarioAssert witness cannot supply current complete credit.",
       "implementationRoute": [
         {
           "tool": "runtimeScenarioAssert",
@@ -8761,12 +8839,11 @@
         }
       ],
       "evidenceArtifacts": [
+        "reports/api-capability-preview-disabled-reconciliation-20260920.json",
         "reports/evidence/candidates/runtimeScenarioAssert/creator-3.7.3-432ede0-dirty.json"
       ],
       "limitations": [
-        "Independent state/image/event assertions rather than request echo.",
-        "Historical qualified label alone is not complete-contract evidence.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "State observation on an already manually attached preview may remain available, but current end-to-end runtime qualification is deferred."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -8793,8 +8870,8 @@
       "portfolioNames": [
         "runtimeScenarioRun"
       ],
-      "implementationState": "complete",
-      "implementationReason": "qualified portfolio state + unique direct route + current Creator 3.7.3 evidence",
+      "implementationState": "unsupported",
+      "implementationReason": "The current portfolio owner-disables the Game View qualification prerequisite; the historical runtimeScenarioRun witness cannot supply current complete credit.",
       "implementationRoute": [
         {
           "tool": "runtimeScenarioRun",
@@ -8802,12 +8879,11 @@
         }
       ],
       "evidenceArtifacts": [
+        "reports/api-capability-preview-disabled-reconciliation-20260920.json",
         "reports/evidence/candidates/runtimeScenarioRun/creator-3.7.3-432ede0-dirty.json"
       ],
       "limitations": [
-        "Execute finite named steps only; no code string or general method dispatch.",
-        "Historical qualified label alone is not complete-contract evidence.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "An already manually attached preview is not fresh evidence for the deferred runtime workflow."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -8834,8 +8910,8 @@
       "portfolioNames": [
         "runtimeStateObserve"
       ],
-      "implementationState": "complete",
-      "implementationReason": "qualified portfolio state + unique direct route + current Creator 3.7.3 evidence",
+      "implementationState": "unsupported",
+      "implementationReason": "The current portfolio owner-disables the Game View qualification prerequisite; the historical runtimeStateObserve witness cannot supply current complete credit.",
       "implementationRoute": [
         {
           "tool": "runtimeStateObserve",
@@ -8843,12 +8919,11 @@
         }
       ],
       "evidenceArtifacts": [
+        "reports/api-capability-preview-disabled-reconciliation-20260920.json",
         "reports/evidence/candidates/runtimeStateObserve/creator-3.7.3-432ede0-dirty.json"
       ],
       "limitations": [
-        "Bounded allow-listed observations tied to session identity and target kind.",
-        "Historical qualified label alone is not complete-contract evidence.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Read-only observation may remain implemented for manually attached preview state; current runtime qualification stays deferred."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",
@@ -9674,7 +9749,7 @@
       "implementationReason": "Wave K evidence confirms component creation with authoritative UUID/type verification after mutation.",
       "implementationRoute": [
         {
-          "tool": "nodeComponentAdd",
+          "tool": "addComponent",
           "file": "source/utcp/tools/component-tools.ts"
         }
       ],
@@ -12358,13 +12433,24 @@
       ],
       "competitorSourceIds": [],
       "portfolioNames": [],
-      "implementationState": "unreviewed",
-      "implementationReason": "accepted contract identity; implementation route and evidence not yet bound",
-      "implementationRoute": [],
-      "evidenceArtifacts": [],
+      "implementationState": "complete",
+      "implementationReason": "Bounded compound UI authoring routes create complete ScrollView and input-form compositions with stable node/component identities, hierarchy read-back, snapshots and rollback-safe failure handling.",
+      "implementationRoute": [
+        {
+          "tool": "uiCreateScrollView",
+          "file": "source/utcp/tools/ui-tools.ts"
+        },
+        {
+          "tool": "uiCreateInputForm",
+          "file": "source/utcp/tools/ui-tools.ts"
+        }
+      ],
+      "evidenceArtifacts": [
+        "reports/authoring-editor-ui-wave-20260920.json",
+        "tests/live/ui-fallback.test.js"
+      ],
       "limitations": [
-        "Create a complete scene/UI composition with stable identities.",
-        "Reviewer proposal retained; source-level equivalence and implementation evidence not accepted."
+        "Bounded editor/UI compositions only; arbitrary scene scripting, runtime preview and panel-click credit are not claimed."
       ],
       "reviewed": true,
       "contractReviewStatus": "accepted",

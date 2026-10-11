@@ -2,6 +2,8 @@
   "schemaVersion": 2,
   "denominatorVersion": "ccp3x-creator-3.7.3-windows-v1-review",
   "denominatorHash": "9dd249158a8826bff1ba4021147302a7f34a60a84430344a5b4330053d517286",
+  "denominatorIdentityKind": "approved-historical",
+  "denominatorSemanticHash": "fce2c66c4f8c93c36839dfe845b0e9139f4e9930d477dfb1a94f356707260f1e",
   "sourceCounts": {
     "competitor": 262,
     "lane": 86,

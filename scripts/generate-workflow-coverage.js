@@ -11,6 +11,24 @@ const IMPLEMENTATION_STATES = new Set(['complete', 'test-pending', 'partial', 'm
 const digest = value => crypto.createHash('sha256').update(value).digest('hex');
 const slug = value => String(value).replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+// Raw input bytes record current provenance, not a new owner-approved denominator.
+function semanticBasis(rows, mappings) {
+  return {
+    contracts: rows.map(row => ({
+      id: row.id, domain: row.domain, title: row.title, observableOutcome: row.observableOutcome,
+      creatorVersion: row.creatorVersion, platform: row.platform, executionContext: row.executionContext,
+      sourceIds: [...row.sourceIds].sort(), reviewed: row.reviewed, contractReviewStatus: row.contractReviewStatus,
+      contractDecision: row.contractDecision, denominatorDisposition: row.denominatorDisposition,
+      dispositionReason: row.dispositionReason, approval: row.approval || null,
+    })).sort((a, b) => a.id.localeCompare(b.id)),
+    mappings: mappings.map(row => ({
+      sourceId: row.sourceId, sourceKind: row.sourceKind, sourceName: row.sourceName,
+      workflowId: row.workflowId, status: row.status, detailStatus: row.detailStatus,
+      originalContract: row.originalContract, contractSource: row.contractSource, proposal: row.proposal,
+    })).sort((a, b) => a.sourceId.localeCompare(b.sourceId)),
+  };
+}
+
 function generate(root = ROOT) {
   const bytes = INPUTS.map(file => fs.readFileSync(path.join(root, file)));
   const [competitor, lanes, portfolio, proposals, reviews] = bytes.map(value => JSON.parse(value));
@@ -203,18 +221,38 @@ function generate(root = ROOT) {
   }
   for (const bucket of Object.values(byDomain)) bucket.implementationPercent = bucket.unreviewed ? null : Number((bucket.complete * 100 / bucket.total).toFixed(2));
   const basis = { profile: { creator: '3.7.3', os: 'windows-x64', profile: 'full', artifactClass: 'local-operator' }, sourceHashes, mappings: mappings.map(({ sourceId, workflowId }) => ({ sourceId, workflowId })), dispositions: rows.map(({ id, denominatorDisposition }) => ({ id, denominatorDisposition })) };
-  const denominatorHash = digest(JSON.stringify(basis));
-  const common = { schemaVersion: 2, denominatorVersion: VERSION, denominatorHash };
+  let denominatorInputHashes = sourceHashes;
+  let denominatorHash = digest(JSON.stringify(basis));
+  const denominatorSemanticHash = digest(JSON.stringify(semanticBasis(rows, mappings)));
+  const inventoryFile = path.join(root, 'docs/workflow-inventory.json');
+  if (fs.existsSync(inventoryFile)) {
+    const previous = JSON.parse(fs.readFileSync(inventoryFile, 'utf8'));
+    if (previous.status === 'frozen-v1') {
+      const previousMapping = JSON.parse(fs.readFileSync(path.join(root, 'docs/workflow-source-mapping.json'), 'utf8'));
+      const previousSemanticHash = digest(JSON.stringify(semanticBasis(previous.rows, previousMapping.rows)));
+      if (previous.denominatorVersion !== VERSION || previousMapping.denominatorHash !== previous.denominatorHash
+          || JSON.stringify(previous.qualificationProfile) !== JSON.stringify(basis.profile)
+          || previousSemanticHash !== denominatorSemanticHash
+          || (previous.denominatorSemanticHash && previous.denominatorSemanticHash !== previousSemanticHash)) {
+        throw new Error('Frozen workflow contract/mapping/disposition changed; explicit denominator re-approval is required.');
+      }
+      denominatorInputHashes = previous.denominatorInputHashes || previous.inputHashes;
+      const frozenHash = digest(JSON.stringify({ ...basis, sourceHashes: denominatorInputHashes }));
+      if (frozenHash !== previous.denominatorHash) throw new Error('Frozen denominator input-hash basis does not reproduce its historical identity.');
+      denominatorHash = frozenHash;
+    }
+  }
+  const common = { schemaVersion: 2, denominatorVersion: VERSION, denominatorHash, denominatorIdentityKind: 'approved-historical', denominatorSemanticHash };
   const output = {
-    'docs/workflow-inventory.json': { ...common, status: reviewComplete ? 'frozen-v1' : 'review-required', qualificationProfile: basis.profile, inputHashes: sourceHashes, rows },
+    'docs/workflow-inventory.json': { ...common, status: reviewComplete ? 'frozen-v1' : 'review-required', qualificationProfile: basis.profile, inputHashes: sourceHashes, denominatorInputHashes, rows },
     'docs/workflow-source-mapping.json': { ...common, sourceCounts: { competitor: competitor.rows.length, lane: lanes.rows.length, parent: parent.length }, rows: mappings.sort((a, b) => a.sourceId.localeCompare(b.sourceId)) },
-    'docs/workflow-implementation-evidence.json': { ...common, implementationOverrideSource: IMPLEMENTATION_OVERRIDES, rows: rows.map(row => ({ workflowId: row.id, state: row.implementationState, reason: row.implementationReason, routes: row.implementationRoute, evidenceArtifacts: row.evidenceArtifacts, limitations: row.limitations })) },
+    'docs/workflow-implementation-evidence.json': { ...common, implementationOverrideSource: IMPLEMENTATION_OVERRIDES, implementationOverrideHash: digest(fs.readFileSync(path.join(root, IMPLEMENTATION_OVERRIDES))), rows: rows.map(row => ({ workflowId: row.id, state: row.implementationState, reason: row.implementationReason, routes: row.implementationRoute, evidenceArtifacts: row.evidenceArtifacts, limitations: row.limitations })) },
     'reports/workflow-coverage-report.json': { ...common, status: reviewComplete ? 'measurable' : 'not-measurable', candidateDenominator: included.length, denominator: reviewComplete ? included.length : null, confirmedComplete: confirmed.length, implementationPercent: reviewComplete ? Number((confirmed.length * 100 / included.length).toFixed(2)) : null, targetPercent: 90, targetComplete: reviewComplete ? Math.ceil(included.length * 0.9) : null, deficitTo90: reviewComplete ? Math.max(0, Math.ceil(included.length * 0.9) - confirmed.length) : null, unresolvedContracts: unresolved.length, byDomain, invalidatedClaims: ['137/181', '144/189', '27 workflows to closure'], reason: 'Prior generator merged different operations and inferred implementation from registration/qualification labels; these are not accepted coverage evidence.' },
     'reports/workflow-classification-review.json': { ...common, rows: mappings.filter(row => row.status !== 'contract-reviewed').map(row => ({ ...row, reviewReason: row.detailStatus === 'operation-contract-needed' ? 'Recover original operation inputs/outputs and context before equivalence review.' : 'Verify full outcome, not tool name or shared implementation.' })) },
     'reports/workflow-closure-backlog.json': { ...common, status: reviewComplete ? 'ready-for-implementation-reconciliation' : 'blocked-on-contract-review', requiredFor90: reviewComplete ? Math.max(0, Math.ceil(included.length * 0.9) - confirmed.length) : null, rows: rows.filter(row => row.reviewed && row.denominatorDisposition === 'included' && row.implementationState !== 'complete').map(row => ({ workflowId: row.id, state: row.implementationState, reason: row.implementationReason, acceptance: row.observableOutcome, limitations: row.limitations, dependencies: row.executionContext === 'game-view' ? ['qualified-game-view-transport'] : [] })) },
   };
   for (const [file, value] of Object.entries(output)) { const destination = path.join(root, file); fs.mkdirSync(path.dirname(destination), { recursive: true }); fs.writeFileSync(destination, `${JSON.stringify(value, null, 2)}\n`); }
-  return { ok: true, sourceCount: sources.length, candidateWorkflows: rows.length, confirmedComplete: confirmed.length, unresolvedContracts: unresolved.length, denominatorHash, frozen: false };
+  return { ok: true, sourceCount: sources.length, candidateWorkflows: rows.length, confirmedComplete: confirmed.length, unresolvedContracts: unresolved.length, approvedHistoricalDenominatorHash: denominatorHash, currentDenominatorSemanticHash: denominatorSemanticHash, frozen: reviewComplete };
 }
-module.exports = { generate, INPUTS, digest };
+module.exports = { generate, INPUTS, digest, semanticBasis };
 if (require.main === module) { try { console.log(JSON.stringify(generate())); } catch (error) { console.error(error.message); process.exitCode = 1; } }

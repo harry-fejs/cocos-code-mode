@@ -40,6 +40,9 @@ interface OptionRule {
 
 const COMMON_RULES: Record<string, OptionRule> = {
     taskName: { type: 'string', max: 128 },
+    taskId: { type: 'string', max: 256 },
+    useSplashScreen: { type: 'boolean' },
+    packAutoAtlas: { type: 'boolean' },
     name: { type: 'string', max: 128 },
     outputName: { type: 'string', max: 128 },
     buildPath: { type: 'string', max: 512 },
@@ -79,6 +82,7 @@ const COMMON_RULES: Record<string, OptionRule> = {
 
 const PLATFORM_RULES: Record<BuildPresetPlatform, Record<string, OptionRule>> = {
     'web-mobile': {
+        'web-mobile': { type: 'array', max: 0 },
         orientation: { type: 'string', enum: ['auto', 'landscape', 'portrait'] },
         embedWebDebugger: { type: 'boolean' },
         remoteServerAddress: { type: 'string', max: 2048 },

@@ -2,7 +2,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
-const { digest } = require('./generate-workflow-coverage');
+const { digest, semanticBasis } = require('./generate-workflow-coverage');
 
 function audit(root = path.resolve(__dirname, '..'), requireFrozen = false) {
   const read = file => JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
@@ -42,8 +42,21 @@ function audit(root = path.resolve(__dirname, '..'), requireFrozen = false) {
   for (const [file, hash] of Object.entries(inventory.inputHashes)) {
     if (digest(fs.readFileSync(path.join(root, file))) !== hash) fail(`stale input hash: ${file}`);
   }
+  if (inventory.denominatorInputHashes) {
+    const bySource = new Map(mapping.rows.map(row => [row.sourceId, row]));
+    const basis = {
+      profile: inventory.qualificationProfile,
+      sourceHashes: inventory.denominatorInputHashes,
+      mappings: [...expected].map(sourceId => ({ sourceId, workflowId: bySource.get(sourceId).workflowId })),
+      dispositions: inventory.rows.map(({ id, denominatorDisposition }) => ({ id, denominatorDisposition })),
+    };
+    if (digest(JSON.stringify(basis)) !== inventory.denominatorHash) fail('historical denominator input-hash basis drift');
+    if (digest(JSON.stringify(semanticBasis(inventory.rows, mapping.rows))) !== inventory.denominatorSemanticHash) fail('frozen denominator semantic identity drift');
+  }
+  if (evidence.implementationOverrideHash && evidence.implementationOverrideHash !== digest(fs.readFileSync(path.join(root, 'docs/workflow-implementation-overrides.json')))) fail('implementation override hash drift');
   for (const item of [mapping, evidence, coverage, backlog]) {
     if (item.denominatorVersion !== inventory.denominatorVersion || item.denominatorHash !== inventory.denominatorHash) fail('denominator identity drift');
+    if (item.denominatorIdentityKind !== inventory.denominatorIdentityKind || item.denominatorSemanticHash !== inventory.denominatorSemanticHash) fail('denominator semantic provenance drift');
   }
   const byId = new Map(inventory.rows.map(row => [row.id, row]));
   const states = ['complete', 'test-pending', 'partial', 'missing', 'unsupported', 'external', 'unreviewed', 'excluded'];
@@ -77,7 +90,7 @@ function audit(root = path.resolve(__dirname, '..'), requireFrozen = false) {
   if (evidence.rows.length !== inventory.rows.length || new Set(evidence.rows.map(row => row.workflowId)).size !== inventory.rows.length) fail('evidence inventory mismatch');
   if (backlog.rows.some(row => !byId.has(row.workflowId))) fail('unknown backlog workflow');
   if (requireFrozen && (unresolved || inventory.status !== 'frozen-v1')) fail('denominator not frozen: complete contract review and owner acceptance first');
-  return { ok: true, freezeEligible: unresolved === 0, frozen: inventory.status === 'frozen-v1', sources: expected.size, workflows: inventory.rows.length, unresolvedContracts: unresolved, implementationPercent: coverage.implementationPercent };
+  return { ok: true, freezeEligible: unresolved === 0, frozen: inventory.status === 'frozen-v1', sources: expected.size, workflows: inventory.rows.length, unresolvedContracts: unresolved, implementationPercent: coverage.implementationPercent, approvedHistoricalDenominatorHash: inventory.denominatorHash, currentDenominatorSemanticHash: inventory.denominatorSemanticHash };
 }
 module.exports = { audit };
 if (require.main === module) { try { console.log(JSON.stringify(audit(undefined, process.argv.includes('--require-frozen')))); } catch (error) { console.error(error.message); process.exitCode = 1; } }

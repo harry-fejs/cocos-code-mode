@@ -1,0 +1,174 @@
+{
+  "date": "2026-10-11",
+  "scope": "approved Creator3.7 follow-through source; no portfolio promotion or release qualification",
+  "verification": {
+    "typescript": "node node_modules/typescript/bin/tsc passed",
+    "creatorLoad": {
+      "command": "node scripts/check-creator-load.js",
+      "passed": true,
+      "entries": 6,
+      "modules": 136,
+      "loadedFiles": 330
+    },
+    "unit": {
+      "command": "npm run test:unit",
+      "passed": 683,
+      "failed": 0
+    },
+    "technicalSmoke": "Actual compiled BuildTools and TweenSequenceTools invoked with simulated IPC; positive build preflight, redacted environment and static-valid/runtime-unavailable tween behavior observed. Not Creator-live qualification."
+  },
+  "nativeReadOnlyProbe": {
+    "projectPath": "G:/_ws/cc-30-fw-sync/cc30-new-aio-sync",
+    "namespace": "ccp3x_56398",
+    "instanceId": "f4c672c24b98e1f8e19f8474e9745f71",
+    "creatorVersion": "3.7.3",
+    "loadedBuild": {
+      "commit": "72c3bc3",
+      "dirty": true,
+      "builtAt": "2026-10-09T07:38:10.157Z"
+    },
+    "installedToolQualification": false,
+    "updateTask": "builder/update-task receives {id,options,rawOptions,dirty}; in-memory only, native manager updateTaskInfo does not invoke save",
+    "addTask": "Native method calls manager.add and resolves false by default when second argument is absent; false is not proof of refusal",
+    "scene": {
+      "uuid": "5c508621-dfab-4a16-ab45-a26c3229aa74",
+      "url": "db://assets/cc-common/cc30-slot-module/g9000.scene"
+    },
+    "compiledPreflightInsideCreator": {
+      "positiveValid": true,
+      "negativeValid": false,
+      "negativeCodes": [
+        "START_SCENE_NOT_INCLUDED",
+        "REMOTE_SERVER_REQUIRED"
+      ],
+      "writes": false
+    },
+    "environment": {
+      "androidSDK": {
+        "available": true,
+        "configured": false
+      },
+      "androidNDK": {
+        "available": true,
+        "configured": false
+      },
+      "java": {
+        "available": false,
+        "configured": false
+      },
+      "pathsRedacted": true,
+      "toolchainVerified": false
+    }
+  },
+  "pending": [
+    "Clean packaged artifact install/signatures/rollback; technical dirty dependency-junction install is not release qualification",
+    "Combined Status five-row visual/popup and original responsive UUID acceptance",
+    "Android SDK/NDK unconfigured and registered Java API unavailable; no Android build",
+    "Prefab mounted/removed/nested and total-response-bound contracts",
+    "Scene close unconfirmed on actual Creator; retained failure, owned process stopped for safe cleanup",
+    "Protected enrollment/signing remains separate"
+  ],
+  "disposableQualification": {
+    "projectPath": "G:/_ws/_helpers/ccp3x-api-qualification-20261011",
+    "creator": "3.7.3",
+    "initialArtifactSha256": "7508fd7b56c1312c170e23bcb3dea0ae74b19ea0b736fe325846a31fceb1670e",
+    "correctedNativeValidatorSha256": "bbb9c43f78929dcd250c91c0461cc131d917fbe4d3a238e69ac89d30abcaf4da",
+    "artifactMode": "copied dist/static/package with dependency junction; dirty technical qualification, not clean packaged release",
+    "instances": [
+      "4b2296613847af4b5580df6e4453378e",
+      "3ea39ad88f03dc557780960880ce11bb"
+    ],
+    "namespace": "ccp3x_62037",
+    "profile": "save/get and Creator process restart/get same options; delete/list total0",
+    "webBuild": {
+      "taskId": "qualification-web-20261011",
+      "submission": "outcome-unknown; exact caller taskId appeared once in queue; no retry",
+      "state": "success",
+      "progress": 1,
+      "durationMs": 30453,
+      "indexExists": true,
+      "outputFiles": [
+        "application.js",
+        "assets",
+        "cocos-js",
+        "index.html",
+        "index.js",
+        "src",
+        "style.css"
+      ],
+      "logsAvailable": false,
+      "cleanup": "task removed; build directory deleted after owned Creator stop"
+    },
+    "nativeTaskConfig": {
+      "installedApi": true,
+      "debugFalseReadback": true,
+      "restoredDebugTrue": true,
+      "persisted": false
+    },
+    "tween": {
+      "createInspectStaticValidate": true,
+      "sourceBytes": 1148,
+      "runtime": "RUNTIME_UNAVAILABLE",
+      "targetBinding": "not performed",
+      "cleanup": "source/meta removed after Creator stop"
+    },
+    "prefab": {
+      "assetUuid": "df8f6a0e-2bf9-4936-837b-d0cae86f0438",
+      "beforeSha256": "e673847e4e48cebfcc9ae6beadeb863709bdc8a33016eeccdfa23fed2df09e95",
+      "afterSha256": "39374b1fe5b0381ea9c623e82f546494b0b6e3092f34d2aeb159ae68d40a1a44",
+      "conflict": "PREFAB_SOURCE_CONFLICT409; alphabetic stale hash",
+      "persistedSourceActive": false,
+      "instanceActiveAfterRestart": false,
+      "identityRefreshedAfterRestart": true,
+      "cleanup": "scene/prefab/meta removed after Creator stop",
+      "qualificationLimit": "mounted/removed/nested and whole-response bounds not newly exercised"
+    },
+    "cleanup": {
+      "profiles": 0,
+      "tasks": 0,
+      "remainingAssets": 0,
+      "buildRemoved": true,
+      "ownedCreatorStopped": true
+    },
+    "unexpectedFailures": [
+      "sceneManage close returned SCENE_CLOSE_UNCONFIRMED; no false close credit",
+      "numeric-only SHA256 GET query rejected as type mismatch; reported tool issue",
+      "native task injected taskId/useSplashScreen/packAutoAtlas and empty web-mobile metadata required typed validator support, then installed update/restore passed"
+    ]
+  },
+  "visualQualification": {
+    "project": "G:/_ws/_helpers/ccp3x-api-qualification-20261011",
+    "instanceId": "f63b6f55f10eaa11f866c8f22f351572",
+    "statusPanel": {
+      "actualElectronSurface": true,
+      "screenshots": [
+        "reports/api-status-20261011.png",
+        "reports/api-status-scroll-20261011.png",
+        "reports/api-status-refresh-20261011.png"
+      ],
+      "scrollHeight": 1829,
+      "clientHeight": 614,
+      "scrollAndRefreshExercised": true,
+      "fiveSessionRows": "not exercised; no heartbeat fixtures"
+    },
+    "popup": {
+      "detected": false,
+      "blocking": null,
+      "unavailable": [],
+      "completeNoPopupAcceptance": false,
+      "canonicalSceneNotResponse": "not exercised",
+      "stackedPublicAction": "not exercised"
+    },
+    "cleanup": "owned Creator stopped; CDP socket closed",
+    "limitation": "browser CDP attach failed despite page targets; direct CDP actual screenshot/input fallback used. Dirty artifact, no full combined qualification credit."
+  },
+  "ownerAcceptance": {
+    "date": "2026-10-11",
+    "scope": "Status and popup",
+    "verifiedBy": "owner",
+    "instruction": "Đã chốt status, popup, đã kiểm chứng ok e check done đi",
+    "status": "done",
+    "agentRerun": false,
+    "portfolioPromotion": false
+  }
+}
