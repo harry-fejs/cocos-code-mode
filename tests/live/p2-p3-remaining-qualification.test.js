@@ -122,64 +122,26 @@ describe('live: P2/P3 remaining candidate qualification witnesses', () => {
     return found.body.result;
   }
 
-  it('edits an animation graph with serialized read-back and typed refusals', async (t) => {
+  it('inspects native graph structure and refuses unsupported edits without changing source', async (t) => {
     if (skipIfDown(t)) return;
-    await repeatTestcase('P23-V01', async ({ iteration }) => {
-      const preset = await getJson('/tools/assetQuery?pattern=db%3A%2F%2Finternal%2Fdefault_file_content%2Fanimgraph');
-      if (preset.status !== 200 || preset.body.total < 1) {
-        return { status: 'SKIP', reason: 'Creator does not expose the native animation graph preset fixture.' };
-      }
-      const assetPath = `db://assets/__ccp3x_graph_edit_${process.pid}_${iteration}__`;
-      let reference;
-      try {
-        const created = await postTool('animationGraphCreate', { assetPath });
-        assert.equal(created.status, 200, JSON.stringify(created.body));
-        reference = created.body.reference;
-        assert.equal(typeof reference.id, 'string');
-
-        const edited = await postTool('animationGraphEdit', {
-          reference,
-          operations: [
-            { operation: 'add_node', node: { id: 'idle' } },
-            { operation: 'add_node', node: { id: 'run' } },
-            { operation: 'add_transition', transition: { id: 'idle-run', from: 'idle', to: 'run' } },
-          ],
-        });
-        assert.equal(edited.status, 200, JSON.stringify(edited.body));
-        assert.equal(edited.body.verified, true);
-        assert.equal(edited.body.reference.id, reference.id);
-        assert.deepEqual(edited.body.graph.nodes.map((node) => node.id), ['idle', 'run']);
-        assert.deepEqual(edited.body.graph.transitions.map((edge) => edge.id), ['idle-run']);
-
-        // Independent read-back through the separate inspection route.
-        const inspected = await getJson(`/tools/animationGraphInspect?${refQuery(reference)}`);
-        assert.equal(inspected.status, 200, JSON.stringify(inspected.body));
-        assert.equal(inspected.body.nodeCount, 2);
-        assert.equal(inspected.body.transitionCount, 1);
-
-        const duplicate = await postTool('animationGraphEdit', { reference, operations: [{ operation: 'add_node', node: { id: 'idle' } }] });
-        assert.equal(duplicate.status, 409, JSON.stringify(duplicate.body));
-        assert.equal(duplicate.body.code, 'DUPLICATE_NODE_ID');
-
-        const unknown = await postTool('animationGraphEdit', { reference, operations: [{ operation: 'remove_node', nodeId: '__missing_node__' }] });
-        assert.equal(unknown.status, 404, JSON.stringify(unknown.body));
-        assert.equal(unknown.body.code, 'NODE_NOT_FOUND');
-
-        const unbounded = await postTool('animationGraphEdit', {
-          reference,
-          operations: Array.from({ length: 33 }, (_, index) => ({ operation: 'add_node', node: { id: `node_${index}` } })),
-        });
-        assert.equal(unbounded.status, 400, JSON.stringify(unbounded.body));
-        assert.equal(unbounded.body.validationErrors?.[0]?.keyword, 'maxItems');
-
-        // Refusals must not have mutated the persisted graph.
-        const after = await getJson(`/tools/animationGraphInspect?${refQuery(reference)}`);
-        assert.equal(after.body.nodeCount, 2);
-        assert.equal(after.body.transitionCount, 1);
-      } finally {
-        if (reference) await postTool('assetOperate', { operation: 'delete', reference });
-      }
-    });
+    const created = await postTool('animationGraphCreate', { assetPath: `db://assets/__ccp3x_native_graph_${process.pid}__` });
+    assert.equal(created.status, 200, JSON.stringify(created.body));
+    const reference = created.body.reference;
+    try {
+      const before = await getJson(`/tools/animationGraphInspect?${refQuery(reference)}`);
+      assert.equal(before.status, 200, JSON.stringify(before.body));
+      assert.equal(before.body.format, 'native-creator-3.7');
+      assert.equal(before.body.semanticsVerified, false);
+      assert.equal(before.body.runtimeVerified, false);
+      const edited = await postTool('animationGraphEdit', { reference, operations: [{ operation: 'add_node', node: { id: 'fake' } }] });
+      assert.equal(edited.status, 422, JSON.stringify(edited.body));
+      assert.equal(edited.body.code, 'NATIVE_GRAPH_EDIT_UNSUPPORTED');
+      const after = await getJson(`/tools/animationGraphInspect?${refQuery(reference)}`);
+      assert.deepEqual(after.body.states, before.body.states);
+      assert.deepEqual(after.body.transitions, before.body.transitions);
+      const validated = await getJson(`/tools/animationGraphValidate?${refQuery(reference)}`);
+      assert.equal(validated.body.valid, false);
+    } finally { await postTool('assetOperate', { operation: 'delete', reference }); }
   });
 
   it('reverts and applies prefab instance overrides with source and instance read-back', async (t) => {

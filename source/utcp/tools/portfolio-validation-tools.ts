@@ -1,14 +1,53 @@
 import fs from 'fs-extra';
+import type { JsonSchema } from '@utcp/sdk';
 import { utcpTool } from '../decorators';
 import { ToolError } from '../tool-error';
 import { InstanceReferenceSchema, IInstanceReference } from '../schemas';
 import { AssetTools } from './asset-tools';
 import { ExpansionTools } from './expansion-tools';
+import { inspectNativeAnimationGraph } from '../../native-animation-graph-inspect';
 
 const GRAPH_PRESET = 'db://internal/default_file_content/animgraph';
 const ASSET_PATH_PATTERN = /^db:\/\/assets\/[A-Za-z0-9._/-]+$/;
 const SKELETAL_FIELDS = ['playOnLoad', 'useBakedAnimation'] as const;
 type SkeletalField = typeof SKELETAL_FIELDS[number];
+
+const GRAPH_SOURCE_LIMIT = 5 * 1024 * 1024;
+const GraphInspectionSchema = {
+    type: 'object', additionalProperties: false,
+    properties: {
+        reference: InstanceReferenceSchema,
+        format: { type: 'string', enum: ['native-creator-3.7', 'legacy-synthetic', 'unsupported'] },
+        nativeShape: { type: 'boolean' }, structuralValid: { type: 'boolean' },
+        semanticsVerified: { type: 'boolean', const: false }, runtimeVerified: { type: 'boolean', const: false },
+        layers: { type: 'array', maxItems: 32, items: { type: 'object' } },
+        stateMachines: { type: 'array', maxItems: 128, items: { type: 'object' } },
+        states: { type: 'array', maxItems: 256, items: { type: 'object' } },
+        transitions: { type: 'array', maxItems: 512, items: { type: 'object' } },
+        variables: { type: 'array', maxItems: 128, items: { type: 'object' } },
+        conditions: { type: 'array', maxItems: 512, items: { type: 'object' } },
+        layerCount: { type: 'integer' }, stateMachineCount: { type: 'integer' }, stateCount: { type: 'integer' },
+        transitionCount: { type: 'integer' }, variableCount: { type: 'integer' }, conditionCount: { type: 'integer' },
+        issues: { type: 'array', maxItems: 128, items: { type: 'object', properties: { code: { type: 'string' }, path: { type: 'string' } }, required: ['code', 'path'] } },
+        truncated: { type: 'boolean' }, limits: { type: 'object' }, verificationScope: { type: 'string' },
+    },
+    required: ['reference', 'format', 'nativeShape', 'structuralValid', 'semanticsVerified', 'runtimeVerified', 'layers', 'stateMachines', 'states', 'transitions', 'variables', 'conditions', 'layerCount', 'stateMachineCount', 'stateCount', 'transitionCount', 'variableCount', 'conditionCount', 'issues', 'truncated', 'limits', 'verificationScope'],
+} satisfies JsonSchema;
+
+async function readGraphSource(file: unknown): Promise<unknown> {
+    if (typeof file !== 'string' || !file) throw new ToolError({ code: 'SOURCE_UNAVAILABLE', status: 422, message: 'Animation graph source is unavailable.' });
+    try {
+        const stat = await fs.stat(file);
+        if (!stat.isFile()) throw new ToolError({ code: 'SOURCE_UNAVAILABLE', status: 422, message: 'Animation graph source is not a file.' });
+        if (stat.size > GRAPH_SOURCE_LIMIT) throw new ToolError({ code: 'SOURCE_TOO_LARGE', status: 422, message: 'Animation graph source exceeds the 5 MiB inspection limit.' });
+        const content = await fs.readFile(file, 'utf8');
+        if (Buffer.byteLength(content, 'utf8') > GRAPH_SOURCE_LIMIT) throw new ToolError({ code: 'SOURCE_TOO_LARGE', status: 422, message: 'Animation graph source exceeds the 5 MiB inspection limit.' });
+        return JSON.parse(content) as unknown;
+    } catch (error) {
+        if (error instanceof ToolError) throw error;
+        throw new ToolError({ code: 'SOURCE_INVALID', status: 422, message: 'Animation graph source could not be read as JSON.', details: { cause: error instanceof Error ? error.message : String(error) } });
+    }
+}
 
 function invalid(message: string): never {
     throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message });
@@ -178,64 +217,36 @@ export class PortfolioValidationTools {
         const valid = known && result != null && result !== false;
         return { valid, effectName: args.effectName, diagnostics: valid ? [] : [{ code: 'EFFECT_NOT_FOUND', effectName: args.effectName }], result: result ?? null };
     }
-    @utcpTool('animationGraphInspect', 'Inspect a bounded JSON animation graph.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, { type: 'object', properties: { reference: { type: 'object' }, nodes: { type: 'array' }, transitions: { type: 'array' }, nodeCount: { type: 'integer' }, transitionCount: { type: 'integer' } }, required: ['reference', 'nodes', 'transitions', 'nodeCount', 'transitionCount'] }, 'GET', ['animation', 'graph', 'inspect'])
-    async animationGraphInspect(args: { reference: IInstanceReference }) { const asset = await info(args.reference); if (typeof asset.file !== 'string') throw new ToolError({ code: 'SOURCE_UNAVAILABLE', status: 422, message: 'Asset source is unavailable.' }); const value: any = JSON.parse(await fs.readFile(asset.file, 'utf8')); const nodes = Array.isArray(value.nodes) ? value.nodes.slice(0, 256) : []; const transitions = Array.isArray(value.transitions) ? value.transitions.slice(0, 512) : []; return { reference: { id: String(asset.uuid ?? args.reference.id), type: String(asset.type ?? 'cc.JsonAsset') }, nodes, transitions, nodeCount: nodes.length, transitionCount: transitions.length }; }
-    @utcpTool('animationGraphEdit', 'Apply bounded persistent animation graph mutations and verify serialized read-back.', {
+    @utcpTool('animationGraphInspect', 'Inspect bounded native Creator 3.7 serialized layers, state machines, variables and conditions. Structural evidence only; semantics and runtime are not verified.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, GraphInspectionSchema, 'GET', ['animation', 'graph', 'inspect'])
+    async animationGraphInspect(args: { reference: IInstanceReference }) {
+        const asset = await info(args?.reference);
+        const value = await readGraphSource(asset.file);
+        return { reference: assetReference(asset, args.reference.id), ...inspectNativeAnimationGraph(value) };
+    }
+    @utcpTool('animationGraphEdit', 'Fails closed: legacy synthetic node/transition operations are not a native Creator graph serializer. Use Creator authoring tools; no source is written.', {
         type: 'object', additionalProperties: false,
         properties: {
             reference: InstanceReferenceSchema,
             operations: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { operation: { type: 'string', enum: ['add_node', 'remove_node', 'update_node', 'add_transition', 'remove_transition'] }, node: {}, nodeId: { type: 'string', maxLength: 256 }, transition: {}, transitionId: { type: 'string', maxLength: 256 } }, required: ['operation'] } },
         },
         required: ['reference', 'operations'],
-    }, { type: 'object', properties: { reference: InstanceReferenceSchema, changed: { type: 'array' }, verified: { type: 'boolean' }, graph: { type: 'object' } }, required: ['reference', 'changed', 'verified', 'graph'] }, 'POST', ['animation', 'graph', 'edit', 'configure', 'asset'])
-    async animationGraphEdit(args: { reference: IInstanceReference, operations: Array<{ operation: string, node?: unknown, nodeId?: string, transition?: unknown, transitionId?: string }> }) {
-        if (!args?.reference?.id || typeof args.reference.id !== 'string') invalid('reference.id is required.');
-        if (!Array.isArray(args.operations) || args.operations.length < 1 || args.operations.length > 32) invalid('operations must contain 1 to 32 items.');
-        const asset = await info(args.reference);
-        if (typeof asset.file !== 'string') throw new ToolError({ code: 'SOURCE_UNAVAILABLE', status: 422, message: 'Animation graph source is unavailable.' });
-        let value: Record<string, unknown>;
-        try { value = JSON.parse(await fs.readFile(asset.file, 'utf8')) as Record<string, unknown>; } catch (error) { throw new ToolError({ code: 'SOURCE_INVALID', status: 422, message: 'Animation graph source is not valid JSON.', details: { cause: error instanceof Error ? error.message : String(error) } }); }
-        const nodes = Array.isArray(value.nodes) ? [...value.nodes] : [];
-        const transitions = Array.isArray(value.transitions) ? [...value.transitions] : [];
-        const changed: string[] = [];
-        const idOf = (candidate: unknown): string | undefined => candidate && typeof candidate === 'object' && 'id' in candidate && typeof candidate.id === 'string' ? candidate.id : undefined;
-        for (const [index, operation] of args.operations.entries()) {
-            if (!operation || typeof operation.operation !== 'string') invalid(`operations[${index}].operation is required.`);
-            if (operation.operation === 'add_node') {
-                if (!operation.node || typeof operation.node !== 'object' || !idOf(operation.node)) invalid(`operations[${index}].node must be an object with id.`);
-                if (nodes.some((node) => idOf(node) === idOf(operation.node))) throw new ToolError({ code: 'DUPLICATE_NODE_ID', status: 409, message: `Node ${idOf(operation.node)} already exists.` });
-                nodes.push(operation.node); changed.push('nodes');
-            } else if (operation.operation === 'remove_node' || operation.operation === 'update_node') {
-                const nodeId = operation.nodeId ?? idOf(operation.node);
-                if (!nodeId) invalid(`operations[${index}].nodeId is required.`);
-                const nodeIndex = nodes.findIndex((node) => idOf(node) === nodeId);
-                if (nodeIndex < 0) throw new ToolError({ code: 'NODE_NOT_FOUND', status: 404, message: `Animation graph node ${nodeId} was not found.` });
-                if (operation.operation === 'remove_node') { nodes.splice(nodeIndex, 1); changed.push('nodes'); }
-                else { if (!operation.node || typeof operation.node !== 'object') invalid(`operations[${index}].node is required.`); nodes[nodeIndex] = operation.node; changed.push('nodes'); }
-            } else if (operation.operation === 'add_transition') {
-                if (!operation.transition || typeof operation.transition !== 'object') invalid(`operations[${index}].transition must be an object.`);
-                transitions.push(operation.transition); changed.push('transitions');
-            } else if (operation.operation === 'remove_transition') {
-                const transitionId = operation.transitionId ?? idOf(operation.transition);
-                if (!transitionId) invalid(`operations[${index}].transitionId is required.`);
-                const transitionIndex = transitions.findIndex((transition) => idOf(transition) === transitionId);
-                if (transitionIndex < 0) throw new ToolError({ code: 'TRANSITION_NOT_FOUND', status: 404, message: `Animation graph transition ${transitionId} was not found.` });
-                transitions.splice(transitionIndex, 1); changed.push('transitions');
-            } else invalid(`operations[${index}].operation is unsupported.`);
-        }
-        const next = { ...value, nodes, transitions };
-        const content = JSON.stringify(next, null, 2);
-        const saved = await Editor.Message.request('asset-db', 'save-asset', asset.url ?? args.reference.id, content);
-        if (!saved) throw new ToolError({ code: 'MUTATION_REFUSED', status: 422, message: 'Creator refused animation graph save.' });
-        await Editor.Message.request('asset-db', 'refresh-asset', asset.uuid ?? args.reference.id).catch(() => undefined);
-        const readBack = await info(args.reference);
-        if (typeof readBack.uuid !== 'string' || readBack.uuid !== (asset.uuid ?? args.reference.id)) throw new ToolError({ code: 'READBACK_MISMATCH', status: 502, message: 'Animation graph identity changed after edit.' });
-        const persisted = JSON.parse(await fs.readFile(asset.file, 'utf8')) as Record<string, unknown>;
-        const graph = { nodes: Array.isArray(persisted.nodes) ? persisted.nodes : [], transitions: Array.isArray(persisted.transitions) ? persisted.transitions : [] };
-        return { reference: assetReference(readBack, args.reference.id), changed: [...new Set(changed)], verified: true, graph };
+    }, { type: 'object', description: 'No successful edit response: native serialization is unsupported and every request fails before writing.' }, 'POST', ['animation', 'graph', 'edit', 'configure', 'asset'])
+    async animationGraphEdit(args: { reference: IInstanceReference, operations: Array<{ operation: string, node?: unknown, nodeId?: string, transition?: unknown, transitionId?: string }> }): Promise<never> {
+        if (!Array.isArray(args?.operations) || args.operations.length < 1 || args.operations.length > 32) invalid('operations must contain 1 to 32 items.');
+        const asset = await info(args?.reference);
+        const graph = inspectNativeAnimationGraph(await readGraphSource(asset.file));
+        throw new ToolError({
+            code: graph.nativeShape ? 'NATIVE_GRAPH_EDIT_UNSUPPORTED' : 'UNSUPPORTED_GRAPH_FORMAT', status: 422,
+            message: graph.nativeShape ? 'Native Creator graph editing requires a verified native serializer; synthetic node/transition operations are refused.' : 'Source is not a supported native Creator animation graph; synthetic graph editing is refused.',
+            details: { reference: assetReference(asset, args.reference.id), format: graph.format, semanticsVerified: false, runtimeVerified: false, written: false },
+            recovery: 'Author the graph in Creator. Inspect serialized structure without treating it as playable graph validation.',
+        });
     }
-    @utcpTool('animationGraphValidate', 'Validate animation graph identities and endpoints.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, { type: 'object', properties: { valid: { type: 'boolean' }, issues: { type: 'array' }, nodeCount: { type: 'integer' }, transitionCount: { type: 'integer' } }, required: ['valid', 'issues', 'nodeCount', 'transitionCount'] }, 'GET', ['animation', 'graph', 'validate'])
-    async animationGraphValidate(args: { reference: IInstanceReference }) { const graph: any = await this.animationGraphInspect(args); const ids = new Set<string>(); const issues: any[] = []; for (const [index, node] of graph.nodes.entries()) { if (!node || typeof node.id !== 'string' || !node.id) issues.push({ code: 'INVALID_NODE_ID', index }); else if (ids.has(node.id)) issues.push({ code: 'DUPLICATE_NODE_ID', id: node.id }); else ids.add(node.id); } for (const [index, edge] of graph.transitions.entries()) if (!edge || !ids.has(edge.from) || !ids.has(edge.to)) issues.push({ code: 'INVALID_TRANSITION', index }); return { valid: issues.length === 0, issues, nodeCount: graph.nodeCount, transitionCount: graph.transitionCount }; }
+    @utcpTool('animationGraphValidate', 'Audit native serialized graph structure without granting playable/semantic/runtime validity. valid is always false until semantic verification is implemented.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, { ...GraphInspectionSchema, properties: { ...GraphInspectionSchema.properties, valid: { type: 'boolean', const: false } }, required: [...GraphInspectionSchema.required, 'valid'] }, 'GET', ['animation', 'graph', 'validate'])
+    async animationGraphValidate(args: { reference: IInstanceReference }) {
+        const graph = await this.animationGraphInspect(args);
+        return { ...graph, valid: false as const };
+    }
 
     @utcpTool('animationGraphCreate', 'Create a native Creator animation graph through asset-db and verify its stable imported identity.', {
         type: 'object', additionalProperties: false,

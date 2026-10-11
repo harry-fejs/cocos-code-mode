@@ -1,0 +1,113 @@
+{
+  "catalogHash": "4b82bfdda5ed46795f0ecf5b6398776e8e896c2dd6edc330040289c60f092197",
+  "diagnostics": [],
+  "schemaVersion": 1,
+  "unresolved": [
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Button:schedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Button:scheduleOnce:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Button:unschedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Camera:schedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Camera:scheduleOnce:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Camera:unschedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Label:schedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Label:scheduleOnce:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Label:unschedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Layout:schedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Layout:scheduleOnce:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Layout:unschedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:ScrollView:schedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:ScrollView:scheduleOnce:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:ScrollView:unschedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Sprite:schedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Sprite:scheduleOnce:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Sprite:unschedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Widget:schedule:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Widget:scheduleOnce:method:instance",
+      "reference": "any"
+    },
+    {
+      "kind": "any",
+      "recordId": "3.8.8:engine-runtime:cc:Widget:unschedule:method:instance",
+      "reference": "any"
+    }
+  ],
+  "version": "3.8.8"
+}

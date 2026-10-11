@@ -1,357 +1,284 @@
+import { z } from '../../../schema-validator';
+import type { infer as InferSchema } from 'zod';
 import { BaseAssetImporter } from './base-importer';
 import { IAssetInfo } from '@cocos/creator-types/editor/packages/asset-db/@types/public';
-import { IProperty, IPropertyValueType } from '@cocos/creator-types/editor/packages/scene/@types/public';
+import { IPropertyValueType } from '@cocos/creator-types/editor/packages/scene/@types/public';
+import { ToolError } from '../../tool-error';
+
+const descriptorSchema = z.looseObject({
+    name: z.string().optional(), type: z.string().optional(), value: z.unknown(),
+    readonly: z.boolean().optional(), isObject: z.boolean().optional(), isArray: z.boolean().optional(),
+    defines: z.array(z.string()).optional(), range: z.array(z.number()).optional(), options: z.array(z.string()).optional(),
+    enumList: z.array(z.looseObject({ name: z.union([z.string(), z.number()]), value: z.unknown() })).optional(),
+    extends: z.array(z.string()).optional(), displayName: z.string().optional(),
+});
+const passSchema = z.looseObject({ props: z.array(descriptorSchema).optional(), defines: z.array(descriptorSchema).optional(), states: descriptorSchema.optional(), phase: z.union([z.string(), z.number()]).optional() });
+const dumpSchema = z.looseObject({ effect: z.string(), technique: z.number().int().nonnegative(), data: z.array(z.looseObject({ name: z.string().optional(), passes: z.array(passSchema) })) });
+const effectsSchema = z.record(z.string(), z.looseObject({ name: z.string(), uuid: z.string().optional(), hideInEditor: z.boolean().optional() }));
+const objectSchema = z.record(z.string(), z.unknown());
+const referenceSchema = z.looseObject({ uuid: z.string().optional(), __uuid__: z.string().optional(), id: z.string().optional(), name: z.string().optional() });
+const textureAssetSchema = z.looseObject({ uuid: z.string().min(1), type: z.string().optional(), importer: z.string().optional() });
+type MaterialDump = InferSchema<typeof dumpSchema>;
+type Descriptor = InferSchema<typeof descriptorSchema>;
+type MaterialSlot = { parent: Record<string, unknown> | unknown[], key: string, path: string[], descriptor?: Descriptor };
+type MaterialEditPlan = { dump: MaterialDump, before: MaterialDump, targets: Array<{ path: string[], before: unknown, requested: unknown, texture: boolean }>, passIndices: number[], technique: number, root: boolean };
+
+function materialValue(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(materialValue);
+    if (value && typeof value === 'object') {
+        const object = objectSchema.parse(value);
+        if ('value' in object && ('type' in object || 'isObject' in object || 'isArray' in object)) return materialValue(object.value);
+        const result: Record<string, unknown> = {};
+        for (const key of Object.keys(object).sort()) result[key] = materialValue(object[key]);
+        return result;
+    }
+    return value;
+}
+function materialEqual(left: unknown, right: unknown): boolean {
+    if (Object.is(left, right)) return true;
+    if (Array.isArray(left) || Array.isArray(right)) return Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((value, index) => materialEqual(value, right[index]));
+    if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return false;
+    const leftObject = objectSchema.parse(left);
+    const rightObject = objectSchema.parse(right);
+    const keys = Object.keys(leftObject);
+    return keys.length === Object.keys(rightObject).length && keys.every(key => Object.prototype.hasOwnProperty.call(rightObject, key) && materialEqual(leftObject[key], rightObject[key]));
+}
+function cloneDump<T>(value: T): T { return JSON.parse(JSON.stringify(value)); }
+function readNativePath(dump: unknown, path: string[]): unknown {
+    let value = dump;
+    for (const key of path) {
+        if (Array.isArray(value)) value = value[Number(key)];
+        // Traversal stays on the already-validated cloned dump; reparsing would detach mutable children.
+        else if (value && typeof value === 'object') value = (value as Record<string, unknown>)[key];
+        else return undefined;
+    }
+    return value;
+}
+function slotValue(slot: MaterialSlot): unknown { return readNativePath(slot.parent, [slot.key]); }
+function writeSlot(slot: MaterialSlot, value: unknown): void {
+    if (Array.isArray(slot.parent)) slot.parent[Number(slot.key)] = value;
+    else slot.parent[slot.key] = value;
+}
+function slotAt(parent: unknown, key: string, path: string[], descriptor?: Descriptor): MaterialSlot | null {
+    if (!parent || typeof parent !== 'object' || !Object.prototype.hasOwnProperty.call(parent, key)) return null;
+    const value = readNativePath(parent, [key]);
+    if (value && typeof value === 'object' && !Array.isArray(value) && 'value' in value && ('type' in value || 'isObject' in value || 'isArray' in value)) {
+        const parsed = descriptorSchema.parse(value);
+        // The validated descriptor belongs to the mutable cloned native dump, not a schema copy.
+        return { parent: value as Record<string, unknown>, key: 'value', path: [...path, 'value'], descriptor: parsed };
+    }
+    // Parent comes from the validated dump or one of its JSON object/array members.
+    return { parent: parent as Record<string, unknown> | unknown[], key, path, descriptor };
+}
+function descend(slot: MaterialSlot | null, segments: string[]): MaterialSlot | null {
+    for (const segment of segments) {
+        if (!slot || slot.descriptor?.readonly) return null;
+        slot = slotAt(slotValue(slot), segment, [...slot.path, segment]);
+    }
+    return slot?.descriptor?.readonly ? null : slot;
+}
+function passSlot(pass: InferSchema<typeof passSchema>, base: string[], segments: string[]): MaterialSlot | null {
+    const group = segments[0];
+    const explicit = ['properties', 'props', 'defines', 'states'].includes(group);
+    const name = segments[explicit ? 1 : 0];
+    const tail = segments.slice(explicit ? 2 : 1);
+    if (!name) return null;
+    const collections: Array<'props' | 'defines'> = explicit ? group === 'states' ? [] : [group === 'defines' ? 'defines' : 'props'] : ['props', 'defines'];
+    for (const collection of collections) {
+        const entries = pass[collection];
+        const index = entries?.findIndex(entry => entry.name === name) ?? -1;
+        if (entries && index >= 0) {
+            // Texture references are validated as whole identities, never editable uuid/id subfields.
+            if (tail.length && /texture|sampler/i.test(entries[index].type || '')) return null;
+            return descend(slotAt(entries[index], 'value', [...base, collection, String(index), 'value'], entries[index]), tail);
+        }
+    }
+    if (explicit && group !== 'states') return null;
+    if (pass.states?.readonly) return null;
+    return descend(slotAt(pass.states?.value, name, [...base, 'states', 'value', name]), tail);
+}
+function textureIdentity(value: unknown): string | null | undefined {
+    if (value === null || value === '') return null;
+    if (typeof value === 'string') return value;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const reference = referenceSchema.parse(value);
+        const id = reference.uuid ?? reference.__uuid__ ?? reference.id;
+        if (typeof id === 'string') return id || null;
+    }
+    return undefined;
+}
 
 export class MaterialImporter extends BaseAssetImporter {
     name = 'material';
 
-    async getProperties(assetInfo: any): Promise<{ [key: string]: IPropertyValueType }> {
-        const materialDump = await Editor.Message.request('scene', 'query-material', assetInfo.uuid);
-        
-        if (!materialDump) {
-            throw new Error('Material dump not found');
-        }
-
-        const propertyContainer: { [key: string]: IProperty } = {};
-
-        // Get Effect Info
-        const collator = new Intl.Collator(undefined, { numeric: true });
-        const effects = Object.values(await Editor.Message.request('scene', 'query-all-effects'))
-            .filter((effect) => !(effect as any).hideInEditor)
-            .sort((a, b) => collator.compare((a as any).name, (b as any).name));
-
-        let effectName = materialDump.effect ?? 'builtin-standard';
-
-        propertyContainer['effect'] = {
-            value: effectName,
-            type: 'Enum',
-            userData: { enumName: 'MaterialEffectAssetName' },
-            enumList: effects.map((effect: any) => ({ name: effect.name.replace('../', ''), value: effect.name })),
-            visible: true,
-            readonly: false
+    async getProperties(assetInfo: IAssetInfo): Promise<{ [key: string]: IPropertyValueType }> {
+        const dump = dumpSchema.parse(await Editor.Message.request('scene', 'query-material', assetInfo.uuid));
+        const effects = Object.values(effectsSchema.parse(await Editor.Message.request('scene', 'query-all-effects'))).filter(effect => !effect.hideInEditor).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        const container: Record<string, unknown> = {
+            effect: { value: dump.effect, type: 'Enum', userData: { enumName: 'MaterialEffectAssetName' }, enumList: effects.map(effect => ({ name: effect.name.replace('../', ''), value: effect.name })), visible: true, readonly: false },
+            technique: { value: dump.technique, type: 'Enum', enumList: dump.data.map((technique, index) => ({ name: technique.name || String(index), value: index })), visible: true, readonly: false },
         };
-
-        if (materialDump.data) {
-            const techniqueOptions = materialDump.data.map((t: any, i: number) => ({ name: t.name || i.toString(), value: i }));
-            
-            propertyContainer['technique'] = {
-                value: materialDump.technique,
-                type: 'Enum',
-                enumList: techniqueOptions,
-                visible: true,
-                readonly: false
-            };
-            
-            const currentTechniqueIndex = materialDump.technique || 0;
-            const currentTechnique = materialDump.data[currentTechniqueIndex];
-            
-            if (currentTechnique && currentTechnique.passes) {
-                const passes: any[] = [];
-
-                function checkDefineVisibility(defines: any[], defineMap: { [key: string]: any }): boolean {
-                    for (const def of defines) {
-                        if (def.startsWith('!')) {
-                            if (defineMap[def.substring(1)]) {
-                                return false;
-                            }
-                        } else {
-                            if (!defineMap[def]) {
-                                return false;
-                            }
+        const passes = dump.data[dump.technique]?.passes.map((pass, index) => {
+            const fields: Record<string, unknown> = {};
+            const properties: Record<string, unknown> = {};
+            const defines: Record<string, unknown> = {};
+            const defineMap = Object.fromEntries((pass.defines || []).map(define => [define.name, define.value]));
+            for (const [group, entries] of [['defines', pass.defines || []], ['properties', pass.props || []]] as const) {
+                for (const entry of entries) {
+                    if (!entry.name) continue;
+                    const property: Record<string, unknown> = { ...entry, visible: (entry.defines || []).every(name => name.startsWith('!') ? !defineMap[name.slice(1)] : !!defineMap[name]) };
+                    if (group === 'defines') {
+                        if (entry.type !== 'Number' && entry.type !== 'String' && entry.type !== 'Enum') property.type = 'Boolean';
+                        if (entry.options) { property.type = 'Enum'; property.enumList = entry.options.map(value => ({ name: value, value })); }
+                        else if (entry.type === 'Number' && entry.range && entry.range[1] - entry.range[0] <= 256) {
+                            property.type = 'Enum'; property.enumList = Array.from({ length: entry.range[1] - entry.range[0] + 1 }, (_, offset) => ({ name: `Variant${entry.range![0] + offset}`, value: entry.range![0] + offset }));
                         }
+                    } else if (['Vec2', 'Vec3', 'Vec4', 'Color', 'Rect', 'Size', 'Quat', 'Mat3', 'Mat4'].includes(entry.type || '')) {
+                        property.extends = (entry.extends || []).includes('cc.ValueType') ? entry.extends : [...(entry.extends || []), 'cc.ValueType'];
                     }
-                    return true;
+                    fields[entry.name] = property;
+                    (group === 'defines' ? defines : properties)[entry.name] = property;
                 }
-
-                currentTechnique.passes.forEach((pass: any, passIndex: number) => {
-                    const passProps: { [key:string]: any } = {};
-                    
-                    // Create a map of defines for quick lookup
-                    const defineMap: { [key: string]: any } = {};
-                    
-                    if (pass.defines) {
-                        // Prepare define map
-                        pass.defines.forEach((def: any) => {
-                            defineMap[def.name] = def.value;
-                        });
-                        
-                        // Process defines
-                        pass.defines.forEach((def: any) => {
-                            // Transform define type based on logic
-                            let type = def.type;
-                            let enumList = def.enumList;
-
-                            switch (def.type) {
-                                case 'Number':
-                                    type = 'Enum';
-                                    enumList = [];
-                                    if (def.range && def.range.length >= 2) {
-                                        for (let i = def.range[0]; i <= def.range[1]; i++) {
-                                            enumList.push({ name: `Variant${i}`, value: i });
-                                        }
-                                    }
-                                    break;
-                                case 'String':
-                                    type = 'Enum';
-                                    enumList = [];
-                                    if (def.options) {
-                                        enumList = def.options.map((str: string) => ({ name: str, value: str }));
-                                    }
-                                    break;
-                                case 'Enum':
-                                    break;
-                                default:
-                                    type = 'Boolean';
-                                    break;
-                            }
-
-                            const defProp = {
-                                type: type,
-                                extends: [],
-                                value: def.value,
-                                tooltip: def.tooltip,
-                                enumList: enumList,
-                                visible: checkDefineVisibility(def.defines || [], defineMap)
-                            };
-                            passProps[def.name] = defProp;
-                        });
-                    }
-
-                    // Process properties
-                    if (pass.props) {
-                        pass.props.forEach((prop: any) => {
-                            // Inject extends: ['cc.ValueType'] for known value types to prevent custom class generation
-                            let extendsData = prop.extends || [];
-                            if (['Vec2', 'Vec3', 'Vec4', 'Color', 'Rect', 'Size', 'Quat', 'Mat3', 'Mat4'].includes(prop.type)) {
-                                if (!extendsData.includes('cc.ValueType')) {
-                                    extendsData = [...extendsData, 'cc.ValueType'];
-                                }
-                            }
-
-                            const valProp = {
-                                ...prop,
-                                displayName: prop.displayName || prop.name,
-                                visible: checkDefineVisibility(prop.defines || [], defineMap),
-                                extends: extendsData
-                            };
-                            passProps[prop.name] = valProp;
-                        });
-                    }
-
-                    const passHasProps = Object.keys(passProps).length > 0;
-
-                    passProps['phase'] = {
-                        extends: [],
-                        type: 'String',
-                        value: pass.phase || '',
-                        visible: true,
-                        readonly: true
-                    };
-
-                    passes.push({
-                        extends: ['cc.MaterialPass'],
-                        value: passProps,
-                        type: `cc.MaterialPass${passHasProps ? passIndex : ''}`
-                    });
-                });
-                
-                const passesProp: any = {
-                    value: passes,
-                    type: 'cc.MaterialPasses',
-                    visible: true
-                };
-                propertyContainer['passes'] = passesProp;
             }
-        }
-
-        return propertyContainer;
+            fields.properties = { type: 'cc.Object', value: properties, visible: true };
+            fields.defines = { type: 'cc.Object', value: defines, visible: true };
+            if (pass.states) {
+                fields.states = pass.states;
+                if (pass.states.value && typeof pass.states.value === 'object' && !Array.isArray(pass.states.value)) for (const [name, state] of Object.entries(objectSchema.parse(pass.states.value))) if (!(name in fields)) fields[name] = state;
+            }
+            fields.phase = { type: 'String', value: pass.phase ?? '', readonly: true, visible: true, extends: [] };
+            return { type: `cc.MaterialPass${Object.keys(properties).length + Object.keys(defines).length ? index : ''}`, extends: ['cc.MaterialPass'], value: fields };
+        });
+        if (passes) container.passes = { type: 'cc.MaterialPasses', value: passes, visible: true };
+        // These runtime-validated native descriptors retain the Creator property-wrapper contract.
+        return container as unknown as { [key: string]: IPropertyValueType };
     }
 
-    async setProperty(assetInfo: IAssetInfo, path: string, value: any): Promise<boolean> {
-        // 1. Get the current material dump
-        const materialDump = await Editor.Message.request('scene', 'query-material', assetInfo.uuid);
-        if (!materialDump) {
-            return false;
-        }
-
-        let handled = false;
-
-        // 2. Handle simple root properties
-        if (path === 'effectAsset' || path === 'effect') {
-            const effects = await Editor.Message.request('scene', 'query-all-effects');
-            if (value && value.name) {
-                value = value.name;
+    async prepareEdit(assetInfo: IAssetInfo, path: string, value: unknown, nativeDump?: unknown): Promise<MaterialEditPlan | null> {
+        if (!/^[A-Za-z0-9_.]{1,256}$/.test(path) || path.split('.').some(segment => !segment || ['__proto__', 'prototype', 'constructor'].includes(segment))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Material path must use safe, nonempty identifier segments.' });
+        let encoded: string | undefined;
+        try { encoded = JSON.stringify(value); } catch { /* Refuse values that cannot cross IPC. */ }
+        if (encoded === undefined || Buffer.byteLength(encoded, 'utf8') > 65536 || !materialEqual(value, JSON.parse(encoded))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Material value must be lossless JSON of at most 65536 bytes.' });
+        if (assetInfo.readonly) throw new ToolError({ code: 'READONLY_TARGET', status: 422, message: 'Material asset is read-only.' });
+        const before = dumpSchema.parse(cloneDump(nativeDump ?? await Editor.Message.request('scene', 'query-material', assetInfo.uuid)));
+        const dump = cloneDump(before);
+        const technique = dump.technique;
+        const slots: MaterialSlot[] = [];
+        const passIndices: number[] = [];
+        const root = ['effect', 'effectAsset', 'technique'].includes(path);
+        if (path === 'effect' || path === 'effectAsset') {
+            const effects = Object.values(effectsSchema.parse(await Editor.Message.request('scene', 'query-all-effects')));
+            const reference = typeof value === 'object' && value !== null && !Array.isArray(value) ? referenceSchema.parse(value) : null;
+            const identity = typeof value === 'string' ? value : reference?.name ?? reference?.uuid ?? reference?.id;
+            const effect = effects.find(entry => entry.name === identity || entry.uuid === identity);
+            if (!effect) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Effect '${String(identity)}' not found.` });
+            value = effect.name;
+            if (effect.name !== dump.effect) {
+                // Match the stock Inspector: a new effect rebuilds its techniques and selects index zero.
+                const data = await Editor.Message.request('scene', 'query-effect', effect.name);
+                dump.data = dumpSchema.shape.data.parse(data);
+                dump.technique = 0;
             }
-            if (typeof value === 'object' && 'uuid' in value) {
-                value = value.uuid;
-            }
-            if (effects[value]) {
-                value = effects[value].name;
-                handled = true;
-            } else {
-                const effect = effects.find((eff: any) => eff.name === value);
-                if (effect) {
-                    value = effect.name;
-                    handled = true;
-                } else {
-                    // Effect not found
-                    throw new Error(`Effect '${value}' not found`);
-                }
-            }
+            const slot = slotAt(dump, 'effect', ['effect']);
+            if (slot) slots.push(slot);
         } else if (path === 'technique') {
-            materialDump.technique = value;
-            handled = true;
+            if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || !dump.data[value]) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Material technique must select an existing technique index.' });
+            const slot = slotAt(dump, 'technique', ['technique']);
+            if (slot) slots.push(slot);
         } else {
-            // 3. Handle data/props traversal
-            const techniqueIndex = materialDump.technique || 0;
-            const technique = materialDump.data[techniqueIndex];
-            
-            if (technique && technique.passes) {
-                const parts = path.split('.');
-                let targetPassIndices: number[] = [];
-                let propPathParts: string[] = [];
-
-                // Check for explicit pass path "passes.0.propName..."
-                if (parts[0] === 'passes' && !isNaN(parseInt(parts[1]))) {
-                    targetPassIndices = [parseInt(parts[1])];
-                    propPathParts = parts.slice(2);
-                } else {
-                    // Implicit: Search all passes in current technique
-                    targetPassIndices = technique.passes.map((_: any, i: number) => i);
-                    propPathParts = parts;
+            const segments = path.split('.');
+            const passes = dump.data[technique]?.passes;
+            if (!passes) return null;
+            const explicit = segments[0] === 'passes';
+            if (explicit && !/^(0|[1-9]\d*)$/.test(segments[1] ?? '')) return null;
+            const indices = explicit ? [Number(segments[1])] : passes.map((_, index) => index);
+            for (const index of indices) {
+                if (!passes[index]) continue;
+                const slot = passSlot(passes[index], ['data', String(technique), 'passes', String(index)], explicit ? segments.slice(2) : segments);
+                if (slot) { slots.push(slot); passIndices.push(index); }
+            }
+        }
+        if (!slots.length) return null;
+        const targets: MaterialEditPlan['targets'] = [];
+        for (const slot of slots) {
+            let requested = value;
+            const texture = /texture|sampler/i.test(slot.descriptor?.type || '');
+            if (texture) {
+                const id = textureIdentity(value);
+                if (id === undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Texture must be null, an asset UUID, or a uuid/id/__uuid__ reference.' });
+                let uuid = id;
+                if (id) {
+                    const rawInfo = await Editor.Message.request('asset-db', 'query-asset-info', id);
+                    const info = rawInfo ? textureAssetSchema.parse(rawInfo) : null;
+                    const expectedCube = /cube/i.test(slot.descriptor?.type || '');
+                    if (!info || !/texture/i.test(String(info.type ?? info.importer)) || expectedCube !== /cube/i.test(String(info.type ?? info.importer))) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: `Texture '${id}' is incompatible; use the imported texture sub-asset UUID, not its source image.` });
+                    uuid = info.uuid;
                 }
+                requested = typeof slotValue(slot) === 'string' ? uuid ?? '' : { uuid: uuid ?? '' };
+            } else {
+                const descriptor = slot.descriptor;
+                if (descriptor?.readonly) return null;
+                const scalar = materialValue(value);
+                const choices = descriptor?.enumList?.map(entry => entry.value) ?? descriptor?.options;
+                if ((descriptor?.type === 'Boolean' && typeof scalar !== 'boolean') || (descriptor?.type === 'Number' && (typeof scalar !== 'number' || !Number.isFinite(scalar))) || (choices && !choices.some(choice => materialEqual(choice, scalar))) || (descriptor?.range && typeof scalar === 'number' && (scalar < descriptor.range[0] || scalar > descriptor.range[1]))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Material value does not match the native property type/range/options.' });
+            }
+            targets.push({ path: slot.path, before: texture ? textureIdentity(slotValue(slot)) : materialValue(slotValue(slot)), requested: texture ? textureIdentity(requested) : materialValue(requested), texture });
+            writeSlot(slot, cloneDump(requested));
+        }
+        return { dump, before, targets, passIndices, technique, root };
+    }
 
-                if (propPathParts.length > 0) {
-                    const propName = propPathParts[0];
-                    const subProps = propPathParts.slice(1);
-
-                    const setDeepProperty = (target: any, pathParts: string[], val: any): boolean => {
-                        let current = target;
-                        
-                        // Navigate to the parent of the target property
-                        for (let i = 0; i < pathParts.length - 1; i++) {
-                            const key = pathParts[i];
-                            
-                            // 1. Try to access key directly
-                            if (current[key] !== undefined) {
-                                current = current[key];
-                                continue;
-                            }
-                            
-                            // 2. Try to drill into .value (if current is a wrapper)
-                            if (current.value && typeof current.value === 'object' && current.value[key] !== undefined) {
-                                current = current.value[key];
-                                continue;
-                            }
-
-                            // 3. Special case for arrays where we might be accessing by index but current is a wrapper
-                            if (current.value && Array.isArray(current.value) && current.value[key] !== undefined) {
-                                current = current.value[key];
-                                continue;
-                            }
-
-                            // Path not found
-                            return false;
-                        }
-                        
-                        const lastKey = pathParts[pathParts.length - 1];
-                        
-                        // Helper to set on the final object
-                        const setOnObject = (obj: any): boolean => {
-                             if (obj[lastKey] === undefined) return false;
-
-                             const targetProp = obj[lastKey];
-                             
-                             // Check if the target is a Property Wrapper (Object with .value)
-                             // We avoid Arrays or nulls
-                             if (targetProp && typeof targetProp === 'object' && !Array.isArray(targetProp) && 'value' in targetProp) {
-                                 targetProp.value = val;
-                             } else {
-                                 // It's a raw value (primitive or struct without wrapper)
-                                 obj[lastKey] = val;
-                             }
-                             return true;
-                        };
-
-                        // 1. Try direct set
-                        if (setOnObject(current)) return true;
-
-                        // 2. Try set on .value (if wrapper)
-                        if (current.value && typeof current.value === 'object') {
-                            if (setOnObject(current.value)) return true;
-                        }
-
-                        return false;
-                    };
-
-
-                    targetPassIndices.forEach(passIndex => {
-                        const pass = technique.passes[passIndex];
-                        if (!pass) return;
-
-                        // 1. Search in props (Array)
-                        if (pass.props) {
-                            const prop = pass.props.find((p: any) => p.name === propName);
-                            if (prop) {
-                                if (subProps.length === 0) {
-                                    if (typeof value === 'string' && prop.type && 
-                                        (prop.type.toLowerCase().includes('texture') || prop.type.toLowerCase().includes('sampler'))) {
-                                        prop.value = { uuid: value };
-                                    } else {
-                                        prop.value = value;
-                                    }
-                                    handled = true;
-                                } else {
-                                    // Validate if prop.value is object for deep set
-                                    if (prop.value && typeof prop.value === 'object') {
-                                        if (setDeepProperty(prop, subProps, value)) {
-                                            handled = true;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // 2. Search in defines (Array)
-                        if (pass.defines) {
-                            const define = pass.defines.find((d: any) => d.name === propName);
-                            if (define) {
-                                if (subProps.length === 0) {
-                                    define.value = value;
-                                    handled = true;
-                                }
-                            }
-                        }
-                        
-                        // 3. Search in states (Object)
-                        if (pass.states && pass.states.value) {
-                             // Check direct state property (e.g., "priority", "primitive")
-                             if (pass.states.value[propName]) {
-                                 const stateProp = pass.states.value[propName];
-                                 if (subProps.length === 0) {
-                                      stateProp.value = value;
-                                      handled = true;
-                                 } else {
-                                      if (stateProp.value && typeof stateProp.value === 'object') {
-                                          if (setDeepProperty(stateProp, subProps, value)) {
-                                              handled = true;
-                                          }
-                                      }
-                                 }
-                             }
-                        }
-                    });
+    verifyEdit(plan: MaterialEditPlan, nativeAfter: unknown): { requestedValue: unknown, readBackValue: unknown, requestedValueMatched: boolean, unaffectedPassesUnchanged: boolean } {
+        const after = dumpSchema.parse(nativeAfter);
+        const expected = plan.targets.map(target => target.requested);
+        const readBack = plan.targets.map(target => {
+            const identityIndex = target.path.findIndex(segment => segment === 'props' || segment === 'defines');
+            if (identityIndex >= 0) {
+                const identityPath = [...target.path.slice(0, identityIndex + 2), 'name'];
+                if (readNativePath(plan.before, identityPath) !== readNativePath(after, identityPath)) return undefined;
+            }
+            return target.texture ? textureIdentity(readNativePath(after, target.path)) : materialValue(readNativePath(after, target.path));
+        });
+        let unaffectedPassesUnchanged = true;
+        if (!plan.root) {
+            unaffectedPassesUnchanged = materialEqual(after.effect, plan.before.effect) && materialEqual(after.technique, plan.before.technique) && after.data.length === plan.before.data.length;
+            for (let technique = 0; technique < plan.before.data.length; technique++) {
+                const previousPasses = plan.before.data[technique].passes;
+                const currentPasses = after.data[technique]?.passes;
+                if (previousPasses.length !== currentPasses?.length) unaffectedPassesUnchanged = false;
+                for (let pass = 0; pass < previousPasses.length; pass++) {
+                    if (technique === plan.technique && plan.passIndices.includes(pass)) continue;
+                    if (!materialEqual(previousPasses[pass], currentPasses?.[pass])) unaffectedPassesUnchanged = false;
                 }
             }
         }
+        return { requestedValue: expected.length === 1 ? expected[0] : expected, readBackValue: readBack.length === 1 ? readBack[0] : readBack, requestedValueMatched: materialEqual(expected, readBack), unaffectedPassesUnchanged };
+    }
 
-        // 4. Apply changes
-        if (handled) {
-             await Editor.Message.request('scene', 'apply-material', assetInfo.uuid, materialDump);
-             Editor.Message.broadcast('material-inspector:change-dump');
-             return true;
+    isRestored(before: unknown, restored: unknown): boolean { return materialEqual(before, restored); }
+
+    async applyDump(uuid: string, dump: unknown): Promise<void> {
+        // Creator 3.7 Inspector uses the positional (uuid, materialDump) save signature.
+        await Editor.Message.request('scene', 'apply-material', uuid, dump);
+        Editor.Message.broadcast('material-inspector:change-dump');
+    }
+
+    async setProperty(assetInfo: IAssetInfo, path: string, value: unknown): Promise<boolean> {
+        const plan = await this.prepareEdit(assetInfo, path, value);
+        if (!plan) return false;
+        try {
+            await this.applyDump(assetInfo.uuid, plan.dump);
+            const verified = this.verifyEdit(plan, await Editor.Message.request('scene', 'query-material', assetInfo.uuid));
+            if (!verified.requestedValueMatched || !verified.unaffectedPassesUnchanged) throw new ToolError({ code: 'READBACK_MISMATCH', status: 502, message: 'Material requested value or unaffected pass read-back mismatch.', details: verified });
+            return true;
+        } catch (error) {
+            let rollbackCause: string | null = null;
+            try { await this.applyDump(assetInfo.uuid, plan.before); } catch (rollbackError) { rollbackCause = String(rollbackError); }
+            let restored = false;
+            let rollback: 'partial' | 'unknown' = 'unknown';
+            try { restored = this.isRestored(plan.before, await Editor.Message.request('scene', 'query-material', assetInfo.uuid)); rollback = 'partial'; } catch (readError) { rollbackCause = String(readError); }
+            if (!restored) throw new ToolError({ code: 'ROLLBACK_FAILED', status: 500, message: 'Material edit failed; full native dump restoration could not be verified.', details: { rollback, cause: String(error), rollbackCause } });
+            throw new ToolError({ code: error instanceof ToolError ? error.code : 'MUTATION_FAILED', status: 502, message: 'Material edit failed; original native dump was independently restored.', details: { rollback: 'verified-restored', cause: String(error), rollbackCause } });
         }
-        
-        return false;
     }
 }

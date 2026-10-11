@@ -17,17 +17,6 @@ function toolSlice(source, name) {
 }
 
 describe('Wave F material/rendering/terrain/model authoring contracts', () => {
-  it('material edit and validation fail closed with authoritative importer/native read-back', () => {
-    const source = readSource('source/utcp/tools/material-tools.ts');
-    const edit = toolSlice(source, 'materialEdit');
-    const validate = toolSlice(source, 'materialValidate');
-    assert.match(edit, /query-asset-info/);
-    assert.match(edit, /getProperties/);
-    assert.match(edit, /READBACK_MISMATCH/);
-    assert.match(edit, /ROLLBACK_FAILED/);
-    assert.match(validate, /queryMaterial/);
-    assert.match(validate, /IMPORTER_INSPECTION_FAILED/);
-  });
 
   it('editor-side rendering routes are bounded and explicitly avoid runtime claims', () => {
     const source = readSource('source/utcp/tools/material-tools.ts');

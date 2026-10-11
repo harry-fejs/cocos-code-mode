@@ -12,7 +12,7 @@ import { DEFAULT_TREE_MAX_DEPTH, DEFAULT_TREE_MAX_NODES } from '../utils/tools-u
 import { VERBOSE_TREE_DEPTH, VERBOSE_TREE_NODES, VERBOSE_FILE_BYTES } from '../utils/verbose';
 import { assetQueryMemo, invalidateAfterWrite } from '../utils/memo-cache';
 import { createHash } from 'crypto';
-import { ImporterManager } from '../utils/asset-importers';
+import { ImporterManager, IAssetImporter } from '../utils/asset-importers';
 
 // helpers (shared by previewManage + kept methods)
 async function queryAssetsCompat(options: { pattern?: string, [k: string]: any }): Promise<any[]> {
@@ -28,11 +28,19 @@ async function queryAssetsCompat(options: { pattern?: string, [k: string]: any }
     if (Array.isArray(result)) assetQueryMemo.set(cacheKey, result);
     return Array.isArray(result) ? result : [];
 }
-async function sha256File(filePath: string): Promise<string> {
+async function sha256File(filePath: string, maxBytes = Infinity): Promise<string> {
     const hash = createHash('sha256');
+    // Keep executor form for Creator 3.7's older Node runtime.
     await new Promise<void>((resolve, reject) => {
         const stream = fs.createReadStream(filePath);
-        stream.on('data', (chunk) => hash.update(chunk));
+        const timer = Number.isFinite(maxBytes) ? setTimeout(() => stream.destroy(new Error('File hashing deadline exceeded.')), 2000) : undefined;
+        stream.on('close', () => clearTimeout(timer));
+        let bytes = 0;
+        stream.on('data', (chunk) => {
+            bytes += chunk.length;
+            if (bytes > maxBytes) stream.destroy(new Error('File exceeded the hashing byte limit.'));
+            else hash.update(chunk);
+        });
         stream.on('error', reject);
         stream.on('end', resolve);
     });
@@ -267,8 +275,46 @@ interface AssetImportSettingsResult {
     source: AssetImportSettingsSource;
 }
 
+interface AssetImportOutputEvidence {
+    kind: 'source' | 'library';
+    extension: string;
+    path: string;
+    status: 'verified' | 'missing' | 'unreadable' | 'too_large' | 'changed' | 'empty';
+    bytes: number | null;
+    sha256: string | null;
+}
+
+interface AssetImportCompletion {
+    signal: 'asset-db/is-busy' | 'unsupported' | 'unavailable' | 'not_requested';
+    polls: number;
+}
+
+export interface AssetImportSettingsSetResult {
+    changed: boolean;
+    path: string;
+    previous: AssetImportMetadataValue;
+    readBack: AssetImportMetadataValue;
+    result: AssetImportSettingsResult;
+    settingsSaved: boolean;
+    importComplete: boolean | null;
+    generatedOutputVerified: boolean | null;
+    retrySafe: false;
+    importCompletion: AssetImportCompletion;
+    outputs: AssetImportOutputEvidence[];
+    outputsTruncated: boolean;
+}
+
+interface RestorableAssetImporter extends IAssetImporter {
+    restore(assetInfo: IAssetInfo): Promise<{ restored: true, sourceBytesRestored: true }>;
+}
+
+function supportsImporterRestore(importer: IAssetImporter): importer is RestorableAssetImporter {
+    return 'restore' in importer && typeof importer.restore === 'function';
+}
+
 interface ImportMetadataBudget {
     remainingEntries: number;
+    arrayItems?: number;
     ancestors: WeakSet<object>;
 }
 
@@ -327,7 +373,7 @@ function normalizeImportMetadataValue(
     budget.ancestors.add(value);
     if (Array.isArray(value)) {
         const normalized: AssetImportMetadataValue[] = [];
-        const itemCount = Math.min(value.length, MAX_IMPORT_METADATA_ARRAY_ITEMS);
+        const itemCount = Math.min(value.length, budget.arrayItems ?? MAX_IMPORT_METADATA_ARRAY_ITEMS);
         for (let index = 0; index < itemCount && budget.remainingEntries > 0; index++) {
             budget.remainingEntries--;
             let item: unknown;
@@ -404,7 +450,8 @@ function normalizeImporterProperties(
     }
     const settings: Record<string, AssetImportMetadataValue> = {};
     const descriptors: AssetImportSettingDescriptor[] = [];
-    const budget: ImportMetadataBudget = { remainingEntries: MAX_IMPORT_METADATA_ENTRIES, ancestors: new WeakSet<object>() };
+    const nativeAnimation = importerName === 'animation-mask' || importerName === 'animation-graph-variant';
+    const budget: ImportMetadataBudget = { remainingEntries: nativeAnimation ? 4096 : MAX_IMPORT_METADATA_ENTRIES, arrayItems: nativeAnimation ? 256 : MAX_IMPORT_METADATA_ARRAY_ITEMS, ancestors: new WeakSet<object>() };
     for (const path of Object.keys(properties).sort().slice(0, MAX_IMPORT_METADATA_OBJECT_PROPERTIES)) {
         const property = Reflect.get(properties, path);
         const descriptor = importSettingDescriptor(path, property);
@@ -434,6 +481,42 @@ function importSettingAtPath(settings: Record<string, AssetImportMetadataValue>,
     return current;
 }
 
+function expectedImportPatch(previous: AssetImportMetadataValue, value: AssetImportMetadataValue, key: string | null): AssetImportMetadataValue {
+    if (!key) return value;
+    if (!Array.isArray(previous) || !Array.isArray(value) || value.length === 0 || value.length > MAX_IMPORT_METADATA_ARRAY_ITEMS) {
+        throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Native animation edits require one to 64 selected entries with a complete preflight collection.' });
+    }
+    const edits = new Map<string, Record<string, AssetImportMetadataValue>>();
+    for (const edit of value) {
+        if (!edit || typeof edit !== 'object' || Array.isArray(edit) || typeof edit[key] !== 'string' || edits.has(edit[key])) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Native animation edits require unique selected entry identities.' });
+        }
+        edits.set(edit[key], edit);
+    }
+    const expected = previous.map(entry => {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry) || typeof entry[key] !== 'string') {
+            throw new ToolError({ code: 'IMPORTER_INSPECTION_FAILED', status: 502, message: 'Native preflight collection has an invalid entry identity.' });
+        }
+        const edit = edits.get(entry[key]);
+        edits.delete(entry[key]);
+        return edit ? { ...entry, ...edit } : entry;
+    });
+    if (edits.size > 0) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Selected native animation entry is absent from the complete preflight collection.' });
+    return expected;
+}
+
+function importSettingMatches(actual: AssetImportMetadataValue | undefined, expected: AssetImportMetadataValue, key: string | null): boolean {
+    if (!key) return JSON.stringify(actual) === JSON.stringify(expected);
+    if (!Array.isArray(actual) || !Array.isArray(expected) || actual.length !== expected.length) return false;
+    const byIdentity = new Map<string, AssetImportMetadataValue>();
+    for (const entry of actual) {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry) || typeof entry[key] !== 'string' || byIdentity.has(entry[key])) return false;
+        byIdentity.set(entry[key], entry);
+    }
+    return expected.every(entry => !!entry && typeof entry === 'object' && !Array.isArray(entry) && typeof entry[key] === 'string'
+        && JSON.stringify(byIdentity.get(entry[key])) === JSON.stringify(entry));
+}
+
 function assetImportSettingsQueryError(error: unknown): ToolError {
     return new ToolError({
         code: 'ASSET_QUERY_FAILED',
@@ -454,6 +537,9 @@ function validateImportSet(args: unknown): { reference: IInstanceReference, path
         throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `assetImportSettingsSet path must be dot-separated identifiers of at most ${MAX_IMPORT_SET_PATH_LENGTH} characters.` });
     }
     const value = Reflect.get(args as object, 'value');
+    if (Array.isArray(value) && value.length > MAX_IMPORT_METADATA_ARRAY_ITEMS) {
+        throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Importer array edits must contain at most 64 items; truncated mutation requests are not accepted.' });
+    }
     const normalized = normalizeImportMetadataValue(value, 0, { remainingEntries: MAX_IMPORT_METADATA_ENTRIES, ancestors: new WeakSet<object>() });
     if (normalized === OMIT_IMPORT_METADATA || JSON.stringify(normalized).length > MAX_IMPORT_SET_VALUE_BYTES) {
         throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `assetImportSettingsSet value must be bounded JSON-compatible data under ${MAX_IMPORT_SET_VALUE_BYTES} bytes.` });
@@ -461,8 +547,101 @@ function validateImportSet(args: unknown): { reference: IInstanceReference, path
     return { reference, path: pathValue, value: normalized };
 }
 
-function assetImportSettingsSetError(error: unknown): ToolError {
-    return new ToolError({ code: 'ASSET_IMPORT_FAILED', status: 502, message: 'assetImportSettingsSet could not update and reimport the asset.', details: { cause: boundedImportText(error instanceof Error ? error.message : String(error), 512) }, recovery: 'Verify the asset importer and property path, then retry.' });
+const MAX_IMPORT_OUTPUTS = 32;
+const MAX_IMPORT_OUTPUT_BYTES = 16 * 1024 * 1024;
+const MAX_IMPORT_TOTAL_OUTPUT_BYTES = 64 * 1024 * 1024;
+const IMPORT_REQUEST_TIMEOUT_MS = 5000;
+const IMPORT_BUSY_POLL_LIMIT = 20;
+
+async function boundedImportRequest<T>(operation: Promise<T>, mutationPending = false, timeoutMs = IMPORT_REQUEST_TIMEOUT_MS): Promise<T> {
+    // Creator 3.7 runs on Node without Promise.withResolvers.
+    let timer: NodeJS.Timeout | undefined;
+    try {
+        return await Promise.race([operation, new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new ToolError({
+                code: 'ASSET_IMPORT_DEADLINE', status: 504,
+                message: 'Importer outcome could not be observed within the bounded deadline.',
+                details: { retrySafe: false, mutationPending },
+                recovery: 'Read current settings and asset-db busy state before any further mutation.',
+            })), timeoutMs);
+        })]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function importerCompletion(uuid: string): Promise<{ complete: boolean | null, evidence: AssetImportCompletion }> {
+    for (let polls = 1; polls <= IMPORT_BUSY_POLL_LIMIT; polls++) {
+        let busy: unknown;
+        try {
+            busy = await boundedImportRequest(Editor.Message.request('asset-db', 'is-busy'), false, 250);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            const unsupported = /(?:unknown|unsupported|not found|not exist|not registered|no handler).*(?:message|is-busy)|(?:message|is-busy).*(?:unknown|unsupported|not found|not exist|not registered|no handler)/i.test(message);
+            return { complete: null, evidence: { signal: unsupported ? 'unsupported' : 'unavailable', polls } };
+        }
+        if (typeof busy !== 'boolean') return { complete: null, evidence: { signal: 'unsupported', polls } };
+        if (!busy) {
+            let info: IAssetInfo | null;
+            try {
+                info = await boundedImportRequest(Editor.Message.request('asset-db', 'query-asset-info', uuid));
+            } catch {
+                return { complete: null, evidence: { signal: 'unavailable', polls } };
+            }
+            if (info?.invalid === true) return { complete: false, evidence: { signal: 'asset-db/is-busy', polls } };
+            if (info?.imported === true && info.invalid === false) return { complete: true, evidence: { signal: 'asset-db/is-busy', polls } };
+            if (!info || typeof info.imported !== 'boolean' || typeof info.invalid !== 'boolean') {
+                return { complete: null, evidence: { signal: 'asset-db/is-busy', polls } };
+            }
+        }
+        if (polls < IMPORT_BUSY_POLL_LIMIT) await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return { complete: false, evidence: { signal: 'asset-db/is-busy', polls: IMPORT_BUSY_POLL_LIMIT } };
+}
+
+async function importerOutputEvidence(info: IAssetInfo): Promise<{ outputs: AssetImportOutputEvidence[], truncated: boolean }> {
+    const candidates: Array<{ kind: 'source' | 'library', extension: string, path: string }> = [];
+    if (typeof info.file === 'string' && info.file) candidates.push({ kind: 'source', extension: extname(info.file).slice(0, 128), path: info.file });
+    const library = info.library && typeof info.library === 'object' && !Array.isArray(info.library) ? info.library : {};
+    const keys = Object.keys(library).sort();
+    let truncated = keys.length + candidates.length > MAX_IMPORT_OUTPUTS;
+    for (const extension of keys.slice(0, MAX_IMPORT_OUTPUTS - candidates.length)) {
+        const filePath = Reflect.get(library, extension);
+        if (typeof filePath !== 'string' || !filePath) { truncated = true; continue; }
+        candidates.push({ kind: 'library', extension: boundedImportText(extension, 128), path: filePath });
+    }
+    const outputs: AssetImportOutputEvidence[] = [];
+    let remainingBytes = MAX_IMPORT_TOTAL_OUTPUT_BYTES;
+    for (const candidate of candidates) {
+        const output: AssetImportOutputEvidence = { ...candidate, path: candidate.path.slice(0, 4096), status: 'unreadable', bytes: null, sha256: null };
+        outputs.push(output);
+        if (candidate.path.length > 4096 || !path.isAbsolute(candidate.path)) continue;
+        try {
+            const before = await boundedImportRequest(fs.stat(candidate.path), false, 1000);
+            output.bytes = before.size;
+            if (!before.isFile()) continue;
+            if (before.size === 0) { output.status = 'empty'; continue; }
+            if (before.size > Math.min(MAX_IMPORT_OUTPUT_BYTES, remainingBytes)) { output.status = 'too_large'; continue; }
+            const limit = before.size;
+            remainingBytes -= before.size;
+            const hash = await sha256File(candidate.path, limit);
+            const after = await boundedImportRequest(fs.stat(candidate.path), false, 1000);
+            if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.ino !== after.ino) { output.status = 'changed'; continue; }
+            output.status = 'verified';
+            output.sha256 = hash;
+        } catch (error: unknown) {
+            output.status = error && typeof error === 'object' && Reflect.get(error, 'code') === 'ENOENT' ? 'missing' : 'unreadable';
+        }
+    }
+    return { outputs, truncated };
+}
+
+function importerOutputVerified(outputs: AssetImportOutputEvidence[], truncated: boolean, importComplete: boolean | null): boolean | null {
+    const sourcePath = outputs.find((output) => output.kind === 'source')?.path;
+    const generated = outputs.filter((output) => output.kind === 'library' && (!sourcePath || path.normalize(output.path) !== path.normalize(sourcePath)) && extname(output.path) !== '.meta');
+    if (truncated || generated.some((output) => output.status !== 'verified')) return false;
+    if (generated.length === 0 || importComplete === null) return null;
+    return importComplete;
 }
 type TextureCompressionPlatform = 'miniGame' | 'web' | 'ios' | 'android' | 'pc';
 
@@ -1307,10 +1486,12 @@ export class AssetTools {
     @utcpTool('assetOperate', 'Move/copy/delete/open/refresh/reimport asset, or save_meta (read meta via assetDbQuery meta first).', {
         type: 'object',
         properties: {
-            operation: { type: 'string', enum: ['move', 'copy', 'delete', 'open', 'refresh', 'reimport', 'save_meta'] },
+            operation: { type: 'string', enum: ['move', 'copy', 'delete', 'open', 'refresh', 'reimport', 'save_meta', 'stage_import_setting', 'apply_import_settings', 'restore_import_settings'] },
             reference: InstanceReferenceSchema,
             targetAssetPath: { type: 'string' },
             meta: { description: 'For save_meta: full meta object (or JSON string) from assetDbQuery meta, mutated' },
+            path: { type: 'string', maxLength: 256 },
+            value: {},
             options: { type: 'object', properties: { overwrite: { type: 'boolean' }, rename: { type: 'boolean' } }, nullable: true },
         },
         required: ['operation', 'reference'],
@@ -1322,9 +1503,26 @@ export class AssetTools {
             { properties: { operation: { const: 'open' } } },
             { properties: { operation: { const: 'refresh' } } },
             { properties: { operation: { const: 'reimport' } } },
+            { properties: { operation: { const: 'stage_import_setting' } }, required: ['path', 'value'] },
+            { properties: { operation: { const: 'apply_import_settings' } } },
+            { properties: { operation: { const: 'restore_import_settings' } } },
         ],
-    }, { type: 'object', properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, "POST", ['asset', 'operate', 'move', 'copy', 'delete', 'open', 'refresh', 'reimport', 'meta'])
-    async assetOperate(args:{operation:string,reference:IInstanceReference,targetAssetPath?:string,meta?:unknown,options?:{overwrite?:boolean,rename?:boolean}}):Promise<{reference:IInstanceReference}>{
+    }, { type: 'object', properties: { reference: InstanceReferenceSchema, lifecycle: { type: 'object' } }, required: ['reference'] }, "POST", ['asset', 'operate', 'move', 'copy', 'delete', 'open', 'refresh', 'reimport', 'meta'])
+    async assetOperate(args:{operation:string,reference:IInstanceReference,targetAssetPath?:string,meta?:unknown,path?:string,value?:unknown,options?:{overwrite?:boolean,rename?:boolean}}):Promise<{reference:IInstanceReference,lifecycle?:unknown}>{
+        if (['stage_import_setting', 'apply_import_settings', 'restore_import_settings'].includes(args.operation)) {
+            const info = await Editor.Message.request('asset-db', 'query-asset-info', args.reference.id);
+            if (!info || !['animation-mask', 'animation-graph-variant'].includes(info.importer)) throw new ToolError({ code: 'UNSUPPORTED_OPERATION', status: 422, message: 'Explicit cached lifecycle is supported only by native animation mask/variant adapters.' });
+            const adapter = ImporterManager.getInstance().getImporter(info.importer);
+            if (!adapter || !('changeProperty' in adapter) || !('apply' in adapter) || !('restore' in adapter) || typeof adapter.changeProperty !== 'function' || typeof adapter.apply !== 'function' || typeof adapter.restore !== 'function') throw new ToolError({ code: 'UNSUPPORTED_OPERATION', status: 422, message: 'Native asset lifecycle adapter is unavailable.' });
+            let lifecycle: unknown;
+            if (args.operation === 'stage_import_setting') {
+                if (!args.path) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Staging requires a typed path.' });
+                lifecycle = await adapter.changeProperty(info, args.path, args.value);
+            } else if (args.operation === 'apply_import_settings') lifecycle = await adapter.apply(info);
+            else lifecycle = await adapter.restore(info);
+            invalidateAfterWrite();
+            return { reference: { id: info.uuid, type: info.type }, lifecycle };
+        }
         const assetOptions = { overwrite: args.options?.overwrite ?? false, rename: args.options?.rename ?? false };
         const sourceUrl = await toAssetUrl(args.reference.id);
         const hasTarget = typeof args.targetAssetPath === 'string' && args.targetAssetPath.length > 0;
@@ -1627,6 +1825,7 @@ export class AssetTools {
         try {
             normalized = normalizeImporterProperties(importerName, importer.className, await importer.getProperties(info as IAssetInfo));
         } catch (error: unknown) {
+            if (error instanceof ToolError) throw error;
             throw new ToolError({
                 code: 'IMPORTER_INSPECTION_FAILED',
                 status: 502,
@@ -1666,12 +1865,38 @@ export class AssetTools {
             previous: {},
             readBack: {},
             result: { type: 'object' },
+            settingsSaved: { type: 'boolean', description: 'Requested setting independently read back through the importer adapter; does not imply generated output readiness.' },
+            importComplete: { type: ['boolean', 'null'], description: 'Native busy/imported/invalid signals; null when unavailable, unsupported, or no reimport was requested.' },
+            generatedOutputVerified: { type: ['boolean', 'null'], description: 'All exposed bounded library outputs hashed and stable with native import completion. Source/metadata alone never proves generated readiness.' },
+            retrySafe: { type: 'boolean', const: false },
+            importCompletion: {
+                type: 'object', additionalProperties: false,
+                properties: {
+                    signal: { type: 'string', enum: ['asset-db/is-busy', 'unsupported', 'unavailable', 'not_requested'] },
+                    polls: { type: 'integer', minimum: 0, maximum: IMPORT_BUSY_POLL_LIMIT },
+                }, required: ['signal', 'polls'],
+            },
+            outputs: {
+                type: 'array', maxItems: MAX_IMPORT_OUTPUTS,
+                items: {
+                    type: 'object', additionalProperties: false,
+                    properties: {
+                        kind: { type: 'string', enum: ['source', 'library'] },
+                        extension: { type: 'string', maxLength: 128 },
+                        path: { type: 'string', maxLength: 4096 },
+                        status: { type: 'string', enum: ['verified', 'missing', 'unreadable', 'too_large', 'changed', 'empty'] },
+                        bytes: { type: ['integer', 'null'], minimum: 0 },
+                        sha256: { type: ['string', 'null'], pattern: '^[a-f0-9]{64}$' },
+                    }, required: ['kind', 'extension', 'path', 'status', 'bytes', 'sha256'],
+                },
+            },
+            outputsTruncated: { type: 'boolean' },
         },
-        required: ['changed', 'path', 'previous', 'readBack', 'result'],
+        required: ['changed', 'path', 'previous', 'readBack', 'result', 'settingsSaved', 'importComplete', 'generatedOutputVerified', 'retrySafe', 'importCompletion', 'outputs', 'outputsTruncated'],
     }, 'POST', ['asset', 'import', 'settings', 'configure', 'reimport'])
-    async assetImportSettingsSet(args: { reference: IInstanceReference, path: string, value: unknown }): Promise<{ changed: boolean, path: string, previous: AssetImportMetadataValue, readBack: AssetImportMetadataValue, result: AssetImportSettingsResult }> {
+    async assetImportSettingsSet(args: { reference: IInstanceReference, path: string, value: unknown }): Promise<AssetImportSettingsSetResult> {
         const request = validateImportSet(args);
-        const before = await this.assetImportSettingsGet({ reference: request.reference });
+        const before = await boundedImportRequest(this.assetImportSettingsGet({ reference: request.reference }));
         const descriptor = before.schema.properties.find((property) => property.path === request.path);
         if (!descriptor) {
             throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Importer '${before.importer}' does not expose typed property '${request.path}'.` });
@@ -1683,56 +1908,95 @@ export class AssetTools {
         if (previous === undefined) {
             throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Importer property '${request.path}' has no readable preflight value.` });
         }
-        if (JSON.stringify(previous) === JSON.stringify(request.value)) {
-            return { changed: false, path: request.path, previous, readBack: previous, result: before };
+        const patchKey = before.importer === 'animation-mask' && request.path === 'joints' ? 'path'
+            : before.importer === 'animation-graph-variant' && request.path === 'clipOverrides' ? 'original' : null;
+        const expected = expectedImportPatch(previous, request.value, patchKey);
+        const record = await boundedImportRequest(Editor.Message.request('asset-db', 'query-asset-info', before.reference.id));
+        if (!record || record.uuid !== before.reference.id || record.importer !== before.importer) {
+            throw new ToolError({ code: 'ASSET_IDENTITY_CHANGED', status: 409, message: 'Asset identity/importer changed after settings preflight.' });
         }
-
-        const info = await Editor.Message.request('asset-db', 'query-asset-info', request.reference.id);
-        if (!info || typeof info !== 'object' || Array.isArray(info)) {
-            throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Asset ${request.reference.id} not found.` });
+        if (importSettingMatches(previous, expected, patchKey)) {
+            const evidence = await importerOutputEvidence(record);
+            return {
+                changed: false, path: request.path, previous, readBack: previous, result: before,
+                settingsSaved: false, importComplete: null,
+                generatedOutputVerified: importerOutputVerified(evidence.outputs, evidence.truncated, null),
+                retrySafe: false, importCompletion: { signal: 'not_requested', polls: 0 },
+                outputs: evidence.outputs, outputsTruncated: evidence.truncated,
+            };
         }
-        const record = info as unknown as IAssetInfo;
         const importer = ImporterManager.getInstance().getImporter(before.importer);
         if (!importer) throw new ToolError({ code: 'UNSUPPORTED_OPERATION', status: 422, message: `No registered importer supports '${before.importer}'.` });
-
+        let settingsSaved: boolean | null = null;
+        let importComplete: boolean | null = null;
+        let importCompletion: AssetImportCompletion = { signal: 'not_requested', polls: 0 };
         let mutationStarted = false;
         try {
             mutationStarted = true;
-            if (!await importer.setProperty(record, request.path, request.value)) {
+            if (!await boundedImportRequest(importer.setProperty(record, request.path, request.value), true)) {
                 throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Importer '${before.importer}' rejected property '${request.path}'.` });
             }
-            await Editor.Message.request('asset-db', 'reimport-asset', record.uuid);
-            const result = await this.assetImportSettingsGet({ reference: { id: record.uuid, type: record.type } });
+            const saved = await boundedImportRequest(this.assetImportSettingsGet({ reference: before.reference }));
+            settingsSaved = importSettingMatches(importSettingAtPath(saved.settings, request.path), expected, patchKey);
+            if (!settingsSaved) throw new ToolError({ code: 'READBACK_MISMATCH', status: 502, message: `Importer property '${request.path}' was not saved as requested.` });
+            await boundedImportRequest(Editor.Message.request('asset-db', 'reimport-asset', record.uuid), true);
+            const completion = await importerCompletion(record.uuid);
+            importComplete = completion.complete;
+            importCompletion = completion.evidence;
+            const result = await boundedImportRequest(this.assetImportSettingsGet({ reference: before.reference }));
             const readBack = importSettingAtPath(result.settings, request.path);
-            if (readBack === undefined || JSON.stringify(readBack) !== JSON.stringify(request.value)) {
-                throw new ToolError({
-                    code: 'READBACK_MISMATCH',
-                    status: 502,
-                    message: `Importer property '${request.path}' did not match the requested value after reimport.`,
-                    details: { requested: request.value, readBack },
-                });
+            if (readBack === undefined || !importSettingMatches(readBack, expected, patchKey)) {
+                settingsSaved = false;
+                throw new ToolError({ code: 'READBACK_MISMATCH', status: 502, message: `Importer property '${request.path}' changed after reimport.`, details: { requested: request.value, readBack: readBack ?? null } });
             }
-            return { changed: true, path: request.path, previous, readBack, result };
+            const outputRecord = await boundedImportRequest(Editor.Message.request('asset-db', 'query-asset-info', record.uuid));
+            if (!outputRecord || outputRecord.uuid !== record.uuid || outputRecord.importer !== before.importer) throw new ToolError({ code: 'ASSET_IDENTITY_CHANGED', status: 409, message: 'Asset identity/importer changed during output readback.' });
+            const evidence = await importerOutputEvidence(outputRecord);
+            return {
+                changed: true, path: request.path, previous, readBack, result, settingsSaved: true, importComplete,
+                generatedOutputVerified: importerOutputVerified(evidence.outputs, evidence.truncated, importComplete),
+                retrySafe: false, importCompletion, outputs: evidence.outputs, outputsTruncated: evidence.truncated,
+            };
         } catch (error: unknown) {
+            const details = { ...(error instanceof ToolError ? error.details : {}), settingsSaved, importComplete, importCompletion, retrySafe: false };
+            // Timed-out native mutations may still finish. Never race them with a rollback.
+            if (error instanceof ToolError && (error.details?.mutationPending === true || error.details?.mutationDispatched === false || importComplete === false)) {
+                throw new ToolError({ code: error.code, status: error.status, message: error.message, details: { ...details, restored: null }, recovery: error.recovery ?? 'Read current settings and native import state before another mutation.' });
+            }
+            let restored: boolean | null = null;
+            let rollbackImportComplete: boolean | null = null;
             if (mutationStarted) {
                 try {
-                    if (!await importer.setProperty(record, request.path, previous)) throw new Error('Importer rejected rollback value.');
-                    await Editor.Message.request('asset-db', 'reimport-asset', record.uuid);
+                    const current = await boundedImportRequest(Editor.Message.request('asset-db', 'query-asset-info', record.uuid));
+                    if (!current || current.uuid !== record.uuid || current.importer !== before.importer) throw new Error('Rollback asset identity/importer changed.');
+                    if (supportsImporterRestore(importer)) {
+                        await boundedImportRequest(importer.restore(current), true);
+                    } else if (!await boundedImportRequest(importer.setProperty(current, request.path, previous), true)) {
+                        throw new Error('Importer rejected rollback value.');
+                    }
+                    await boundedImportRequest(Editor.Message.request('asset-db', 'reimport-asset', record.uuid), true);
+                    rollbackImportComplete = (await importerCompletion(record.uuid)).complete;
+                    const rollback = await boundedImportRequest(this.assetImportSettingsGet({ reference: before.reference }));
+                    restored = importSettingMatches(importSettingAtPath(rollback.settings, request.path), previous, patchKey);
+                    if (!restored) throw new Error('Independent rollback settings readback did not match the previous value.');
                 } catch (rollbackError: unknown) {
                     throw new ToolError({
-                        code: 'ROLLBACK_FAILED',
-                        status: 500,
-                        message: `assetImportSettingsSet failed and could not restore '${request.path}'.`,
-                        details: {
+                        code: 'ROLLBACK_FAILED', status: 500,
+                        message: `assetImportSettingsSet failed; restoration of '${request.path}' could not be independently verified.`,
+                        details: { ...details, restored, rollbackImportComplete,
                             cause: boundedImportText(error instanceof Error ? error.message : String(error), 512),
                             rollbackCause: boundedImportText(rollbackError instanceof Error ? rollbackError.message : String(rollbackError), 512),
-                        },
-                        recovery: 'Inspect the asset importer settings and restore the previous value manually.',
+                        }, recovery: 'Inspect current settings and native busy state before restoring manually; do not blindly retry the mutation.',
                     });
                 }
             }
-            if (error instanceof ToolError) throw error;
-            throw assetImportSettingsSetError(error);
+            throw new ToolError({
+                code: error instanceof ToolError ? error.code : 'ASSET_IMPORT_FAILED',
+                status: error instanceof ToolError ? error.status : 502,
+                message: error instanceof ToolError ? error.message : 'assetImportSettingsSet could not update and reimport the asset.',
+                details: { ...details, restored, rollbackImportComplete, cause: boundedImportText(error instanceof Error ? error.message : String(error), 512) },
+                recovery: 'Read current settings and importer outcomes before deciding on another mutation.',
+            });
         }
     }
 

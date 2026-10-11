@@ -1,0 +1,4256 @@
+{
+  "records": [
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_isAbsBottom"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53258,
+          "line": 53258,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "cf9c3bd17a01769b2c82a8d9c1222fb716e1145673a89c076047d39d13028b46",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "editable"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isAbsoluteBottom:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isAbsoluteBottom",
+      "metadataHash": "ed24b8d4b3d3c0386e3a0b7c50dc50e2a0c8edac3126bf78ec97f4af65918550",
+      "module": "cc",
+      "name": "isAbsoluteBottom",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isAbsoluteBottom\",\"accessor\",false]",
+      "signatureHash": "ffef5b5bff2e1a453383e805b474207fe4a62962545e6056cded4af5cba87547",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAbsoluteBottom:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "boolean",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAbsoluteBottom:accessor:instance:overload:1:ee73ad0025bbdc11",
+          "text": "(value: boolean): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 587,
+        "line": 584,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "a2b387258484295cb45202142aef8b60590d9a03e9b349bb1a6f92ef807d2b69",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_isAbsHorizontalCenter"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53285,
+          "line": 53285,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "c5c743919e8a20b69b742b57e3cb0d0d677b98bd40c349f8ef0bf701217272b9",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "editable"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isAbsoluteHorizontalCenter:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isAbsoluteHorizontalCenter",
+      "metadataHash": "bf9adca965007cc638f20784dd4f996f32b285ada02db297f7239ec5612454cb",
+      "module": "cc",
+      "name": "isAbsoluteHorizontalCenter",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isAbsoluteHorizontalCenter\",\"accessor\",false]",
+      "signatureHash": "ffef5b5bff2e1a453383e805b474207fe4a62962545e6056cded4af5cba87547",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAbsoluteHorizontalCenter:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "boolean",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAbsoluteHorizontalCenter:accessor:instance:overload:1:ee73ad0025bbdc11",
+          "text": "(value: boolean): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 647,
+        "line": 644,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "fa9c171d85c2d8e968316aaafa074bf26acc501f50be2874b84aca9d526e1369",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_isAbsLeft"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53267,
+          "line": 53267,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "7fd47991b0a9afca2e2436337cab71ac1e96455eb00f7a66d211e6c0e6d26bcf",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "editable"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isAbsoluteLeft:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isAbsoluteLeft",
+      "metadataHash": "f25cb403c1a14f2f3fc3d3b4b6ed4c91f590e417d4010f45b531adac6a0c4307",
+      "module": "cc",
+      "name": "isAbsoluteLeft",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isAbsoluteLeft\",\"accessor\",false]",
+      "signatureHash": "ffef5b5bff2e1a453383e805b474207fe4a62962545e6056cded4af5cba87547",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAbsoluteLeft:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "boolean",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAbsoluteLeft:accessor:instance:overload:1:ee73ad0025bbdc11",
+          "text": "(value: boolean): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 607,
+        "line": 604,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "5b363e49279383fea7649eab8f8fe08a1215187da7133d5cfd920aa8d0b52919",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_isAbsRight"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53276,
+          "line": 53276,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "f627a9134bf2e796791a8747181d40c57091d905edfe3e651cda964887d5f517",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "editable"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isAbsoluteRight:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isAbsoluteRight",
+      "metadataHash": "6a1ab564379842f52926cb5937a7b850601379f10e64dff4a5308c9b82bb04f1",
+      "module": "cc",
+      "name": "isAbsoluteRight",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isAbsoluteRight\",\"accessor\",false]",
+      "signatureHash": "ffef5b5bff2e1a453383e805b474207fe4a62962545e6056cded4af5cba87547",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAbsoluteRight:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "boolean",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAbsoluteRight:accessor:instance:overload:1:ee73ad0025bbdc11",
+          "text": "(value: boolean): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 627,
+        "line": 624,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "3ff29df218fb6d2fb2b12a21d4f9f883e1038d281bfb2267f928df0ae38bf3b7",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_isAbsTop"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53249,
+          "line": 53249,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "75ae0dbe2ab541991153d64448c83ecfe5d00a1709ef6e33f7b3738de884c8c4",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "editable"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isAbsoluteTop:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isAbsoluteTop",
+      "metadataHash": "683bebcf6243b8e4f60b61a07aee76eb206be9453abba77882fbd35390aff7b8",
+      "module": "cc",
+      "name": "isAbsoluteTop",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isAbsoluteTop\",\"accessor\",false]",
+      "signatureHash": "ffef5b5bff2e1a453383e805b474207fe4a62962545e6056cded4af5cba87547",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAbsoluteTop:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "boolean",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAbsoluteTop:accessor:instance:overload:1:ee73ad0025bbdc11",
+          "text": "(value: boolean): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 567,
+        "line": 564,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "fb977d77b801c58e1d94508900a43265489e52277956c2128ea571fe0d2acf2c",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_isAbsVerticalCenter"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53294,
+          "line": 53294,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "622e9c53497c634f8c9e6c764c91a8238cc4fa6c85418b8c5abe5ebee26b3cd0",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "editable"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isAbsoluteVerticalCenter:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isAbsoluteVerticalCenter",
+      "metadataHash": "0c3ba4f6986acb9ae9375580886e71e8c556adf1a4beac7db3c533d797c2322a",
+      "module": "cc",
+      "name": "isAbsoluteVerticalCenter",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isAbsoluteVerticalCenter\",\"accessor\",false]",
+      "signatureHash": "ffef5b5bff2e1a453383e805b474207fe4a62962545e6056cded4af5cba87547",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAbsoluteVerticalCenter:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "boolean",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAbsoluteVerticalCenter:accessor:instance:overload:1:ee73ad0025bbdc11",
+          "text": "(value: boolean): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 667,
+        "line": 664,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "413a73661bacf6b47a4aa2cc8a68ba22c7ab3cb12e054259cecacde058ccb8bb",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_alignFlags"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53096,
+          "line": 53096,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "6c293cbd3e5a08c77c9bbfe58e081ee9e2e02bb8d7c2bce983399fb737d29139",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "tooltip ( 'i18n:widget.align_bottom' )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isAlignBottom:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isAlignBottom",
+      "metadataHash": "22072760c230c049584277adab01800708b2a3e5f64110d7dc624a6129f8f489",
+      "module": "cc",
+      "name": "isAlignBottom",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isAlignBottom\",\"accessor\",false]",
+      "signatureHash": "ffef5b5bff2e1a453383e805b474207fe4a62962545e6056cded4af5cba87547",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAlignBottom:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "boolean",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAlignBottom:accessor:instance:overload:1:ee73ad0025bbdc11",
+          "text": "(value: boolean): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 272,
+        "line": 269,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "f20d14460ae0cffc9810c2fa66cbe22b1eb6f41325c52c9155ddc3d3791a92ef",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_alignFlags"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53132,
+          "line": 53132,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "6144b3e0cd120c7a3085d6cb98015f6ba63cca694a5bc577e77e11b45df2f88d",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "tooltip ( 'i18n:widget.align_v_center' )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isAlignHorizontalCenter:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isAlignHorizontalCenter",
+      "metadataHash": "bc20b27ade599ec1f55dac04854291176e4f3d096a15c952b53cd74fa0a58845",
+      "module": "cc",
+      "name": "isAlignHorizontalCenter",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isAlignHorizontalCenter\",\"accessor\",false]",
+      "signatureHash": "ffef5b5bff2e1a453383e805b474207fe4a62962545e6056cded4af5cba87547",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAlignHorizontalCenter:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "boolean",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAlignHorizontalCenter:accessor:instance:overload:1:ee73ad0025bbdc11",
+          "text": "(value: boolean): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 343,
+        "line": 340,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "a862f7c05b9edf80ccecc128a8263bcfd76639e0c5513f4bb94e76c60fdd4474",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_alignFlags"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53105,
+          "line": 53105,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "9a80f51461c6cf7f9bd2f78091dea37b8791644e7cc689ef70cbae6204e0f0b5",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "tooltip ( 'i18n:widget.align_left' )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isAlignLeft:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isAlignLeft",
+      "metadataHash": "fc4e09b366429d50dea9c15e3662e460fb85fd9d457614335a019a6deae44726",
+      "module": "cc",
+      "name": "isAlignLeft",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isAlignLeft\",\"accessor\",false]",
+      "signatureHash": "ffef5b5bff2e1a453383e805b474207fe4a62962545e6056cded4af5cba87547",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAlignLeft:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "boolean",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAlignLeft:accessor:instance:overload:1:ee73ad0025bbdc11",
+          "text": "(value: boolean): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 288,
+        "line": 285,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "70a2babc996093049b198cd6341e81cc7f76fe9ab362ff6f3520a54db6defe7a",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_alignFlags"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53114,
+          "line": 53114,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "12c19d3e695ef6b76f0733c763705b7f6f398ac2261a05df1cac929ae1943b1e",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "tooltip ( 'i18n:widget.align_right' )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isAlignRight:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isAlignRight",
+      "metadataHash": "5928c2a697fed2632e739b88870bae70dafd73a17f0c7309b43bc681f6062dcf",
+      "module": "cc",
+      "name": "isAlignRight",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isAlignRight\",\"accessor\",false]",
+      "signatureHash": "ffef5b5bff2e1a453383e805b474207fe4a62962545e6056cded4af5cba87547",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAlignRight:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "boolean",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAlignRight:accessor:instance:overload:1:ee73ad0025bbdc11",
+          "text": "(value: boolean): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 304,
+        "line": 301,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "5a37775cbc12dc8dfcd7805848fd05220be1834971755aea86f890e6270d4623",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_alignFlags"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53087,
+          "line": 53087,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "665987110087e1505a1d360f1a5a400a11cc034569eaddf57652a72190a901c7",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "tooltip ( 'i18n:widget.align_top' )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isAlignTop:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isAlignTop",
+      "metadataHash": "8b3f2b3e78e51847c9896de961e20c360ca2cd4be975779273cc377f95f70e78",
+      "module": "cc",
+      "name": "isAlignTop",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isAlignTop\",\"accessor\",false]",
+      "signatureHash": "ffef5b5bff2e1a453383e805b474207fe4a62962545e6056cded4af5cba87547",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAlignTop:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "boolean",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAlignTop:accessor:instance:overload:1:ee73ad0025bbdc11",
+          "text": "(value: boolean): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 256,
+        "line": 253,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "ac3e9c8038b415187237c42c7e51c7fa65e2258dc2f77c8c023dcd6f88dd1a12",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_alignFlags"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53123,
+          "line": 53123,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "291fa8cec333fcc776e6dd2b8e836c09a50541e5934fa02fb17ad081f75e790a",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "tooltip ( 'i18n:widget.align_h_center' )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isAlignVerticalCenter:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isAlignVerticalCenter",
+      "metadataHash": "a017460b8c8713f011c7f7a16ac4e4d3c1fc9124d0b29b97af4bd3520974059a",
+      "module": "cc",
+      "name": "isAlignVerticalCenter",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isAlignVerticalCenter\",\"accessor\",false]",
+      "signatureHash": "ffef5b5bff2e1a453383e805b474207fe4a62962545e6056cded4af5cba87547",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAlignVerticalCenter:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "boolean",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isAlignVerticalCenter:accessor:instance:overload:1:ee73ad0025bbdc11",
+          "text": "(value: boolean): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 320,
+        "line": 317,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "77e169cac973f10185e0f6d2be12a41dba9dc3a045656198b81d22f4d6c61c46",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_alignFlags"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53151,
+          "line": 53151,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "3c816b8fc973af710b910e1a2dcb52444999da8d69ce65196f96f4d5b2dfe4f9",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "visible ( false )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isStretchHeight:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isStretchHeight",
+      "metadataHash": "3c8acca47842df704fc288702a8bc96c9d5723d2e6af08f212851d254d5c8723",
+      "module": "cc",
+      "name": "isStretchHeight",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": true,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isStretchHeight\",\"accessor\",false]",
+      "signatureHash": "3e5fb1ce1b5174a61431b1f761f69acf7aa6d32973ce1080e8054b1437bf3dc6",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isStretchHeight:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 379,
+        "line": 376,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "36a18ec1d3a4a39e46c6a1bac67e6baa2a1e9d7c1bc4aa3bbba85911835777c5",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_alignFlags"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53142,
+          "line": 53142,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "d97bda5e29962809fa7bbbd0d57459260be0b48bc8e5f6765e86773d06946920",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "visible ( false )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:isStretchWidth:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "isStretchWidth",
+      "metadataHash": "c88e916d657abbbed3bec7e224bda74a532df0d3fb11f858eebacfe16a5c465b",
+      "module": "cc",
+      "name": "isStretchWidth",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": true,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"isStretchWidth\",\"accessor\",false]",
+      "signatureHash": "3e5fb1ce1b5174a61431b1f761f69acf7aa6d32973ce1080e8054b1437bf3dc6",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "boolean",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:isStretchWidth:accessor:instance:overload:0:4e08cbaeac0fae12",
+          "text": "(): boolean",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 366,
+        "line": 363,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "6d5f5950b83c8b19475374cda55db2f0b3519a6dc682e58cace53dad069fa82e",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_left"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53190,
+          "line": 53190,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "cb489cb5b9d073675b87ac3de91d264bae6693724f50459178c74ecf91a49a28",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "tooltip ( 'i18n:widget.left' )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:left:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "left",
+      "metadataHash": "d084dcd30c0b2765c7db8dec04ed8af7c0c3fb541d6eeda909bc03944a3fbca0",
+      "module": "cc",
+      "name": "left",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"left\",\"accessor\",false]",
+      "signatureHash": "3dfe5d19dc14a085f146b15b65ba0ede964d493db40c68735c94516ec23a2627",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "number",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:left:accessor:instance:overload:0:2cc6d7ba4eb0df12",
+          "text": "(): number",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "number",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:left:accessor:instance:overload:1:c348cb41f1d534ac",
+          "text": "(value: number): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 452,
+        "line": 449,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "e69e9dc49058695687052b0dc27bdf4d587400363fd91fb2fe10d85580f781d0",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_name"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "EDITOR",
+          "TEST"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 24022,
+          "line": 24022,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "756543da64d54fdefe2c99a8b672b4a3b148f8236fe1a8d15c9f04d240084b78",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Component",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:name:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "CCObject"
+        }
+      ],
+      "inheritedFrom": "Component",
+      "internal": false,
+      "kind": "accessor",
+      "member": "name",
+      "metadataHash": "364f38665bc7b324b0b83f002ac262e2c563486f570adfbbdd2a345c53f2d3f7",
+      "module": "cc",
+      "name": "name",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"name\",\"accessor\",false]",
+      "signatureHash": "a6e149a8dcbd21a9ad9c0df9814b508652c76b213eee7ed9d7ee80adc11f7827",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "string",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:name:accessor:instance:overload:0:b0b5ba1317e0d1df",
+          "text": "(): string",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "string",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:name:accessor:instance:overload:1:1de363dd0f73d9f7",
+          "text": "(value: string): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 76,
+        "line": 61,
+        "path": "cocos/scene-graph/component.ts",
+        "root": "engine",
+        "semanticHash": "75e6528b36ed9a8f79c0908f57f2325ff4ef38ee9c51512c129b5d137de79a6b",
+        "sha256": "eb02cfee58c97e333e906ad96fa92f6f499d81ffcbc4afbcbda2422c524f45ce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "EDITOR",
+          "TEST"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 24086,
+          "line": 24086,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "f66fccd3a6d4b8da52a52e57a63e6ab0716405fa36931cdec14ff614053ccc4b",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Component",
+      "decorators": [
+        "serializable"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:node:property:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "CCObject"
+        }
+      ],
+      "inheritedFrom": "Component",
+      "internal": false,
+      "kind": "property",
+      "member": "node",
+      "metadataHash": "fdc9d6eb1bb419097ad61b2c412f22a29013e2866ea564fc7e6bc68592294db9",
+      "module": "cc",
+      "name": "node",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"node\",\"property\",false]",
+      "signatureHash": "be26aa2b58436096ab27a7ca8d7de883b2ec74e771eca328a3a95922c2e1e26f",
+      "signatures": [
+        {
+          "declaredType": "Node",
+          "defaultExpression": "NullNode",
+          "kind": "value",
+          "overload": 0,
+          "references": [
+            {
+              "enumValues": null,
+              "kind": "class-reference",
+              "name": "Node",
+              "resolution": "resolved"
+            }
+          ],
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:node:property:instance:overload:0:ea5168acb99b40af",
+          "type": "Node",
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 174,
+        "line": 173,
+        "path": "cocos/scene-graph/component.ts",
+        "root": "engine",
+        "semanticHash": "7ab1803c6446e99d538ffe722941a5bd4861df64ae30cac2b29f57d092b12240",
+        "sha256": "eb02cfee58c97e333e906ad96fa92f6f499d81ffcbc4afbcbda2422c524f45ce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53362,
+          "line": 53362,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "06e97f1b937c97aa5e17b0c18fa2526ba8a910325a451a8f5f8a2f7722042a1c",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:onDestroy:method:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "method",
+      "member": "onDestroy",
+      "metadataHash": "fadf644b4314d57937f6c572d2a13426995bed1eb5514c0ae529b47a90a17df2",
+      "module": "cc",
+      "name": "onDestroy",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"onDestroy\",\"method\",false]",
+      "signatureHash": "7bcebbcc6aa7f262d666dc2bf9cd9affe04e3981bf86b9653380b5edb00a5ee5",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "call",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:onDestroy:method:instance:overload:0:29f1cf688478162f",
+          "text": "(): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 838,
+        "line": 836,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "83691055ee8e440bbb9ecedcfcc3ca9fc2881b1549318c42391c31e2512ba0b5",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53361,
+          "line": 53361,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "a1956f2d54d97239ef3792564930ad56bc04731c4388b8e700633de6b20a8bef",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:onDisable:method:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "method",
+      "member": "onDisable",
+      "metadataHash": "0b43ebb966febfcfebf220b3524c381fc6b3e64cef2c65caf940dfa80b1f2baf",
+      "module": "cc",
+      "name": "onDisable",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"onDisable\",\"method\",false]",
+      "signatureHash": "7bcebbcc6aa7f262d666dc2bf9cd9affe04e3981bf86b9653380b5edb00a5ee5",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "call",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:onDisable:method:instance:overload:0:29f1cf688478162f",
+          "text": "(): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 834,
+        "line": 830,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "dccbfd4fd368235ab47d6d8a36f095a03bdbebc31bf553b55ee8b4053148d592",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53360,
+          "line": 53360,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "95a3cf12d94d739cb50a1844f337c059fea2c995e38ee2d4cd25e908470b8866",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:onEnable:method:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "method",
+      "member": "onEnable",
+      "metadataHash": "ac27cd9aa9da93c016ed9f02a9de71982e1eec6d12b957d814c173e5a1e05e7b",
+      "module": "cc",
+      "name": "onEnable",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"onEnable\",\"method\",false]",
+      "signatureHash": "7bcebbcc6aa7f262d666dc2bf9cd9affe04e3981bf86b9653380b5edb00a5ee5",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "call",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:onEnable:method:instance:overload:0:29f1cf688478162f",
+          "text": "(): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 828,
+        "line": 821,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "9fb007bb0e90aef4955c9a6c56d4037e12df725722508c805b6254c219a59719",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "EDITOR",
+          "TEST"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 24359,
+          "line": 24359,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "a2c72a99c43b9196902d6081ebc17e94ed4706b59d2884082e1818d1ab1e7a6a",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Component",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:onFocusInEditor:method:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "CCObject"
+        }
+      ],
+      "inheritedFrom": "Component",
+      "internal": false,
+      "kind": "method",
+      "member": "onFocusInEditor",
+      "metadataHash": "8fd2fd26a3bdcd1b8f38d4aa72c7f722713554ea032d5eb2207e14518e422ed5",
+      "module": "cc",
+      "name": "onFocusInEditor",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"onFocusInEditor\",\"method\",false]",
+      "signatureHash": "ddd1294b7f0515fc82551696679d40e72501365813030dd2ac16b6465f9d5e9e",
+      "signatures": [
+        {
+          "declaredType": "void",
+          "defaultExpression": null,
+          "kind": "value",
+          "overload": 0,
+          "references": [
+            {
+              "enumValues": null,
+              "kind": "type-reference",
+              "name": "onFocusInEditor",
+              "resolution": "resolved"
+            }
+          ],
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:onFocusInEditor:method:instance:overload:0:ef4500b615d672e0",
+          "type": "(() => void) | undefined",
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 582,
+        "line": 582,
+        "path": "cocos/scene-graph/component.ts",
+        "root": "engine",
+        "semanticHash": "7b86a71b40afd5c3e74d86c995ea96c0b48006fcfc42f7d1ade090f491badc37",
+        "sha256": "eb02cfee58c97e333e906ad96fa92f6f499d81ffcbc4afbcbda2422c524f45ce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "EDITOR",
+          "TEST"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 24360,
+          "line": 24360,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "a56ac2781ebeb204ac206b72acdf69445cc28f74ddea245dceae021a7bd75c4a",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Component",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:onLostFocusInEditor:method:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "CCObject"
+        }
+      ],
+      "inheritedFrom": "Component",
+      "internal": false,
+      "kind": "method",
+      "member": "onLostFocusInEditor",
+      "metadataHash": "99ba1fec8426a419bf19f5681cdc77939e7fec0563c85abd2d5651edbc8638f4",
+      "module": "cc",
+      "name": "onLostFocusInEditor",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"onLostFocusInEditor\",\"method\",false]",
+      "signatureHash": "9351aec2f0977b924a858b289c75dd22859c98eb4b71cc55d3e61a1f4dcb906f",
+      "signatures": [
+        {
+          "declaredType": "void",
+          "defaultExpression": null,
+          "kind": "value",
+          "overload": 0,
+          "references": [
+            {
+              "enumValues": null,
+              "kind": "type-reference",
+              "name": "onLostFocusInEditor",
+              "resolution": "resolved"
+            }
+          ],
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:onLostFocusInEditor:method:instance:overload:0:7eeaabf748be3f43",
+          "type": "(() => void) | undefined",
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 584,
+        "line": 584,
+        "path": "cocos/scene-graph/component.ts",
+        "root": "engine",
+        "semanticHash": "02432ac9abe4afad1cc49e198a37c8b92738a5731e3a57a0713a01e47316a04b",
+        "sha256": "eb02cfee58c97e333e906ad96fa92f6f499d81ffcbc4afbcbda2422c524f45ce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "EDITOR",
+          "TEST"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 24366,
+          "line": 24366,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "9561475e70ecd9fe0424fb3ff81c41434ba0b386620a32a706eba85179f54006",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Component",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:resetInEditor:method:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "CCObject"
+        }
+      ],
+      "inheritedFrom": "Component",
+      "internal": false,
+      "kind": "method",
+      "member": "resetInEditor",
+      "metadataHash": "9915992a008659a6dcaede19842342870d9e9058204038541b5ef9c47b15e478",
+      "module": "cc",
+      "name": "resetInEditor",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"resetInEditor\",\"method\",false]",
+      "signatureHash": "89277347a291637db7585af974c7f6b7c24326ada1f9dd4d21f630b67bc1094b",
+      "signatures": [
+        {
+          "declaredType": "void",
+          "defaultExpression": null,
+          "kind": "value",
+          "overload": 0,
+          "references": [
+            {
+              "enumValues": null,
+              "kind": "type-reference",
+              "name": "resetInEditor",
+              "resolution": "resolved"
+            }
+          ],
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:resetInEditor:method:instance:overload:0:34c6e310d103bb8a",
+          "type": "(() => void) | undefined",
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 591,
+        "line": 591,
+        "path": "cocos/scene-graph/component.ts",
+        "root": "engine",
+        "semanticHash": "0ec51841625962bb7c64f5b682529bb77b28ac197ccbcf14dc0dd90cd7b0b111",
+        "sha256": "eb02cfee58c97e333e906ad96fa92f6f499d81ffcbc4afbcbda2422c524f45ce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_right"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53205,
+          "line": 53205,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "f5bae1a9d6cb18c54906dfd720c520862e46fb62789a0116bf267094654bf26f",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "tooltip ( 'i18n:widget.right' )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:right:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "right",
+      "metadataHash": "6bde91c5851855514581ee97489f34a5eeb7c49d19ff4d4aa83a6656e69c18fc",
+      "module": "cc",
+      "name": "right",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"right\",\"accessor\",false]",
+      "signatureHash": "3dfe5d19dc14a085f146b15b65ba0ede964d493db40c68735c94516ec23a2627",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "number",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:right:accessor:instance:overload:0:2cc6d7ba4eb0df12",
+          "text": "(): number",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "number",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:right:accessor:instance:overload:1:c348cb41f1d534ac",
+          "text": "(value: number): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 481,
+        "line": 478,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "3f2e71f0736959d7b4f87577bb99d8e884b40a7fa232b24103646f67a9e245cb",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "EDITOR",
+          "TEST"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 24249,
+          "line": 24249,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "583f714d317e820cd4e2277e8e7a20fb759e15ae2a7ef0d94a6b1d15ff25500a",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Component",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "declared",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:schedule:method:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "CCObject"
+        }
+      ],
+      "inheritedFrom": "Component",
+      "internal": false,
+      "kind": "method",
+      "member": "schedule",
+      "metadataHash": "6e3afa8442ba7bf7ace716f88aa48e0e2b74a4ac2dc45525032e6e80e8752ed9",
+      "module": "cc",
+      "name": "schedule",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "cdfd1bb1ab368606c4d23eec22cc0857e21a94068bf91d157a52ad8547a50ade",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"schedule\",\"method\",false]",
+      "signatureHash": "81a30f4af14c85aee5eec53214a223950154d80f053d1031c16f29d9c1d7bb45",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "call",
+          "overload": 0,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "callback",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "any",
+              "unresolved": [
+                {
+                  "kind": "any",
+                  "reference": "any"
+                }
+              ]
+            },
+            {
+              "declaredType": null,
+              "defaultExpression": "0",
+              "name": "interval",
+              "optional": true,
+              "references": [],
+              "rest": false,
+              "type": "number",
+              "unresolved": []
+            },
+            {
+              "declaredType": "number",
+              "defaultExpression": "legacyCC . macro . REPEAT_FOREVER",
+              "name": "repeat",
+              "optional": true,
+              "references": [],
+              "rest": false,
+              "type": "number",
+              "unresolved": []
+            },
+            {
+              "declaredType": null,
+              "defaultExpression": "0",
+              "name": "delay",
+              "optional": true,
+              "references": [],
+              "rest": false,
+              "type": "number",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:schedule:method:instance:overload:0:e7c2882b82886deb",
+          "text": "(callback: any, interval?: number, repeat?: number, delay?: number): void",
+          "typeParameters": [],
+          "unresolved": [
+            {
+              "kind": "any",
+              "reference": "any"
+            }
+          ]
+        }
+      ],
+      "source": {
+        "endLine": 445,
+        "line": 427,
+        "path": "cocos/scene-graph/component.ts",
+        "root": "engine",
+        "semanticHash": "4b6ff3856b2446d19ee9f1c34f6052c14285f68fbb4996c5c3c3c3029b19ee90",
+        "sha256": "eb02cfee58c97e333e906ad96fa92f6f499d81ffcbc4afbcbda2422c524f45ce"
+      },
+      "static": false,
+      "unresolved": [
+        {
+          "kind": "any",
+          "reference": "any"
+        }
+      ],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "EDITOR",
+          "TEST"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 24263,
+          "line": 24263,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "f3187cfd0bfc9059f8cb1068c9c702088f3baca7f3c8f2289b08f1e93f18ea8e",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Component",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "declared",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:scheduleOnce:method:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "CCObject"
+        }
+      ],
+      "inheritedFrom": "Component",
+      "internal": false,
+      "kind": "method",
+      "member": "scheduleOnce",
+      "metadataHash": "b5605722a7837d504290177335c21da0439f98188662cdabadac8e90c9be9af7",
+      "module": "cc",
+      "name": "scheduleOnce",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "cdfd1bb1ab368606c4d23eec22cc0857e21a94068bf91d157a52ad8547a50ade",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"scheduleOnce\",\"method\",false]",
+      "signatureHash": "8f3a8747b6cfd14c0f9dc31307b9daf48189970f8e27c1418d717b3aea8d06c7",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "call",
+          "overload": 0,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "callback",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "any",
+              "unresolved": [
+                {
+                  "kind": "any",
+                  "reference": "any"
+                }
+              ]
+            },
+            {
+              "declaredType": null,
+              "defaultExpression": "0",
+              "name": "delay",
+              "optional": true,
+              "references": [],
+              "rest": false,
+              "type": "number",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:scheduleOnce:method:instance:overload:0:ee05206b15003938",
+          "text": "(callback: any, delay?: number): void",
+          "typeParameters": [],
+          "unresolved": [
+            {
+              "kind": "any",
+              "reference": "any"
+            }
+          ]
+        }
+      ],
+      "source": {
+        "endLine": 462,
+        "line": 460,
+        "path": "cocos/scene-graph/component.ts",
+        "root": "engine",
+        "semanticHash": "7fbfd5e00258ac574d0537e0ec35a0753a00ad481604fd9b015d8d13d65bad0e",
+        "sha256": "eb02cfee58c97e333e906ad96fa92f6f499d81ffcbc4afbcbda2422c524f45ce"
+      },
+      "static": false,
+      "unresolved": [
+        {
+          "kind": "any",
+          "reference": "any"
+        }
+      ],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53359,
+          "line": 53359,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "8fe01b2c5a9eae2aab78cc9b19f6699b1610f4fb466d21df54ea192e8ba32eea",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:setDirty:method:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "method",
+      "member": "setDirty",
+      "metadataHash": "5dd217eeb3acb51f4878899e84e544c99afb61b88d9d4640326c4ab074337f79",
+      "module": "cc",
+      "name": "setDirty",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"setDirty\",\"method\",false]",
+      "signatureHash": "7bcebbcc6aa7f262d666dc2bf9cd9affe04e3981bf86b9653380b5edb00a5ee5",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "call",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:setDirty:method:instance:overload:0:29f1cf688478162f",
+          "text": "(): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 819,
+        "line": 817,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "7cd9c1acfa27f3e7ceaf127e53dd3d7ecf8314c9ed892d84af78f2ebe803ed56",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "EDITOR",
+          "TEST"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 24076,
+          "line": 24076,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "44f450ae36c31f35e1e06e5d85ef2be3944bd2b14e43b83cf31a835344ba86f2",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Component",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:system:property:static",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "CCObject"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "property",
+      "member": "system",
+      "metadataHash": "c9150bdbd9975eb2e5b1b8ce14c585f2a997ec4a9c1ce3a350615fde1383639a",
+      "module": "cc",
+      "name": "system",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"system\",\"property\",true]",
+      "signatureHash": "223f0dd2c0d8f9618b7e854e9b2288286c16c7496b3ee7d5036fb073caed205f",
+      "signatures": [
+        {
+          "declaredType": null,
+          "defaultExpression": "null",
+          "kind": "value",
+          "overload": 0,
+          "references": [],
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:system:property:static:overload:0:0fc8a4e762b2db2b",
+          "type": "null",
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 162,
+        "line": 162,
+        "path": "cocos/scene-graph/component.ts",
+        "root": "engine",
+        "semanticHash": "b3ce96e57d7e093e7724be59157f9aea12c825a71204c3dbd5702e92d239a17a",
+        "sha256": "eb02cfee58c97e333e906ad96fa92f6f499d81ffcbc4afbcbda2422c524f45ce"
+      },
+      "static": true,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_target"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53078,
+          "line": 53078,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "66cb8ed70081dfa65de40ad0af801dfffff9d972dd5e0d198c91b1022809eadd",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "type ( Node )",
+        "tooltip ( 'i18n:widget.target' )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:target:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "target",
+      "metadataHash": "84f4ef92d84f4f76aa7ae906cfc77c8ef71b91d6fb59d232cac8637a57712095",
+      "module": "cc",
+      "name": "target",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"target\",\"accessor\",false]",
+      "signatureHash": "e932d9e16f7ec5ebc5f2d5f4efdbc8fe22754c0ab2fc71cdacf4632fa4f65895",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [
+            {
+              "enumValues": null,
+              "kind": "class-reference",
+              "name": "Node",
+              "resolution": "resolved"
+            }
+          ],
+          "returnType": "Node | null",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:target:accessor:instance:overload:0:27078b8d5bd216f6",
+          "text": "(): Node | null",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [
+                {
+                  "enumValues": null,
+                  "kind": "class-reference",
+                  "name": "Node",
+                  "resolution": "resolved"
+                }
+              ],
+              "rest": false,
+              "type": "Node | null",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:target:accessor:instance:overload:1:2c7ae4d4a8241010",
+          "text": "(value: Node | null): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 226,
+        "line": 222,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "d04bbe45e838177494aeec63dae023ff6a33887e6e00a5994cf5cd06bb0661d9",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_top"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53160,
+          "line": 53160,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "593557109011949a2d3def3da7c677f5476e62928bcfd6d4c439cfdc86255bcf",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "tooltip ( 'i18n:widget.top' )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:top:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "top",
+      "metadataHash": "23766723fd8e0c06ab28fc355f718dd308cb732cdf71002067a3a8eaac2f4e9a",
+      "module": "cc",
+      "name": "top",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"top\",\"accessor\",false]",
+      "signatureHash": "3dfe5d19dc14a085f146b15b65ba0ede964d493db40c68735c94516ec23a2627",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "number",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:top:accessor:instance:overload:0:2cc6d7ba4eb0df12",
+          "text": "(): number",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "number",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:top:accessor:instance:overload:1:c348cb41f1d534ac",
+          "text": "(value: number): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 394,
+        "line": 391,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "a8dc69fd7b7d788fa958774aa5dc943d501291f36f6cce242a6c8a8928653f5e",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "EDITOR",
+          "TEST"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 24273,
+          "line": 24273,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "46a6902f3c277d011accb4219389620a8b3de53f1a12cf794e6127266bc8ada9",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Component",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "declared",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:unschedule:method:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "CCObject"
+        }
+      ],
+      "inheritedFrom": "Component",
+      "internal": false,
+      "kind": "method",
+      "member": "unschedule",
+      "metadataHash": "a857d09fef5c3509a972d73e59916dcd26b09f765c92b6cc9c2b74e0ad5bc61a",
+      "module": "cc",
+      "name": "unschedule",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "cdfd1bb1ab368606c4d23eec22cc0857e21a94068bf91d157a52ad8547a50ade",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"unschedule\",\"method\",false]",
+      "signatureHash": "36f6def26ad07fe6a629d3bb6839c50371504974551568d206c3e3add9b00105",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "call",
+          "overload": 0,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "callback_fn",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "any",
+              "unresolved": [
+                {
+                  "kind": "any",
+                  "reference": "any"
+                }
+              ]
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:unschedule:method:instance:overload:0:8f6eea3e6bf5d132",
+          "text": "(callback_fn: any): void",
+          "typeParameters": [],
+          "unresolved": [
+            {
+              "kind": "any",
+              "reference": "any"
+            }
+          ]
+        }
+      ],
+      "source": {
+        "endLine": 479,
+        "line": 473,
+        "path": "cocos/scene-graph/component.ts",
+        "root": "engine",
+        "semanticHash": "b722940e5d7d7433e8b0a8dab4d7f4034c0a9ad46978ff5187df6178acb8aac9",
+        "sha256": "eb02cfee58c97e333e906ad96fa92f6f499d81ffcbc4afbcbda2422c524f45ce"
+      },
+      "static": false,
+      "unresolved": [
+        {
+          "kind": "any",
+          "reference": "any"
+        }
+      ],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "EDITOR",
+          "TEST"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 24282,
+          "line": 24282,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "23a71c123a44cdbd9e1d8e4c937ac1a6cb11f44e457bf9dfdb06d82fb4474bd0",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Component",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:unscheduleAllCallbacks:method:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "CCObject"
+        }
+      ],
+      "inheritedFrom": "Component",
+      "internal": false,
+      "kind": "method",
+      "member": "unscheduleAllCallbacks",
+      "metadataHash": "b230366195f4f30a9bd0feb01dbbd3333df44b8ff0458e3eca78820d0ffd67a7",
+      "module": "cc",
+      "name": "unscheduleAllCallbacks",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"unscheduleAllCallbacks\",\"method\",false]",
+      "signatureHash": "7bcebbcc6aa7f262d666dc2bf9cd9affe04e3981bf86b9653380b5edb00a5ee5",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "call",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:unscheduleAllCallbacks:method:instance:overload:0:29f1cf688478162f",
+          "text": "(): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 491,
+        "line": 489,
+        "path": "cocos/scene-graph/component.ts",
+        "root": "engine",
+        "semanticHash": "b78b661bb7d3cbc810e5a4f37ec720b672da1a8449bf8e3cb38b97b8def0e82b",
+        "sha256": "eb02cfee58c97e333e906ad96fa92f6f499d81ffcbc4afbcbda2422c524f45ce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53354,
+          "line": 53354,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "1f2a3e6123c2c123022a85fd5a89243d17e65de2d659da6684832a884e9f6dd3",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:updateAlignment:method:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "method",
+      "member": "updateAlignment",
+      "metadataHash": "ecdc6b24ddfd43d4a09eb4f7bda217fa5c69585961ed82e3474c1435d751eb91",
+      "module": "cc",
+      "name": "updateAlignment",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"updateAlignment\",\"method\",false]",
+      "signatureHash": "7bcebbcc6aa7f262d666dc2bf9cd9affe04e3981bf86b9653380b5edb00a5ee5",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "call",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:updateAlignment:method:instance:overload:0:29f1cf688478162f",
+          "text": "(): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 797,
+        "line": 795,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "d0c3651bc7fadad25fb6bbab1a869a0c604fcab42c21bb1f77dc62a2ea2855df",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_id"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "EDITOR",
+          "TEST"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 24034,
+          "line": 24034,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "17e4ad3ba249c04126bceaab47804f423e87b7d96a934e9910f5915ad62638e4",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Component",
+      "decorators": [],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:uuid:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "CCObject"
+        }
+      ],
+      "inheritedFrom": "Component",
+      "internal": false,
+      "kind": "accessor",
+      "member": "uuid",
+      "metadataHash": "a9fcaf36eaaa33d05412904e56d5bf20f65909b6826ad39a1853506c96cb6487",
+      "module": "cc",
+      "name": "uuid",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": true,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"uuid\",\"accessor\",false]",
+      "signatureHash": "17bb95101218012a602f439539075316d9cc8b53e6f846eb3848c0daccff66a9",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "string",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:uuid:accessor:instance:overload:0:b0b5ba1317e0d1df",
+          "text": "(): string",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 93,
+        "line": 91,
+        "path": "cocos/scene-graph/component.ts",
+        "root": "engine",
+        "semanticHash": "93a694f71208a18bedc0737765074ca168cea5029f21deaf14c32c3386692dae",
+        "sha256": "eb02cfee58c97e333e906ad96fa92f6f499d81ffcbc4afbcbda2422c524f45ce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    },
+    {
+      "abstract": false,
+      "aliases": [],
+      "backingFields": [
+        "_verticalCenter"
+      ],
+      "className": "Widget",
+      "contextConstraints": {
+        "editModeDeclared": false,
+        "execution": [
+          "game-runtime"
+        ],
+        "features": [
+          "ui"
+        ],
+        "guards": [],
+        "importedConstants": [
+          "DEV",
+          "EDITOR"
+        ],
+        "jsonTransfer": "named-reference-or-value-dto-required",
+        "moduleOverrides": [],
+        "targetAvailable": "unknown"
+      },
+      "declarationSummary": {
+        "agreement": "different",
+        "provenance": "explicit-input-not-stock-qualification",
+        "source": {
+          "endLine": 53235,
+          "line": 53235,
+          "path": "cc.d.ts",
+          "root": "declarations",
+          "semanticHash": "9d3ae1cc3f244cb1a57a0a998885809a1a4325db320b6f87d74cd18eb1fb3bb4",
+          "sha256": "b13aafb89c88194cf7fd7018b3b496ccfbfb20f285c90e0711ddfbd52a761a55"
+        }
+      },
+      "declaredClassName": "Widget",
+      "decorators": [
+        "tooltip ( 'i18n:widget.vertical_center' )"
+      ],
+      "deprecated": false,
+      "discovered": true,
+      "domain": "ui",
+      "enumValues": null,
+      "evidence": [
+        {
+          "alias": "Widget",
+          "kind": "source-export",
+          "path": "exports/ui.ts"
+        }
+      ],
+      "evidenceStatus": "signatureResolved",
+      "exportedFrom": [
+        "exports/ui.ts"
+      ],
+      "id": "3.7.3:engine-runtime:cc:Widget:verticalCenter:accessor:instance",
+      "inheritance": [
+        {
+          "relation": "extends",
+          "type": "Component"
+        }
+      ],
+      "inheritedFrom": null,
+      "internal": false,
+      "kind": "accessor",
+      "member": "verticalCenter",
+      "metadataHash": "8a0107b9d743f8f1bb8631f26aaa485fadeb7d5d2e9d2502ed2c66ed182a5980",
+      "module": "cc",
+      "name": "verticalCenter",
+      "namespace": "engine-runtime",
+      "omittedMetadata": [
+        "jsdoc",
+        "declarationEvidence"
+      ],
+      "permitted": false,
+      "publicExport": true,
+      "readonly": false,
+      "resolutionHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semanticKey": "[\"engine-runtime\",\"cc\",\"Widget\",\"verticalCenter\",\"accessor\",false]",
+      "signatureHash": "3dfe5d19dc14a085f146b15b65ba0ede964d493db40c68735c94516ec23a2627",
+      "signatures": [
+        {
+          "declaredReturnType": null,
+          "kind": "get",
+          "overload": 0,
+          "parameters": [],
+          "returnReferences": [],
+          "returnType": "number",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:verticalCenter:accessor:instance:overload:0:2cc6d7ba4eb0df12",
+          "text": "(): number",
+          "typeParameters": [],
+          "unresolved": []
+        },
+        {
+          "declaredReturnType": null,
+          "kind": "set",
+          "overload": 1,
+          "parameters": [
+            {
+              "declaredType": null,
+              "defaultExpression": null,
+              "name": "value",
+              "optional": false,
+              "references": [],
+              "rest": false,
+              "type": "number",
+              "unresolved": []
+            }
+          ],
+          "returnReferences": [],
+          "returnType": "void",
+          "signatureId": "3.7.3:engine-runtime:cc:Widget:verticalCenter:accessor:instance:overload:1:c348cb41f1d534ac",
+          "text": "(value: number): void",
+          "typeParameters": [],
+          "unresolved": []
+        }
+      ],
+      "source": {
+        "endLine": 539,
+        "line": 536,
+        "path": "cocos/ui/widget.ts",
+        "root": "engine",
+        "semanticHash": "231256e7cbdb778614a70bcc3e5d1ea08921471aa6ee6b93c51f2a4ced37da05",
+        "sha256": "45c782d7bd03c08c0020ea153b98d894483f9f473f733a0390fdbe4c09993dce"
+      },
+      "static": false,
+      "unresolved": [],
+      "version": "3.7.3",
+      "visibility": "public"
+    }
+  ]
+}

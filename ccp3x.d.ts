@@ -41,6 +41,9 @@ interface AssetImportSettingsResult {
     settings: { [key: string]: AssetImportSettingValue };
     source: AssetImportSettingsSource;
 }
+interface EngineApiDiscoveryArgs { className?: string; targetVersion?: '3.7.3' | '3.8.8'; domain?: string; filter?: string; reference?: InstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string }
+interface EngineApiDiscoveryResult { version: string; catalogHash: string; records: Array<Record<string, unknown>>; total: number; count: number; truncated: boolean; nextCursor: string | null; live: Record<string, unknown>; runtimeVerified: false; qualified: false }
+interface ImportOutputEvidence { kind: 'source' | 'library'; extension: string; path: string; status: 'verified' | 'missing' | 'unreadable' | 'too_large' | 'changed' | 'empty'; bytes: number | null; sha256: string | null }
 interface IAssetTree {
     filesystemPath?: string;
     reference: InstanceReference;
@@ -150,7 +153,14 @@ declare namespace ccp3x {
         path: string,
         previous: AssetImportSettingValue,
         readBack: AssetImportSettingValue,
-        result: AssetImportSettingsResult
+        result: AssetImportSettingsResult,
+        settingsSaved: boolean,
+        importComplete: boolean | null,
+        generatedOutputVerified: boolean | null,
+        retrySafe: false,
+        importCompletion: { signal: 'asset-db/is-busy' | 'unsupported' | 'unavailable' | 'not_requested'; polls: number },
+        outputs: ImportOutputEvidence[],
+        outputsTruncated: boolean
     };
 
     /** Assign a platform-aware Creator texture-compression preset and return deterministic reimport evidence. */
@@ -316,10 +326,10 @@ declare namespace ccp3x {
     function prefabReferenceAudit(args: { reference: InstanceReference, maxReferences?: number }): { valid: boolean, nestedPrefabs: unknown[], missingReferences: unknown[], source: unknown };
     function sceneReferenceValidate(args: { reference: InstanceReference, maxReferences?: number }): { valid: boolean, references: string[], missingReferences: string[], source: unknown };
     function prefabInstantiate(args: { reference: InstanceReference, parentReference?: InstanceReference, name?: string }): { reference: InstanceReference, source: { id: string, url: string }, persisted: boolean, readBack?: unknown };
-    function prefabApplyOverrides(args: { reference: InstanceReference, expectedSourceSha256?: string, maxBytes?: number }): { reference: InstanceReference, operation: "apply", persisted: boolean, readBack: unknown, sourceReadBack: { id: string, url: string, beforeSha256: string, afterSha256: string }, sourceChanges: Array<{ path: string; before: unknown; after: unknown }>, sourceDiffTruncated: boolean, responseTruncated: boolean, readBackTruncated: boolean, sceneSaved: false };
+    function prefabApplyOverrides(args: { reference: InstanceReference, operation?: 'apply' | 'removed_component_apply', fileID?: string, expectedSourceSha256?: string, maxBytes?: number }): { reference: InstanceReference, operation: 'apply' | 'removed_component_apply', persisted: boolean, readBack: unknown, sourceReadBack: { id: string, url: string, beforeSha256: string, afterSha256: string }, sourceChanges?: Array<{ path: string; before: unknown; after: unknown }>, sourceDiffTruncated?: boolean, responseTruncated: boolean, readBackTruncated?: boolean, sceneSaved: false, outcome?: 'verified', rollbackStatus?: string, fileID?: string };
     function prefabInstanceInspect(args: { reference: InstanceReference; maxOverrides?: number; maxBytes?: number }): { reference: InstanceReference; isPrefabInstance: boolean; prefabReference: InstanceReference | null; overrides: unknown[]; mountedChildren: unknown[]; mountedComponents: unknown[]; removedComponents: unknown[]; overrideCounts: Record<'propertyOverrides' | 'mountedChildren' | 'mountedComponents' | 'removedComponents', number>; totalOverrides: number; truncated: boolean; responseTruncated: boolean; readBackTruncated: boolean; source: { id: string; url: string; sha256: string } | null; readBack: unknown };
-    /** Creator 3.7.3 supports full restore only; non-empty paths rejects with UNSUPPORTED_SELECTIVE_REVERT. */
-    function prefabRevertOverrides(args: { reference: InstanceReference, paths?: string[] }): { reference: InstanceReference, operation: "revert", persisted: boolean, readBack: unknown, sourceReadBack: { id: string, url: string, beforeSha256: string, afterSha256: string } };
+    /** Full restore remains distinct; selective removed-component restore uses an authoritative prefab fileID. Nonempty arbitrary paths remain unsupported. */
+    function prefabRevertOverrides(args: { reference: InstanceReference, operation?: 'revert' | 'removed_component_revert', fileID?: string, paths?: string[], maxBytes?: number }): { reference: InstanceReference, operation: 'revert' | 'removed_component_revert', persisted: boolean, readBack: unknown, sourceReadBack: { id: string, url: string, beforeSha256: string, afterSha256: string }, sceneSaved?: false, outcome?: 'verified', rollbackStatus?: string, fileID?: string };
     function prefabInfo(args: { reference?: InstanceReference, assetPath?: string }): { reference: InstanceReference, url: string, uuid: string, rootNode: unknown, totalEntries: number, components: string[], references: string[] };
     function prefabValidate(args: { reference?: InstanceReference, assetPath?: string, maxReferences?: number }): { valid: boolean, complete: boolean, truncated: boolean, totalReferences: number, reference: InstanceReference, url: string, uuid: string, references: string[], missingReferences: { id: string }[], issues: { code: string, id: string }[], totalEntries: number };
     function tilemapInspect(args: { reference: InstanceReference, maxLayers?: number }): { reference: InstanceReference, format: "tmx", map: Record<string, unknown>, tilesets: Record<string, unknown>[], layers: Array<{ id: string, name: string, width: number, height: number, visible: boolean, opacity: number, offsetX: number, offsetY: number, tileCount: number }>, objectGroups: Array<{ id: string, name: string, objects: Array<{ id: string, name: string, type: string, x: number, y: number, width: number, height: number }> }>, count: number };
@@ -387,9 +397,9 @@ declare namespace ccp3x {
     /** List classes known to the editor, optionally filtered by base class (e.g. "cc.Component"). Helps resolve valid class names before nodeComponentAdd. */
     function listComponentClasses(args: { extends?: string, excludeSelf?: boolean, filter?: string }): { classes: string[] };
 
-    /** List callable method names of every component on a node - discovery step for callComponentMethod (otherwise the method name must be guessed). */
+    /** Discovered methods are not automatically permitted; finite invocation allowlist is reported separately. */
     function listComponentMethods(args: { reference: InstanceReference }): {
-        components: { reference: InstanceReference, methods: string[] }[]
+        components: { reference: InstanceReference, methods: string[], permittedMethods: string[], deniedMethods: string[], permissionReason: string }[]
     };
 
     /** Copy/cut/paste nodes. For paste pass targetReference plus the copied references. Returns references of pasted nodes for paste. */
@@ -1090,10 +1100,13 @@ declare namespace ccp3x {
     /** Consolidated: set properties (instance or settings). */
     function inspectorSet(args: { target: "instance" | "CurrentSceneGlobals" | "ProjectSettings", reference?: InstanceReference, propertyPaths?: string[], values?: any[], propertyPath?: string, value?: any }): { success: boolean, error?: string };
     /** Consolidated: TS definition (instance or settings). */
+    function inspectorGetDefinition(args: EngineApiDiscoveryArgs & { target: 'class'; className: string }): EngineApiDiscoveryResult;
+    function inspectorGetDefinition(args: { target: 'instance' | 'CommonTypes' | 'CurrentSceneGlobals' | 'ProjectSettings'; reference?: InstanceReference; section?: string }): { definition: string; sections: string[]; totalSections: number };
     /** Consolidated: add/remove component on node. */
     function nodeComponentManage(args: { operation: "add" | "remove", reference: InstanceReference, componentType?: string }): { reference?: InstanceReference, success?: boolean };
     /** Consolidated: query editor state or vocabularies. Use instead of removed editorIntrospect/editorListTypes. Plus: shared_settings (= programming builtins) and sorted_plugins (typed after 3.7 — may report not-supported on 3.7.3). */
-    function editorQuery(args: { category: "scene_mode" | "ready" | "enum_values" | "layers" | "sorting_layers" | "script_info" | "has_script" | "creatable_assets" | "asset_types" | "importers" | "shared_settings" | "sorted_plugins", enumPath?: string, className?: string, reference?: InstanceReference }): any;
+    function editorQuery(args: EngineApiDiscoveryArgs & { category: 'engine_api' | 'component_schema' }): EngineApiDiscoveryResult;
+    function editorQuery(args: { category: 'scene_mode' | 'ready' | 'enum_values' | 'layers' | 'sorting_layers' | 'script_info' | 'has_script' | 'creatable_assets' | 'asset_types' | 'importers' | 'shared_settings' | 'sorted_plugins'; enumPath?: string; className?: string; reference?: InstanceReference }): Record<string, unknown>;
     /** Consolidated: scene lifecycle open/save/close/soft_reload. Use instead of removed sceneOpen/editorOperate. */
     function sceneManage(args: { operation: "open" | "save" | "save_as" | "close" | "soft_reload", reference?: InstanceReference }): { success: boolean, error?: string, reference?: InstanceReference };
     /** Consolidated: preview (asset/scene capture, get url, open browser). */

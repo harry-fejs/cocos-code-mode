@@ -2,6 +2,9 @@ import { ToolError } from '../tool-error';
 import { utcpTool } from '../decorators';
 import { InstanceReferenceSchema, IInstanceReference, ISuccessIndicator, SuccessIndicatorSchema } from '../schemas';
 import { ToolsUtils } from '../utils/tools-utils';
+import { discoverEngineApi } from '../../engine-api-discovery';
+import { GetClassInfoTool } from './typescript-defenition';
+import { EditorTools } from './editor-tools';
 
 // Consolidated tools — preferred entry points that replace groups of legacy tools.
 // Legacy tools remain registered with @deprecated tag for one major version (A1 shim).
@@ -110,24 +113,31 @@ export class ConsolidatedTools {
         {
             type: 'object',
             properties: {
-                target: { type: 'string', enum: ['instance', 'CommonTypes', 'CurrentSceneGlobals', 'ProjectSettings'] },
+                target: { type: 'string', enum: ['instance', 'class', 'CommonTypes', 'CurrentSceneGlobals', 'ProjectSettings'] },
                 reference: InstanceReferenceSchema,
-                section: { type: 'string', description: 'Class/enum name to return only that section.' }
+                section: { type: 'string', description: 'Class/enum name to return only that section.' },
+                className: { type: 'string', minLength: 1, maxLength: 256 },
+                targetVersion: { type: 'string', enum: ['3.7.3', '3.8.8'] },
+                maxEntries: { type: 'integer', minimum: 1, maximum: 200 },
+                maxBytes: { type: 'integer', minimum: 1, maximum: 131072 },
+                cursor: { type: 'string', maxLength: 2048 },
             },
             required: ['target'],
             allOf: [{ if: { properties: { target: { const: 'instance' } }, required: ['target'] }, then: { required: ['reference'] } }]
         },
-        { type: 'object', properties: { definition: { type: 'string' }, sections: { type: 'array', items: { type: 'string' } }, totalSections: { type: 'number' } }, required: ['definition'] }, 'GET',
+        { type: 'object', properties: { definition: { type: 'string' }, sections: { type: 'array', items: { type: 'string' } }, totalSections: { type: 'number' }, version: { type: 'string' }, catalogHash: { type: 'string' }, records: { type: 'array' }, total: { type: 'integer' }, count: { type: 'integer' }, truncated: { type: 'boolean' }, nextCursor: { type: ['string', 'null'] }, live: { type: 'object' }, runtimeVerified: { type: 'boolean' }, qualified: { type: 'boolean' } } }, 'GET',
         ['code', 'typescript', 'definition', 'consolidated']
     )
-    async inspectorGetDefinition(args: { target: string, reference?: IInstanceReference, section?: string }): Promise<{ definition: string, sections: string[], totalSections: number }> {
-        const { GetClassInfoTool } = await import('./typescript-defenition');
-        const tool = new (GetClassInfoTool as any)();
+    async inspectorGetDefinition(args: { target: string, reference?: IInstanceReference, section?: string, className?: string, targetVersion?: string, maxEntries?: number, maxBytes?: number, cursor?: string }): Promise<unknown> {
+        if (args.target === 'class') {
+            return discoverEngineApi({ ...args, category: 'component_schema' });
+        }
+        const tool = new GetClassInfoTool();
         if (args.target === 'instance') {
             if (!args.reference?.id) throw new Error('inspectorGetDefinition target=instance requires reference.id');
-            return tool.inspectorGetInstanceDefinition({ reference: args.reference, section: args.section } as any);
+            return tool.inspectorGetInstanceDefinition({ reference: args.reference, section: args.section });
         }
-        return tool.inspectorGetSettingsDefinition({ settingsType: args.target as any, section: args.section } as any);
+        return tool.inspectorGetSettingsDefinition({ settingsType: args.target, section: args.section });
     }
 
     // ── nodeComponentManage: add/remove ───────────────────────────────
@@ -167,11 +177,17 @@ export class ConsolidatedTools {
             properties: {
                 category: {
                     type: 'string',
-                    enum: ['scene_mode', 'ready', 'enum_values', 'layers', 'sorting_layers', 'script_info', 'has_script', 'creatable_assets', 'asset_types', 'importers', 'shared_settings', 'sorted_plugins']
+                    enum: ['engine_api', 'component_schema', 'scene_mode', 'ready', 'enum_values', 'layers', 'sorting_layers', 'script_info', 'has_script', 'creatable_assets', 'asset_types', 'importers', 'shared_settings', 'sorted_plugins']
                 },
                 enumPath: { type: 'string' },
                 className: { type: 'string' },
-                reference: InstanceReferenceSchema
+                reference: InstanceReferenceSchema,
+                targetVersion: { type: 'string', enum: ['3.7.3', '3.8.8'] },
+                domain: { type: 'string', maxLength: 128 },
+                filter: { type: 'string', maxLength: 256 },
+                maxEntries: { type: 'integer', minimum: 1, maximum: 200 },
+                maxBytes: { type: 'integer', minimum: 1, maximum: 131072 },
+                cursor: { type: 'string', maxLength: 2048 }
             },
             required: ['category'],
             allOf: [
@@ -180,15 +196,17 @@ export class ConsolidatedTools {
                 { if: { properties: { category: { const: 'has_script' } }, required: ['category'] }, then: { required: ['className'] } }
             ]
         },
-        { type: 'object', properties: { sceneMode: { type: 'string' }, ready: { type: 'boolean' }, values: { type: 'array', items: { type: 'object' } }, types: { type: 'array', items: { type: 'string' } }, scriptName: { type: 'string' }, scriptCid: { type: 'string' }, hasScript: { type: 'boolean' } } }, 'GET',
+        { type: 'object', properties: { sceneMode: { type: 'string' }, ready: { type: 'boolean' }, values: { type: 'array', items: { type: 'object' } }, types: { type: 'array', items: { type: 'string' } }, scriptName: { type: 'string' }, scriptCid: { type: 'string' }, hasScript: { type: 'boolean' }, version: { type: 'string' }, catalogHash: { type: 'string' }, records: { type: 'array' }, total: { type: 'integer' }, count: { type: 'integer' }, truncated: { type: 'boolean' }, nextCursor: { type: ['string', 'null'] }, live: { type: 'object' }, runtimeVerified: { type: 'boolean' }, qualified: { type: 'boolean' } } }, 'GET',
         ['editor', 'introspect', 'query', 'consolidated', 'programming', 'plugin']
     )
-    async editorQuery(args: { category: string, enumPath?: string, className?: string, reference?: IInstanceReference }): Promise<any> {
-        const { EditorTools } = await import('./editor-tools');
-        const tool = new (EditorTools as any)();
-        const vocabCategories = new Set(['creatable_assets', 'asset_types', 'importers']);
-        if (vocabCategories.has(args.category)) return tool.editorListTypes({ category: args.category });
-        return tool.editorIntrospect({ category: args.category, enumPath: args.enumPath, className: args.className, reference: args.reference } as any);
+    async editorQuery(args: { category: string, enumPath?: string, className?: string, reference?: IInstanceReference, targetVersion?: string, domain?: string, filter?: string, maxEntries?: number, maxBytes?: number, cursor?: string }): Promise<unknown> {
+        if (args.category === 'engine_api' || args.category === 'component_schema') {
+            return discoverEngineApi(args);
+        }
+        const tool = new EditorTools();
+        const vocabCategories: Record<string, true> = { creatable_assets: true, asset_types: true, importers: true };
+        if (Object.prototype.hasOwnProperty.call(vocabCategories, args.category)) return tool.editorListTypes({ category: args.category });
+        return tool.editorIntrospect({ category: args.category, enumPath: args.enumPath, className: args.className, reference: args.reference });
     }
 
     // ── sceneManage: open/save/close/soft_reload ─────────────────────

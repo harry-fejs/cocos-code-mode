@@ -10,6 +10,8 @@ import type { UiLayoutValidateRequest, UiLayoutValidateResult } from '../../ui-l
 import type { UiAccessibilityAuditRequest, UiAccessibilityAuditResult } from '../../ui-accessibility-audit';
 import { calculateLayoutAlignment, LayoutAlignAxis, LayoutAlignEdge, LayoutAlignmentUpdate, LayoutAlignOperation } from '../../ui-layout-align';
 import { isUiLayoutGeometry } from '../../ui-layout-inspect';
+import type { UiReflowResult } from '../../ui-reflow';
+import { isUiReflowResult } from '../../ui-reflow';
 
 // UI prefab paths — Cocos Creator 3.x internal UI prefabs
 const UI_PREFABS: Record<string, string> = {
@@ -723,11 +725,15 @@ export class UiTools {
 
     @utcpTool(
         'uiLayoutApply',
-        'Apply bounded UI layout constraints atomically and return normalized read-back.',
+        'Apply explicit UI geometry changes, or operation reflow for a complete bounded subtree using native 3.7.3 Layout/Widget ordering. Reflow preflights limits and returns before/after geometry, preservation and restoration evidence; never saves the scene or claims atomicity or verified undo/redo.',
         {
             type: 'object',
             properties: {
                 reference: InstanceReferenceSchema,
+                operation: { type: 'string', enum: ['apply', 'reflow'], default: 'apply' },
+                maxNodes: { type: 'integer', minimum: 1, maximum: 128, default: 32, description: 'Reflow only; the entire subtree must fit before mutation.' },
+                maxDepth: { type: 'integer', minimum: 0, maximum: 8, default: 4, description: 'Reflow only; root depth is zero, with no truncation allowed.' },
+                maxBytes: { type: 'integer', minimum: 32768, maximum: 131072, default: 32768, description: 'Reflow only; UTF-8 bytes over the complete serialized response.' },
                 position: { type: 'object', properties: { x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' } }, additionalProperties: false },
                 size: { type: 'object', properties: { width: { type: 'number', minimum: 0 }, height: { type: 'number', minimum: 0 } }, required: ['width', 'height'], additionalProperties: false },
                 anchor: { type: 'object', properties: { x: { type: 'number', minimum: 0, maximum: 1 }, y: { type: 'number', minimum: 0, maximum: 1 } }, required: ['x', 'y'], additionalProperties: false },
@@ -735,11 +741,57 @@ export class UiTools {
             },
             required: ['reference'],
         },
-        { type: 'object', properties: { success: { type: 'boolean' }, layout: { type: 'object' } }, required: ['success', 'layout'] },
+        {
+            type: 'object',
+            properties: {
+                success: { type: 'boolean' }, layout: { type: ['object', 'null'] },
+                operation: { const: 'reflow' }, sceneSaved: { const: false }, complete: { type: 'boolean' },
+                reference: InstanceReferenceSchema, checkedNodes: { type: 'integer' }, changedNodeIds: { type: 'array', items: { type: 'string' } },
+                restoration: { type: 'string', enum: ['not-needed', 'confirmed', 'partial', 'unknown'] },
+                history: { type: 'object', properties: { status: { type: 'string', enum: ['not-requested', 'snapshot-requested', 'unknown'] }, undoRedoVerified: { const: false } }, required: ['status', 'undoRedoVerified'] },
+                preservation: { type: 'string', enum: ['confirmed', 'unknown'] },
+                before: { type: 'array', items: { type: 'object' } }, after: { type: 'array', items: { type: 'object' } },
+                order: { type: 'array', items: { type: 'object' } }, limits: { type: 'object' }, engineVersion: { type: 'string' },
+                error: { type: 'object', properties: { code: { type: 'string' }, message: { type: 'string' }, mutationStarted: { type: 'boolean' } }, required: ['code', 'message', 'mutationStarted'] },
+            },
+            oneOf: [
+                { required: ['success', 'layout'] },
+                { required: ['success', 'operation', 'sceneSaved', 'complete', 'reference', 'checkedNodes', 'changedNodeIds', 'restoration', 'history', 'preservation'] },
+            ],
+        },
         'POST',
         ['ui', 'layout', 'apply', 'mutation']
     )
-    async uiLayoutApply(args: { reference: IInstanceReference, position?: { x?: number, y?: number, z?: number }, size?: { width: number, height: number }, anchor?: { x: number, y: number }, active?: boolean }): Promise<{ success: true, layout: UiLayoutNode | null }> {
+    async uiLayoutApply(args: { reference: IInstanceReference, operation?: 'apply' | 'reflow', maxNodes?: number, maxDepth?: number, maxBytes?: number, position?: { x?: number, y?: number, z?: number }, size?: { width: number, height: number }, anchor?: { x: number, y: number }, active?: boolean }): Promise<{ success: true, layout: UiLayoutNode | null } | UiReflowResult> {
+        if (args?.operation === 'reflow') {
+            if (Object.keys(args).some(key => !['operation', 'reference', 'maxNodes', 'maxDepth', 'maxBytes'].includes(key))
+                || !this.isRecord(args.reference) || Object.keys(args.reference).some(key => key !== 'id' && key !== 'type')
+                || typeof args.reference.id !== 'string' || args.reference.id.length < 1 || args.reference.id.length > 256 || args.reference.id.trim() !== args.reference.id
+                || (args.reference.type !== undefined && args.reference.type !== 'cc.Node')) {
+                throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Reflow accepts only a typed cc.Node reference and maxNodes/maxDepth/maxBytes; explicit property changes cannot be mixed with reflow.' });
+            }
+            const maxNodes = args.maxNodes ?? 32; const maxDepth = args.maxDepth ?? 4; const maxBytes = args.maxBytes ?? 32768;
+            if (!Number.isInteger(maxNodes) || maxNodes < 1 || maxNodes > 128 || !Number.isInteger(maxDepth) || maxDepth < 0 || maxDepth > 8 || !Number.isInteger(maxBytes) || maxBytes < 32768 || maxBytes > 131072) {
+                throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Reflow requires maxNodes 1..128, maxDepth 0..8 and maxBytes 32768..131072.' });
+            }
+            const authoritative = await this.queryNodeDump(args.reference.id);
+            if (!authoritative) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'Reflow node is not in the active scene.' });
+            this.normalizeLayoutDump(args.reference.id, authoritative, true);
+            let result: unknown;
+            try {
+                result = await Editor.Message.request('scene', 'execute-scene-script', {
+                    name: 'ccp3x', method: 'uiLayoutReflow', args: [{ nodeUuid: args.reference.id, maxNodes, maxDepth, maxBytes }],
+                });
+            } catch (error: unknown) {
+                throw new ToolError({ code: 'UI_REFLOW_OUTCOME_UNKNOWN', status: 502, message: 'Reflow scene IPC failed after dispatch; mutation and restoration are unknown. Do not blindly retry.', details: { reference: args.reference, sceneSaved: false, restoration: 'unknown', cause: (error instanceof Error ? error.message : String(error)).slice(0, 512) }, recovery: 'Inspect the selected subtree and scene history before any retry.' });
+            }
+            if (!isUiReflowResult(result, args.reference.id, maxNodes, maxBytes)) {
+                throw new ToolError({ code: 'UI_REFLOW_OUTCOME_UNKNOWN', status: 502, message: 'Reflow returned invalid or oversized evidence after dispatch; mutation and restoration are unknown.', details: { reference: args.reference, sceneSaved: false, restoration: 'unknown' }, recovery: 'Inspect the selected subtree and scene history; do not infer a safe refusal or blindly retry.' });
+            }
+            return result;
+        }
+        if (args?.operation !== undefined && args.operation !== 'apply') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'uiLayoutApply operation must be apply or reflow.' });
+        if (args.maxNodes !== undefined || args.maxDepth !== undefined || args.maxBytes !== undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Subtree limits apply only to operation reflow.' });
         const node = await this.queryNodeDump(args.reference.id);
         if (!node) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: `UI node ${args.reference.id} not found` });
         const componentPath = await this.componentPath(args.reference.id, 'cc.UITransform');

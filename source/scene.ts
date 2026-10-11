@@ -4,6 +4,11 @@ import { buildUiSafeAreaInspect, UiSafeAreaInspectRequest } from './ui-safe-area
 import { buildUiLayoutValidate, UiLayoutValidateRequest } from './ui-layout-validate';
 import { buildUiLayoutInspectGeometry, UiLayoutGeometryRequest, UiLayoutGeometryResult } from './ui-layout-inspect';
 import { executeAudioPlayback, AudioPlaybackRequest, AudioPlaybackResult, AudioRuntimeEngine } from './audio-playback';
+import { inspectEngineClass } from './engine-api-availability';
+import type { EngineClassRequest } from './engine-api-availability';
+import { inspectRemovedPrefabIdentity } from './prefab-removed-inspect';
+import { executeUiReflow } from './ui-reflow';
+import type { UiReflowRequest, UiReflowEngine, UiReflowFacade } from './ui-reflow';
 
 interface PreviewEngineGlobals {
     cc?: {
@@ -959,6 +964,27 @@ export const methods = {
             recommendations: unsupportedOperations.length > 0 ? ['Use animationRuntimeControl inspect before issuing unsupported operations.'] : [],
         };
     },
+
+    async engineApiClassAvailability(request: EngineClassRequest) {
+        return inspectEngineClass(request, Reflect.get(globalThis, 'cc'));
+    },
+
+    async inspectRemovedPrefabComponent(request: { nodeUuid: string; fileID: string }) {
+        const engine: unknown = Reflect.get(globalThis, 'cc');
+        if (!engine || typeof engine !== 'object' || !('js' in engine)) throw new Error('Engine class registry is unavailable.');
+        const registry = engine.js;
+        if (!registry || typeof registry !== 'object' || !('getClassName' in registry) || typeof registry.getClassName !== 'function') throw new Error('Engine class name resolver is unavailable.');
+        const resolveClassName = registry.getClassName;
+        return inspectRemovedPrefabIdentity(await methods.findRuntimeNodeUuid(request.nodeUuid), request, component => String(resolveClassName(component)));
+    },
+
+    async uiLayoutReflow(request: UiReflowRequest) {
+        // Scene globals are actual internal engine/facade objects; helper validates capabilities before mutation.
+        const globals = globalThis as unknown as { cc: UiReflowEngine; cce: { SceneFacadeManager: UiReflowFacade } };
+        return executeUiReflow(request, globals.cc, methods.findRuntimeNodeUuid, globals.cce.SceneFacadeManager);
+    },
+
+
 
     async uiLayoutInspectGeometry(request: UiLayoutGeometryRequest): Promise<UiLayoutGeometryResult> {
         const cc = (globalThis as { cc?: { director?: { getScene?: () => unknown } } }).cc;

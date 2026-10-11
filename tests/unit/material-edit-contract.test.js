@@ -19,32 +19,22 @@ describe('materialEdit contract', () => {
     );
   });
 
-  it('accepts importer read-back when Creator native material query is structurally unchanged', async () => {
+  it('refuses native readback that ignores the requested technique and verifies restoration', async () => {
     const previous = global.Editor;
-    let technique = 0;
     global.Editor = { Message: {
       request: async (service, message) => {
         if (service === 'asset-db' && message === 'query-asset-info') return { uuid: 'mat', importer: 'material', type: 'cc.Material' };
-        if (service === 'scene' && message === 'query-material') return { technique: 0, data: [] };
+        if (service === 'scene' && message === 'query-material') return { effect: 'test-effect', technique: 0, data: [{ passes: [] }, { passes: [] }] };
         if (service === 'scene' && message === 'query-all-effects') return [];
-        if (service === 'scene' && message === 'apply-material') { technique = 1; return true; }
+        if (service === 'scene' && message === 'apply-material') return true;
         throw new Error(`unexpected ${service}:${message}`);
-      },
-      broadcast: () => undefined,
+      }, broadcast: () => undefined,
     } };
-    const { ImporterManager } = requireDist('utcp/utils/asset-importers/index.js');
-    const manager = ImporterManager.getInstance();
-    const originalGetImporter = manager.getImporter.bind(manager);
-    manager.getImporter = () => ({
-      setProperty: async () => { technique = 1; return true; },
-      getProperties: async () => ({ technique: { value: technique } }),
-    });
+    const { registerAllImporters } = requireDist('utcp/utils/asset-importers/index.js');
+    registerAllImporters();
     try {
-      const result = await new MaterialTools().materialEdit({ reference: { id: 'mat', type: 'cc.Material' }, path: 'technique', value: 1 });
-      assert.equal(result.changed, true);
-      assert.equal(result.after, 1);
+      await assert.rejects(() => new MaterialTools().materialEdit({ reference: { id: 'mat', type: 'cc.Material' }, path: 'technique', value: 1 }), error => error.code === 'READBACK_MISMATCH' && error.details.rollback === 'verified-restored');
     } finally {
-      manager.getImporter = originalGetImporter;
       if (previous === undefined) delete global.Editor;
       else global.Editor = previous;
     }

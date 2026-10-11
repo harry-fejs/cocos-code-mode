@@ -1,0 +1,28 @@
+{
+  "catalogHash": "4b82bfdda5ed46795f0ecf5b6398776e8e896c2dd6edc330040289c60f092197",
+  "domains": [
+    {
+      "count": 180,
+      "file": "engine-runtime.2d.0001.json",
+      "name": "engine-runtime.2d"
+    },
+    {
+      "count": 64,
+      "file": "engine-runtime.base.0001.json",
+      "name": "engine-runtime.base"
+    },
+    {
+      "count": 200,
+      "file": "engine-runtime.ui.0001.json",
+      "name": "engine-runtime.ui"
+    },
+    {
+      "count": 35,
+      "file": "engine-runtime.ui.0002.json",
+      "name": "engine-runtime.ui"
+    }
+  ],
+  "schemaVersion": 1,
+  "unresolvedCount": 21,
+  "version": "3.8.8"
+}

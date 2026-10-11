@@ -5,6 +5,7 @@ import { isMessageNotExposed } from '../utils/editor-message-error';
 import { ToolError } from '../tool-error';
 import { ImporterManager } from '../utils/asset-importers';
 import { IAssetInfo } from '@cocos/creator-types/editor/packages/asset-db/@types/public';
+import { MaterialImporter } from '../utils/asset-importers/material-importer';
 
 function propertyAtPath(value: unknown, path: string): unknown {
     let current = value;
@@ -230,7 +231,7 @@ export class MaterialTools {
 
     @utcpTool(
         'materialEdit',
-        'Set one bounded material property through the registered material importer and verify native material read-back.',
+        'Set material fields/defines/states (passes.<index>.properties|defines|states.<field>; legacy flat paths retained). Verify exact normalized native value and unchanged non-target passes. Native apply is invoked; source persistence, reimport/reopen and visual output are not implied.',
         {
             type: 'object',
             additionalProperties: false,
@@ -239,49 +240,42 @@ export class MaterialTools {
         },
         {
             type: 'object',
-            properties: { reference: InstanceReferenceSchema, path: { type: 'string' }, changed: { type: 'boolean' }, before: {}, after: {} },
+            properties: { reference: InstanceReferenceSchema, path: { type: 'string' }, changed: { type: 'boolean' }, before: {}, after: {}, requestedValue: {}, readBackValue: {}, passIndices: { type: 'array', items: { type: 'integer' } }, verification: { type: 'object', properties: { requestedValueMatched: { type: 'boolean' }, unaffectedPassesUnchanged: { type: 'boolean' }, unaffectedPassesApplicable: { type: 'boolean' } }, required: ['requestedValueMatched', 'unaffectedPassesUnchanged', 'unaffectedPassesApplicable'] }, persistence: { type: 'object', properties: { nativeApplyInvoked: { type: 'boolean' }, sourceSaved: { type: ['boolean', 'null'] }, importCompleted: { type: ['boolean', 'null'] }, generatedOutputVerified: { type: ['boolean', 'null'] }, reimportVerified: { type: 'boolean' }, reopenVerified: { type: 'boolean' } }, required: ['nativeApplyInvoked', 'sourceSaved', 'importCompleted', 'generatedOutputVerified', 'reimportVerified', 'reopenVerified'] } },
             required: ['reference', 'path', 'changed', 'before', 'after']
         },
         'POST',
         ['material', 'edit', 'set', 'property']
     )
-    async materialEdit(args: { reference?: IInstanceReference, path?: string, value?: unknown }): Promise<{ reference: IInstanceReference, path: string, changed: boolean, before: unknown, after: unknown }> {
+    async materialEdit(args: { reference?: IInstanceReference, path?: string, value?: unknown }): Promise<{ reference: IInstanceReference, path: string, changed: boolean, before: unknown, after: unknown, requestedValue: unknown, readBackValue: unknown, passIndices: number[], verification: { requestedValueMatched: boolean, unaffectedPassesUnchanged: boolean, unaffectedPassesApplicable: boolean }, persistence: { nativeApplyInvoked: boolean, sourceSaved: null, importCompleted: null, generatedOutputVerified: null, reimportVerified: false, reopenVerified: false } }> {
         if (!args?.reference?.id || typeof args.reference.id !== 'string') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'materialEdit requires reference.' });
         if (typeof args.path !== 'string' || !/^[A-Za-z0-9_.]{1,256}$/.test(args.path)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'materialEdit path must contain 1-256 identifier characters.' });
         const info = await Editor.Message.request('asset-db', 'query-asset-info', args.reference.id) as IAssetInfo | null;
         if (!info || info.importer !== 'material') throw new ToolError({ code: 'UNSUPPORTED_OPERATION', status: 422, message: `Asset ${args.reference.id} is not a material importer target.` });
         const materialId = typeof info.uuid === 'string' && info.uuid ? info.uuid : args.reference.id;
-        const before = await queryMaterial(materialId);
-        const valueJson = JSON.stringify(args.value);
-        if (valueJson === undefined || Buffer.byteLength(valueJson, 'utf8') > 65536) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'materialEdit value must be JSON-serializable and at most 65536 bytes.' });
         const importer = ImporterManager.getInstance().getImporter('material');
-        if (!importer) throw new ToolError({ code: 'UNSUPPORTED_OPERATION', status: 422, message: 'Material importer is unavailable.' });
-        const currentProperties = await importer.getProperties({ ...info, uuid: materialId });
-        const previousValue = propertyAtPath(currentProperties, args.path);
-        if (previousValue === undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Material property '${args.path}' was not readable.` });
-        let changed = false;
+        if (!(importer instanceof MaterialImporter)) throw new ToolError({ code: 'UNSUPPORTED_OPERATION', status: 422, message: 'The pass-aware material importer is unavailable.' });
+        const plan = await importer.prepareEdit({ ...info, uuid: materialId }, args.path, args.value, await queryMaterial(materialId));
+        if (!plan) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Material property '${args.path}' was not found or was not mutable.` });
         try {
-            changed = await importer.setProperty({ ...info, uuid: materialId }, args.path, args.value);
-            if (!changed) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Material property '${args.path}' was not found or was not mutable.` });
+            await importer.applyDump(materialId, plan.dump);
             const after = await queryMaterial(materialId);
-            const importerAfter = await importer.getProperties({ ...info, uuid: materialId });
-            const importerValue = propertyAtPath(importerAfter, args.path);
-            const nativeChanged = !jsonEqual(after, before);
-            const importerMatched = jsonEqual(importerValue, args.value);
-            if (!nativeChanged && !importerMatched) throw new ToolError({ code: 'READBACK_MISMATCH', status: 502, message: `Material property '${args.path}' did not produce a verifiable read-back change.` });
-            return { reference: args.reference, path: args.path, changed: true, before, after: nativeChanged ? after : importerValue };
+            const verification = importer.verifyEdit(plan, after);
+            if (!verification.requestedValueMatched || !verification.unaffectedPassesUnchanged) throw new ToolError({ code: 'READBACK_MISMATCH', status: 502, message: `Material '${args.path}' did not match the normalized request or changed another pass.`, details: verification });
+            return {
+                reference: args.reference, path: args.path, changed: !importer.isRestored(plan.before, after), before: plan.before, after,
+                requestedValue: verification.requestedValue, readBackValue: verification.readBackValue, passIndices: plan.passIndices,
+                verification: { requestedValueMatched: true, unaffectedPassesUnchanged: true, unaffectedPassesApplicable: !plan.root },
+                persistence: { nativeApplyInvoked: true, sourceSaved: null, importCompleted: null, generatedOutputVerified: null, reimportVerified: false, reopenVerified: false },
+            };
         } catch (error) {
-            if (changed) {
-                try {
-                    if (!await importer.setProperty({ ...info, uuid: materialId }, args.path, previousValue)) throw new Error('Importer rejected rollback value.');
-                    const restored = await importer.getProperties({ ...info, uuid: materialId });
-                    if (!jsonEqual(propertyAtPath(restored, args.path), previousValue)) throw new Error('Material rollback read-back mismatch.');
-                } catch (rollbackError) {
-                    throw new ToolError({ code: 'ROLLBACK_FAILED', status: 500, message: `materialEdit failed and could not restore '${args.path}'.`, details: { cause: error instanceof Error ? error.message : String(error), rollbackCause: rollbackError instanceof Error ? rollbackError.message : String(rollbackError) } });
-                }
-            }
-            if (error instanceof ToolError) throw error;
-            throw new ToolError({ code: 'MUTATION_FAILED', status: 502, message: `materialEdit failed for '${args.path}'.`, details: { cause: error instanceof Error ? error.message : String(error) } });
+            // A rejected/timed-out native save may already have mutated; never infer safe refusal.
+            let rollbackCause: string | null = null;
+            try { await importer.applyDump(materialId, plan.before); } catch (rollbackError) { rollbackCause = String(rollbackError); }
+            let restored = false;
+            let rollback: 'partial' | 'unknown' = 'unknown';
+            try { restored = importer.isRestored(plan.before, await queryMaterial(materialId)); rollback = 'partial'; } catch (readError) { rollbackCause = String(readError); }
+            if (!restored) throw new ToolError({ code: 'ROLLBACK_FAILED', status: 500, message: `materialEdit failed and full material restoration could not be verified.`, details: { rollback, cause: String(error), rollbackCause } });
+            throw new ToolError({ code: error instanceof ToolError ? error.code : 'MUTATION_FAILED', status: error instanceof ToolError ? error.status : 502, message: `materialEdit failed for '${args.path}'; original material independently restored.`, details: { ...(error instanceof ToolError ? error.details : {}), rollback: 'verified-restored', cause: String(error), rollbackCause } });
         }
     }
     @utcpTool(

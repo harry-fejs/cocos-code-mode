@@ -1178,7 +1178,7 @@ export class SceneTools {
 
     @utcpTool(
         'listComponentMethods',
-        'List callable method names per component on a node. Use to discover methods before callComponentMethod.',
+        'List discovered method names per component, separately reporting the finite callComponentMethod allowlist. Discovery does not authorize arbitrary or lifecycle execution.',
         {
             type: 'object',
             properties: {
@@ -1195,7 +1195,10 @@ export class SceneTools {
                         type: 'object',
                         properties: {
                             reference: InstanceReferenceSchema,
-                            methods: { type: 'array', items: { type: 'string' } }
+                            methods: { type: 'array', items: { type: 'string' } },
+                            permittedMethods: { type: 'array', items: { type: 'string' } },
+                            deniedMethods: { type: 'array', items: { type: 'string' } },
+                            permissionReason: { type: 'string' }
                         }
                     }
                 }
@@ -1203,7 +1206,7 @@ export class SceneTools {
             required: ['components']
         }, "GET", ['scene', 'node', 'component', 'method', 'function', 'list', 'discover', 'callable', 'invoke', 'script']
     )
-    async listComponentMethods(args: { reference: IInstanceReference }): Promise<{ components: Array<{ reference: IInstanceReference, methods: string[] }> }> {
+    async listComponentMethods(args: { reference: IInstanceReference }): Promise<{ components: Array<{ reference: IInstanceReference, methods: string[], permittedMethods: string[], deniedMethods: string[], permissionReason: string }> }> {
         if (!args.reference || !args.reference.id) {
             throw new Error('listComponentMethods requires reference.id (node uuid)');
         }
@@ -1248,7 +1251,7 @@ export class SceneTools {
             }
         }
 
-        return { components };
+        return { components: components.map(component => ({ ...component, permittedMethods: component.methods.filter(name => Object.prototype.hasOwnProperty.call(ALLOWED_COMPONENT_METHODS, name)), deniedMethods: component.methods.filter(name => !Object.prototype.hasOwnProperty.call(ALLOWED_COMPONENT_METHODS, name)), permissionReason: 'Only the existing finite invocation allowlist is permitted; discovered names do not grant execution rights.' })) };
     }
 
     @utcpTool(

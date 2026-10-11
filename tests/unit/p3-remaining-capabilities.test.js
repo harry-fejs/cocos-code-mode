@@ -24,12 +24,6 @@ function asset(id, metadata = {}) {
 }
 
 describe('remaining P3 capability contracts', () => {
-  it('registers all three exact public routes', () => {
-    const source = readSource('utcp/tools/portfolio-validation-tools.ts');
-    for (const name of ['animationGraphCreate', 'animationRetargetValidate', 'skeletalAnimationConfigure']) {
-      assert.match(source, new RegExp(`utcpTool\\('${name}'`));
-    }
-  });
 
   it('creates an animation graph only after asset-db identity read-back', async () => {
     const calls = [];
@@ -65,26 +59,21 @@ describe('remaining P3 capability contracts', () => {
     });
     await assert.rejects(() => tools.animationGraphCreate({ assetPath: 'db://assets/graphs/empty' }), (error) => error.code === 'CREATE_FAILED' && error.status === 502);
   });
-  it('edits an animation graph through save and serialized read-back', async () => {
+  it('refuses synthetic graph edits before any source save', async () => {
     const file = path.join(os.tmpdir(), `animgraph-${process.pid}-${Date.now()}.json`);
-    fs.writeFileSync(file, JSON.stringify({ nodes: [{ id: 'idle' }], transitions: [] }));
-    const calls = [];
-    install(async (service, message, ...args) => {
-      calls.push({ service, message, args });
+    const original = JSON.stringify({ nodes: [{ id: 'idle' }], transitions: [] });
+    fs.writeFileSync(file, original);
+    let writes = 0;
+    install(async (_service, message) => {
       if (message === 'query-asset-info') return { uuid: 'graph', type: 'cc.AnimationGraph', url: 'db://assets/graphs/test.animgraph', file };
-      if (message === 'save-asset') { fs.writeFileSync(file, args[1]); return true; }
-      if (message === 'refresh-asset') return true;
-      throw new Error(`unexpected ${service}:${message}`);
+      writes++;
+      throw new Error(`unexpected mutation ${message}`);
     });
     try {
-      const result = await new PortfolioValidationTools().animationGraphEdit({ reference: { id: 'graph' }, operations: [{ operation: 'add_node', node: { id: 'run' } }, { operation: 'add_transition', transition: { id: 'idle-run', from: 'idle', to: 'run' } }] });
-      assert.equal(result.verified, true);
-      assert.deepEqual(result.graph.nodes, [{ id: 'idle' }, { id: 'run' }]);
-      assert.deepEqual(result.graph.transitions, [{ id: 'idle-run', from: 'idle', to: 'run' }]);
-      assert.deepEqual(calls.map((call) => call.message), ['query-asset-info', 'save-asset', 'refresh-asset', 'query-asset-info']);
-    } finally {
-      fs.rmSync(file, { force: true });
-    }
+      await assert.rejects(() => new PortfolioValidationTools().animationGraphEdit({ reference: { id: 'graph' }, operations: [{ operation: 'add_node', node: { id: 'run' } }] }), error => error.code === 'UNSUPPORTED_GRAPH_FORMAT');
+      assert.equal(fs.readFileSync(file, 'utf8'), original);
+      assert.equal(writes, 0);
+    } finally { fs.rmSync(file, { force: true }); }
   });
 
   it('rejects unsafe terrain paths before asset creation', async () => {

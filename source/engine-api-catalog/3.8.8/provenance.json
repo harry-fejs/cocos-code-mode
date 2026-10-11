@@ -1,0 +1,23 @@
+{
+  "catalogHash": "4b82bfdda5ed46795f0ecf5b6398776e8e896c2dd6edc330040289c60f092197",
+  "classes": [
+    "Button",
+    "Camera",
+    "Label",
+    "Layout",
+    "ScrollView",
+    "Sprite",
+    "Widget"
+  ],
+  "extraction": {
+    "compiler": "typescript",
+    "executedSource": false,
+    "noEmit": true,
+    "shardBytes": 2097152,
+    "shardSize": 200
+  },
+  "originalCatalogHash": "b532e0c352cf7c8de4a3d8a4d910ee489a87884bdfd9eca43381da3ed0f1431b",
+  "schemaVersion": 1,
+  "scope": "reviewed-seven-class-read-only-pilot",
+  "version": "3.8.8"
+}

@@ -5,6 +5,7 @@ import { utcpTool } from '../decorators';
 import { InstanceReferenceSchema, IInstanceReference } from '../schemas';
 import { ToolError } from '../tool-error';
 import { AssetTools } from './asset-tools';
+import type { AssetImportSettingsSetResult } from './asset-tools';
 import { restorePrefabNode } from '../utils/tools-utils';
 import { boundPrefabResponse, prefabResponseLimit } from '../utils/prefab-response';
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:@[A-Za-z0-9_-]+)?/gi;
@@ -88,6 +89,159 @@ async function readAsset(row: AssetRow): Promise<{ content: string, hash: string
     if (stat.size > SERIALIZED_LIMIT) throw new ToolError({ code: 'SOURCE_TOO_LARGE', status: 413, message: `Asset source exceeds ${SERIALIZED_LIMIT} bytes: ${row.url}` });
     const content = await fs.readFile(row.file, 'utf8');
     return { content, hash: sha256(content) };
+}
+
+type RemovedSelection = { nodeUUID: string, fileID: string, localID: string[], descriptor: unknown };
+function prefabInstanceData(node: unknown): Record<string, unknown> | undefined {
+    const prefab = propertyValue(objectField(node, '__prefab__') ?? objectField(node, '_prefab') ?? objectField(node, 'prefab'));
+    const instance = propertyValue(objectField(prefab, 'instance') ?? objectField(node, '_prefabInstance')) as unknown;
+    return instance && typeof instance === 'object' && !Array.isArray(instance) ? instance as Record<string, unknown> : undefined;
+}
+function prefabArray(value: unknown): unknown[] {
+    const array = propertyValue(value);
+    return Array.isArray(array) ? array.map(propertyValue) : [];
+}
+function removedPath(entry: unknown): string[] | undefined {
+    const value = propertyValue(entry);
+    const localID = prefabArray(objectField(value, 'localID') ?? objectField(objectField(value, 'targetInfo'), 'localID'));
+    return localID.length && localID.every((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 512) ? localID as string[] : undefined;
+}
+function selectRemovedComponent(node: unknown, fileID: string): RemovedSelection {
+    const nodeUUID = nodeIdentity(node);
+    const entries = prefabArray(objectField(node, 'removedComponents'));
+    const matching = entries.filter(entry => propertyValue(objectField(entry, 'fileID')) === fileID);
+    if (!nodeUUID || matching.length !== 1) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'fileID must identify exactly one authoritative removed component on the inspected node; no mutation was dispatched.' });
+    const entry = matching[0];
+    const declaredNode = propertyValue(objectField(entry, 'nodeUUID') ?? objectField(entry, 'nodeUuid'));
+    if (declaredNode !== undefined && declaredNode !== nodeUUID) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Removed component descriptor belongs to another node; no mutation was dispatched.' });
+    const raw = prefabArray(prefabInstanceData(node)?.removedComponents);
+    const paths = raw.map(removedPath).filter((ids): ids is string[] => !!ids && ids[ids.length - 1] === fileID);
+    const explicit = removedPath(entry);
+    if (explicit && explicit[explicit.length - 1] !== fileID) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Removed descriptor fileID and nested target disagree; no mutation was dispatched.' });
+    if ((!explicit && paths.length > 1) || (explicit && paths.length > 0 && !paths.some(ids => equalPrefabValue(ids, explicit)))) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Removed component fileID has ambiguous or inconsistent nested paths; no mutation was dispatched.' });
+    if (raw.some(entry => !!removedPath(entry)) && !explicit && !paths.length) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Removed component is not present in the inspected prefab override descriptors; no mutation was dispatched.' });
+    // Never invent a native selector by joining localID. Creator's node dump supplies the exact facade fileID.
+    return { nodeUUID, fileID, localID: explicit ?? paths[0] ?? [fileID], descriptor: entry };
+}
+type RemovedInspection = { nodeUUID: string, fileID: string, instanceRootUUID: string, rootSourceAssetUUID: string, selected: { localID: string[], sourceAssetUUID: string, ownerFileID: string, componentType: string } | null, removedComponents: string[][] };
+async function inspectRemovedComponent(nodeUUID: string, fileID: string): Promise<RemovedInspection> {
+    const result = await Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'inspectRemovedPrefabComponent', args: [{ nodeUuid: nodeUUID, fileID }] }) as unknown;
+    const instanceRootUUID = objectField(result, 'instanceRootUUID'), rootSourceAssetUUID = objectField(result, 'rootSourceAssetUUID');
+    const removed = objectField(result, 'removedComponents');
+    if (objectField(result, 'nodeUUID') !== nodeUUID || objectField(result, 'fileID') !== fileID || typeof instanceRootUUID !== 'string' || !instanceRootUUID || typeof rootSourceAssetUUID !== 'string' || !rootSourceAssetUUID || !Array.isArray(removed) || removed.length > MAX_ITEMS) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Raw prefab removal inspection returned invalid identities or exceeds the bound.' });
+    const removedComponents = removed.map(removedPath);
+    if (removedComponents.some(ids => !ids)) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Raw prefab removal inspection returned an invalid nested descriptor.' });
+    const selectedValue = objectField(result, 'selected');
+    let selected: RemovedInspection['selected'] = null;
+    if (selectedValue !== null) {
+        const localID = removedPath(selectedValue), sourceAssetUUID = objectField(selectedValue, 'sourceAssetUUID'), ownerFileID = objectField(selectedValue, 'ownerFileID'), componentType = objectField(selectedValue, 'componentType');
+        if (!localID || localID[localID.length - 1] !== fileID || typeof sourceAssetUUID !== 'string' || !sourceAssetUUID || typeof ownerFileID !== 'string' || !ownerFileID || typeof componentType !== 'string' || !componentType || removedComponents.filter(ids => equalPrefabValue(ids, localID)).length !== 1) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Raw selected removal is foreign or ambiguous.' });
+        selected = { localID, sourceAssetUUID, ownerFileID, componentType };
+    }
+    return { nodeUUID, fileID, instanceRootUUID, rootSourceAssetUUID, selected, removedComponents: removedComponents as string[][] };
+}
+function equalPrefabValue(a: unknown, b: unknown): boolean {
+    if (a === b) return true;
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) return false;
+    const left = Object.keys(a), right = Object.keys(b);
+    return left.length === right.length && left.every(key => Object.prototype.hasOwnProperty.call(b, key) && equalPrefabValue(objectField(a, key), objectField(b, key)));
+}
+type PrefabRecord = Record<string, unknown>;
+type PrefabComponent = { component: PrefabRecord, index: number, owner: PrefabRecord };
+type PrefabSourceDocument = { asset: AssetRow, content: string, hash: string, records: PrefabRecord[] };
+function prefabSourceDocument(asset: AssetRow, data: { content: string, hash: string }): PrefabSourceDocument {
+    let records: unknown;
+    try { records = JSON.parse(data.content); } catch { invalid('Prefab source is not serialized JSON.'); }
+    if (!Array.isArray(records) || !records.length || records.some(record => !record || typeof record !== 'object' || Array.isArray(record)) || records[0].__type__ !== 'cc.Prefab') throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Selective removal requires an authoritative serialized cc.Prefab source.' });
+    return { asset, ...data, records: records as PrefabRecord[] };
+}
+function prefabRecord(records: PrefabRecord[], value: unknown): PrefabRecord | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const index = objectField(value, '__id__');
+    return typeof index === 'number' && Number.isInteger(index) && index >= 0 ? records[index] : value as PrefabRecord;
+}
+function sourceComponent(records: PrefabRecord[], fileID: string): PrefabComponent {
+    const matches = records.map((component, index) => ({ component, index })).filter(({ component }) => prefabRecord(records, component.__prefab)?.fileId === fileID);
+    if (matches.length !== 1) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Removed component fileID is foreign, stale, or ambiguous in its prefab source; no mutation was dispatched.' });
+    const match = matches[0], owner = prefabRecord(records, match.component.node);
+    if (owner?.__type__ !== 'cc.Node' || !prefabArray(owner._components).some(entry => objectField(entry, '__id__') === match.index)) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Removed entry does not identify a component owned by a prefab node; no mutation was dispatched.' });
+    return { ...match, owner };
+}
+/** Expands serialized references with stable identities; unreachable deleted records and index renumbering are immaterial. */
+function prefabSourceState(records: PrefabRecord[], omittedComponent?: number): unknown {
+    const seen = new Map<number, string>();
+    const visit = (value: unknown, location: string): unknown => {
+        if (!value || typeof value !== 'object') return value;
+        const index = objectField(value, '__id__');
+        if (typeof index === 'number' && Number.isInteger(index)) {
+            const record = records[index];
+            if (!record) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Prefab source contains an invalid serialized reference.' });
+            if (seen.has(index)) return { $ref: seen.get(index) };
+            const info = prefabRecord(records, record.__prefab ?? record._prefab);
+            const identity = typeof info?.fileId === 'string' && info.fileId ? `${record.__type__}:${info.fileId}` : location;
+            seen.set(index, identity);
+            return { $identity: identity, fields: visit(record, identity) };
+        }
+        if (Array.isArray(value)) return value.map((entry, position) => visit(entry, `${location}.${position}`));
+        const result: Record<string, unknown> = {};
+        for (const key of Object.keys(value).sort()) {
+            let field = objectField(value, key);
+            if (key === '_components' && Array.isArray(field)) field = field.filter(entry => objectField(entry, '__id__') !== omittedComponent);
+            result[key] = visit(field, `${location}.${key}`);
+        }
+        return result;
+    };
+    return visit({ __id__: 0 }, 'prefab');
+}
+async function resolveRemovedSource(initial: PrefabSourceDocument, selection: RemovedSelection): Promise<{ chain: PrefabSourceDocument[], component: PrefabComponent }> {
+    const chain = [initial];
+    if (selection.localID.length > 16) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Removed component nested path exceeds the supported depth.' });
+    for (const scope of selection.localID.slice(0, -1)) {
+        const current = chain[chain.length - 1], records = current.records;
+        const instances = records.filter(record => record.__type__ === 'cc.PrefabInstance' && record.fileId === scope);
+        const roots = records.filter(record => record.__type__ === 'cc.Node' && instances.some(instance => instance === prefabRecord(records, prefabRecord(records, record._prefab)?.instance)));
+        if (roots.length !== 1) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Removed component nested scope does not resolve uniquely in its source.' });
+        const nestedID = objectField(prefabRecord(records, roots[0]._prefab)?.asset, '__uuid__');
+        if (typeof nestedID !== 'string' || chain.some(item => baseUuid(item.asset.uuid) === baseUuid(nestedID))) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Removed component nested source is invalid or cyclic.' });
+        const asset = await resolveAsset({ id: nestedID });
+        assertPrefabAsset(asset, 'selective removed component');
+        chain.push(prefabSourceDocument(asset, await readAsset(asset)));
+    }
+    return { chain, component: sourceComponent(chain[chain.length - 1].records, selection.localID[selection.localID.length - 1]) };
+}
+async function prefabSubtreeState(reference: IInstanceReference): Promise<Map<string, unknown>> {
+    const tree = await sceneTree(), located = findSceneNode(tree, reference.id);
+    if (!located.node || located.limitReached) throw new ToolError({ code: 'PREFAB_INSPECTION_LIMIT', status: 422, message: 'Cannot resolve the complete selected prefab subtree before mutation.' });
+    const pending = [{ node: located.node as unknown, depth: 0 }], nodes = new Map<string, unknown>();
+    while (pending.length) {
+        const { node, depth } = pending.pop()!;
+        const uuid = nodeIdentity(node);
+        if (nodes.size >= MAX_ITEMS || depth > 16 || !uuid || nodes.has(uuid)) throw new ToolError({ code: 'PREFAB_INSPECTION_LIMIT', status: 422, message: 'Selected prefab subtree is oversized or has ambiguous identities.' });
+        const dump = await Editor.Message.request('scene', 'query-node', uuid) as unknown;
+        assertNodeIdentity(uuid, dump, 'selective inspection');
+        nodes.set(uuid, dump);
+        for (const child of prefabArray(objectField(node, 'children'))) pending.push({ node: child, depth: depth + 1 });
+    }
+    return nodes;
+}
+function unrelatedPrefabNodeState(node: unknown, selection: RemovedSelection, restoredUUID?: string, omitOpaqueRemoval = false): unknown {
+    const normalize = (value: unknown, key = ''): unknown => {
+        if (!value || typeof value !== 'object') return value;
+        if (Array.isArray(value)) {
+            let skippedOpaque = false;
+            const filtered = key === 'removedComponents' ? value.filter(entry => {
+                if (propertyValue(objectField(entry, 'fileID')) === selection.fileID || equalPrefabValue(removedPath(entry), selection.localID)) return false;
+                // Stock3.7 Inspector deliberately hides TargetInfo.localID as {}. Omit exactly one opaque record, never all.
+                if (omitOpaqueRemoval && !skippedOpaque && equalPrefabValue(propertyValue(entry), {})) { skippedOpaque = true; return false; }
+                return true;
+            }) : key === '__comps__' && restoredUUID ? value.filter(entry => nodeIdentity(propertyValue(entry)) !== restoredUUID) : value;
+            return filtered.map(entry => normalize(entry));
+        }
+        const result: Record<string, unknown> = {};
+        for (const name of Object.keys(value)) result[name] = name === 'value' ? normalize(objectField(value, name), key) : normalize(objectField(value, name), name);
+        return result;
+    };
+    return normalize(node);
 }
 async function sceneTree(): Promise<any> {
     const tree = await Editor.Message.request('scene', 'query-node-tree');
@@ -496,6 +650,94 @@ export class AdvancedCapabilityTools {
             throw new ToolError({ code: 'PREFAB_OVERRIDE_OPERATION_FAILED', status: 502, message: `${operation} prefab overrides failed or could not be read back.`, details: { cause: error instanceof Error ? error.message : String(error) } });
         }
     }
+
+    private async prefabRemovedComponentOperation(operation: 'removed_component_apply' | 'removed_component_revert', reference: IInstanceReference, fileID: string | undefined, expectedSourceSha256: string | undefined, maxBytes: number): Promise<Record<string, unknown>> {
+        if (typeof fileID !== 'string' || !fileID.trim() || fileID.length > 512) invalid('Selective removed component operations require the exact inspected fileID (1–512 characters).');
+        const apply = operation === 'removed_component_apply';
+        if (apply && (!expectedSourceSha256 || !/^[a-f0-9]{64}$/.test(expectedSourceSha256))) invalid('removed_component_apply requires expectedSourceSha256 from inspection of the source being changed.');
+        let dispatched = false;
+        let nativeError: string | null = null;
+        try {
+            const initialNode = await Editor.Message.request('scene', 'query-node', reference.id) as unknown;
+            assertNodeIdentity(reference.id, initialNode, 'selective inspection');
+            const selection = selectRemovedComponent(initialNode, fileID);
+            const rawInspection = await inspectRemovedComponent(reference.id, fileID);
+            if (!rawInspection.selected) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Selected removed component is stale; no mutation was dispatched.' });
+            selection.localID = rawInspection.selected.localID;
+            const subtreeReference = { id: rawInspection.instanceRootUUID, type: 'cc.Node' };
+            const before = await prefabSubtreeState(subtreeReference);
+            const beforeNode = before.get(reference.id);
+            if (!equalPrefabValue(initialNode, beforeNode)) throw new ToolError({ code: 'PREFAB_INSTANCE_CONFLICT', status: 409, message: 'Selected node changed during raw inspection; no mutation was dispatched.' });
+            const assetId = rawInspection.rootSourceAssetUUID;
+            const asset = await resolveAsset({ id: assetId });
+            assertPrefabAsset(asset, operation);
+            const resolved = await resolveRemovedSource(prefabSourceDocument(asset, await readAsset(asset)), selection);
+            const source = resolved.chain[resolved.chain.length - 1];
+            if (apply && source.hash !== expectedSourceSha256) throw new ToolError({ code: 'PREFAB_SOURCE_CONFLICT', status: 409, message: 'Selected removal source changed since inspection; no apply was dispatched.', recovery: 'Inspect the selected component and its exact nested source hash again.' });
+            const ownerFileID = prefabRecord(source.records, resolved.component.owner._prefab)?.fileId;
+            const nodePrefab = propertyValue(objectField(beforeNode, '__prefab__') ?? objectField(beforeNode, '_prefab') ?? objectField(beforeNode, 'prefab'));
+            const nodeFileID = propertyValue(objectField(nodePrefab, 'fileId') ?? objectField(nodePrefab, 'fileID'));
+            if (typeof ownerFileID !== 'string' || !ownerFileID || ownerFileID !== rawInspection.selected.ownerFileID || resolved.component.component.__type__ !== rawInspection.selected.componentType || baseUuid(source.asset.uuid) !== baseUuid(rawInspection.selected.sourceAssetUUID) || (nodeFileID !== undefined && nodeFileID !== ownerFileID)) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Removed component source owner/type does not match authoritative raw inspection; no mutation was dispatched.' });
+            const expectedSourceState = prefabSourceState(source.records, apply ? resolved.component.index : undefined);
+            const beforeComponents = prefabArray(objectField(beforeNode, '__comps__'));
+            const componentIDs = beforeComponents.map(component => nodeIdentity(propertyValue(component)));
+            if (componentIDs.some(id => !id) || new Set(componentIDs).size !== componentIDs.length) throw new ToolError({ code: 'INVALID_REMOVED_COMPONENT', status: 422, message: 'Existing component identities cannot be inspected unambiguously.' });
+            for (const document of resolved.chain) {
+                if ((await readAsset(document.asset)).hash !== document.hash) throw new ToolError({ code: 'PREFAB_SOURCE_CONFLICT', status: 409, message: 'Prefab source changed during preflight; no mutation was dispatched.' });
+            }
+            const freshNode = await Editor.Message.request('scene', 'query-node', selection.nodeUUID) as unknown;
+            if (!equalPrefabValue(beforeNode, freshNode)) throw new ToolError({ code: 'PREFAB_INSTANCE_CONFLICT', status: 409, message: 'Prefab instance changed during preflight; no mutation was dispatched.' });
+            if (!equalPrefabValue(rawInspection, await inspectRemovedComponent(reference.id, fileID))) throw new ToolError({ code: 'PREFAB_INSTANCE_CONFLICT', status: 409, message: 'Raw removed component state changed during preflight; no mutation was dispatched.' });
+            const nativeRequest = apply ? 'apply-removed-component' : 'revert-removed-component';
+            let nativeResult: unknown;
+            dispatched = true;
+            try {
+                // Matching Creator3.7 facade declares positional (nodeUUID, fileID), returning void.
+                nativeResult = await Editor.Message.request('scene', nativeRequest, selection.nodeUUID, selection.fileID);
+            } catch (error) { nativeError = (error instanceof Error ? error.message : String(error)).slice(0, 512); }
+            const after = await prefabSubtreeState(subtreeReference);
+            const rawAfter = await inspectRemovedComponent(reference.id, fileID);
+            const rawStateVerified = rawAfter.selected === null && rawAfter.instanceRootUUID === rawInspection.instanceRootUUID && rawAfter.rootSourceAssetUUID === rawInspection.rootSourceAssetUUID && equalPrefabValue(rawInspection.removedComponents.filter(ids => !equalPrefabValue(ids, selection.localID)), rawAfter.removedComponents);
+            const afterNode = after.get(reference.id);
+            const afterDocuments: PrefabSourceDocument[] = [];
+            for (const document of resolved.chain) afterDocuments.push(prefabSourceDocument(document.asset, await readAsset(document.asset)));
+            const sourceAfter = afterDocuments[afterDocuments.length - 1];
+            const unchangedAncestors = resolved.chain.slice(0, -1).every((document, index) => document.hash === afterDocuments[index].hash);
+            const sourceVerified = apply
+                ? source.hash !== sourceAfter.hash && equalPrefabValue(expectedSourceState, prefabSourceState(sourceAfter.records))
+                : source.hash === sourceAfter.hash;
+            const remainingRemoved = prefabArray(objectField(afterNode, 'removedComponents'));
+            const selectedRemovalCleared = !remainingRemoved.some(entry => propertyValue(objectField(entry, 'fileID')) === fileID);
+            const rawRemaining = prefabArray(prefabInstanceData(afterNode)?.removedComponents);
+            const rawBefore = prefabArray(prefabInstanceData(beforeNode)?.removedComponents);
+            const rawRemovalCleared = rawBefore.length === 0 || (rawRemaining.length === rawBefore.length - 1 && !rawRemaining.some(entry => equalPrefabValue(removedPath(entry), selection.localID)));
+            const afterComponents = prefabArray(objectField(afterNode, '__comps__'));
+            const added = afterComponents.filter(component => !componentIDs.includes(nodeIdentity(propertyValue(component))));
+            const restored = !apply && added.length === 1 ? nodeIdentity(propertyValue(added[0])) : undefined;
+            const restoredType = added.length === 1 ? componentType(added[0]) : undefined;
+            const restoredValue = added.length === 1 ? propertyValue(added[0]) : undefined;
+            const restoredPrefab = propertyValue(objectField(restoredValue, '__prefab') ?? objectField(restoredValue, '__prefab__'));
+            const restoredFileID = propertyValue(objectField(restoredPrefab, 'fileId') ?? objectField(restoredPrefab, 'fileID'));
+            const componentsVerified = apply ? equalPrefabValue(beforeComponents, afterComponents)
+                : !!restored && restoredType === resolved.component.component.__type__ && (restoredFileID === undefined || restoredFileID === selection.fileID);
+            const nodeIDsPreserved = before.size === after.size && [...before.keys()].every(id => after.has(id));
+            const unrelatedPreserved = nodeIDsPreserved && [...before].every(([id, dump]) => {
+                if (id !== reference.id && id !== rawInspection.instanceRootUUID) return equalPrefabValue(dump, after.get(id));
+                const rawCountBefore = prefabArray(prefabInstanceData(dump)?.removedComponents).length;
+                const rawCountAfter = prefabArray(prefabInstanceData(after.get(id))?.removedComponents).length;
+                const opaque = rawCountBefore === rawCountAfter + 1 && prefabArray(prefabInstanceData(dump)?.removedComponents).some(entry => equalPrefabValue(entry, {}));
+                return equalPrefabValue(unrelatedPrefabNodeState(dump, selection, undefined, opaque), unrelatedPrefabNodeState(after.get(id), selection, id === reference.id ? restored : undefined));
+            });
+            const postconditions = { selectedRemovalCleared: selectedRemovalCleared && rawRemovalCleared && rawStateVerified, selectedComponentVerified: componentsVerified, sourceVerified, unrelatedOverridesPreserved: unrelatedPreserved, nestedIdentitiesPreserved: nodeIDsPreserved && unchangedAncestors };
+            if (!Object.values(postconditions).every(Boolean)) throw new ToolError({ code: 'PREFAB_REMOVED_COMPONENT_UNVERIFIED', status: 502, message: 'Native removal operation was dispatched but its complete selective postcondition could not be verified.', details: { postconditions, nativeError, mutationDispatched: true, outcome: 'unknown', rollbackStatus: 'unknown', sceneSaved: false }, recovery: 'Inspect the instance and all affected prefab source hashes. Do not retry or restore the full instance automatically.' });
+            const changes = apply ? [{ path: 'components', identity: selection.localID.join('/'), before: { fileID: selection.fileID, type: resolved.component.component.__type__ }, after: null }] : [];
+            return boundPrefabResponse({ reference, operation, persisted: apply, outcome: 'verified', mutationDispatched: true, rollbackStatus: 'not-needed', sceneSaved: false, changedIdentities: [{ nodeUUID: selection.nodeUUID, fileID: selection.fileID, localID: selection.localID, restoredComponentUUID: restored ?? null }], postconditions, readBack: afterNode, sourceReadBack: { id: source.asset.uuid, url: source.asset.url, beforeSha256: source.hash, afterSha256: sourceAfter.hash, ancestors: resolved.chain.slice(0, -1).map(document => ({ id: document.asset.uuid, sha256: document.hash })) }, sourceChanges: changes, sourceDiffTruncated: false, nativeResult: nativeResult === false ? false : nativeResult === true ? true : null, nativeError }, maxBytes);
+        } catch (error) {
+            if (!dispatched && error instanceof ToolError) throw error;
+            if (dispatched && error instanceof ToolError && error.code === 'PREFAB_REMOVED_COMPONENT_UNVERIFIED') throw error;
+            throw new ToolError({ code: dispatched ? 'PREFAB_REMOVED_COMPONENT_UNVERIFIED' : 'PREFAB_REMOVED_COMPONENT_PREFLIGHT_FAILED', status: 502, message: dispatched ? 'Selective native mutation was dispatched, but read-back failed; its outcome is unknown.' : 'Selective removed component preflight failed before dispatch.', details: { cause: (error instanceof Error ? error.message : String(error)).slice(0, 512), mutationDispatched: dispatched, outcome: dispatched ? 'unknown' : 'refused', rollbackStatus: dispatched ? 'unknown' : 'not-needed', sceneSaved: false }, recovery: dispatched ? 'Inspect the instance and source before any retry; no automatic rollback or retry was attempted.' : 'Inspect the authoritative removed component descriptor and source.' });
+        }
+    }
     @utcpTool('prefabReferenceAudit', 'Audit nested prefab UUID references and missing serialized dependencies after reload-safe source read.', { type: 'object', properties: { reference: InstanceReferenceSchema, maxReferences: { type: 'integer', minimum: 1, maximum: 2000, default: 2000 } }, required: ['reference'] }, { type: 'object', properties: { valid: { type: 'boolean' }, nestedPrefabs: { type: 'array' }, missingReferences: { type: 'array' }, totalMissingReferences: { type: 'integer' }, totalReferences: { type: 'integer' }, truncated: { type: 'boolean' }, source: { type: 'object' } }, required: ['valid', 'nestedPrefabs', 'missingReferences', 'totalMissingReferences', 'totalReferences', 'truncated', 'source'] }, 'GET', ['prefab', 'reference', 'audit', 'nested'])
     async prefabReferenceAudit(args: { reference: IInstanceReference, maxReferences?: number }): Promise<Record<string, unknown>> {
         const maxReferences = bounded(args.maxReferences, 2000, 2000);
@@ -525,12 +767,22 @@ export class AdvancedCapabilityTools {
         return { valid: allMissing.length === 0, references, missingReferences, totalMissingReferences: allMissing.length, totalReferences: allReferences.length, truncated: allReferences.length > references.length || allMissing.length > missingReferences.length, source: { uuid: row.uuid, url: row.url, sha256: source.hash, reopened: true } };
     }
 
-    @utcpTool('prefabApplyOverrides', 'Apply all native linked-instance overrides with optional source SHA-256 conflict guard. Returns source diff and instance read-back; does not create a variant asset or save/reopen the scene. Never retry an ambiguous mutation without inspection.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, maxBytes: { type: 'integer', minimum: 2048, maximum: 262144, default: 32768 }, expectedSourceSha256: { type: 'string', pattern: '^[a-f0-9]{64}$' } }, required: ['reference'] }, { type: 'object', properties: { reference: { type: 'object' }, operation: { type: 'string' }, persisted: { type: 'boolean' }, readBack: { type: 'object' }, sourceReadBack: { type: 'object' }, sourceChanges: { type: 'array' }, sourceDiffTruncated: { type: 'boolean' }, responseTruncated: { type: 'boolean' }, readBackTruncated: { type: 'boolean' }, sceneSaved: { type: 'boolean' } }, required: ['reference', 'operation', 'persisted', 'readBack', 'sourceReadBack', 'sourceChanges', 'sourceDiffTruncated', 'sceneSaved'] }, 'POST', ['prefab', 'apply', 'overrides'])
-    async prefabApplyOverrides(args: { reference: IInstanceReference, expectedSourceSha256?: string, maxBytes?: number }): Promise<Record<string, unknown>> { return this.prefabSceneOperation('apply', args.reference, args.expectedSourceSha256, prefabResponseLimit(args.maxBytes)); }
-    @utcpTool('prefabRevertOverrides', 'Revert prefab overrides through the scene IPC and verify full-instance restoration.', { type: 'object', properties: { reference: InstanceReferenceSchema, paths: { type: 'array', maxItems: MAX_ITEMS, items: { type: 'string' } } }, required: ['reference'] }, { type: 'object', properties: { reference: { type: 'object' }, operation: { type: 'string' }, persisted: { type: 'boolean' }, readBack: { type: 'object' }, sourceReadBack: { type: 'object' } }, required: ['reference', 'operation', 'persisted', 'readBack', 'sourceReadBack'] }, 'POST', ['prefab', 'revert', 'overrides'])
-    async prefabRevertOverrides(args: { reference: IInstanceReference, paths?: string[] }): Promise<Record<string, unknown>> {
+    @utcpTool('prefabApplyOverrides', 'Apply all linked-instance overrides (default), or one inspected removed component using removed_component_apply plus exact fileID and mandatory expectedSourceSha256. Native return is not proof: selective source diff and unrelated/nested identity read-back are verified. Does not save the scene; never retry an ambiguous mutation.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, operation: { type: 'string', enum: ['apply', 'removed_component_apply'] }, fileID: { type: 'string', minLength: 1, maxLength: 512 }, maxBytes: { type: 'integer', minimum: 2048, maximum: 262144, default: 32768 }, expectedSourceSha256: { type: 'string', pattern: '^[a-f0-9]{64}$' } }, required: ['reference'] }, { type: 'object', properties: { reference: { type: 'object' }, operation: { type: 'string' }, persisted: { type: 'boolean' }, readBack: { type: 'object' }, sourceReadBack: { type: 'object' }, sourceChanges: { type: 'array' }, sourceDiffTruncated: { type: 'boolean' }, responseTruncated: { type: 'boolean' }, readBackTruncated: { type: 'boolean' }, sceneSaved: { type: 'boolean' }, outcome: { type: 'string' }, mutationDispatched: { type: 'boolean' }, rollbackStatus: { type: 'string' }, changedIdentities: { type: 'array' }, postconditions: { type: 'object' } }, required: ['reference', 'operation', 'persisted', 'readBack', 'sourceReadBack', 'sourceChanges', 'sourceDiffTruncated', 'sceneSaved'] }, 'POST', ['prefab', 'apply', 'overrides'])
+    async prefabApplyOverrides(args: { reference: IInstanceReference, operation?: 'apply' | 'removed_component_apply', fileID?: string, expectedSourceSha256?: string, maxBytes?: number }): Promise<Record<string, unknown>> {
+        const maxBytes = prefabResponseLimit(args.maxBytes);
+        if (args.operation === 'removed_component_apply') return this.prefabRemovedComponentOperation(args.operation, args.reference, args.fileID, args.expectedSourceSha256, maxBytes);
+        if (args.operation !== undefined && args.operation !== 'apply') invalid('Unsupported prefab apply operation.');
+        if (args.fileID !== undefined) invalid('fileID is only accepted for removed_component_apply; full apply remains distinct.');
+        return this.prefabSceneOperation('apply', args.reference, args.expectedSourceSha256, maxBytes);
+    }
+    @utcpTool('prefabRevertOverrides', 'Revert the full linked instance (default), or restore one inspected removed component using removed_component_revert and exact fileID. Paths remain unsupported. Selective revert verifies component restoration, unchanged source and unrelated/nested identity; does not save the scene or retry ambiguous mutations.', { type: 'object', properties: { reference: InstanceReferenceSchema, operation: { type: 'string', enum: ['revert', 'removed_component_revert'] }, fileID: { type: 'string', minLength: 1, maxLength: 512 }, paths: { type: 'array', maxItems: MAX_ITEMS, items: { type: 'string' } }, maxBytes: { type: 'integer', minimum: 2048, maximum: 262144, default: 32768 } }, required: ['reference'] }, { type: 'object', properties: { reference: { type: 'object' }, operation: { type: 'string' }, persisted: { type: 'boolean' }, readBack: { type: 'object' }, sourceReadBack: { type: 'object' }, sceneSaved: { type: 'boolean' }, outcome: { type: 'string' }, mutationDispatched: { type: 'boolean' }, rollbackStatus: { type: 'string' }, changedIdentities: { type: 'array' }, postconditions: { type: 'object' }, sourceChanges: { type: 'array' }, sourceDiffTruncated: { type: 'boolean' }, responseTruncated: { type: 'boolean' }, readBackTruncated: { type: 'boolean' } }, required: ['reference', 'operation', 'persisted', 'readBack', 'sourceReadBack'] }, 'POST', ['prefab', 'revert', 'overrides'])
+    async prefabRevertOverrides(args: { reference: IInstanceReference, operation?: 'revert' | 'removed_component_revert', fileID?: string, paths?: string[], maxBytes?: number }): Promise<Record<string, unknown>> {
         if (args.paths && args.paths.length > 0) throw new ToolError({ code: 'UNSUPPORTED_SELECTIVE_REVERT', status: 422, message: 'Creator 3.7.3 restore-prefab reverts the full instance and does not expose selective path restoration.' });
-        return this.prefabSceneOperation('revert', args.reference);
+        const maxBytes = prefabResponseLimit(args.maxBytes);
+        if (args.operation === 'removed_component_revert') return this.prefabRemovedComponentOperation(args.operation, args.reference, args.fileID, undefined, maxBytes);
+        if (args.operation !== undefined && args.operation !== 'revert') invalid('Unsupported prefab revert operation.');
+        if (args.fileID !== undefined) invalid('fileID is only accepted for removed_component_revert; full revert remains distinct.');
+        return this.prefabSceneOperation('revert', args.reference, undefined, maxBytes);
     }
     @utcpTool('prefabRestore', 'Restore a linked prefab instance through Creator native restore-prefab and verify full-instance read-back.', { type: 'object', properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, { type: 'object', properties: { reference: { type: 'object' }, operation: { type: 'string' }, persisted: { type: 'boolean' }, readBack: { type: 'object' }, sourceReadBack: { type: 'object' } }, required: ['reference', 'operation', 'persisted', 'readBack', 'sourceReadBack'] }, 'POST', ['prefab', 'restore', 'full'])
     async prefabRestore(args: { reference: IInstanceReference }): Promise<Record<string, unknown>> {
@@ -588,7 +840,7 @@ export class AdvancedCapabilityTools {
         const importer = new AssetTools();
         const before = await importer.assetImportSettingsGet({ reference: args.reference });
         const settings = before.settings;
-        const operations: Array<Record<string, unknown>> = [];
+        const operations: AssetImportSettingsSetResult[] = [];
         if (args.presetId !== 'default') {
             if (!before.schema.properties.some((property) => property.path === 'algorithm' && property.enumValues?.includes(args.presetId))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Unsupported auto-atlas algorithm preset '${args.presetId}'.` });
             operations.push(await importer.assetImportSettingsSet({ reference: args.reference, path: 'algorithm', value: args.presetId }));

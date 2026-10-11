@@ -16,6 +16,8 @@ import { ErpTextureCubeImporter } from './erp-texture-cube-importer';
 import { RenderTextureImporter } from './render-texture-importer';
 import { ProjectSettingsImporter } from './project-settings-importer';
 import { BitmapFontImporter } from './bitmap-font-importer';
+import { AnimationMaskImporter } from './animation-mask-importer';
+import { AnimationGraphVariantImporter } from './animation-graph-variant-importer';
 
 export * from './base-importer';
 export * from './importer-manager';
@@ -36,6 +38,9 @@ export * from './erp-texture-cube-importer';
 export * from './render-texture-importer';
 export * from './project-settings-importer';
 export * from './bitmap-font-importer';
+export * from './animation-mask-importer';
+export * from './animation-graph-variant-importer';
+export * from './native-animation-asset';
 
 export function registerAllImporters() {
     const manager = ImporterManager.getInstance();
@@ -69,4 +74,6 @@ export function registerAllImporters() {
     manager.registerImporter(new DirectoryImporter());
     manager.registerImporter(new AutoAtlasImporter());
     manager.registerImporter(new BitmapFontImporter());
+    manager.registerImporter(new AnimationMaskImporter());
+    manager.registerImporter(new AnimationGraphVariantImporter());
 }
