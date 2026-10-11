@@ -54,7 +54,6 @@ describe('fail-loud audit (docs §2) regressions', () => {
     assert.match(readSource('source/utcp/tools/scene-tools.ts'), /revert_prefab failed/);
     assert.match(readSource('source/utcp/tools/scene-tools.ts'), /move-array-element refused/);
     assert.match(readSource('source/utcp/tools/scene-tools.ts'), /INDEX_OUT_OF_RANGE/);
-    assert.match(readSource('source/utcp/tools/build-tools.ts'), /add-task returned no task id/);
     assert.match(readSource('source/utcp/tools/animation-tools.ts'), /animation-operation returned an unexpected payload/);
   });
 

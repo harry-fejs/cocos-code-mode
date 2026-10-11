@@ -233,7 +233,7 @@ export class ConsolidatedTools {
             properties: {
                 operation: { type: 'string', enum: ['panel_open', 'tasks_info', 'get_task', 'trigger', 'control'] },
                 panel: { type: 'string', enum: ['default', 'build-bundle'] },
-                taskId: { type: 'string' },
+                taskId: { type: ['string', 'integer'], minLength: 1, maxLength: 256, minimum: 0, maximum: Number.MAX_SAFE_INTEGER },
                 options: { type: 'object', description: 'Build options for trigger' },
                 control: { type: 'string', enum: ['break', 'remove', 'recompile'] },
                 limit: { type: 'number', minimum: 1, maximum: 1000, default: 200, description: 'For tasks_info: maximum tasks to return.' }
@@ -245,18 +245,18 @@ export class ConsolidatedTools {
                 { if: { properties: { operation: { const: 'control' } }, required: ['operation'] }, then: { required: ['taskId', 'control'] } }
             ]
         },
-        { type: 'object', properties: { success: { type: 'boolean' }, workerReady: { type: 'boolean' }, free: { type: 'boolean' }, tasks: { type: 'array', items: { type: 'object' } }, total: { type: 'number' }, truncated: { type: 'boolean' }, task: { type: 'object' }, options: { type: 'object' }, taskId: { type: 'string' } } }, 'POST',
+        { type: 'object', properties: { success: { type: 'boolean' }, submission: { type: 'string', enum: ['submitted', 'refused'] }, workerReady: { type: 'boolean' }, free: { type: 'boolean' }, tasks: { type: 'array', items: { type: 'object' } }, total: { type: 'number' }, truncated: { type: 'boolean' }, task: { type: 'object' }, options: { type: 'object' }, taskId: { type: 'string' } } }, 'POST',
         ['build', 'consolidated']
     )
-    async buildManage(args: { operation: string, panel?: string, taskId?: string, options?: unknown, control?: string, limit?: number }): Promise<unknown> {
+    async buildManage(args: { operation: string, panel?: string, taskId?: string | number, options?: unknown, control?: string, limit?: number }): Promise<unknown> {
         const { BuildTools } = await import('./build-tools');
-        const tool = new (BuildTools as any)();
+        const tool = new BuildTools();
         switch (args.operation) {
             case 'panel_open': return tool.buildPanelOpen({ panel: args.panel });
             case 'tasks_info': return tool.buildGetTasksInfo({ limit: args.limit });
-            case 'get_task': return tool.buildGetTask({ taskId: args.taskId as string });
+            case 'get_task': return tool.buildGetTask({ taskId: args.taskId as string | number });
             case 'trigger': return tool.buildTrigger({ options: args.options });
-            case 'control': return tool.buildTaskControl({ operation: args.control as string, taskId: args.taskId as string });
+            case 'control': return tool.buildTaskControl({ operation: args.control as string, taskId: args.taskId as string | number });
             default: throw new Error(`Unknown buildManage operation: ${args.operation}`);
         }
     }

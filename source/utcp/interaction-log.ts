@@ -39,6 +39,7 @@ export function snapshotInteraction(entry: Entry): Entry {
                 // Huge keys cannot be copied without defeating the total detail bound.
                 if (key.length > 4096) { (result as Entry)['[truncated key]'] = omit('long field name'); break; }
                 const descriptor = Object.getOwnPropertyDescriptor(value, key);
+                if (descriptor && 'value' in descriptor && descriptor.value === undefined) continue;
                 const item = SENSITIVE.test(key.replace(/[^a-z0-9]/gi, ''))
                     ? REDACTED
                     : descriptor && 'value' in descriptor ? visit(descriptor.value, depth + 1) : omit('accessor');

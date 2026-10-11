@@ -17,6 +17,8 @@ interface IBuildTaskSummary {
     platform?: string;
     buildPath?: string;
 }
+type BuildTaskRecord = Record<string, unknown>;
+type BuildOptions = Record<string, unknown>;
 interface BuildDiagnostic {
     message: string;
     severity?: string;
@@ -203,18 +205,28 @@ const BuildTaskSummarySchema: JsonSchema = {
 const BUILD_TERMINAL_STATES: Record<string, true> = { success: true, succeeded: true, failed: true, failure: true, error: true, cancelled: true, canceled: true, cancel: true, done: true, finished: true };
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-function slimTask(task: any): IBuildTaskSummary {
+function taskIdentity(value: unknown): string {
+    if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) return String(value);
+    if (typeof value === 'string' && value.length > 0 && value.length <= 256 && value.trim() === value && !/[\s\u0000-\u001f\u007f]/.test(value)) return value;
+    throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'taskId must be a bounded nonempty string or nonnegative safe integer.', recovery: 'Use the exact task ID returned by the Creator builder.' });
+}
+
+function slimTask(task: BuildTaskRecord): IBuildTaskSummary {
+    if (typeof task.progress !== 'number' || !Number.isFinite(task.progress) || typeof task.state !== 'string' || !task.state) {
+        throw new ToolError({ code: 'BUILD_TASK_INVALID_RESPONSE', status: 502, message: 'Creator builder returned an incomplete task summary.', recovery: 'Inspect the builder task queue before continuing.' });
+    }
+    const options = task.options && typeof task.options === 'object' && !Array.isArray(task.options) ? task.options as BuildTaskRecord : undefined;
     return {
-        id: task.id,
+        id: taskIdentity(task.id),
         progress: task.progress,
         state: task.state,
-        message: task.message,
-        time: task.time,
-        stage: task.stage,
-        dirty: task.dirty,
-        name: task.options?.name || task.options?.taskName,
-        platform: task.options?.platform,
-        buildPath: task.options?.buildPath
+        message: typeof task.message === 'string' ? task.message : undefined,
+        time: typeof task.time === 'string' ? task.time : undefined,
+        stage: typeof task.stage === 'string' ? task.stage : undefined,
+        dirty: typeof task.dirty === 'boolean' ? task.dirty : undefined,
+        name: typeof options?.name === 'string' ? options.name : typeof options?.taskName === 'string' ? options.taskName : undefined,
+        platform: typeof options?.platform === 'string' ? options.platform : undefined,
+        buildPath: typeof options?.buildPath === 'string' ? options.buildPath : undefined,
     };
 }
 
@@ -285,36 +297,37 @@ export class BuildTools {
     }
 
     /** @deprecated Use buildManage({ operation: 'get_task' }) — not registered, kept for delegation */
-    async buildGetTask(args: { taskId: string }): Promise<{ task: IBuildTaskSummary, options?: any }> {
-        if (!args.taskId) {
-            throw new Error('buildGetTask requires taskId');
+    async buildGetTask(args: { taskId: string | number }): Promise<{ task: IBuildTaskSummary, options?: BuildOptions }> {
+        const taskId = taskIdentity(args.taskId);
+        const item = await Editor.Message.request('builder', 'query-task', taskId);
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+            throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Build task ${taskId} not found`, recovery: 'Query build tasks and retry with an existing task id.' });
         }
-        const item = await Editor.Message.request('builder', 'query-task', args.taskId);
-        if (!item) {
-            throw new Error(`Build task ${args.taskId} not found`);
-        }
-        return { task: slimTask(item), options: item.options || undefined };
+        const record = item as BuildTaskRecord;
+        return { task: slimTask(record), options: record.options && typeof record.options === 'object' && !Array.isArray(record.options) ? record.options as BuildOptions : undefined };
     }
 
-    /** @deprecated Use buildManage({ operation: 'trigger' }) — not registered, kept for delegation */
-    async buildTrigger(args: { options: any }): Promise<{ success: boolean, taskId?: string }> {
-        if (!args.options || typeof args.options !== 'object') {
-            throw new Error('buildTrigger requires an options object (copy it from buildGetTask and modify)');
+    async buildTrigger(args: { options: unknown }): Promise<{ success: true, submission: 'submitted', taskId: string }> {
+        if (!args.options || typeof args.options !== 'object' || Array.isArray(args.options) || !('platform' in args.options) || typeof args.options.platform !== 'string' || !args.options.platform.trim()) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Build options require a platform.', details: { submission: 'refused', dispatched: false, retrySafe: true }, recovery: 'Prepare audited platform options before explicitly submitting a build.' });
         }
-        if (!args.options.platform) {
-            throw new Error('options.platform is required (e.g. web-mobile)');
+        let result: unknown;
+        try { result = await Editor.Message.request('builder', 'add-task', args.options); }
+        catch {
+            throw new ToolError({ code: 'BUILD_SUBMISSION_OUTCOME_UNKNOWN', status: 502, message: 'Build submission did not return a confirmed outcome.', details: { submission: 'outcome-unknown', retrySafe: false }, recovery: 'Inspect the builder queue and reconcile the intended build before any retry. Do not resubmit blindly.' });
         }
-        const result = await Editor.Message.request('builder', 'add-task', args.options);
-        const taskId = typeof result === 'string' ? result : ((result && (result as any).id) || undefined);
-        if (!taskId) throw new Error(`builder add-task returned no task id (got ${JSON.stringify(result ?? null)})`);
-        return { success: true, taskId };
+        const candidate = result !== null && typeof result === 'object' && !Array.isArray(result) ? (result as BuildTaskRecord).id : result;
+        let taskId: string;
+        try { taskId = taskIdentity(candidate); }
+        catch {
+            throw new ToolError({ code: 'BUILD_SUBMISSION_OUTCOME_UNKNOWN', status: 502, message: 'Builder returned no usable task identity after submission.', details: { submission: 'outcome-unknown', retrySafe: false }, recovery: 'Inspect the builder queue before retrying; a build may already have been submitted.' });
+        }
+        return { success: true, submission: 'submitted', taskId };
     }
 
     /** @deprecated Use buildManage({ operation: 'control' }) — not registered, kept for delegation */
-    async buildTaskControl(args: { operation: string, taskId: string }): Promise<ISuccessIndicator> {
-        if (!args.taskId) {
-            throw new Error('buildTaskControl requires taskId');
-        }
+    async buildTaskControl(args: { operation: string, taskId: string | number }): Promise<ISuccessIndicator> {
+        const taskId = taskIdentity(args.taskId);
         const messageByOperation: Record<string, string> = {
             break: 'break-task',
             remove: 'remove-task',
@@ -324,7 +337,7 @@ export class BuildTools {
         if (!message) {
             throw new Error(`Unknown build task operation: ${args.operation}`);
         }
-        await Editor.Message.request('builder', message, args.taskId);
+        await Editor.Message.request('builder', message, taskId);
         return { success: true };
     }
     @utcpTool('buildTaskWait', 'Wait boundedly for one build task to reach a terminal state.', {
@@ -333,8 +346,7 @@ export class BuildTools {
         required: ['taskId'],
     }, { type: 'object', properties: { completed: { type: 'boolean' }, timedOut: { type: 'boolean' }, task: { type: 'object' } }, required: ['completed', 'timedOut', 'task'] }, 'GET', ['build', 'task', 'wait', 'poll'])
     async buildTaskWait(args: { taskId: string | number, timeoutMs?: number, pollMs?: number }): Promise<{ completed: boolean, timedOut: boolean, task: IBuildTaskSummary }> {
-        const taskId = String(args.taskId ?? '');
-        if (!taskId) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'buildTaskWait requires taskId', recovery: 'Provide a Creator builder task id.' });
+        const taskId = taskIdentity(args.taskId);
         const timeoutMs = Math.min(Math.max(args.timeoutMs ?? 30000, 0), 120000);
         const pollMs = Math.min(Math.max(args.pollMs ?? 500, 50), 5000);
         const deadline = Date.now() + timeoutMs;
@@ -373,8 +385,7 @@ export class BuildTools {
         required: ['available', 'terminal', 'state', 'progress', 'task', 'entries', 'count', 'truncated'],
     }, 'GET', ['build', 'log', 'diagnostics', 'inspect'])
     async buildLogInspect(args: { taskId: string | number, maxEntries?: number, maxBytes?: number }): Promise<BuildLogInspectResult> {
-        const taskId = String(args.taskId ?? '');
-        if (!taskId) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'buildLogInspect requires taskId', recovery: 'Provide a Creator builder task id.' });
+        const taskId = taskIdentity(args.taskId);
         const maxEntries = args.maxEntries === undefined ? BUILD_LOG_DEFAULT_ENTRIES : args.maxEntries;
         const maxBytes = args.maxBytes === undefined ? BUILD_LOG_DEFAULT_BYTES : args.maxBytes;
         if (!Number.isInteger(maxEntries) || maxEntries < 1 || maxEntries > BUILD_LOG_MAX_ENTRIES ||

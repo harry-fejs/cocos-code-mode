@@ -1103,7 +1103,7 @@ declare namespace ccp3x {
     /** Consolidated: project settings read/write. */
     function projectManage(args: { operation: "get" | "set", type?: string, key?: string, path?: string, value?: any }): any;
     /** Consolidated: build panel/tasks/trigger/control. */
-    function buildManage(args: { operation: "panel_open" | "tasks_info" | "get_task" | "trigger" | "control", panel?: string, taskId?: string, options?: any, control?: "break" | "remove" | "recompile" }): any;
+    function buildManage(args: { operation: "panel_open" | "tasks_info" | "get_task" | "trigger" | "control", panel?: string, taskId?: string | number, options?: Record<string, unknown>, control?: "break" | "remove" | "recompile" }): unknown;
     /** T0/T1 graph lookup. Verify a bare UUID through live tools before mutation; never mutate through a composite graph handle. */
     function graphManage(args: {
         operation: 'status' | 'build' | 'query' | 'resolve' | 'navigate' | 'refs' | 'validate';

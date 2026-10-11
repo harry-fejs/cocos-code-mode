@@ -3,6 +3,34 @@
 - [x] Owner decision recorded: complete build/security, clean qualification, packaging, publish and release for the supported Creator 3.7 artifact before reopening any 3.8/API-resume lane.
 - [x] Keep this change `status: pending`; do not use its 3.8 probes, forward-runtime evidence or pending candidates as Creator 3.7 release credit or blockers.
 
+### Owner review boundary — implementation only, 2026-10-09
+
+Approve/review implemented source independently from testing. Existing test outputs remain recorded historical evidence; every future verification/re-verification task stays pending for a separately scheduled pass. No test execution, live mutation, qualification promotion, publish readiness or release closure is authorized by this review decision.
+
+#### Implemented and accepted for source review
+
+- [x] `buildSettingsManage`: allowlisted builder defaults/cache preferences with guarded writes/read-back/rollback logic.
+- [x] `buildProfileManage`: bounded CCP-owned project build profiles, option auditing, credential refusal and guarded persistence logic; not native Creator presets.
+- [x] `buildTemplate`: six target/debug-release option templates with scene/start-scene syntax and nested platform validation; no dispatch.
+- [x] Prefab follow-through: bounded instance/source inspection, source-hash apply guard, source diff and capped-validation completeness logic; not a variant asset.
+- [x] Existing UI layout/report and popup observability/action implementation; combined live verification remains separate.
+- [x] Final CCP naming/registry/bootstrap/protocol source cutover; owned migration tooling exists but workstation apply is not performed.
+- [x] P0 task identities: safe numeric/string IDs normalized across get/control/wait/log and summaries; malformed IDs refused before dispatch.
+- [x] P0 optional log metadata: absent undefined fields omitted before rendering, preserving real messages, false/zero/null and literal text.
+- [x] P0 conservative submission handling: pre-dispatch input refusal distinguished from usable returned task identity and post-dispatch outcome unknown; no automatic resubmission or unrelated-task inference.
+
+#### Verification backlog — pending; perform later
+
+- [ ] Re-run affected unit/build/Creator-load checks on the selected final artifact and record exact commit/builtAt.
+- [ ] Creator build settings/profile/template persistence and reload; disposable web-mobile end-to-end and Android artifact qualification.
+- [ ] Prefab positive/conflict/negative cases, native source/instance save-reopen and cleanup.
+- [ ] Combined UI/Status/original responsive UUID and popup acceptance; exact current CCP discovery/handshake/restart/rollback/package verification.
+- [ ] Protected migration/enrollment/signing/live workflows and fresh parity/evidence hashes under current CCP contracts.
+- [ ] Verify native `builder/add-task` result/refusal semantics and task identity on the exact Creator artifact; current source treats all non-ID responses, including false/null, as outcome unknown until the native contract is evidenced.
+
+Native config/preflight/environment routes and tween static remain development backlog. P0 source behavior is implemented; native submission semantics, regression suites and Creator/E2E qualification remain pending. Existing held/deferred API lanes and portfolio thresholds are unchanged.
+
+
 ### CCP source cutover and current release gates — 2026-10-09
 
 - [x] Apply final active CCP naming across API3x/protected3x/2x/Gateway source and callers; preserve immutable historical signed evidence and frozen portfolio inputs.
@@ -33,13 +61,13 @@
 - Implemented `buildProfileManage` for CCP-owned project profiles (list/get/save/delete), audited options, credential refusal, bounded storage and guarded writes. These are not native Creator build preset assets.
 - Implemented `buildTemplate` list/create for six platforms and debug/release options; scene identity syntax/start-scene membership/native package ID are validated, target settings use packages[platform], and nested target profile validation rejects incompatible option types. Templates never persist/dispatch and disclose missing asset/toolchain/signing qualification.
 - Offline build and HTTP persistence smoke use a simulated Creator Profile backend; real Creator persistence/reload and exact build artifact qualification remain pending. No portfolio promotion or threshold changes.
-- Pending separately: numeric task-ID acceptance in buildManage, builder add-task outcome verification, native task/preset settings route, and Android environment configuration after authoritative API discovery. Do not retry ambiguous build submission.
+- P0 source follow-through implemented: safe ID normalization, undefined metadata omission and conservative submission outcome reporting. Pending separately: native `add-task` semantics/live task-ID proof, native task/preset settings route and Android environment configuration after authoritative discovery. Do not retry ambiguous submission.
 
 ### Approved delivery sequence — 2026-10-08
 
-- [ ] **P0 task identity:** accept safe numeric/string builder task IDs in get_task/control, normalize before IPC, verify returned IDs work directly and invalid IDs fail before dispatch.
-- [ ] **P0 logging:** preserve/omit optional undefined metadata; remove false test:undefined and Details/Recovery:undefined without suppressing real errors.
-- [ ] **P0 build submission:** verify native add-task return semantics; distinguish refused/submitted/outcome-unknown. Inspect queue before retry; never infer success from an unrelated task.
+- [x] **P0 task identity implementation:** accept safe numeric/string builder IDs; normalize before IPC and return reusable string IDs. Exact Creator/regression verification pending separately.
+- [x] **P0 logging implementation:** omit undefined optional metadata without suppressing real errors; verification/re-verification remains pending.
+- [x] **P0 build submission implementation:** pre-dispatch refusal, usable-ID submitted response, typed post-dispatch outcome unknown with retrySafe:false. Native return/refusal semantics and queue reconciliation witnesses remain pending; no blind retry.
 - [ ] **Build config/preflight:** discover authoritative native task/preset update routes; verify scene UUID/URL/start-scene identity, target availability and remote bundle/server requirements. No editor-owned filesystem fallback.
 - [ ] **Environment:** inspect Android SDK/NDK/Java through verified APIs with redacted output. Enable writes only after route/read-back/restoration proof; no signing secrets in tools/profiles/logs.
 - [ ] **Web-mobile end-to-end:** disposable clean artifact, template/profile persistence and reload, explicit submit, task identity, terminal state, diagnostics/output proof and cleanup.
