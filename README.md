@@ -27,6 +27,12 @@ You can read more about Code Mode concept in papers from [Anthropic](https://www
 ![Tools <> UI Mapping](tools_screenshot.jpg)
 
 * **2.5:** +2 `sceneScriptHealthScan`/`sceneScriptRepair` for missing or invalid script components → **88**.
+### Development build modes
+
+`npm run build` stays readable. `npm run build:debug` compiles/copies and checks readable output, then applies pinned Terser 5.44.0 minification/local-identifier mangling and reruns Creator-load checks. Properties, exported tool strings and class/function names are preserved; no obfuscator or dependency/Python transform. Build provenance exposes `mode: readable | debug-minified`.
+
+Private source maps live in ignored `.debug-maps/`, outside runtime `dist` and packaging inputs. Debug package: `npm run build:debug && node scripts/package.js`; ordinary `npm run package` intentionally rebuilds readable output. Rollback: run `npm run build`, then reload/restart the owned Creator extension. Minification changes size, not confidentiality or proven runtime performance.
+
 
 | Category | Tools | Purpose |
 |----------|-------|---------|

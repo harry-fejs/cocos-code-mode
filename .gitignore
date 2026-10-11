@@ -11,6 +11,7 @@
 
 # Build output
 dist/
+.debug-maps/
 
 # Node.js
 node_modules/

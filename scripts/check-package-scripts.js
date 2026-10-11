@@ -24,10 +24,16 @@ const expectedBuild = [
   'node ./scripts/generate-build-info.js',
   'npx tsc',
   'node ./scripts/copy-cocos-graph-runtime.js',
+  'node ./scripts/cocos-api/copy-runtime-catalog.js',
+  'node ./scripts/cocos-api/copy-validation-runtime.js',
   'node scripts/check-creator-load.js',
 ].join(' && ');
 if (pkg.scripts?.build !== expectedBuild) {
   console.error(`[check:package-scripts] scripts.build must exactly match: ${expectedBuild}`);
+  ok = false;
+}
+if (pkg.scripts?.['build:debug'] !== 'npm run build && node scripts/minify-debug.js && node scripts/check-creator-load.js') {
+  console.error('[check:package-scripts] build:debug must preserve readable build and both load gates');
   ok = false;
 }
 if (!ok) process.exit(1);

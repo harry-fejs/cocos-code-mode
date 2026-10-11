@@ -4,6 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const Module = require('node:module');
 
+const crypto = require('node:crypto');
 function checkCreatorLoad(root = path.resolve(__dirname, '..')) {
   const previousJs = Module._extensions['.js'];
   const previousCjs = Module._extensions['.cjs'];
@@ -51,7 +52,13 @@ function checkCreatorLoad(root = path.resolve(__dirname, '..')) {
       const sourceFile = file.startsWith(copiedSourceDirectory)
         ? path.join(sourceDirectory, path.basename(file))
         : path.join(root, 'tools', 'cocos-graph', path.basename(file));
-      if (!fs.existsSync(sourceFile) || fs.readFileSync(sourceFile, 'utf8') !== fs.readFileSync(file, 'utf8')) {
+      const buildInfo = JSON.parse(fs.readFileSync(path.join(root, 'dist', 'build-info.json'), 'utf8'));
+      const relative = path.relative(path.join(root, 'dist'), file).replace(/\\/g, '/');
+      const transformed = buildInfo.mode === 'debug-minified' ? buildInfo.transform?.graph?.[relative] : null;
+      if (transformed) {
+        const digest = input => crypto.createHash('sha256').update(input).digest('hex');
+        if (digest(fs.readFileSync(sourceFile)) !== transformed.source || digest(fs.readFileSync(file)) !== transformed.output) throw new Error(`Transformed graph provenance mismatch: ${file}`);
+      } else if (!fs.existsSync(sourceFile) || fs.readFileSync(sourceFile, 'utf8') !== fs.readFileSync(file, 'utf8')) {
         throw new Error(`Copied cocos-graph module differs from source: ${file}`);
       }
       const module = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);

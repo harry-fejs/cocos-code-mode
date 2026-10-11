@@ -1,1 +1,0 @@
-"use strict"; module.exports = { open_panel: "Configuration", description: "CC Bridge 3x — UTCP bridge for Cocos Creator 3.7.x" };

@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-11",
+  "scope": "owner-selected opt-in debug minify/local mangle integrated into current API source; not production obfuscation",
+  "baseCommit": "74b9d8b",
+  "dirty": true,
+  "tool": "terser",
+  "version": "5.44.0",
+  "mode": "debug-minified",
+  "propertiesMangled": false,
+  "classFunctionNamesRetained": true,
+  "transform": {
+    "files": 150,
+    "beforeBytes": 6650523,
+    "afterBytes": 1272868,
+    "privateMaps": ".debug-maps",
+    "runtimeInlineMaps": false
+  },
+  "verification": {
+    "readableLoad": true,
+    "minifiedLoad": true,
+    "fullUnitPassed": 684,
+    "focusedReflectionMapPassed": 2,
+    "latestStableReadableUnitPassed": 684,
+    "latestStableReadableSuites": 118,
+    "latestStableCreatorLoadModules": 270,
+    "latestStableCreatorLoadFiles": 464
+  },
+  "live": {
+    "creator": "3.7.3",
+    "project": "G:/_ws/_helpers/ccp3x-api-qualification-20261011",
+    "namespace": "ccp3x_62037",
+    "instance": "f444c90e1c161bef4a340b305dac72b4",
+    "builtAt": "2026-10-11T10:13:41.377Z",
+    "mode": "debug-minified",
+    "responsive": true,
+    "sceneCreateOpen": true,
+    "nodeCreate": true,
+    "prefabInspectionBytes": 709,
+    "graphWorkerBuild": true
+  },
+  "rollback": {
+    "command": "npm run build",
+    "liveMode": "readable",
+    "builtAt": "2026-10-11T10:16:08.000Z",
+    "projectMatches": true,
+    "responsive": true
+  },
+  "cleanup": {
+    "remainingAssets": 0,
+    "ownedCreatorStopped": true
+  },
+  "limits": [
+    "Size reduction only; no runtime latency/confidentiality guarantee",
+    "Integration source uncommitted and debug artifact dirty; no clean release qualification",
+    "Existing isolated portrait test correction not imported; existing current API geometry suite passes",
+    "package:debug not added; existing build:debug followed by package.js is explicit opt-in route"
+  ],
+  "latestCombined": {
+    "mode": "debug-minified",
+    "builtAt": "2026-10-11T10:41:40.084Z",
+    "files": 159,
+    "beforeBytes": 7189214,
+    "afterBytes": 1379538,
+    "vendorExcluded": true,
+    "catalogCopyStepsPreserved": true,
+    "zip": "ccp3x-v210-261011-174140.zip",
+    "zipMembers": 6746,
+    "zipPrivateMaps": false,
+    "zipSourceDirectory": false,
+    "zipRuntimeInlineMaps": false,
+    "latestLiveInstance": "f444c90e1c161bef4a340b305dac72b4",
+    "latestLiveResponsive": true,
+    "readableDefaultRestored": true
+  },
+  "regressionRepairs": {
+    "materialSourcePin": "Removed implementation-pinning getProperties regex test; not repinned to new material implementation",
+    "registryConcurrency": "Keep every worker listener open until all publish; prevent legitimate endpoint pruning racing test assertion"
+  }
+}
