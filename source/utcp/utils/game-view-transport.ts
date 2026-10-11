@@ -117,14 +117,14 @@ function creatorMainWindow(electron: ElectronHost): { webContents: HostContents 
     return windows[0];
 }
 
-async function executeBounded(target: HostContents, source: string, deadline: number, mutation = false): Promise<unknown> {
+async function executeBounded(target: HostContents, source: string, deadline: number, mutation = false, maxWaitMs = RENDERER_TIMEOUT_MS): Promise<unknown> {
     if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Game-view operation deadline expired before dispatch.', ...(mutation ? { details: { mutationDispatched: false, outcome: 'refused', retrySafe: true } } : {}) });
     let timer: NodeJS.Timeout | undefined;
     let request: Promise<unknown> | undefined;
     try {
         request = target.executeJavaScript(source);
         return await Promise.race([request, new Promise<never>((_resolve, reject) => {
-            timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Game-view renderer operation exceeded its deadline.' })), Math.min(RENDERER_TIMEOUT_MS, deadline - Date.now()));
+            timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Game-view renderer operation exceeded its deadline.' })), Math.min(maxWaitMs, deadline - Date.now()));
         })]);
     } catch (error) {
         const failure = new ToolError({ code: error instanceof ToolError ? error.code : 'RUNTIME_CONTROL_UNAVAILABLE', status: 409,
@@ -222,5 +222,36 @@ export async function setGameViewTimeScale(scale: number): Promise<GameViewRunti
         throw new ToolError({ code: error instanceof ToolError ? error.code : 'RUNTIME_CONTROL_UNAVAILABLE', status: error instanceof ToolError ? error.status : 409,
             message: 'Game-view time scale was dispatched but complete read-back could not be verified.',
             details: { cause: (error instanceof Error ? error.message : String(error)).slice(0, 512), mutationDispatched: true, outcome: 'unknown', retrySafe: false }, recovery: 'Inspect the Game View and reconcile its time scale before retrying.' });
+    }
+}
+
+/** Internal trusted scripts only. Public tools supply validated data, never caller code. */
+export async function executeGameViewOperation(targetId: string, operationSource: string, timeoutMs = 5000, mutation = false): Promise<unknown> {
+    if (typeof targetId !== 'string' || !targetId || targetId.length > 256 || typeof operationSource !== 'string' || Buffer.byteLength(operationSource, 'utf8') > 128 * 1024
+        || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000) {
+        throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Invalid bounded Game View operation.' });
+    }
+    const deadline = Date.now() + timeoutMs;
+    const electron = require('electron') as ElectronHost;
+    const main = creatorMainWindow(electron).webContents;
+    const host = await readHost(main, deadline);
+    const target = renderer(electron, host);
+    const url = target.getURL();
+    const before = runningState(host, target, await executeBounded(target, RUNTIME_INSPECTION, deadline));
+    if (before.sceneUuid !== targetId) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Game View scene differs from the bound session.' });
+    assertHostUnchanged(electron, await readHost(main, deadline), target, url);
+    const source = `(async () => { const scene = globalThis.cc?.director?.getScene(); if (globalThis.cc?.GAME_VIEW !== true || !scene || scene.uuid !== ${JSON.stringify(targetId)} || Date.now() >= ${deadline}) throw new Error('Game View target/deadline changed before operation'); const result = await (${operationSource}); if (scene !== globalThis.cc?.director?.getScene()) throw new Error('Game View target changed during operation'); return result; })()`;
+    const result = await executeBounded(target, source, deadline, mutation, timeoutMs);
+    try {
+        const encoded = JSON.stringify(result);
+        if (encoded === undefined || Buffer.byteLength(encoded, 'utf8') > 256 * 1024) throw new ToolError({ code: 'RUNTIME_RESPONSE_LIMIT', status: 502, message: 'Game View result is not bounded JSON.' });
+        const afterHost = await readHost(main, deadline);
+        assertHostUnchanged(electron, afterHost, target, url);
+        const after = runningState(afterHost, target, await executeBounded(target, RUNTIME_INSPECTION, deadline));
+        if (after.sceneUuid !== targetId) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Game View scene changed during read-back.' });
+        return result;
+    } catch (error) {
+        if (!mutation) throw error;
+        throw new ToolError({ code: error instanceof ToolError ? error.code : 'RUNTIME_CONTROL_UNAVAILABLE', status: 409, message: 'Game View mutation complete read-back is unconfirmed.', details: { mutationDispatched: true, retrySafe: false, outcome: 'unknown' }, recovery: 'Inspect the bound target before further control.' });
     }
 }

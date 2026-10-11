@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-11",
+  "commit": "2dd117b",
+  "artifact": {
+    "mode": "readable",
+    "builtAt": "2026-10-11T16:28:01.552Z",
+    "dirty": true
+  },
+  "project": "G:/_ws/_helpers/ccp3x-api-qualification-20261011",
+  "instance": "57b49afa3dd97ddb1dcdb61ed090db4e",
+  "runtime": {
+    "platform": "gameView",
+    "targetScene": "201a5f1a-27a8-47e4-9b38-d123ee9594a4",
+    "startReady": true,
+    "startTimeoutMs": 60000,
+    "initialFrame": 1571,
+    "paused": true,
+    "stepFrame": 1577,
+    "resumeState": {
+      "paused": true,
+      "timeScale": 1
+    },
+    "stopPostcondition": {
+      "previewState": "stop",
+      "enabled": false,
+      "sessionStatus": "stopped"
+    },
+    "stateReconciled": true
+  },
+  "cleanup": {
+    "assetsRemoved": true,
+    "sceneDirty": false,
+    "ownedCreatorStopped": true
+  },
+  "limitations": [
+    "Owner project gameplay start had prior20s timeout and teardown errors outside CCP; disposable final fixture start/control foundation passed",
+    "No component playback/clean package/release promotion"
+  ]
+}

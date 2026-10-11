@@ -1,0 +1,100 @@
+{
+  "date": "2026-10-12",
+  "scope": "CCP3.7 finite Game View component operations; no gameplay edits",
+  "verification": {
+    "typescript": true,
+    "buildCreatorLoad": true,
+    "fullUnitPassed": 705,
+    "failed": 0,
+    "skipped": 0,
+    "stockCreator": "3.7.3",
+    "disposableProject": "G:/_ws/_helpers/ccp3x-api-qualification-20261011",
+    "runtimeOnlyTweenBindingSmoke": "valid:true verified binding without edit-renderer query; unsupported pause refuses TWEEN_CONTROL_UNSUPPORTED and preserves running handle",
+    "serializedComponentNegativeGuards": "particle ambiguity and graph type mismatch refuse before mutation",
+    "tweenOwnershipHardening": "64-handle bound, terminal eviction and failed-start listener/handle cleanup"
+  },
+  "implemented": [
+    "session-bound AudioSource play/pause/stop/seek/observe with persistent uncertainty locks",
+    "ParticleSystem play/stop/clear via actual runtime registry",
+    "Animation/SkeletalAnimation clip identity control and bounded events",
+    "AnimationController inspect and FLOAT/INTEGER/BOOLEAN variable mutation",
+    "owned descriptor tween start/stop/inspect and optional isolated pause/resume capability refusal",
+    "static/runtime binding diagnostics without evaluating project source"
+  ],
+  "liveEvidence": {
+    "audio": "Installed public observe/play/pause/seek0.5/stop on loaded1-second WAV; STARTED event/readback confirmed",
+    "animation": "Installed public play/pause/resume and bounded events observed resume/stop/finished",
+    "particle": "Fresh compiled fixed handler in actual Game View confirms playing true then false",
+    "graph": "Fresh compiled fixed handler in actual Game View inspected real graph and changed speed1->2 and activefalse->true with readback",
+    "tween": "Fresh compiled fixed handler actual motion position0->10 and statuscompleted at0.2seconds"
+  },
+  "boundaries": [
+    "Creator3.7 Tween lacks isolated pause/resume; target-wide ActionManager mutation intentionally forbidden",
+    "Spine/DragonBones/ParticleSystem2D not covered by component adapter",
+    "Localization requires installed package/resource; Creator3.8/native globals/bake/terrain lanes remain external/deferred",
+    "No portfolio promotion or clean release claim"
+  ],
+  "cleanup": {
+    "runtimeFixtureDestroyed": true,
+    "previewStopped": true,
+    "sessionReset": true,
+    "assetsRemaining": 0,
+    "ownedCreatorStopped": true
+  },
+  "backup": {
+    "creator": "G:/_ws/_helpers/creator-373-hybrid-backup-20261012",
+    "files": 69189,
+    "bytesGiB": 5.077,
+    "robocopyDryRunCopied": 0,
+    "mismatch": 0,
+    "failed": 0,
+    "projectAdditional": "G:/_ws/_helpers/cc30-new-aio-sync-custom-backup"
+  },
+  "committed": false,
+  "finalInstalledPublicReplay": {
+    "build": {
+      "commit": "2dd117b",
+      "branch": "feat/cocos-pilot-api-capability-expansion",
+      "dirty": true,
+      "mode": "readable",
+      "builtAt": "2026-10-11T17:39:29.744Z"
+    },
+    "instance": "a1c9640c487376455764b7ec76150682",
+    "particle": [
+      "play",
+      "stop",
+      "clear"
+    ],
+    "graph": "speed float1->2 readback",
+    "tween": "start -> completed position0->10",
+    "negative": [
+      {
+        "name": "skeletalAnimationPlay",
+        "error": {
+          "error": "Clip name must identify exactly one clip with the requested UUID.",
+          "code": "ANIMATION_CLIP_NOT_FOUND",
+          "details": {
+            "mutationDispatched": false,
+            "retrySafe": true
+          }
+        }
+      },
+      {
+        "name": "animationGraphPreview",
+        "error": {
+          "error": "Only matching Creator3.7 FLOAT, INTEGER and BOOLEAN variables may change.",
+          "code": "UNSUPPORTED_GRAPH_VARIABLE",
+          "details": {
+            "mutationDispatched": false,
+            "retrySafe": true
+          }
+        }
+      }
+    ],
+    "cleanup": {
+      "remainingAssets": [],
+      "sceneDirty": false,
+      "ownedCreatorStopped": true
+    }
+  }
+}

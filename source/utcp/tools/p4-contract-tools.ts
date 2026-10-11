@@ -1,10 +1,9 @@
 import { utcpTool } from '../decorators';
 import { ToolError } from '../tool-error';
 import { ProjectTools } from './project-tools';
-import { RuntimeSessionTools } from './runtime-session-tools';
+import { executeComponentOperation } from '../utils/game-view-components';
 
 const projectTools = new ProjectTools();
-const runtimeTools = new RuntimeSessionTools();
 
 function requireText(value: unknown, name: string, max = 256): string {
     if (typeof value !== 'string' || value.trim().length === 0 || value.length > max) {
@@ -34,45 +33,29 @@ export class P4ContractTools {
         return projectTools.projectSetConfig({ path, value: args?.value });
     }
 
-    @utcpTool('particlePlayback', 'Control a named runtime particle target only through a verified runtime session; never claims editor-scene playback success.', {
+    @utcpTool('particlePlayback', 'Control one exact cc.ParticleSystem in the active Game View through finite play, stop, or clear operations with actual state read-back.', {
         type: 'object', additionalProperties: false,
         properties: {
             sessionId: { type: 'string', minLength: 1, maxLength: 64 },
             operation: { type: 'string', enum: ['play', 'stop', 'clear'] },
             nodeReference: {
-                type: 'object',
-                additionalProperties: false,
+                type: 'object', additionalProperties: false,
                 properties: { id: { type: 'string', minLength: 1, maxLength: 256 } },
                 required: ['id'],
             },
+            componentId: { type: 'string', minLength: 1, maxLength: 256 },
+            timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 },
         },
         required: ['sessionId', 'operation', 'nodeReference'],
-    }, { type: 'object', properties: { success: { type: 'boolean' } }, required: ['success'] }, 'POST', ['particle', 'playback', 'runtime'])
-    async particlePlayback(args: { sessionId?: string, operation?: string, nodeReference?: { id?: string } }): Promise<{ success: true, sessionId: string, operation: string, nodeReference: { id: string }, state: Record<string, unknown> }> {
+    }, { type: 'object', properties: { success: { type: 'boolean' }, sessionId: { type: 'string' }, targetId: { type: 'string' }, operation: { type: 'string' }, nodeReference: {}, nodeUuid: { type: 'string' }, componentId: { type: 'string' }, state: {} }, required: ['success', 'sessionId', 'targetId', 'operation', 'nodeReference', 'nodeUuid', 'componentId', 'state'] }, 'POST', ['particle', 'playback', 'runtime'])
+    async particlePlayback(args: { sessionId?: string, operation?: string, nodeReference?: { id?: string }, componentId?: string, timeoutMs?: number }): Promise<Record<string, unknown>> {
         const sessionId = requireText(args?.sessionId, 'sessionId', 64);
-        if (!args?.nodeReference?.id) {
-            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'nodeReference.id is required.' });
-        }
+        const nodeId = requireText(args?.nodeReference?.id, 'nodeReference.id');
         if (!['play', 'stop', 'clear'].includes(String(args.operation))) {
             throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'operation must be play, stop, or clear.' });
         }
-        const session = await runtimeTools.runtimeSessionLifecycle({ operation: 'inspect', sessionId });
-        if (session.ready === false) {
-            throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: `Runtime session is stopped: ${sessionId}`, recovery: 'Attach a new game-view session before particle playback.' });
-        }
-        let result: unknown;
-        try {
-            result = await Editor.Message.request('scene', 'execute-scene-script', {
-                name: 'ccp3x',
-                method: 'particlePlaybackControl',
-                args: [args.nodeReference.id, args.operation],
-            });
-        } catch (error) {
-            throw new ToolError({ code: 'PARTICLE_PLAYBACK_FAILED', status: 502, message: 'Particle runtime control failed.', details: { cause: error instanceof Error ? error.message : String(error) } });
-        }
-        if (!result || typeof result !== 'object' || !('playing' in result) || typeof result.playing !== 'boolean') {
-            throw new ToolError({ code: 'INVALID_EDITOR_RESPONSE', status: 502, message: 'Particle runtime control returned invalid state.' });
-        }
-        return { success: true, sessionId, operation: String(args.operation), nodeReference: { id: args.nodeReference.id }, state: result as Record<string, unknown> };
+        if (args.componentId !== undefined) requireText(args.componentId, 'componentId');
+        if (args.timeoutMs !== undefined && (!Number.isInteger(args.timeoutMs) || args.timeoutMs < 100 || args.timeoutMs > 3000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'timeoutMs must be an integer from 100 to 3000.' });
+        return executeComponentOperation({ kind: 'particle', operation: String(args.operation), sessionId, nodeReference: { id: nodeId }, componentId: args.componentId, timeoutMs: args.timeoutMs ?? 1000 });
     }
 }

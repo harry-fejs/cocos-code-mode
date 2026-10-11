@@ -936,7 +936,7 @@ declare namespace ccp3x {
         started: boolean;
         ended: boolean;
     }
-    /** Reserved contract only: Creator 3.7.3 has no qualified extension route into active Game View. Calls fail with UNSUPPORTED_RUNTIME_TRANSPORT. */
+    /** Session-bound Game View AudioSource control with actual state/event readback; activation/timeout uncertainty fails closed. */
     function audioPlaybackControl(args: {
         sessionId: string;
         nodeReference: { id: string };
@@ -944,8 +944,13 @@ declare namespace ccp3x {
         time?: number;
         timeoutMs?: number;
     }): AudioPlaybackResult;
-    /** Reserved contract only: runtime audio observation fails closed rather than reading the edit renderer. */
+    /** Observe actual Game View audio state without edit-renderer substitution. */
     function audioPlaybackObserve(args: { sessionId: string; nodeReference: { id: string } }): AudioPlaybackResult;
+    function skeletalAnimationPlay(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; operation: 'play' | 'pause' | 'resume' | 'stop'; timeoutMs?: number }): Record<string, unknown>;
+    function skeletalAnimationEvents(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; maxEvents?: number; timeoutMs?: number }): Record<string, unknown>;
+    function animationGraphPreview(args: { sessionId: string; nodeReference: { id: string }; componentId: string; operation: 'inspect' | 'setVariable'; variable?: { name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean }; timeoutMs?: number }): Record<string, unknown>;
+    /** Canonical descriptor/source only; no project code evaluation. Isolated pause/resume is version/API-dependent. */
+    function tweenSequenceControl(args: { operation: 'start' | 'pause' | 'resume' | 'stop' | 'inspect'; sessionId: string; filePath?: string; sequence?: unknown; timeoutMs?: number }): Record<string, unknown>;
 
     interface RuntimeSession {
         sessionId: string;
@@ -1169,11 +1174,11 @@ declare namespace ccp3x {
         sequence?: TweenSequenceDescriptor; durationSeconds?: number;
         diagnostics: Array<{ code: string; path: string; message: string }>;
         source: Record<string, unknown>; targetBinding: string;
-        runtime: { status: 'not-requested' | 'unavailable'; code?: string; message: string };
+        runtime: { status: 'not-requested' | 'unavailable' | 'verified'; code?: string; message: string };
     }
     function tweenSequenceCreate(args: { filePath: string; sequence: TweenSequenceDescriptor; write: true }): TweenSequenceInspection & { created: boolean; bytesWritten: number };
     function tweenSequenceInspect(args: { filePath: string; sequence?: never } | { sequence: TweenSequenceDescriptor; filePath?: never }): TweenSequenceInspection;
-    function tweenSequenceValidate(args: ({ filePath: string; sequence?: never } | { sequence: TweenSequenceDescriptor; filePath?: never }) & { runtime?: boolean }): TweenSequenceInspection & { valid: boolean; static: { valid: boolean; diagnostics: Array<{ code: string; path: string; message: string }>; targetChecked: boolean; generatedCode: 'canonical' | 'unsupported'; compilation: 'not-run' } };
+    function tweenSequenceValidate(args: ({ filePath: string; sequence?: never } | { sequence: TweenSequenceDescriptor; filePath?: never }) & { runtime?: boolean; sessionId?: string }): TweenSequenceInspection & { valid: boolean; runtimeBinding?: Record<string, unknown>; static: { valid: boolean; diagnostics: Array<{ code: string; path: string; message: string }>; targetChecked: boolean; generatedCode: 'canonical' | 'unsupported'; compilation: 'not-run' } };
     /** T0/T1 graph lookup. Verify a bare UUID through live tools before mutation; never mutate through a composite graph handle. */
     function graphManage(args: {
         operation: 'status' | 'build' | 'query' | 'resolve' | 'navigate' | 'refs' | 'validate';

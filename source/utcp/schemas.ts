@@ -41,6 +41,10 @@ export interface ISceneTreeItem {
     truncated?: 'maxDepth' | 'nodeLimit';
     childrenOmitted?: number;
     childrenCount?: number;
+    childOffset?: number;
+    pageSize?: number;
+    nextOffset?: number | null;
+    revision?: string;
 }
 
 // -=-=-=-=-=- Zod schemas for different result types -=-=-=-=-=-
@@ -72,7 +76,11 @@ export const SceneTreeItemSchema: JsonSchema = {
         },
         children: { type: 'array', items: { type: 'object' } },
         truncated: { type: 'string', enum: ['maxDepth', 'nodeLimit'] },
-        childrenOmitted: { type: 'number' },
-        childrenCount: { type: 'number' }
+        childrenOmitted: { type: 'integer', minimum: 0 },
+        childrenCount: { type: 'integer', minimum: 0 },
+        childOffset: { type: 'integer', minimum: 0 },
+        pageSize: { type: 'integer', minimum: 1 },
+        nextOffset: { type: ['integer', 'null'], minimum: 0 },
+        revision: { type: 'string', minLength: 1 }
     }, required: ['reference', 'children']
 };

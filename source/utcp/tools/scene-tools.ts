@@ -1,4 +1,5 @@
 import packageJSON from '../../../package.json';
+import { createHash } from 'crypto';
 import { utcpTool } from '../decorators';
 import { ISceneTreeItem, SceneTreeItemSchema, Base64ImageSchema, IBase64Image, InstanceReferenceSchema, IInstanceReference, ISuccessIndicator, SuccessIndicatorSchema } from '../schemas';
 import type { IPropertyValueType } from '@cocos/creator-types/editor/packages/scene/@types/public';
@@ -8,6 +9,8 @@ import { VERBOSE_TREE_DEPTH, VERBOSE_TREE_NODES } from '../utils/verbose';
 
 const DEFAULT_LIST_LIMIT = 200;
 const MAX_LIST_LIMIT = 2000;
+const MAX_TREE_CHILD_OFFSET = 1_000_000;
+
 const ALLOWED_COMPONENT_METHODS: Record<string, true> = {
     onLoad: true, start: true, onEnable: true, onDisable: true, onDestroy: true,
     resetInEditor: true, onFocusInEditor: true, onLostFocusInEditor: true,
@@ -1343,10 +1346,9 @@ export class SceneTools {
                 throw new Error(`Unknown clipboard operation: ${args.operation}`);
         }
     }
-
     @utcpTool(
         'nodeGetTree',
-        'Get node hierarchy tree. Defaults maxDepth=4/maxNodes=200; verbose=true raises caps to depth 99/nodes 10000. Supports fields filter. Marks truncated branches.',
+        'Get node hierarchy tree. Defaults maxDepth=4/maxNodes=200; verbose=true raises caps to depth 99/nodes 10000. Supports fields filter and bounded root-child pagination with a hierarchy revision token.',
         {
             type: 'object',
             properties: {
@@ -1354,12 +1356,15 @@ export class SceneTools {
                 maxDepth: { type: 'number', minimum: 0, maximum: VERBOSE_TREE_DEPTH, default: DEFAULT_TREE_MAX_DEPTH, description: 'Max recursion depth. 0 = root only, 1 = root + direct children.' },
                 maxNodes: { type: 'number', minimum: 1, maximum: VERBOSE_TREE_NODES, default: DEFAULT_TREE_MAX_NODES, description: 'Max descendant nodes to walk; guards wide scenes where maxDepth alone does not bound.' },
                 verbose: { type: 'boolean', description: 'When true, raises omitted caps to depth 99/nodes 10000.' },
-                fields: { type: 'array', items: { type: 'string' }, description: 'Optional: only keep these node keys per node (e.g. ["name","active","components"]). reference+children always kept. Omit for all fields.' }
+                fields: { type: 'array', items: { type: 'string' }, description: 'Optional: only keep these node keys per node (e.g. ["name","active","components"]). reference+children always kept. Omit for all fields.' },
+                childOffset: { type: 'integer', minimum: 0, maximum: MAX_TREE_CHILD_OFFSET, default: 0, description: 'Zero-based window offset among the requested root node children.' },
+                pageSize: { type: 'integer', minimum: 1, maximum: MAX_LIST_LIMIT, default: DEFAULT_LIST_LIMIT, description: 'Maximum root children in this window. Descendant depth/node budgets still apply.' },
+                expectedRevision: { type: 'string', minLength: 1, maxLength: 128, description: 'Optional hierarchy revision token from an earlier page; changed topology is rejected with 409.' }
             }
         },
-        SceneTreeItemSchema, "GET",  ['scene', 'graph', 'node', 'hierarchy', 'tree']
+        SceneTreeItemSchema, 'GET', ['scene', 'graph', 'node', 'hierarchy', 'tree']
     )
-    async nodeGetTree(args: { reference?: IInstanceReference, maxDepth?: number, maxNodes?: number, verbose?: boolean, fields?: string[] }): Promise<ISceneTreeItem> {
+    async nodeGetTree(args: { reference?: IInstanceReference, maxDepth?: number, maxNodes?: number, verbose?: boolean, fields?: string[], childOffset?: number, pageSize?: number, expectedRevision?: string }): Promise<ISceneTreeItem> {
         if (args.reference?.id && args.reference.id.includes('#')) {
             const [file, uuid] = args.reference.id.split('#');
             throw new ToolError({
@@ -1371,110 +1376,121 @@ export class SceneTools {
             });
         }
 
-        let treeBase;
-        if (args.reference) {
-             treeBase = await Editor.Message.request('scene', 'query-node-tree', args.reference.id);
-        } else {
-             treeBase = await Editor.Message.request('scene', 'query-node-tree');
-             treeBase = (await this.findPrefabEditRoot(treeBase)) ?? treeBase;
+        const maxDepth = args.maxDepth === undefined
+            ? (args.verbose ? VERBOSE_TREE_DEPTH : DEFAULT_TREE_MAX_DEPTH)
+            : args.maxDepth;
+        const maxNodes = args.maxNodes === undefined
+            ? (args.verbose ? VERBOSE_TREE_NODES : DEFAULT_TREE_MAX_NODES)
+            : args.maxNodes;
+        if (!Number.isInteger(maxDepth) || maxDepth < 0 || maxDepth > VERBOSE_TREE_DEPTH) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `maxDepth must be an integer from 0 to ${VERBOSE_TREE_DEPTH}.` });
+        }
+        if (!Number.isInteger(maxNodes) || maxNodes < 1 || maxNodes > VERBOSE_TREE_NODES) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `maxNodes must be an integer from 1 to ${VERBOSE_TREE_NODES}.` });
+        }
+        const childOffset = args.childOffset === undefined ? 0 : args.childOffset;
+        const pageSize = args.pageSize === undefined ? DEFAULT_LIST_LIMIT : args.pageSize;
+        if (!Number.isInteger(childOffset) || childOffset < 0 || childOffset > MAX_TREE_CHILD_OFFSET) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `childOffset must be an integer from 0 to ${MAX_TREE_CHILD_OFFSET}.` });
+        }
+        if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > MAX_LIST_LIMIT) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `pageSize must be an integer from 1 to ${MAX_LIST_LIMIT}.` });
+        }
+        if (args.expectedRevision !== undefined && (typeof args.expectedRevision !== 'string' || !args.expectedRevision || args.expectedRevision.length > 128)) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedRevision must be a non-empty revision token.' });
         }
 
-        if (!treeBase) {
+        let treeBase: unknown;
+        if (args.reference) {
+            treeBase = await Editor.Message.request('scene', 'query-node-tree', args.reference.id);
+        } else {
+            treeBase = await Editor.Message.request('scene', 'query-node-tree');
+            treeBase = (await this.findPrefabEditRoot(treeBase)) ?? treeBase;
+        }
+
+        if (!treeBase || typeof treeBase !== 'object' || Array.isArray(treeBase)) {
             const currentRaw = (await Editor.Message.request('scene', 'query-current-scene').catch(() => undefined)) as unknown;
             let currentSceneUuid = 'unknown';
-            if (typeof currentRaw === 'string') {
-                currentSceneUuid = currentRaw;
-            } else if (currentRaw && typeof currentRaw === 'object' && 'uuid' in currentRaw) {
-                const candidate = (currentRaw as Record<string, unknown>).uuid;
-                if (typeof candidate === 'string') currentSceneUuid = candidate;
-            }
+            if (typeof currentRaw === 'string') currentSceneUuid = currentRaw;
+            else if (currentRaw && typeof currentRaw === 'object' && typeof (currentRaw as Record<string, unknown>).uuid === 'string') currentSceneUuid = (currentRaw as Record<string, unknown>).uuid as string;
             const isRootQuery = !args.reference?.id;
             throw new ToolError({
-                code: 'TARGET_NOT_FOUND',
-                status: 404,
-                message: isRootQuery
-                    ? 'Node tree not found: no active scene or prefab is currently open in the editor.'
-                    : `Node tree not found for node "${args.reference?.id}" in the currently open scene.`,
-                details: {
-                    requestedId: args.reference?.id ?? null,
-                    currentSceneUuid
-                },
-                recovery: isRootQuery
-                    ? "Open a scene first using sceneOpen({ assetPath: 'db://assets/.../scene_name.scene' })."
-                    : "The node may belong to an unopened prefab or a different scene file. (1) Call sceneGetInfo to check the active scene. (2) If it belongs to another scene, call sceneOpen. (3) If it is inside an offline prefab, use readPrefabJson or offline cocos-graph navigate instead of live nodeGetTree."
+                code: 'TARGET_NOT_FOUND', status: 404,
+                message: isRootQuery ? 'Node tree not found: no active scene or prefab is currently open in the editor.' : `Node tree not found for node "${args.reference?.id}" in the currently open scene.`,
+                details: { requestedId: args.reference?.id ?? null, currentSceneUuid },
+                recovery: isRootQuery ? "Open a scene first using sceneOpen({ assetPath: 'db://assets/.../scene_name.scene' })." : 'Refresh the active scene and retry with a current node reference.'
             });
         }
 
-        const maxDepth = Math.min(Math.max(args.maxDepth ?? (args.verbose ? VERBOSE_TREE_DEPTH : DEFAULT_TREE_MAX_DEPTH), 0), VERBOSE_TREE_DEPTH);
-        const maxNodes = Math.min(Math.max(args.maxNodes ?? (args.verbose ? VERBOSE_TREE_NODES : DEFAULT_TREE_MAX_NODES), 1), VERBOSE_TREE_NODES);
+        const root = treeBase as Record<string, unknown>;
+        const rawChildren = Array.isArray(root.children) ? root.children : [];
+        if (childOffset > rawChildren.length) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `childOffset ${childOffset} is outside the root child range 0-${rawChildren.length}.`, details: { childOffset, childrenCount: rawChildren.length } });
+        }
+        const topology = (node: unknown): unknown => {
+            if (!node || typeof node !== 'object' || Array.isArray(node)) return { id: null, children: [] };
+            const value = node as Record<string, unknown>;
+            const children = Array.isArray(value.children) ? value.children : [];
+            return { id: typeof value.uuid === 'string' ? value.uuid : null, children: children.map(topology) };
+        };
+        const currentRaw = (await Editor.Message.request('scene', 'query-current-scene').catch(() => undefined)) as unknown;
+        const sceneUuid = typeof currentRaw === 'string' ? currentRaw : currentRaw && typeof currentRaw === 'object' && typeof (currentRaw as Record<string, unknown>).uuid === 'string' ? (currentRaw as Record<string, unknown>).uuid as string : '';
+        const revision = createHash('sha256').update(JSON.stringify({ sceneUuid, root: topology(root) })).digest('hex');
+        if (args.expectedRevision !== undefined && args.expectedRevision !== revision) {
+            throw new ToolError({ code: 'HIERARCHY_REVISION_CONFLICT', status: 409, message: 'Scene hierarchy changed since the requested revision; page was not returned.', details: { expectedRevision: args.expectedRevision, actualRevision: revision, reference: args.reference ?? null } });
+        }
+
         const budget = { left: maxNodes };
-
-        const formatNode = (node: any, depth: number): ISceneTreeItem => {
-
-           // ponytail: depth cap — stop recursion past maxDepth, return empty children.
-           const atMaxDepth = depth >= maxDepth;
-
-           // ponytail: field whitelist — reference+children always kept so the
-           // tree stays navigable; others only if user asked or no filter set.
-           const fieldSet = args.fields && args.fields.length > 0 ? new Set(args.fields) : null;
-           const want = (k: string) => !fieldSet || fieldSet.has(k);
-
-           let children: ISceneTreeItem[] = [];
-           let truncated: string | undefined;
-           let childrenOmitted: number | undefined;
-           let childrenCount: number | undefined;
-
-           if (!atMaxDepth) {
-               const rawChildren: any[] = node.children || [];
-               if (rawChildren.length > 0) {
-                   childrenCount = rawChildren.length;
-                   for (let i = 0; i < rawChildren.length; i++) {
-                       if (budget.left <= 0) {
-                           truncated = 'nodeLimit';
-                           childrenOmitted = rawChildren.length - i;
-                           break;
-                       }
-                       budget.left--;
-                       children.push(formatNode(rawChildren[i], depth + 1));
-                   }
-               }
-           } else if (node.children && node.children.length > 0) {
-               truncated = 'maxDepth';
-               childrenOmitted = node.children.length;
-               childrenCount = node.children.length;
-           }
-
-           const item: any = {
-                reference: { id: node.uuid, type: 'cc.Node' },
-                children: children
-           };
-           if (want('name')) item.name = node.name;
-           if (want('active')) item.active = node.active;
-           if (want('components')) {
-               item.components = node.components ? node.components.map((c: any) => {
-                   const id = componentUuid(c);
-                   const type = componentClassId(c);
-                   if (!id || !type) {
-                       throw new ToolError({
-                           code: 'INVALID_RESPONSE',
-                           status: 502,
-                           message: `nodeGetTree received a component without authoritative uuid/type on node ${node.uuid ?? 'unknown'}.`,
-                           details: { nodeUuid: node.uuid ?? null, component: c },
-                           recovery: 'Refresh the scene and retry; inspect the raw Creator node dump for schema drift.',
-                       });
-                   }
-                   return { reference: { id, type } };
-               }) : [];
-           }
-           if (node.path && want('path')) item.path = node.path;
-           if (truncated) (item as any).truncated = truncated;
-           if (childrenOmitted !== undefined) (item as any).childrenOmitted = childrenOmitted;
-           if (childrenCount !== undefined) (item as any).childrenCount = childrenCount;
-           return item as ISceneTreeItem;
+        const fieldSet = args.fields && args.fields.length > 0 ? new Set(args.fields) : null;
+        const want = (key: string) => !fieldSet || fieldSet.has(key);
+        const formatNode = (nodeValue: unknown, depth: number): ISceneTreeItem => {
+            const node = nodeValue as Record<string, unknown>;
+            const atMaxDepth = depth >= maxDepth;
+            const descendants = Array.isArray(node.children) ? node.children : [];
+            const children: ISceneTreeItem[] = [];
+            let truncated: 'maxDepth' | 'nodeLimit' | undefined;
+            let childrenOmitted: number | undefined;
+            if (atMaxDepth && descendants.length > 0) {
+                truncated = 'maxDepth';
+                childrenOmitted = descendants.length;
+            } else if (!atMaxDepth) {
+                for (let index = 0; index < descendants.length; index += 1) {
+                    if (budget.left <= 0) { truncated = 'nodeLimit'; childrenOmitted = descendants.length - index; break; }
+                    budget.left -= 1;
+                    children.push(formatNode(descendants[index], depth + 1));
+                }
+            }
+            const item: ISceneTreeItem = {
+                reference: { id: typeof node.uuid === 'string' ? node.uuid : '', type: 'cc.Node' },
+                children,
+            };
+            if (want('name') && (typeof node.name === 'string' || (node.name && typeof node.name === 'object'))) item.name = typeof node.name === 'string' ? node.name : String((node.name as Record<string, unknown>).value ?? '');
+            if (want('active') && typeof node.active === 'boolean') item.active = node.active;
+            if (want('components')) {
+                const components = Array.isArray(node.components) ? node.components : [];
+                item.components = components.map((component: unknown) => {
+                    const row = component && typeof component === 'object' ? component as Record<string, unknown> : {};
+                    const id = componentUuid(component);
+                    const type = componentClassId(component);
+                    if (!id || !type) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: `nodeGetTree received a component without authoritative uuid/type on node ${typeof node.uuid === 'string' ? node.uuid : 'unknown'}.`, details: { nodeUuid: node.uuid ?? null, component: row }, recovery: 'Refresh the scene and retry; inspect the raw Creator node dump for schema drift.' });
+                    return { id, type };
+                });
+            }
+            if (want('path') && typeof node.path === 'string') item.path = node.path;
+            if (truncated) item.truncated = truncated;
+            if (childrenOmitted !== undefined) item.childrenOmitted = childrenOmitted;
+            return item;
         };
 
-        const result: ISceneTreeItem = formatNode(treeBase, 0);
-        if (treeBase.path) result.path = (treeBase as any).path;
+        const pageEnd = Math.min(rawChildren.length, childOffset + pageSize);
+        const selectedChildren = rawChildren.slice(childOffset, pageEnd);
+        const rootForFormatting: Record<string, unknown> = { ...root, children: selectedChildren };
+        const result = formatNode(rootForFormatting, 0);
+        result.childrenCount = rawChildren.length;
+        result.childOffset = childOffset;
+        result.pageSize = pageSize;
+        result.nextOffset = pageEnd < rawChildren.length ? pageEnd : null;
+        result.revision = revision;
         return result;
     }
 

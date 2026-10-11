@@ -1,0 +1,9 @@
+{
+  "date":"2026-10-12",
+  "hierarchy":{"implementation":"nodeGetTree childOffset/pageSize/expectedRevision/childrenCount/nextOffset/revision","verification":"scene-authoring-contracts pagination/revision suite 36/36; build/Creator-load pass","defaultCompatibility":"depth4/nodes200 retained"},
+  "tilemap":{"implementation":"bounded deterministic TMX source generation/import/readback/validation, explicit write, no native asset claim","verification":"build/typecheck pass; live fixture requirement remains existing image asset + writable assets path + Creator importer; no positive fixture replay claimed","registration":"utcp-server import present"},
+  "creator38":{"evidence":"reports/creator38-project-config-qualification-20261012.json","projectWriter":"positive readback and restoration pass on Creator3.8.8","terrainParticleLightProbe":"undefined; no unsupported native claim"},
+  "localizationBundle":{"evidence":"reports/localization-bundle-prerequisite-audit-20261012.json","status":"blocked: missing localization package/resource and zero bundle assets"},
+  "noPortfolioPromotion":true,
+  "protectedRelease":"excluded by explicit owner choice; no signing/trust/publish action"
+}

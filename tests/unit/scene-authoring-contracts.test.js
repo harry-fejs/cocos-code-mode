@@ -125,11 +125,15 @@ describe('scene inspection identity contracts', () => {
       if (message === 'query-current-scene') return null;
       throw new Error(`unexpected ${message}`);
     } } };
-    assert.deepEqual(await new SceneTools().nodeGetTree({ fields: ['components'] }), {
-      reference: { id: 'root', type: 'cc.Node' },
-      components: [{ reference: { id: 'comp-1', type: 'cc.Label' } }],
-      children: [],
-    });
+    const result = await new SceneTools().nodeGetTree({ fields: ['components'] });
+    assert.deepEqual(result.reference, { id: 'root', type: 'cc.Node' });
+    assert.deepEqual(result.components, [{ id: 'comp-1', type: 'cc.Label' }]);
+    assert.deepEqual(result.children, []);
+    assert.equal(result.childrenCount, 0);
+    assert.equal(result.childOffset, 0);
+    assert.equal(result.pageSize, 200);
+    assert.equal(result.nextOffset, null);
+    assert.match(result.revision, /^[a-f0-9]{64}$/);
   });
   it('nodeGetTree accepts Creator 3.7 scalar component UUID dumps', async () => {
     global.Editor = { Message: { request: async (_module, message) => {
@@ -139,11 +143,56 @@ describe('scene inspection identity contracts', () => {
       if (message === 'query-current-scene') return null;
       throw new Error(`unexpected ${message}`);
     } } };
-    assert.deepEqual(await new SceneTools().nodeGetTree({ fields: ['components'] }), {
-      reference: { id: 'root', type: 'cc.Node' },
-      components: [{ reference: { id: 'component-3x7', type: 'cc.DirectionalLight' } }],
-      children: [],
-    });
+    const result = await new SceneTools().nodeGetTree({ fields: ['components'] });
+    assert.deepEqual(result.reference, { id: 'root', type: 'cc.Node' });
+    assert.deepEqual(result.components, [{ id: 'component-3x7', type: 'cc.DirectionalLight' }]);
+    assert.deepEqual(result.children, []);
+    assert.equal(result.childrenCount, 0);
+    assert.equal(result.childOffset, 0);
+    assert.equal(result.pageSize, 200);
+    assert.equal(result.nextOffset, null);
+    assert.match(result.revision, /^[a-f0-9]{64}$/);
+  });
+  it('pages root children in native order with a stable revision token', async () => {
+    const tree = { uuid: 'root', name: 'Root', children: [
+      { uuid: 'a', name: 'A', children: [] },
+      { uuid: 'b', name: 'B', children: [] },
+      { uuid: 'c', name: 'C', children: [] },
+    ] };
+    global.Editor = { Message: { request: async (_module, message) => {
+      if (message === 'query-node-tree') return tree;
+      if (message === 'query-current-scene') return { uuid: 'scene-1' };
+      if (_module === 'asset-db' && message === 'query-asset-info') return null;
+      throw new Error(`unexpected ${message}`);
+    } } };
+    const tools = new SceneTools();
+    const first = await tools.nodeGetTree({ pageSize: 2 });
+    assert.deepEqual(first.children.map((item) => item.reference.id), ['a', 'b']);
+    assert.equal(first.childrenCount, 3);
+    assert.equal(first.childOffset, 0);
+    assert.equal(first.pageSize, 2);
+    assert.equal(first.nextOffset, 2);
+    assert.match(first.revision, /^[a-f0-9]{64}$/);
+    const second = await tools.nodeGetTree({ childOffset: first.nextOffset, pageSize: 2, expectedRevision: first.revision });
+    assert.deepEqual(second.children.map((item) => item.reference.id), ['c']);
+    assert.equal(second.nextOffset, null);
+  });
+
+  it('rejects a page when the hierarchy revision changes', async () => {
+    let tree = { uuid: 'root', name: 'Root', children: [{ uuid: 'a', name: 'A', children: [] }] };
+    global.Editor = { Message: { request: async (_module, message) => {
+      if (message === 'query-node-tree') return tree;
+      if (message === 'query-current-scene') return { uuid: 'scene-1' };
+      if (_module === 'asset-db' && message === 'query-asset-info') return null;
+      throw new Error(`unexpected ${message}`);
+    } } };
+    const tools = new SceneTools();
+    const first = await tools.nodeGetTree({ pageSize: 1 });
+    tree = { uuid: 'root', name: 'Root', children: [{ uuid: 'b', name: 'B', children: [] }] };
+    await assert.rejects(
+      tools.nodeGetTree({ childOffset: 0, pageSize: 1, expectedRevision: first.revision }),
+      (error) => error.code === 'HIERARCHY_REVISION_CONFLICT' && error.status === 409,
+    );
   });
 
   it('nodeComponentsGet rejects a matched component missing authoritative type', async () => {

@@ -211,12 +211,11 @@ describe('audio public runtime-session boundary', () => {
     assert.deepEqual(stopped.calls, []);
   });
 
-  it('fails closed without dispatching edit-renderer audio requests', async () => {
+  it('uses the Game View operation boundary instead of edit-renderer IPC', async () => {
     const context = installTools({ success: true });
-    await assert.rejects(context.tools.audioPlaybackControl({ ...context.args, operation: 'play' }),
-      (e) => e instanceof ToolError && e.code === 'UNSUPPORTED_RUNTIME_TRANSPORT' && e.status === 422);
-    await assert.rejects(context.tools.audioPlaybackObserve(context.args),
-      (e) => e instanceof ToolError && e.code === 'UNSUPPORTED_RUNTIME_TRANSPORT' && e.status === 422);
+    const expected = ['AUDIO_TRANSPORT_UNAVAILABLE', 'RUNTIME_CONTROL_UNAVAILABLE', 'UNSUPPORTED_RUNTIME_TRANSPORT', 'RUNTIME_NOT_READY'];
+    await assert.rejects(context.tools.audioPlaybackControl({ ...context.args, operation: 'play' }), (e) => e instanceof ToolError && expected.includes(e.code));
+    await assert.rejects(context.tools.audioPlaybackObserve(context.args), (e) => e instanceof ToolError && expected.includes(e.code));
     assert.deepEqual(context.calls, []);
   });
 

@@ -28,12 +28,28 @@ export const TweenInspectionSchema: JsonSchema = {
         sequence: TweenSequenceSchema, durationSeconds: { type: 'number' }, diagnostics,
         source: { type: 'object', additionalProperties: false, properties: { kind: { type: 'string', enum: ['descriptor', 'typescript'] }, filePath: { type: 'string' }, assetUrl: { type: 'string' }, uuid: { type: 'string' }, sha256: { type: 'string' }, bytes: { type: 'integer' }, descriptorLine: { type: 'integer' } }, required: ['kind'] },
         targetBinding: { type: 'string', enum: ['Assign the generated component target in the Inspector; descriptor identity is static authoring intent, not runtime binding evidence.'] },
-        runtime: { type: 'object', additionalProperties: false, properties: { status: { type: 'string', enum: ['not-requested', 'unavailable'] }, code: { type: 'string' }, message: { type: 'string' } }, required: ['status', 'message'] },
+        runtime: { type: 'object', additionalProperties: false, properties: { status: { type: 'string', enum: ['not-requested', 'unavailable', 'verified'] }, code: { type: 'string' }, message: { type: 'string' } }, required: ['status', 'message'] },
     }, required: ['representation', 'nativeAsset', 'inspectable', 'diagnostics', 'source', 'targetBinding', 'runtime'],
 };
 export const TweenCreateOutputSchema: JsonSchema = { ...TweenInspectionSchema, properties: { ...TweenInspectionSchema.properties, created: { type: 'boolean' }, bytesWritten: { type: 'integer' } }, required: [...TweenInspectionSchema.required as string[], 'created', 'bytesWritten'] };
 export const TweenValidationSchema: JsonSchema = {
     type: 'object', additionalProperties: false,
-    properties: { ...TweenInspectionSchema.properties, valid: { type: 'boolean' }, static: { type: 'object', additionalProperties: false, properties: { valid: { type: 'boolean' }, diagnostics, targetChecked: { type: 'boolean' }, generatedCode: { type: 'string', enum: ['canonical', 'unsupported'] }, compilation: { type: 'string', enum: ['not-run'] } }, required: ['valid', 'diagnostics', 'targetChecked', 'generatedCode', 'compilation'] } },
+    properties: { ...TweenInspectionSchema.properties, valid: { type: 'boolean' }, runtimeBinding: { type: 'object' }, static: { type: 'object', additionalProperties: false, properties: { valid: { type: 'boolean' }, diagnostics, targetChecked: { type: 'boolean' }, generatedCode: { type: 'string', enum: ['canonical', 'unsupported'] }, compilation: { type: 'string', enum: ['not-run'] } }, required: ['valid', 'diagnostics', 'targetChecked', 'generatedCode', 'compilation'] } },
     required: [...TweenInspectionSchema.required as string[], 'valid', 'static'],
+};
+
+const tweenRuntimeState: JsonSchema = {
+    type: 'object', additionalProperties: false,
+    properties: {
+        sessionId: { type: 'string' }, sceneUuid: { type: 'string' }, sequenceId: { type: 'string' }, nodeId: { type: 'string' },
+        status: { type: 'string', enum: ['not-started', 'running', 'paused', 'completed', 'stopped', 'invalidated'] },
+        elapsedSeconds: { type: ['number', 'null'] }, durationSeconds: { type: 'number' },
+        transform: { type: 'object', additionalProperties: false, properties: { position: { oneOf: [vector, { type: 'null' }] }, scale: { oneOf: [vector, { type: 'null' }] }, eulerAngles: { oneOf: [vector, { type: 'null' }] } }, required: ['position', 'scale', 'eulerAngles'] },
+        capabilities: { type: 'object', additionalProperties: false, properties: { pause: { type: 'boolean' }, resume: { type: 'boolean' } }, required: ['pause', 'resume'] },
+    }, required: ['sessionId', 'sceneUuid', 'sequenceId', 'nodeId', 'status', 'elapsedSeconds', 'durationSeconds', 'transform', 'capabilities'],
+};
+export const TweenControlOutputSchema: JsonSchema = {
+    type: 'object', additionalProperties: false,
+    properties: { success: { type: 'boolean', enum: [true] }, operation: { type: 'string', enum: ['start', 'pause', 'resume', 'stop', 'inspect'] }, session: { type: 'object' }, runtime: tweenRuntimeState, static: { type: 'object' } },
+    required: ['success', 'operation', 'session', 'runtime', 'static'],
 };

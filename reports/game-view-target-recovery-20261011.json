@@ -1,0 +1,9 @@
+{
+  "date":"2026-10-11",
+  "scope":"CCP runtime target mismatch reporting and explicit recovery; no gameplay source changes",
+  "change":"When dispatched start/control exposes a different runtime scene, return RUNTIME_TARGET_CHANGED immediately with expectedTargetId and actualSceneUuid rather than waiting for readiness timeout. Retain unknown-outcome safety. Pending reconciliation binds to observed native scene postcondition; explicit state read permits subsequent attach/stop without another start or rebinding stale handles.",
+  "verification":{"buildCreatorLoad":true,"focusedRuntimeTransportTests":24,"focusedFailures":0,"compiledLifecycleRegressionTests":20,"fullUnitAttempt":"runner timed out; no full-suite pass claimed"},
+  "regression":"Start expected-scene observes actual-scene; one start only; another start refuses busy; explicit state observes actual target; explicit attach and stop succeed; exact dispatch list contains one start and one stop.",
+  "remaining":["Native game startup exceeding explicit20s deadline is not eliminated by this change; never infer readiness before actual renderer proof.","Installed Creator must reload for current compiled correction; no live owner-project mutation/restart performed.","Audio/particle/skeletal/animation-graph/localization finite runtime routes remain separate development backlog.","No ledger qualification/count/threshold change."],
+  "committed":false
+}

@@ -1,0 +1,12 @@
+{
+  "date":"2026-10-12",
+  "creator":"3.8.8",
+  "project":"G:/_ws/_helpers/cc-minimal-388",
+  "namespace":"ccp3x_55175",
+  "build":{"commit":"2dd117b","dirty":true,"builtAt":"2026-10-11T17:52:33.981Z"},
+  "handshake":{"projectMatches":true,"responsive":true,"sceneReady":true},
+  "projectSetConfig":{"path":"general.designResolution","before":{"width":1280,"height":720,"fitWidth":true,"fitHeight":false},"write":{"width":1024,"height":576,"fitWidth":false,"fitHeight":true},"readBackMatches":true,"restored":true,"finalMatchesBefore":true},
+  "engineProbe":{"Terrain":"undefined","ParticleSystem":"undefined","LightProbeInfo":"undefined","SceneGlobals":true},
+  "scope":"Creator3.8 project writer qualified; native Terrain/ParticleSystem/LightProbeInfo APIs absent in this environment, no claims made.",
+  "limitations":["Dirty development artifact","No portfolio promotion or threshold change","No protected release action"]
+}
