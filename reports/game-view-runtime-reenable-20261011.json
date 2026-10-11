@@ -1,0 +1,225 @@
+{
+  "date": "2026-10-11",
+  "scope": "Actual Game View lifecycle/state/pause/step/resume/time-scale; component playback not qualified",
+  "artifact": {
+    "version": "2.1.0",
+    "commit": "86ba601",
+    "branch": "feat/cocos-pilot-api-capability-expansion",
+    "dirty": true,
+    "builtAt": "2026-10-11T15:07:27.703Z",
+    "mode": "readable"
+  },
+  "creator": "3.7.3 hybrid with official3.7.4 engine-native",
+  "project": "G:/_ws/_helpers/ccp3x-api-qualification-20261011",
+  "cycles": [
+    {
+      "cycle": 1,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 12,
+      "stepAfter": 14,
+      "stopped": true
+    },
+    {
+      "cycle": 2,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 14,
+      "stepAfter": 16,
+      "stopped": true
+    },
+    {
+      "cycle": 3,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 13,
+      "stepAfter": 15,
+      "stopped": true
+    },
+    {
+      "cycle": 4,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 14,
+      "stepAfter": 16,
+      "stopped": true
+    },
+    {
+      "cycle": 5,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 13,
+      "stepAfter": 16,
+      "stopped": true
+    },
+    {
+      "cycle": 6,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 12,
+      "stepAfter": 14,
+      "stopped": true
+    },
+    {
+      "cycle": 7,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 12,
+      "stepAfter": 14,
+      "stopped": true
+    },
+    {
+      "cycle": 8,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 14,
+      "stepAfter": 16,
+      "stopped": true
+    },
+    {
+      "cycle": 9,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 12,
+      "stepAfter": 14,
+      "stopped": true
+    },
+    {
+      "cycle": 10,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 13,
+      "stepAfter": 16,
+      "stopped": true
+    },
+    {
+      "cycle": 11,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 13,
+      "stepAfter": 16,
+      "stopped": true
+    },
+    {
+      "cycle": 12,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 12,
+      "stepAfter": 14,
+      "stopped": true
+    },
+    {
+      "cycle": 13,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 12,
+      "stepAfter": 14,
+      "stopped": true
+    },
+    {
+      "cycle": 14,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 12,
+      "stepAfter": 14,
+      "stopped": true
+    },
+    {
+      "cycle": 15,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 13,
+      "stepAfter": 15,
+      "stopped": true
+    },
+    {
+      "cycle": 16,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 14,
+      "stepAfter": 16,
+      "stopped": true
+    },
+    {
+      "cycle": 17,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 14,
+      "stepAfter": 16,
+      "stopped": true
+    },
+    {
+      "cycle": 18,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 14,
+      "stepAfter": 16,
+      "stopped": true
+    },
+    {
+      "cycle": 19,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 15,
+      "stepAfter": 18,
+      "stopped": true
+    },
+    {
+      "cycle": 20,
+      "scene": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+      "stepBefore": 14,
+      "stepAfter": 17,
+      "stopped": true
+    }
+  ],
+  "negative": [
+    {
+      "name": "runtimeStateObserve",
+      "status": 404,
+      "code": "SESSION_NOT_FOUND"
+    },
+    {
+      "name": "runtimeSessionLifecycle",
+      "status": 422,
+      "code": "UNSUPPORTED_RUNTIME_TRANSPORT"
+    },
+    {
+      "name": "runtimePause",
+      "status": 409,
+      "code": "RUNTIME_NOT_READY"
+    },
+    {
+      "name": "runtimeSetTimeScale",
+      "status": 400
+    },
+    {
+      "name": "runtimeGetState",
+      "status": 409,
+      "code": "RUNTIME_NOT_READY"
+    }
+  ],
+  "finalScene": {
+    "bounds": {
+      "x": 424.75,
+      "y": 74,
+      "width": 845.5,
+      "height": 690,
+      "top": 74,
+      "right": 1270.25,
+      "bottom": 764,
+      "left": 424.75
+    },
+    "uuid": "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+    "dirty": false,
+    "isDirty": false,
+    "nodeCount": 3,
+    "currentScene": {
+      "uuid": "c77ecaa8-c936-46c4-a5b0-98692673ed87"
+    }
+  },
+  "verification": {
+    "buildCreatorLoad": true,
+    "fullUnitBeforeFinalRaceFix": 699,
+    "focusedFinal": 22,
+    "fullUnitFinal": 701
+  },
+  "racesFixed": [
+    "stop transient phase/isPaused mismatch",
+    "next start while preview renderer reloads"
+  ],
+  "limitations": [
+    "dirty readable artifact, not clean release",
+    "audio/particle/skeletal/graph playback/localization runtime remain unsupported/unqualified",
+    "MCP long-chain timed out30s; actual outcomes reconciled before serialized HTTP evidence run",
+    "No portfolio promotion"
+  ],
+  "cleanup": {
+    "previewStopped": true,
+    "sessionHandlesReset": true,
+    "sceneClean": true,
+    "remainingAssets": [],
+    "ownedCreatorStopped": true
+  },
+  "actualScope": "20 serialized HTTP public-tool cycles; start,observe,pause,step,timeScale,restore,resume,wait,assert,stop,inspectStopped,reset. Attach/scenario composition covered by existing unit paths, not separate live calls."
+}

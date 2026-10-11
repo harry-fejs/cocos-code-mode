@@ -52,7 +52,7 @@ Private source maps live in ignored `.debug-maps/`, outside runtime `dist` and p
 | **Diagnostics** (2) | `runScriptDiagnostics`, `getScriptDiagnosticContext` | TS compile check + source snippets for error triage |
 | **Files** (6) | `projectReadFile`, `projectWriteFile`, `projectSearchFiles`, `projectReplaceInFile`, `projectFileExists`, `projectListDirectory` | Project-scoped file ops with path-safety |
 | **UI** (4) | `createUiNode`, `createLabel`, `createButton`, `createSprite` | Create UI nodes from internal prefabs (Canvas/Label/Button/Sprite/etc.) |
-| **Runtime** (4) | `runtimePause`, `runtimeResume`, `runtimeSetTimeScale`, `runtimeGetState` | Pause/resume game loop, time scale control |
+| **Runtime** | `runtimeSessionLifecycle`, `runtimePreviewControl`, `runtimePause`, `runtimeResume`, `runtimeSetTimeScale`, `runtimeGetState`, state wait/assert/scenario helpers | Actual Creator Game View renderer; bounded lifecycle and verified state/time scale, never edit-renderer metrics |
 | **Batch** (3) | `nodeBatchSet` + `sceneBatchGet`*, `assetBatchQuery` | Batch writes/reads (single snapshot / 1 HTTP). *`fields` filter |
 | **Validation** (2) | `getPerformanceSnapshot`, `validateScene` | Scene health + perf counters |
 | **Snapshot** (1) | `sceneSnapshot` | Full dump/diff (unbounded, fields filter) |
@@ -63,6 +63,12 @@ Private source maps live in ignored `.debug-maps/`, outside runtime `dist` and p
 | **Input Sim** (4) | `simulateKeyPress`, `simulateKeyCombo`, `simulateMouseClick`, `simulateMouseDrag` | Electron webContents input |
 | **Screenshot** (3) | `captureSceneScreenshot`, `captureEditorScreenshot`, `listEditorWindows` | Scene/editor capture, window listing |
 | **Consolidated** (10) | `inspectorGet/Set/Definition`, `nodeComponentManage`, `editorQuery`, `sceneManage`, `previewManage`, `programManage`, `projectManage`, `buildManage` | Replaces 26 legacy — now the only surface |
+
+### Game View runtime (Creator 3.7.3)
+
+Select **Game View** in the Creator preview toolbar before starting. `runtimeSessionLifecycle({operation:'start',targetKind:'game-view'})` returns a session bound to the actual runtime scene. Use its sessionId for pause/resume/step, observation, wait/assert and stop; reset releases only the local handle. Start waits boundedly for the selected preview renderer to finish reloading. Step requires pause and proves frame advancement.
+
+`runtimeGetState` fails `RUNTIME_NOT_READY` when stopped; unavailable frame/time-scale metrics are null, never fabricated. Time scale accepts finite 0..10 and verifies the actual Game View scheduler. Scene/renderer identity changes fail closed. An ambiguous dispatched lifecycle outcome blocks further mutations until explicit `runtimePreviewControl({operation:'state'})` reconciles settled request and native postcondition; do not blindly retry. Runtime audio/particle/skeletal/animation-graph/localization playback and browser/simulator transports are not qualified by lifecycle support. Current evidence: `reports/game-view-runtime-reenable-20261011.json` (dirty readable hybrid Creator artifact, not clean release qualification).
 
 * QA: `scripts/smoke-utcp.js` (expects 88) · Perf: `a769a46` bench + `e419276` trim.
 

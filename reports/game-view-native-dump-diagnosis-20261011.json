@@ -1,0 +1,15 @@
+{
+  "date":"2026-10-11",
+  "project":"G:/_ws/cc-30-fw-sync/cc30-new-aio-sync",
+  "sourceLog":"temp/logs/project.log",
+  "chronology":[{"time":"22:40:34","event":"runtime start timeout"},{"time":"22:40:38","event":"LOGIN_IFRAME and IS_FINISHED_REMOTE config-null gameplay errors"},{"time":"22:41:00","event":"native preview stop and encodeNode map-null history snapshot error"},{"time":"22:41:11","event":"original editor scene restored clean"}],
+  "nativeEncoderFields":["node.children.map","node._components.map"],
+  "nativeExit":"PreviewSceneFacade.exit awaits previewPlay.stop (softReloadScene), then resets history; GeneralSceneFacade.enter calls snapshot around state patch. No owned CCP snapshot call is present in runtime lifecycle.",
+  "confirmedProjectBug":"LoadModuleConfigAsync initializes dataUpdate=null then init returns whenever CC_EDITOR=true. Game View runs in editor; runtime consumers destructure missing config.",
+  "changedFile":"assets/cc-common/cc30-slot-module/Components/loadModuleConfigAsync.ts",
+  "change":"Skip init only for authoring (CC_EDITOR && !actual cc.GAME_VIEW); retain normal runtime config/decryption/loading.",
+  "verification":{"actualInitMethodTranspiledAndExecuted":true,"authoringRemainsNull":true,"gameViewConfigInitialized":true,"webConfigInitialized":true,"runtimeFinishedRemoteTrue":true},
+  "nativeSnapshotStatus":"Not fixed or attributed to config bug. Current live/history cache scans have no malformed node; exact failing node and transition validity still unavailable. No patch/suppression/coercion of native encoder/history.",
+  "pending":"Live Game View reload/init and snapshot recheck after script compilation; no repeated production preview run performed in this step.",
+  "committed":false
+}

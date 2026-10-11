@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-11",
+  "project": "G:/_ws/cc-30-fw-sync/cc30-new-aio-sync",
+  "namespace": "ccp3x_56398",
+  "instance": "d53043960df43ac41452ea13cf619ed1",
+  "loadedBuild": {"commit":"86ba601","dirty":true,"builtAt":"2026-10-11T15:07:27.703Z","mode":"readable"},
+  "handshake": {"projectMatches":true,"responsive":true,"sceneReady":true},
+  "scene": {"uuid":"1d918508-587a-46b4-b4a1-cb800f0ac03c","nodes":390,"dirtyBefore":false,"dirtyAfter":false},
+  "popup": {"detected":false,"blocking":false,"complete":true,"unavailable":[]},
+  "observedBug": "Unselected unloaded ENGINE-VIEW omits platform; installed inspection returned UNSUPPORTED_RUNTIME_TRANSPORT instead of stopped/unselected state.",
+  "fix": "Missing/null platform accepted only for disabled and unloaded host; enabled malformed host remains unsupported. Missing platform normalizes to empty string, not invented gameView.",
+  "verification": {"buildCreatorLoad":true,"focusedTestsPassed":23,"liveFreshCompiledTransport":{"running":false,"platform":"","enabled":false,"ready":false,"loaded":false,"failed":false,"sceneUuid":""}},
+  "installedRetest": {"instance":"e1da97c8a4d3dc8487f5f1b7a83d8aa8","builtAt":"2026-10-11T15:27:49.604Z","publicTool":"runtimePreviewControl","operation":"state","success":true,"preview":{"state":"stop","platform":"","enabled":false,"ready":false},"sceneDirtyAfter":false,"nodesAfter":390},
+  "limitations": ["Installed public state correction verified after owner reload; Game View remains unselected/unloaded.","No preview platform selection, start/stop, scene mutation, save/discard or restart performed on owner project.","No component playback promotion."],
+  "committed": false
+}

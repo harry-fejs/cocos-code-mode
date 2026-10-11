@@ -414,11 +414,18 @@ describe('live: read-only endpoint qualification', () => {
 
   it('runtimeGetState returns typed runtime state', async (t) => {
     if (skipIfDown(t)) return;
+    const preview = await postTool('runtimePreviewControl', { operation: 'state' });
+    assert.equal(preview.status, 200, JSON.stringify(preview.body));
     const result = await getJson('/tools/runtimeGetState');
-    assert.equal(result.status, 200, JSON.stringify(result.body));
-    assert.equal(typeof result.body.paused, 'boolean');
-    assert.ok(result.body.timeScale === null || typeof result.body.timeScale === 'number');
-    assert.ok(result.body.frameCount === null || typeof result.body.frameCount === 'number');
+    if (!preview.body.ready) {
+      assert.equal(result.status, 409, JSON.stringify(result.body));
+      assert.equal(result.body.code, 'RUNTIME_NOT_READY');
+    } else {
+      assert.equal(result.status, 200, JSON.stringify(result.body));
+      assert.equal(typeof result.body.paused, 'boolean');
+      assert.ok(result.body.timeScale === null || typeof result.body.timeScale === 'number');
+      assert.ok(result.body.frameCount === null || typeof result.body.frameCount === 'number');
+    }
   });
   it('Creator 3.7 runtime pause and resume change the live preview paused flag', async (t) => {
     if (skipIfDown(t)) return;
@@ -555,25 +562,36 @@ describe('live: read-only endpoint qualification', () => {
 
   it('Creator 3.7 runtime and editor control APIs return observable outcomes', async (t) => {
     if (skipIfDown(t)) return;
-    const state = await getJson('/tools/runtimeGetState');
-    assert.equal(state.status, 200);
-    assert.equal(typeof state.body.timeScale, 'number');
-
-    const slowed = await getJson('/tools/runtimeSetTimeScale', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ scale: 0.5 }),
-    });
-    assert.equal(slowed.status, 200);
-    assert.equal(slowed.body.success, true);
-    assert.equal(slowed.body.scale, 0.5);
-    const restored = await getJson('/tools/runtimeSetTimeScale', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ scale: 1 }),
-    });
-    assert.equal(restored.status, 200);
-    assert.equal(restored.body.scale, 1);
+    const beforePreview = await postTool('runtimePreviewControl', { operation: 'state' });
+    assert.equal(beforePreview.status, 200, JSON.stringify(beforePreview.body));
+    const started = await postTool('runtimePreviewControl', { operation: 'start' });
+    assert.equal(started.status, 200, JSON.stringify(started.body));
+    let originalScale;
+    try {
+      const state = await getJson('/tools/runtimeGetState');
+      assert.equal(state.status, 200, JSON.stringify(state.body));
+      originalScale = state.body.timeScale;
+      assert.equal(typeof originalScale, 'number');
+      const slowed = await postTool('runtimeSetTimeScale', { scale: 0.5 });
+      assert.equal(slowed.status, 200, JSON.stringify(slowed.body));
+      assert.equal(slowed.body.success, true);
+      assert.equal(slowed.body.scale, 0.5);
+      const observed = await getJson('/tools/runtimeGetState');
+      assert.equal(observed.status, 200, JSON.stringify(observed.body));
+      assert.equal(observed.body.timeScale, 0.5);
+    } finally {
+      if (typeof originalScale === 'number') {
+        const restored = await postTool('runtimeSetTimeScale', { scale: originalScale });
+        assert.equal(restored.status, 200, JSON.stringify(restored.body));
+        assert.equal(restored.body.scale, originalScale);
+      }
+      if (!beforePreview.body.ready) {
+        const stopped = await postTool('runtimePreviewControl', { operation: 'stop', sessionId: started.body.session.sessionId });
+        assert.equal(stopped.status, 200, JSON.stringify(stopped.body));
+        const reset = await postTool('runtimeSessionLifecycle', { operation: 'reset', sessionId: started.body.session.sessionId });
+        assert.equal(reset.status, 200, JSON.stringify(reset.body));
+      }
+    }
 
     const found = await getJson('/tools/findNodes?name=Canvas&maxResults=1');
     assert.equal(found.status, 200);

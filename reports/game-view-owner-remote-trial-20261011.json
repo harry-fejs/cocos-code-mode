@@ -1,0 +1,14 @@
+{
+  "date":"2026-10-11",
+  "project":"G:/_ws/cc-30-fw-sync/cc30-new-aio-sync",
+  "instance":"e1da97c8a4d3dc8487f5f1b7a83d8aa8",
+  "loadedBuiltAt":"2026-10-11T15:27:49.604Z",
+  "original":{"platform":"browser","sceneUuid":"1d918508-587a-46b4-b4a1-cb800f0ac03c","nodes":390,"dirty":false},
+  "remoteSelection":"Editor.Profile.setConfig plus native editor-preview-call-method setPlatform gameView; read-back verified",
+  "start":{"timeoutMs":20000,"expectedTarget":"1d918508-587a-46b4-b4a1-cb800f0ac03c","result":"RUNTIME_STATE_TIMEOUT","mutationDispatched":true,"retrySafe":false},
+  "readback":{"running":true,"paused":false,"sceneUuid":"7334823a-862f-40a1-914b-3fbbbd987622","frameCount":427,"timeScale":1,"ready":true,"popupDetected":false},
+  "limit":"Actual preview scene differs from requested editor scene. Configured start-scene semantics not verified; no successful target-bound start claim. No start retry.",
+  "cleanup":{"nativeHostStopDispatchedOnce":true,"stoppedReadback":true,"platformRestored":"browser","sceneUuidAfter":"1d918508-587a-46b4-b4a1-cb800f0ac03c","nodesAfter":390,"dirtyAfter":false,"savedOrDiscarded":false},
+  "publicControlCleanup":false,
+  "notes":"Unknown start lock cannot reconcile intended target against different runtime scene; direct bounded host stop was used for owner-project cleanup, not public control qualification. No source edits in this remote trial."
+}

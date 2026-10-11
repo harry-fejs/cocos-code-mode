@@ -4,11 +4,13 @@ const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { requireDist } = require('../helpers/require-dist');
 const { RuntimeSessionTools } = requireDist('utcp/tools/runtime-session-tools.js');
-const { GAME_VIEW_PREVIEW_DISABLED } = requireDist('utcp/tools/runtime-session-tools.js');
 const { RuntimeTools } = requireDist('utcp/tools/runtime-tools.js');
+const { ValidationTools } = requireDist('utcp/tools/validation-tools.js');
+const { ToolError } = requireDist('utcp/tool-error.js');
 const transport = requireDist('utcp/utils/game-view-transport.js');
 const originalInspect = transport.inspectGameViewRuntime;
 const originalDispatch = transport.dispatchGameViewLifecycle;
+const originalSetTimeScale = transport.setGameViewTimeScale;
 
 const tools = new RuntimeSessionTools();
 afterEach(async () => {
@@ -17,6 +19,7 @@ afterEach(async () => {
   delete global.Editor;
   transport.inspectGameViewRuntime = originalInspect;
   transport.dispatchGameViewLifecycle = originalDispatch;
+  transport.setGameViewTimeScale = originalSetTimeScale;
 });
 
 function installPreview(initial = 'stop') {
@@ -25,13 +28,18 @@ function installPreview(initial = 'stop') {
   const control = { preview, runtime, platform: 'gameView', commands: [], acknowledge: true, transition: true };
   transport.inspectGameViewRuntime = async () => {
     if (preview.state !== 'stop' && preview.gamePaused !== (preview.state === 'pause')) {
-      const error = new Error('Inconsistent preview pause state'); error.code = 'RUNTIME_NOT_READY'; throw error;
+      throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Inconsistent preview pause state' });
     }
     return { ...runtime, running: preview.state !== 'stop', sceneUuid: preview.state === 'stop' ? '' : preview.sceneUuid,
       paused: preview.state === 'stop' ? null : preview.gamePaused, platform: control.platform,
       timeScale: Number.isFinite(runtime.timeScale) ? runtime.timeScale : null,
       frameCount: Number.isSafeInteger(runtime.frameCount) ? runtime.frameCount : null,
       enabled: preview.state !== 'stop', ready: true, loaded: true, failed: false, webContentsId: preview.state === 'stop' ? null : 7 };
+  };
+  transport.setGameViewTimeScale = async (scale) => {
+    if (preview.state === 'stop') throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Preview stopped' });
+    runtime.timeScale = scale;
+    return transport.inspectGameViewRuntime();
   };
   transport.dispatchGameViewLifecycle = async (enabled) => {
     control.commands.push(['host-preview-set-play', enabled]);
@@ -44,11 +52,7 @@ function installPreview(initial = 'stop') {
     }
   };
   global.Editor = { Profile: { getConfig: async () => control.platform }, Message: { request: async (service, message, ...args) => {
-    if (message === 'execute-scene-script') {
-      if (args[0].method === 'runtimePreviewState') return { ...preview };
-      if (args[0].method === 'runtimeGetState') return { ...runtime, sceneUuid: preview.sceneUuid };
-      throw new Error(`Unexpected scene method ${args[0].method}`);
-    }
+    if (message === 'execute-scene-script') throw new Error('Edit renderer scripts are not Game View authority');
     if (service === 'preview' && message === 'query-preview-url') return 'http://127.0.0.1:7456';
     control.commands.push([message, ...args]);
     if (!control.acknowledge) return false;
@@ -69,7 +73,7 @@ async function start() {
   return tools.runtimeSessionLifecycle({ operation: 'start', targetKind: 'game-view', timeoutMs: 100 });
 }
 
-describe('bounded Creator game-view lifecycle', { skip: GAME_VIEW_PREVIEW_DISABLED ? 'game-view preview is disabled (GAME_VIEW_PREVIEW_DISABLED); behavior is retained for re-enable' : false }, () => {
+describe('bounded Creator game-view lifecycle', () => {
   it('rejects an unloaded browser platform without queuing a native start', async () => {
     const control = installPreview();
     control.platform = 'browser';
@@ -96,12 +100,15 @@ describe('bounded Creator game-view lifecycle', { skip: GAME_VIEW_PREVIEW_DISABL
     assert.equal(attached.session.targetId, 'actual-scene');
     assert.equal(attached.ready, true);
     const runtime = new RuntimeTools();
-    await runtime.runtimeSessionManage({ operation: 'pause', sessionId });
+    await runtime.runtimePause({ sessionId });
     assert.equal((await tools.runtimeStateObserve({ sessionId })).state.paused, true);
+    assert.equal((await runtime.runtimeGetState()).paused, true);
+    await runtime.runtimeSetTimeScale({ scale: 0.5 });
+    assert.equal((await runtime.runtimeGetState()).timeScale, 0.5);
     await runtime.runtimeSessionManage({ operation: 'step', sessionId });
     assert.equal((await tools.runtimeStateObserve({ sessionId })).state.frameCount, 13);
-    await runtime.runtimeSessionManage({ operation: 'resume', sessionId });
-    assert.deepEqual(control.commands.at(-1), ['editor-preview-call-method', 'pause', false]);
+    await runtime.runtimeResume({ sessionId });
+    assert.equal((await runtime.runtimeGetState()).paused, false);
     assert.equal((await tools.runtimeScenarioAssert({ sessionId, paused: false })).passed, true);
     const stopped = await tools.runtimeSessionLifecycle({ operation: 'stop', sessionId });
     assert.equal(control.preview.state, 'stop');
@@ -109,6 +116,8 @@ describe('bounded Creator game-view lifecycle', { skip: GAME_VIEW_PREVIEW_DISABL
     assert.equal(stopped.ready, false);
     assert.equal((await tools.previewSessionInspect({ sessionId })).stale, true);
     assert.equal((await runtime.runtimeSessionManage({ operation: 'state' })).ready, false);
+    await assert.rejects(runtime.runtimeGetState(), { code: 'RUNTIME_NOT_READY', status: 409 });
+    await assert.rejects(runtime.runtimeSetTimeScale({ scale: 1 }), { code: 'RUNTIME_NOT_READY', status: 409 });
   });
 
   it('reuses an already-running Game View without dispatching another start', async () => {
@@ -155,18 +164,24 @@ describe('bounded Creator game-view lifecycle', { skip: GAME_VIEW_PREVIEW_DISABL
     await assert.rejects(tools.runtimeSessionLifecycle({ operation: 'stop', sessionId: session.sessionId }), { code: 'RUNTIME_CONTROL_UNAVAILABLE' });
     assert.equal((await tools.runtimeSessionLifecycle({ operation: 'inspect', sessionId: session.sessionId })).ready, true);
     control.acknowledge = true;
-    control.transition = false;
-    await assert.rejects(tools.runtimeSessionLifecycle({ operation: 'stop', sessionId: session.sessionId, timeoutMs: 100 }), { code: 'RUNTIME_STATE_TIMEOUT' });
-    assert.equal((await tools.runtimeSessionLifecycle({ operation: 'list' })).sessions[0].status, 'attached');
+    await assert.rejects(tools.runtimeSessionLifecycle({ operation: 'stop', sessionId: session.sessionId, timeoutMs: 100 }), { code: 'RUNTIME_CONTROL_BUSY' });
+    control.preview.state = 'stop';
+    assert.equal((await tools.previewControl({ operation: 'state' })).ready, false);
+    assert.equal((await tools.runtimeSessionLifecycle({ operation: 'list' })).sessions[0].status, 'stopped');
   });
 
-  it('releases the mutation lock after a bounded host dispatch failure', async () => {
-    installPreview('play');
+  it('does not retry an acknowledged stop without its renderer postcondition', async () => {
+    const control = installPreview('play');
     const { session } = await start();
-    transport.dispatchGameViewLifecycle = async () => { throw new Error('host failed'); };
-    await assert.rejects(tools.runtimeSessionLifecycle({ operation: 'stop', sessionId: session.sessionId }), { code: 'RUNTIME_CONTROL_UNAVAILABLE' });
-    transport.dispatchGameViewLifecycle = async () => {};
+    control.transition = false;
     await assert.rejects(tools.runtimeSessionLifecycle({ operation: 'stop', sessionId: session.sessionId, timeoutMs: 100 }), { code: 'RUNTIME_STATE_TIMEOUT' });
+    const dispatched = control.commands.length;
+    await assert.rejects(tools.runtimeSessionLifecycle({ operation: 'stop', sessionId: session.sessionId }), { code: 'RUNTIME_CONTROL_BUSY' });
+    assert.equal(control.commands.length, dispatched);
+    assert.equal((await tools.runtimeSessionLifecycle({ operation: 'list' })).sessions[0].status, 'attached');
+    control.preview.state = 'stop';
+    await tools.previewControl({ operation: 'state' });
+    assert.equal((await tools.runtimeSessionLifecycle({ operation: 'list' })).sessions[0].status, 'stopped');
   });
 
 it('confirms stop when the host tears down before the next renderer read', async () => {
@@ -181,6 +196,46 @@ it('confirms stop when the host tears down before the next renderer read', async
   const stopped = await tools.runtimeSessionLifecycle({ operation: 'stop', sessionId: session.sessionId, timeoutMs: 100 });
   assert.equal(stopped.ready, false);
   assert.equal(stopped.session.status, 'stopped');
+});
+
+it('waits through a transient inconsistent renderer during stop without dispatching twice', async () => {
+  const control = installPreview('play');
+  const { session } = await start();
+  const inspect = transport.inspectGameViewRuntime;
+  let transitioning = false;
+  let dispatches = 0;
+  transport.dispatchGameViewLifecycle = async () => {
+    dispatches++;
+    transitioning = true;
+  };
+  transport.inspectGameViewRuntime = async () => {
+    if (transitioning) {
+      transitioning = false;
+      control.preview.state = 'stop';
+      throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Native teardown is between phases' });
+    }
+    return inspect();
+  };
+  const result = await tools.runtimeSessionLifecycle({ operation: 'stop', sessionId: session.sessionId, timeoutMs: 500 });
+  assert.equal(result.session.status, 'stopped');
+  assert.equal(dispatches, 1);
+});
+
+it('waits for a selected Game View renderer to reload before sending start', async () => {
+  const control = installPreview();
+  const inspect = transport.inspectGameViewRuntime;
+  let reloadReads = 0;
+  transport.inspectGameViewRuntime = async () => {
+    const state = await inspect();
+    if (reloadReads++ < 2) {
+      assert.equal(control.commands.length, 0);
+      return { ...state, ready: false, loaded: false };
+    }
+    return state;
+  };
+  const result = await tools.runtimeSessionLifecycle({ operation: 'start', targetKind: 'game-view', timeoutMs: 500 });
+  assert.equal(result.ready, true);
+  assert.deepEqual(control.commands, [['host-preview-set-play', true]]);
 });
 
   it('rejects stale targets without controlling the replacement preview or discarding the session', async () => {
@@ -200,6 +255,8 @@ it('confirms stop when the host tears down before the next renderer read', async
     const { session } = await start();
     control.runtime.frameCount = NaN;
     assert.equal((await tools.runtimeStateObserve({ sessionId: session.sessionId })).state.frameCount, null);
+    control.runtime.timeScale = NaN;
+    assert.deepEqual(await new RuntimeTools().runtimeGetState(), { paused: false, timeScale: null, frameCount: null });
     await assert.rejects(tools.runtimeScenarioAssert({ sessionId: session.sessionId, minFrameCount: 1 }), { code: 'UNSUPPORTED_RUNTIME_METRIC' });
     await assert.rejects(tools.runtimeWaitForState({ sessionId: session.sessionId, minFrameCount: 1, timeoutMs: 100 }), { code: 'UNSUPPORTED_RUNTIME_METRIC' });
   });
@@ -207,6 +264,7 @@ it('confirms stop when the host tears down before the next renderer read', async
   it('bounds each state wait including a nonresponsive first read', async () => {
     installPreview('play');
     const { session } = await start();
+    await assert.rejects(tools.runtimeWaitForState({ sessionId: session.sessionId, paused: true, timeoutMs: 10001 }), { code: 'INVALID_ARGUMENT', status: 400 });
     transport.inspectGameViewRuntime = () => new Promise(() => {});
     await assert.rejects(tools.runtimeWaitForState({ sessionId: session.sessionId, paused: true, timeoutMs: 100 }), { code: 'RUNTIME_STATE_TIMEOUT' });
   });
@@ -222,35 +280,56 @@ it('confirms stop when the host tears down before the next renderer read', async
   });
 });
 
-describe('game-view preview feature gate', { skip: GAME_VIEW_PREVIEW_DISABLED ? false : 'preview feature is enabled' }, () => {
-  const gated = new RuntimeSessionTools();
-
-  it('fails closed for every preview mutation without touching the host transport', async () => {
-    let dispatched = 0;
-    transport.dispatchGameViewLifecycle = async () => { dispatched++; };
-    transport.inspectGameViewRuntime = async () => { throw new Error('host transport must not be reached'); };
-    for (const operation of ['start', 'stop', 'pause', 'resume', 'step']) {
-      await assert.rejects(gated.previewControl({ operation }), { code: 'PREVIEW_FEATURE_DISABLED', status: 422 });
-    }
-    assert.equal(dispatched, 0);
+describe('Game View authority and deadline boundaries', () => {
+  it('bounds a stalled host dispatch and blocks blind retries until settled state proves stop', async () => {
+    const control = installPreview('play');
+    const { session } = await start();
+    let finish;
+    transport.dispatchGameViewLifecycle = () => new Promise(resolve => { finish = resolve; });
+    await assert.rejects(tools.previewControl({ operation: 'stop', sessionId: session.sessionId, timeoutMs: 100 }), { code: 'RUNTIME_STATE_TIMEOUT' });
+    control.preview.state = 'stop';
+    await tools.previewControl({ operation: 'state' });
+    await assert.rejects(tools.previewControl({ operation: 'start' }), { code: 'RUNTIME_CONTROL_BUSY' });
+    finish();
+    await tools.previewControl({ operation: 'state' });
+    assert.equal((await tools.runtimeSessionLifecycle({ operation: 'list' })).sessions[0].status, 'stopped');
   });
 
-  it('gates the public runtime tools that delegate to preview control', async () => {
-    await assert.rejects(gated.runtimeSessionLifecycle({ operation: 'start', targetKind: 'game-view' }), { code: 'PREVIEW_FEATURE_DISABLED', status: 422 });
-    await assert.rejects(new RuntimeTools().runtimeSessionManage({ operation: 'start' }), { code: 'PREVIEW_FEATURE_DISABLED', status: 422 });
+  it('does not control a replacement scene using a stale start handle', async () => {
+    const control = installPreview('play');
+    const { session } = await start();
+    control.preview.sceneUuid = 'replacement-scene';
+    await assert.rejects(new RuntimeTools().runtimeSessionManage({ operation: 'start', sessionId: session.sessionId }), { code: 'RUNTIME_TARGET_CHANGED' });
+    assert.deepEqual(control.commands, []);
   });
 
-  it('keeps read-only preview state and local handle operations available', async () => {
-    transport.inspectGameViewRuntime = async () => ({ platform: 'gameView', enabled: false, ready: true, loaded: false, failed: false, running: false, paused: null, timeScale: null, frameCount: null, sceneUuid: '', webContentsId: null });
-    const state = await gated.previewControl({ operation: 'state' });
-    assert.equal(state.success, true);
-    assert.equal(state.preview.state, 'stop');
-    assert.equal(state.ready, false);
-    const listed = await gated.runtimeSessionLifecycle({ operation: 'list' });
-    assert.deepEqual(listed.sessions, []);
+  it('reports a start on another scene and permits explicit cleanup after read-only reconciliation', async () => {
+    const control = installPreview();
+    await assert.rejects(tools.previewControl({ operation: 'start', targetId: 'expected-scene', timeoutMs: 500 }), error => {
+      assert.equal(error.code, 'RUNTIME_TARGET_CHANGED');
+      assert.equal(error.details.actualSceneUuid, 'actual-scene');
+      assert.equal(error.details.retrySafe, false);
+      return true;
+    });
+    assert.deepEqual(control.commands, [['host-preview-set-play', true]]);
+    await assert.rejects(tools.previewControl({ operation: 'start' }), { code: 'RUNTIME_CONTROL_BUSY' });
+    const observed = await tools.previewControl({ operation: 'state' });
+    assert.equal(observed.state.sceneUuid, 'actual-scene');
+    const attached = await tools.runtimeSessionLifecycle({ operation: 'attach', targetKind: 'game-view', targetId: observed.state.sceneUuid });
+    await tools.runtimeSessionLifecycle({ operation: 'stop', sessionId: attached.session.sessionId, timeoutMs: 500 });
+    assert.deepEqual(control.commands, [['host-preview-set-play', true], ['host-preview-set-play', false]]);
   });
 
-  it('still rejects unsupported target kinds before the gate', async () => {
-    await assert.rejects(gated.previewControl({ operation: 'start', targetKind: 'browser-preview' }), { code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422 });
+  it('validates a stopped runtime as not ready instead of fabricating healthy metrics', async () => {
+    installPreview();
+    global.Editor.Message.request = async (_service, message) => {
+      if (message === 'query-node-tree') return { uuid: 'scene', name: 'Scene', children: [] };
+      throw new Error(`Unexpected editor request ${message}`);
+    };
+    const validation = await new ValidationTools().validateScene({ includeScriptDiagnostics: false, includeLogErrors: false });
+    assert.equal(validation.ok, false);
+    assert.equal(validation.runtime.code, 'RUNTIME_NOT_READY');
+    assert.equal(validation.runtime.paused, undefined);
+    assert.equal(validation.runtime.timeScale, undefined);
   });
 });

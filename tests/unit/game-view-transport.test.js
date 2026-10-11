@@ -50,3 +50,21 @@ it('rejects a renderer replaced during read-back', async () => {
   try { await assert.rejects(inspectGameViewRuntime(), { code: 'RUNTIME_TARGET_CHANGED' }); }
   finally { Module._load = originalLoad; }
 });
+
+it('reports an unselected unloaded host as stopped without reading a renderer', async () => {
+  const originalLoad = Module._load;
+  const host = { enabled: false, ready: false, loaded: false, failed: false, webContentsId: null };
+  const main = { isDestroyed: () => false, getURL: () => 'file:///Creator/node_modules/@editor/creator/static/windows/main.html', executeJavaScript: async () => [host] };
+  Module._load = function (name, parent, isMain) {
+    if (name === 'electron') return { BrowserWindow: { getAllWindows: () => [{ webContents: main }] }, webContents: { fromId: () => { throw Error('Unloaded host must not read renderer'); } } };
+    return originalLoad.call(this, name, parent, isMain);
+  };
+  try {
+    const state = await inspectGameViewRuntime();
+    assert.equal(state.running, false);
+    assert.equal(state.platform, '');
+    assert.equal(state.sceneUuid, '');
+    host.enabled = true;
+    await assert.rejects(inspectGameViewRuntime(), { code: 'UNSUPPORTED_RUNTIME_TRANSPORT' });
+  } finally { Module._load = originalLoad; }
+});

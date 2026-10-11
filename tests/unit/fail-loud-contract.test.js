@@ -70,12 +70,7 @@ describe('fail-loud audit (docs §2) regressions', () => {
     assert.match(readSource('source/utcp/tools/validation-tools.ts'), /diag\.ok === true/);
   });
 
-  it('runtime/event reads refuse fabricated state (docs §2 false success)', () => {
-    const runtime = readSource('source/utcp/tools/runtime-tools.ts');
-    assert.match(runtime, /PREVIEW_FEATURE_DISABLED/);
-    assert.match(runtime, /runtimeGetState: no runtime state/);
-    assert.match(runtime, /runtimeGetState: malformed runtime payload/);
-    assert.match(readSource('source/utcp/tools/runtime-session-tools.ts'), /UNSUPPORTED_RUNTIME_TRANSPORT/);
+  it('event reads refuse fabricated state (docs §2 false success)', () => {
     assert.match(readSource('source/utcp/tools/event-tools.ts'), /simulateButtonClick: unexpected response/);
     assert.match(readSource('source/utcp/tools/event-tools.ts'), /bindButtonClickEvent: unexpected response/);
   });

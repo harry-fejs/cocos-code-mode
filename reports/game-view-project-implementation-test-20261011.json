@@ -1,0 +1,14 @@
+{
+  "date":"2026-10-11",
+  "project":"G:/_ws/cc-30-fw-sync/cc30-new-aio-sync",
+  "instance":"de1f90c728c7fcdf8d6e0f0284c23d0d",
+  "scope":"Owner-authorized actual Game View test after project config init fix",
+  "before":{"platform":"browser","sceneUuid":"f46876e4-e81b-4931-b493-6d367be385e7","nodes":3,"dirty":false},
+  "start":{"timeoutMs":20000,"result":"RUNTIME_STATE_TIMEOUT","retried":false,"readbackRunning":true,"runtimeScene":"80dddede-15e3-4d8e-8f37-0f1263a0867c"},
+  "publicControls":{"attach":true,"pause":true,"step":true,"frameAfterStep":1642,"scale0_5Readback":true,"assertPaused":true,"restoreScale1":true,"resume":true,"stop":true,"reset":true},
+  "logOutcomes":{"configNullErrorsReproduced":false,"nativeMapNullReproduced":false,"newGameplayTeardownErrors":["gameLogic.off is not a function","Node.off of null","super.onDestroy is not a function","Game.outGame of undefined"]},
+  "after":{"platform":"browser","sceneUuid":"f46876e4-e81b-4931-b493-6d367be385e7","nodes":3,"dirty":false},
+  "result":"partial pass: public attached controls and config init verified; initial start20s timeout and gameplay teardown failures remain. One clean map-null absence does not prove native race eliminated.",
+  "sourceChangesInThisTest":false,
+  "savedOrDiscarded":false
+}

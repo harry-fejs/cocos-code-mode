@@ -959,8 +959,8 @@ declare namespace ccp3x {
         success: true;
         operation: string;
         session?: RuntimeSession;
-        preview: { state: "play" | "pause" | "stop"; sceneUuid: string; gamePaused: boolean; directorPaused: boolean };
-        state?: { running: boolean; paused: boolean; timeScale: number; frameCount: number; sceneUuid: string };
+        preview: { state: "play" | "pause" | "stop"; sceneUuid: string; gamePaused: boolean | null; enabled: boolean; ready: boolean; platform: string; webContentsId: number | null };
+        state?: { running: boolean; paused: boolean; timeScale: number | null; frameCount: number | null; sceneUuid: string };
         ready: boolean;
     }
     /** Creator 3.7.3 game-view only. targetId is an expected real scene UUID; stop verifies native termination. */
@@ -970,6 +970,11 @@ declare namespace ccp3x {
         targetId?: string;
         timeoutMs?: number;
     }): RuntimePreviewResult;
+    /** These controls target actual Game View, never the edit renderer. Stopped/unverified targets fail closed. */
+    function runtimePause(args?: { sessionId?: string; targetId?: string; timeoutMs?: number }): { success: true };
+    function runtimeResume(args?: { sessionId?: string; targetId?: string; timeoutMs?: number }): { success: true };
+    function runtimeSetTimeScale(args: { scale: number }): { success: true; scale: number };
+    function runtimeGetState(): { paused: boolean; timeScale: number | null; frameCount: number | null };
     /** reset releases a local handle only. It does not stop the preview. */
     function runtimeSessionLifecycle(args: {
         operation: "start" | "attach" | "inspect" | "stop" | "reset" | "list";

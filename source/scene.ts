@@ -10,19 +10,6 @@ import { inspectRemovedPrefabIdentity } from './prefab-removed-inspect';
 import { executeUiReflow } from './ui-reflow';
 import type { UiReflowRequest, UiReflowEngine, UiReflowFacade } from './ui-reflow';
 
-interface PreviewEngineGlobals {
-    cc?: {
-        game?: { paused?: unknown; isPaused?: () => unknown };
-        director?: {
-            totalFrames?: unknown;
-            getTotalFrames?: () => unknown;
-            getScene?: () => { uuid?: unknown } | null;
-            getScheduler?: () => { getTimeScale?: () => unknown };
-            isPaused?: () => unknown;
-        };
-    };
-    cce?: { PreviewPlay?: { _state?: unknown } };
-}
 
 export function load() { }
 export function unload() { void methods.stopCatchAll(); }
@@ -359,28 +346,6 @@ export const methods = {
         }
     },
 
-    async runtimePause(): Promise<boolean> {
-        const cc = (globalThis as any)['cc'];
-        if (!cc?.game) return false;
-        cc.game.pause();
-        return true;
-    },
-
-    async runtimeResume(): Promise<boolean> {
-        const cc = (globalThis as any)['cc'];
-        if (!cc?.game) return false;
-        cc.game.resume();
-        return true;
-    },
-
-    async runtimeSetTimeScale(scale: number): Promise<boolean> {
-        const cc = (globalThis as any)['cc'];
-        if (!cc?.director) return false;
-        const scheduler = cc.director.getScheduler();
-        if (!scheduler) return false;
-        scheduler.setTimeScale(scale);
-        return true;
-    },
 
     // Finds a live runtime node by uuid in the editor scene graph. The scene panel
     // runs the full engine, so cc.director.getScene() holds real cc.Node instances
@@ -1103,45 +1068,6 @@ export const methods = {
     },
 
 
-    async runtimePreviewState(): Promise<{ state: 'play' | 'pause' | 'stop', sceneUuid: string, gamePaused: boolean, directorPaused: boolean }> {
-        const globals = globalThis as unknown as PreviewEngineGlobals;
-        const cc = globals.cc;
-        const state = globals.cce?.PreviewPlay?._state;
-        const sceneUuid = cc?.director?.getScene?.()?.uuid;
-        const gamePaused = cc?.game?.isPaused?.();
-        const directorPaused = cc?.director?.isPaused?.();
-        // Creator 3.7.3's native game-view controller owns this state. Generic
-        // scene-engine availability is not evidence that a preview is running.
-        if ((state !== 'play' && state !== 'pause' && state !== 'stop') || typeof sceneUuid !== 'string' || !sceneUuid
-            || typeof gamePaused !== 'boolean' || typeof directorPaused !== 'boolean') {
-            throw new Error('Creator game-view preview state is unavailable');
-        }
-        return { state, sceneUuid, gamePaused, directorPaused };
-    },
-
-    async runtimeGetState(): Promise<{ running: boolean, paused: boolean, timeScale: number, frameCount: number, sceneUuid: string }> {
-        const globals = globalThis as unknown as PreviewEngineGlobals;
-        const cc = globals.cc;
-        const game = cc?.game;
-        const scheduler = cc?.director?.getScheduler?.();
-        const director = cc?.director;
-        const timeScale = scheduler?.getTimeScale?.();
-        const frameCount = typeof director?.totalFrames === 'number' ? director.totalFrames : director?.getTotalFrames?.();
-        const paused = typeof game?.paused === 'boolean' ? game.paused : game?.isPaused?.();
-        const sceneUuid = director?.getScene?.()?.uuid;
-        const previewState = globals.cce?.PreviewPlay?._state;
-        if (typeof sceneUuid !== 'string' || !sceneUuid) throw new Error('Runtime scene identity is unavailable');
-        if (!game || typeof paused !== 'boolean' || typeof timeScale !== 'number' || !Number.isFinite(timeScale) || typeof frameCount !== 'number' || !Number.isFinite(frameCount)) {
-            throw new Error('Runtime preview state is unavailable');
-        }
-        return {
-            running: previewState === 'play' || previewState === 'pause',
-            paused,
-            timeScale,
-            frameCount,
-            sceneUuid,
-        };
-    },
     async particlePlaybackControl(nodeUuid: string, operation: 'play' | 'stop' | 'clear'): Promise<{ playing: boolean, operation: string, nodeUuid: string }> {
         const cc = (globalThis as any)['cc'];
         const node = await methods.findRuntimeNodeUuid(nodeUuid);

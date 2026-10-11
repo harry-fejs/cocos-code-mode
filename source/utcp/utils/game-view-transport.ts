@@ -34,7 +34,10 @@ interface PreviewHost {
     webContentsId: number | null;
 }
 
-// Creator 3.7.3 host adapter. These fixed scripts never contain caller input.
+const OPERATION_TIMEOUT_MS = 10_000;
+const RENDERER_TIMEOUT_MS = 5_000;
+
+// Creator 3.7.3 host adapter. Only validated data is inserted into fixed operations.
 const HOST_INSPECTION = `(() => {
     const views = [];
     function visit(root) {
@@ -51,20 +54,22 @@ const HOST_INSPECTION = `(() => {
     visit(document);
     return views;
 })()`;
-const RUNTIME_INSPECTION = `(() => {
+const RUNTIME_SNAPSHOT = `function snapshot() {
     const cc = globalThis.cc;
+    if (!cc || cc.GAME_VIEW !== true) return { gameView: false };
     const director = cc && cc.director;
     const game = cc && cc.game;
-    const scheduler = director && director.getScheduler && director.getScheduler();
-    const frameCount = director && (typeof director.totalFrames === 'number' ? director.totalFrames : director.getTotalFrames && director.getTotalFrames());
-    return { gameView: !!cc && cc.GAME_VIEW === true,
-        sceneUuid: director && director.getScene() && director.getScene().uuid,
-        phase: globalThis.cce && cce.PreviewPlay && cce.PreviewPlay._state,
-        paused: game && game.isPaused && game.isPaused(),
-        timeScale: scheduler && scheduler.getTimeScale ? scheduler.getTimeScale() : null,
+    const scene = director && typeof director.getScene === 'function' && director.getScene();
+    const scheduler = director && typeof director.getScheduler === 'function' && director.getScheduler();
+    const frameCount = director && (typeof director.totalFrames === 'number' ? director.totalFrames : typeof director.getTotalFrames === 'function' ? director.getTotalFrames() : null);
+    return { gameView: !!cc && cc.GAME_VIEW === true, sceneUuid: scene && scene.uuid,
+        phase: globalThis.cce && globalThis.cce.PreviewPlay && globalThis.cce.PreviewPlay._state,
+        paused: game && typeof game.isPaused === 'function' ? game.isPaused() : null,
+        timeScale: scheduler && typeof scheduler.getTimeScale === 'function' ? scheduler.getTimeScale() : null,
         frameCount: typeof frameCount === 'number' ? frameCount : null };
-})()`;
-const LIFECYCLE_DISPATCH = (enabled: boolean): string => `(() => {
+}`;
+const RUNTIME_INSPECTION = `(() => { ${RUNTIME_SNAPSHOT} return snapshot(); })()`;
+const LIFECYCLE_DISPATCH = (enabled: boolean, expiresAt: number): string => `(() => {
     const views = [];
     function visit(root) {
         for (const element of root.querySelectorAll('*')) {
@@ -73,13 +78,31 @@ const LIFECYCLE_DISPATCH = (enabled: boolean): string => `(() => {
         }
     }
     visit(document);
-    if (views.length !== 1) return false;
+    if (views.length !== 1 || views[0]._platform !== 'gameView') return false;
     const view = views[0];
     const client = view.previewClient;
+    if (Date.now() >= ${expiresAt}) return false;
+    // Acceptance only: lifecycle completion is verified by the caller from the renderer.
     if (typeof view.previewSetPlay === 'function') void view.previewSetPlay(${enabled ? 'true' : 'false'});
     else if (client && typeof client.previewSetPlay === 'function') void client.previewSetPlay(${enabled ? 'true' : 'false'});
     else return false;
     return true;
+})()`;
+const SET_TIME_SCALE = (scale: number, sceneUuid: string, expiresAt: number): string => `(() => {
+    ${RUNTIME_SNAPSHOT}
+    const before = snapshot();
+    if (!before.gameView || before.sceneUuid !== ${JSON.stringify(sceneUuid)}) return { code: 'RUNTIME_TARGET_CHANGED', mutated: false };
+    if (!['play', 'pause'].includes(before.phase) || typeof before.paused !== 'boolean' || before.paused !== (before.phase === 'pause')) return { code: 'RUNTIME_NOT_READY', mutated: false };
+    const director = globalThis.cc.director;
+    const scene = director.getScene();
+    const scheduler = typeof director.getScheduler === 'function' && director.getScheduler();
+    if (!scheduler || typeof scheduler.setTimeScale !== 'function' || typeof scheduler.getTimeScale !== 'function') return { code: 'UNSUPPORTED_RUNTIME_TRANSPORT', mutated: false };
+    if (Date.now() >= ${expiresAt}) return { code: 'RUNTIME_STATE_TIMEOUT', mutated: false };
+    scheduler.setTimeScale(${scale});
+    const after = snapshot();
+    if (director !== globalThis.cc.director || scene !== director.getScene() || scheduler !== director.getScheduler() || !after.gameView || after.sceneUuid !== before.sceneUuid) return { code: 'RUNTIME_TARGET_CHANGED', mutated: true };
+    if (after.timeScale !== ${scale}) return { code: 'RUNTIME_CONTROL_UNAVAILABLE', mutated: true };
+    return { mutated: true, state: after };
 })()`;
 
 function creatorMainWindow(electron: ElectronHost): { webContents: HostContents } {
@@ -94,35 +117,110 @@ function creatorMainWindow(electron: ElectronHost): { webContents: HostContents 
     return windows[0];
 }
 
-export async function dispatchGameViewLifecycle(enabled: boolean): Promise<void> {
-    const electron = require('electron') as ElectronHost;
-    const dispatched = await creatorMainWindow(electron).webContents.executeJavaScript(LIFECYCLE_DISPATCH(enabled));
-    if (dispatched !== true) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: 'Creator game-view host did not accept the bounded lifecycle dispatch.' });
+async function executeBounded(target: HostContents, source: string, deadline: number, mutation = false): Promise<unknown> {
+    if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Game-view operation deadline expired before dispatch.', ...(mutation ? { details: { mutationDispatched: false, outcome: 'refused', retrySafe: true } } : {}) });
+    let timer: NodeJS.Timeout | undefined;
+    let request: Promise<unknown> | undefined;
+    try {
+        request = target.executeJavaScript(source);
+        return await Promise.race([request, new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Game-view renderer operation exceeded its deadline.' })), Math.min(RENDERER_TIMEOUT_MS, deadline - Date.now()));
+        })]);
+    } catch (error) {
+        const failure = new ToolError({ code: error instanceof ToolError ? error.code : 'RUNTIME_CONTROL_UNAVAILABLE', status: 409,
+            message: mutation ? 'Game-view mutation was dispatched but its outcome is unknown.' : 'Game-view renderer inspection did not complete.',
+            details: { cause: (error instanceof Error ? error.message : String(error)).slice(0, 512), ...(mutation ? { mutationDispatched: true, outcome: 'unknown', retrySafe: false } : {}) },
+            recovery: mutation ? 'Inspect the Game View before retrying; a queued renderer operation may still complete.' : 'Wait for the Game View renderer to respond, then inspect it again.' });
+        if (mutation && request) Object.defineProperty(failure, 'pendingRequest', { value: request });
+        throw failure;
+    } finally { clearTimeout(timer); }
 }
 
-
-export async function inspectGameViewRuntime(): Promise<GameViewRuntime> {
-    const electron = require('electron') as ElectronHost;
-    const mainWindow = creatorMainWindow(electron);
-    const candidates = await mainWindow.webContents.executeJavaScript(HOST_INSPECTION);
+async function readHost(main: HostContents, deadline: number): Promise<PreviewHost> {
+    const candidates = await executeBounded(main, HOST_INSPECTION, deadline);
     if (!Array.isArray(candidates) || candidates.length !== 1) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: 'Expected exactly one visible Creator game-view host.' });
-    const host = candidates[0] as Partial<PreviewHost>;
-    if (typeof host.platform !== 'string' || typeof host.enabled !== 'boolean' || typeof host.ready !== 'boolean' || typeof host.loaded !== 'boolean' || typeof host.failed !== 'boolean') {
+    const host = candidates[0] as Partial<PreviewHost> | null;
+    if (!host || (typeof host.platform !== 'string' && !(host.platform == null && host.enabled === false && host.loaded === false)) || typeof host.enabled !== 'boolean' || typeof host.ready !== 'boolean' || typeof host.loaded !== 'boolean' || typeof host.failed !== 'boolean') {
         throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: 'Creator game-view host shape differs from the 3.7.3 adapter.' });
     }
-    const stopped: GameViewRuntime = { platform: host.platform, enabled: host.enabled, ready: host.ready, loaded: host.loaded, failed: host.failed, running: false, paused: null, timeScale: null, frameCount: null, sceneUuid: '', webContentsId: null };
-    if (!host.enabled) return stopped;
-    if (host.platform !== 'gameView' || !host.ready || !host.loaded || host.failed || !Number.isSafeInteger(host.webContentsId)) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Enabled game-view transport is not ready.' });
+    return { ...host, platform: host.platform ?? '' } as PreviewHost;
+}
+
+function renderer(electron: ElectronHost, host: PreviewHost): HostContents {
+    if (host.platform !== 'gameView' || !host.enabled || !host.ready || !host.loaded || host.failed || !Number.isSafeInteger(host.webContentsId)) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Game-view transport is not running and ready.' });
     const target = electron.webContents.fromId(host.webContentsId!);
-    if (!target || target.isDestroyed() || target.getType() !== 'webview' || !/preload(?:%5[Cc]|\\|\/)preview(?:%5[Cc]|\\|\/)preload\.js/.test(target.getURL())) {
+    if (!target || target.id !== host.webContentsId || target.isDestroyed() || target.getType() !== 'webview' || !/preload(?:%5[Cc]|\\|\/)preview(?:%5[Cc]|\\|\/)preload\.js/.test(target.getURL())) {
         throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: 'Creator preview host does not identify its game-view renderer.' });
     }
-    const value = await target.executeJavaScript(RUNTIME_INSPECTION) as Record<string, unknown> | null;
-    if (!value || value.gameView !== true || !['play', 'pause'].includes(String(value.phase)) || typeof value.sceneUuid !== 'string' || !value.sceneUuid) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Actual game-view renderer has no consistent running scene.' });
-    const paused = value.phase === 'pause';
-    const after = await mainWindow.webContents.executeJavaScript(HOST_INSPECTION) as PreviewHost[];
-    if (!Array.isArray(after) || after.length !== 1 || !after[0].enabled || !after[0].ready || after[0].failed || after[0].webContentsId !== target.id) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Game-view renderer changed during inspection.' });
-    return { ...stopped, running: true, paused, sceneUuid: value.sceneUuid, webContentsId: target.id,
-        timeScale: typeof value.timeScale === 'number' && Number.isFinite(value.timeScale) ? value.timeScale : null,
-        frameCount: typeof value.frameCount === 'number' && Number.isSafeInteger(value.frameCount) && value.frameCount >= 0 ? value.frameCount : null };
+    return target;
+}
+
+function assertHostUnchanged(electron: ElectronHost, host: PreviewHost, target: HostContents, url: string): void {
+    if (host.platform !== 'gameView' || !host.enabled || !host.ready || !host.loaded || host.failed || host.webContentsId !== target.id || target.isDestroyed() || electron.webContents.fromId(target.id) !== target || target.getURL() !== url) {
+        throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Game-view renderer changed during the operation.' });
+    }
+}
+
+function runningState(host: PreviewHost, target: HostContents, value: unknown): GameViewRuntime {
+    const state = value as Record<string, unknown> | null;
+    if (!state || state.gameView !== true || !['play', 'pause'].includes(String(state.phase)) || typeof state.sceneUuid !== 'string' || !state.sceneUuid || typeof state.paused !== 'boolean' || state.paused !== (state.phase === 'pause')) {
+        throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Actual game-view phase and cc.game.isPaused do not identify a consistent running scene.' });
+    }
+    return { ...host, running: true, paused: state.paused, sceneUuid: state.sceneUuid, webContentsId: target.id,
+        timeScale: typeof state.timeScale === 'number' && Number.isFinite(state.timeScale) ? state.timeScale : null,
+        frameCount: typeof state.frameCount === 'number' && Number.isSafeInteger(state.frameCount) && state.frameCount >= 0 ? state.frameCount : null };
+}
+
+export async function dispatchGameViewLifecycle(enabled: boolean, deadline = Date.now() + OPERATION_TIMEOUT_MS): Promise<void> {
+    if (typeof enabled !== 'boolean' || !Number.isFinite(deadline)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Lifecycle dispatch requires a boolean enabled value and finite deadline.' });
+    deadline = Math.min(deadline, Date.now() + OPERATION_TIMEOUT_MS);
+    const electron = require('electron') as ElectronHost;
+    const expiresAt = Math.min(deadline, Date.now() + RENDERER_TIMEOUT_MS);
+    const dispatched = await executeBounded(creatorMainWindow(electron).webContents, LIFECYCLE_DISPATCH(enabled, expiresAt), expiresAt, true);
+    if (dispatched !== true) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: 'Creator game-view host did not accept the bounded lifecycle dispatch.', details: { mutationDispatched: false, outcome: 'refused', retrySafe: true } });
+}
+
+export async function inspectGameViewRuntime(): Promise<GameViewRuntime> {
+    const deadline = Date.now() + OPERATION_TIMEOUT_MS;
+    const electron = require('electron') as ElectronHost;
+    const main = creatorMainWindow(electron).webContents;
+    const host = await readHost(main, deadline);
+    if (!host.enabled) return { ...host, running: false, paused: null, timeScale: null, frameCount: null, sceneUuid: '', webContentsId: null };
+    const target = renderer(electron, host);
+    const url = target.getURL();
+    const state = runningState(host, target, await executeBounded(target, RUNTIME_INSPECTION, deadline));
+    assertHostUnchanged(electron, await readHost(main, deadline), target, url);
+    return state;
+}
+
+export async function setGameViewTimeScale(scale: number): Promise<GameViewRuntime> {
+    if (typeof scale !== 'number' || !Number.isFinite(scale) || scale < 0 || scale > 10) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Game-view time scale must be a finite number from 0 to 10.' });
+    const deadline = Date.now() + OPERATION_TIMEOUT_MS;
+    const electron = require('electron') as ElectronHost;
+    const main = creatorMainWindow(electron).webContents;
+    const host = await readHost(main, deadline);
+    const target = renderer(electron, host);
+    const url = target.getURL();
+    const before = runningState(host, target, await executeBounded(target, RUNTIME_INSPECTION, deadline));
+    assertHostUnchanged(electron, await readHost(main, deadline), target, url);
+    const expiresAt = Math.min(deadline, Date.now() + RENDERER_TIMEOUT_MS);
+    const result = await executeBounded(target, SET_TIME_SCALE(scale, before.sceneUuid, expiresAt), expiresAt, true) as { code?: string; mutated?: boolean; state?: unknown } | null;
+    if (!result || result.code || result.mutated !== true) throw new ToolError({ code: result?.code ?? 'RUNTIME_CONTROL_UNAVAILABLE', status: result?.code === 'UNSUPPORTED_RUNTIME_TRANSPORT' ? 422 : 409,
+        message: result?.code === 'UNSUPPORTED_RUNTIME_TRANSPORT' ? 'Game-view scheduler does not expose both setTimeScale and getTimeScale.' : 'Game-view time scale operation could not verify its target and postcondition.',
+        details: { mutationDispatched: result?.mutated !== false, outcome: result?.mutated === false ? 'refused' : 'unknown', retrySafe: result?.mutated === false }, recovery: 'Inspect the Game View before retrying.' });
+    try {
+        const mutationState = runningState(host, target, result.state);
+        if (mutationState.sceneUuid !== before.sceneUuid || mutationState.timeScale !== scale) throw new ToolError({ code: 'RUNTIME_CONTROL_UNAVAILABLE', status: 409, message: 'Game-view mutation returned an inconsistent target or time scale.' });
+        const afterHost = await readHost(main, deadline);
+        assertHostUnchanged(electron, afterHost, target, url);
+        const after = runningState(afterHost, target, await executeBounded(target, RUNTIME_INSPECTION, deadline));
+        if (after.sceneUuid !== before.sceneUuid) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Game-view scene changed during time scale read-back.' });
+        if (after.timeScale !== scale) throw new ToolError({ code: 'RUNTIME_CONTROL_UNAVAILABLE', status: 409, message: 'Game-view time scale did not match the requested value during read-back.' });
+        assertHostUnchanged(electron, await readHost(main, deadline), target, url);
+        return after;
+    } catch (error) {
+        throw new ToolError({ code: error instanceof ToolError ? error.code : 'RUNTIME_CONTROL_UNAVAILABLE', status: error instanceof ToolError ? error.status : 409,
+            message: 'Game-view time scale was dispatched but complete read-back could not be verified.',
+            details: { cause: (error instanceof Error ? error.message : String(error)).slice(0, 512), mutationDispatched: true, outcome: 'unknown', retrySafe: false }, recovery: 'Inspect the Game View and reconcile its time scale before retrying.' });
+    }
 }

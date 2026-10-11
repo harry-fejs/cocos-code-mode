@@ -1,5 +1,7 @@
 import { utcpTool } from '../decorators';
 import { DEFAULT_TREE_MAX_DEPTH, DEFAULT_TREE_MAX_NODES } from '../utils/tools-utils';
+import { RuntimeTools } from './runtime-tools';
+import { ToolError } from '../tool-error';
 
 // Performance snapshot + scene validation. Walks the scene tree to count
 // nodes/components, and merges with runtime state + diagnostics + logs.
@@ -116,11 +118,10 @@ export class ValidationTools {
         };
         const probeRuntime = async () => {
             try {
-                const state = await Editor.Message.request('scene', 'execute-scene-script', {
-                    name: 'ccp3x', method: 'runtimeGetState', args: [],
-                });
-                return state || { paused: false, timeScale: 1 };
-            } catch (e: any) { return { error: e.message }; }
+                return await new RuntimeTools().runtimeGetState();
+            } catch (error) {
+                return { error: error instanceof Error ? error.message : String(error), code: error instanceof ToolError ? error.code : 'RUNTIME_CONTROL_UNAVAILABLE' };
+            }
         };
         const probePerf = async () => {
             try { return await this.getPerformanceSnapshot(); } catch (e: any) { return { error: e.message }; }

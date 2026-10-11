@@ -310,7 +310,7 @@ export class BuildTools {
     /** @deprecated Use buildManage({ operation: 'get_task' }) — not registered, kept for delegation */
     async buildGetTask(args: { taskId: string | number }): Promise<{ task: IBuildTaskSummary, options?: BuildOptions }> {
         const taskId = taskIdentity(args.taskId);
-        const item = await Editor.Message.request('builder', 'query-task', taskId);
+        const item: unknown = await Editor.Message.request('builder', 'query-task', taskId);
         if (!item || typeof item !== 'object' || Array.isArray(item)) {
             throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Build task ${taskId} not found`, recovery: 'Query build tasks and retry with an existing task id.' });
         }
