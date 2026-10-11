@@ -1,0 +1,65 @@
+{
+  "commit": "827848c",
+  "dirty": false,
+  "project": "G:/_ws/_helpers/ccp3x-api-qualification-20261011",
+  "instance": "01f905d5200689490a0cf6f76bcc7abc",
+  "creator": "3.7.3",
+  "packageArchiveSha256": "7b4a2407731b94758cb61108c41a42f78eed002484145825dd6454c0150ce471",
+  "android": {
+    "taskId": "android-qualification-20261011",
+    "generationSuccessMs": 25417,
+    "makeCommand": "gradlew.bat --no-daemon assembleDebug",
+    "makeResult": "BUILD SUCCESSFUL in 2m26s;79 tasks executed",
+    "JAVA_HOME": "D:/_devtools/cc-android-toolchain/jdk8u504-b01",
+    "ndk": "21.4.7075529",
+    "compileSdk": 34,
+    "targetSdk": 34,
+    "minSdk": 21,
+    "requestedBuildTools": "28.0.0",
+    "sdkCMakeSelected": "3.10.2.4988404",
+    "apk": {
+      "path": "reports/artifacts/qualificationandroid-827848c-debug.apk",
+      "sha256": "5191590993aa1e64721a21445493c927e601990cdd33f74422ad9a799eed8c42",
+      "bytes": 24639102,
+      "applicationId": "com.ccp.qualification",
+      "abi": "arm64-v8a",
+      "debug": true
+    },
+    "deviceInstalled": false
+  },
+  "web": {
+    "taskId": "clean-web-827848c",
+    "successMs": 7226
+  },
+  "prefab": {
+    "installedPublicTools": true,
+    "mountedCounts": {
+      "propertyOverrides": 4,
+      "mountedChildren": 1,
+      "mountedComponents": 1
+    },
+    "removedComponents": 1,
+    "inspectBytes": 1539,
+    "mountedApplyBytes": 1757,
+    "removedApplyBytes": 1809,
+    "maxBytes": 2048,
+    "sourceConflict409": true,
+    "nestedLinkPreserved": true,
+    "mountedChildPersisted": true,
+    "widgetRemoved": true,
+    "saveReopen": true
+  },
+  "limitations": [
+    "Debug APK build qualification only; no physical-device launch or protected signing/publish",
+    "SDK manager/Gradle installed required SDK CMake automatically; global JAVA_HOME unchanged",
+    "Removal of UITransform with dependent components was refused; independent Widget removal succeeded"
+  ],
+  "cleanup": {
+    "profileCount": 0,
+    "taskCount": 0,
+    "remainingAssets": [],
+    "ownedCreatorStopped": true,
+    "buildAndNativeFixturesRemoved": true,
+    "apkPreserved": true
+  }
+}

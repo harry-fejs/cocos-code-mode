@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-11",
+  "scope": "API3x packaged install/discovery/handshake/profile restart/rollback smoke; not Android or protected signing release",
+  "commit": "827848c",
+  "buildDirty": false,
+  "builtAt": "2026-10-11T05:51:04.035Z",
+  "package": "ccp3x-v210-261011-125104.zip",
+  "packageSha256": "7b4a2407731b94758cb61108c41a42f78eed002484145825dd6454c0150ce471",
+  "archiveMembers": 6502,
+  "installedDependencies": "extracted node_modules, no dependency junction",
+  "project": "G:/_ws/_helpers/ccp3x-api-qualification-20261011",
+  "namespace": "ccp3x_62037",
+  "initialInstance": "463bc2bf278bbed8044a83a0ba18b4be",
+  "restartInstance": "fef331ae3c27b23f5dd55fca642cb005",
+  "handshake": "projectMatches true; probe responsive; exact827848c dirtyfalse before and after process restart",
+  "behavior": { "sceneCreate": true, "prefabWholeResponseCap2048": true, "observedResponseCharacters": 708, "registeredBuildPreflight": true, "profileSaveRestartGet": true, "profileDeleteListTotal": 0 },
+  "rollback": { "restoredOwnedPreviousArtifact": true, "observedCommit": "72c3bc3", "observedDirty": true, "instance": "b5bd0955a7c77d3e9f150090a59763ba", "projectMatches": true, "responsive": true },
+  "cleanup": { "remainingAssets": 0, "ownedCreatorStopped": true, "packagedArtifactRetainedOutsideActiveExtensions": true },
+  "limitations": ["Packaging warned package-lock.json absent; archive still includes installed dependencies. No reproducible lockfile claim.", "No clean-package platform build or full nested-prefab mutation replay in this smoke; prior technical evidence remains separate.", "No Android toolchain/artifact qualification, protected credentials/signatures, publish or remote push."]
+}
