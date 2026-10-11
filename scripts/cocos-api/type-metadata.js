@@ -1,0 +1,140 @@
+'use strict';
+const { ts, text, tokens, json, compare } = require('./catalog-utils');
+function compact(node) {
+  if (!node) return null;
+  return JSON.parse(tokens(text(node))).map(([, value]) => value).join(' ');
+}
+function canonicalType(value) {
+  return value.replace(/import\("([^\"]+)"\)/g, (_, module) => {
+    const normalized = module.replace(/\\/g, '/');
+    const segment = normalized.match(/(?:^|\/)((?:cocos|editor|exports|pal|@types)\/.*)$/);
+    return `import("${segment ? segment[1] : normalized.split('/').pop()}")`;
+  });
+}
+function typeInfo(checker, type, node) {
+  const unresolved = [];
+  const seen = new Set();
+  const seenSymbols = new Set();
+  const references = new Map();
+  let count = 0;
+  const visit = current => {
+    if (!current || seen.has(current)) return;
+    seen.add(current);
+    if (++count > 256) { unresolved.push({ kind: 'type-budget', reference: 'Type expansion exceeds 256 nodes' }); return; }
+    if (current.flags & ts.TypeFlags.Any) unresolved.push({ kind: 'any', reference: current.aliasSymbol?.name || current.intrinsicName || 'any' });
+    if (current.flags & ts.TypeFlags.Unknown) unresolved.push({ kind: 'unknown', reference: 'unknown' });
+    if (current.isUnionOrIntersection?.()) current.types.forEach(visit);
+    if (current.flags & ts.TypeFlags.Object && current.objectFlags & ts.ObjectFlags.Reference) checker.getTypeArguments(current).forEach(visit);
+    if (current.aliasTypeArguments) current.aliasTypeArguments.forEach(visit);
+    const symbol = current.aliasSymbol || current.symbol;
+    const declaration = symbol?.declarations?.find(item => ts.isInterfaceDeclaration(item) || ts.isTypeAliasDeclaration(item));
+    if (symbol && !symbol.name.startsWith('__') && !references.has(symbol.name)) {
+      const enumDeclaration = symbol.declarations?.find(ts.isEnumDeclaration);
+      references.set(symbol.name, { name: symbol.name, resolution: symbol.declarations?.length ? 'resolved' : 'unknown',
+        kind: enumDeclaration ? 'enum' : declaration ? ts.isInterfaceDeclaration(declaration) ? 'interface' : 'type-alias' : 'type-reference',
+        enumValues: enumDeclaration ? enumDeclaration.members.map(member => ({ name: member.name.getText(), value: checker.getConstantValue(member) ?? compact(member.initializer) })) : null });
+    }
+    if (symbol && declaration && !seenSymbols.has(symbol)) {
+      seenSymbols.add(symbol);
+      if (ts.isTypeAliasDeclaration(declaration)) visit(checker.getTypeFromTypeNode(declaration.type));
+      if (ts.isInterfaceDeclaration(declaration)) for (const member of declaration.members) {
+        const memberType = member.type ? checker.getTypeFromTypeNode(member.type) : member.name ? checker.getTypeAtLocation(member) : null;
+        if (memberType) visit(memberType);
+      }
+    }
+    if (current.flags & ts.TypeFlags.Object && (current.objectFlags & ts.ObjectFlags.Anonymous || declaration)) {
+      for (const property of checker.getPropertiesOfType(current)) {
+        const propertyDeclaration = property.valueDeclaration || property.declarations?.[0];
+        if (propertyDeclaration) visit(checker.getTypeOfSymbolAtLocation(property, propertyDeclaration));
+      }
+      for (const signature of checker.getSignaturesOfType(current, ts.SignatureKind.Call)) {
+        signature.parameters.forEach(parameter => { const parameterDeclaration = parameter.valueDeclaration || parameter.declarations?.[0]; if (parameterDeclaration) visit(checker.getTypeOfSymbolAtLocation(parameter, parameterDeclaration)); });
+        visit(checker.getReturnTypeOfSignature(signature));
+      }
+    }
+  };
+  visit(type);
+  if (node) {
+    const scan = current => {
+      if (ts.isTypeReferenceNode(current)) {
+        let symbol = checker.getSymbolAtLocation(current.typeName);
+        if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+        if (!symbol || symbol.name === 'unknown' || !symbol.declarations?.length) unresolved.push({ kind: 'reference', reference: compact(current.typeName) });
+      }
+      if (ts.isTypeNode(current) || current === node) ts.forEachChild(current, scan);
+    };
+    scan(node);
+  }
+  const rendered = checker.typeToString(type, node, ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope);
+  return { type: canonicalType(rendered), declaredType: node ? compact(node) : null, references: [...references.values()].sort((a, b) => compare(a.name, b.name)),
+    unresolved: [...new Map(unresolved.map(item => [json(item), item])).values()].sort((a, b) => compare(json(a), json(b))) };
+}
+function signatureInfo(checker, signature, declaration, index) {
+  const unresolved = [];
+  const parameters = signature.parameters.map((symbol, position) => {
+    const parameter = symbol.valueDeclaration || symbol.declarations?.[0] || declaration.parameters?.[position];
+    const info = typeInfo(checker, checker.getTypeOfSymbolAtLocation(symbol, parameter || declaration), parameter?.type);
+    unresolved.push(...info.unresolved);
+    return { name: symbol.name, type: info.type, declaredType: info.declaredType, references: info.references, optional: !!(symbol.flags & ts.SymbolFlags.Optional) || !!parameter?.questionToken || !!parameter?.initializer,
+      rest: !!parameter?.dotDotDotToken, defaultExpression: compact(parameter?.initializer), unresolved: info.unresolved };
+  });
+  const result = typeInfo(checker, checker.getReturnTypeOfSignature(signature), declaration.type);
+  unresolved.push(...result.unresolved);
+  const typeParameters = (signature.typeParameters || []).map(parameter => {
+    const constraint = checker.getBaseConstraintOfType(parameter);
+    const info = constraint ? typeInfo(checker, constraint) : null;
+    if (info) unresolved.push(...info.unresolved);
+    const declared = parameter.symbol?.declarations?.[0];
+    return { name: parameter.symbol?.name || checker.typeToString(parameter), constraint: info?.type || null, default: compact(declared?.default) };
+  });
+  return { overload: index, kind: ts.isSetAccessorDeclaration(declaration) ? 'set' : ts.isGetAccessorDeclaration(declaration) ? 'get' : 'call',
+    text: checker.signatureToString(signature, declaration, ts.TypeFormatFlags.NoTruncation), typeParameters, parameters,
+    returnType: result.type, declaredReturnType: result.declaredType, returnReferences: result.references, unresolved };
+}
+function signatures(checker, symbol, declaration) {
+  const type = checker.getTypeOfSymbolAtLocation(symbol, declaration);
+  const calls = checker.getSignaturesOfType(type, ts.SignatureKind.Call);
+  const constructs = checker.getSignaturesOfType(type, ts.SignatureKind.Construct);
+  if (calls.length || constructs.length) return [...calls, ...constructs].map((sig, i) => {
+    const row = signatureInfo(checker, sig, sig.getDeclaration() || declaration, i);
+    if (!calls.length) row.kind = 'construct';
+    return row;
+  });
+  const accessors = (symbol.declarations || []).filter(d => ts.isGetAccessorDeclaration(d) || ts.isSetAccessorDeclaration(d));
+  if (accessors.length) return accessors.map((decl, i) => signatureInfo(checker, checker.getSignatureFromDeclaration(decl), decl, i));
+  const info = typeInfo(checker, type, declaration.type);
+  return [{ overload: 0, kind: 'value', type: info.type, declaredType: info.declaredType, references: info.references,
+    defaultExpression: compact(declaration.initializer), unresolved: info.unresolved }];
+}
+function metadata(node) {
+  const tags = ts.getJSDocTags(node).map(tag => tag.tagName.text);
+  const decorators = (ts.canHaveDecorators(node) ? ts.getDecorators(node) || [] : []).map(decorator => compact(decorator.expression));
+  const modifiers = (ts.canHaveModifiers(node) ? ts.getModifiers(node) || [] : []).map(modifier => ts.tokenToString(modifier.kind)).filter(Boolean);
+  const visibility = node.name && ts.isPrivateIdentifier(node.name) || modifiers.includes('private') ? 'private' : modifiers.includes('protected') ? 'protected' : 'public';
+  return { decorators, visibility, static: modifiers.includes('static'), readonly: modifiers.includes('readonly') || ts.isGetAccessorDeclaration(node) && !node.symbol?.declarations?.some(ts.isSetAccessorDeclaration),
+    internal: tags.includes('internal') || tags.includes('engineInternal') || tags.includes('private') || !!node.name?.getText().startsWith('__'), deprecated: tags.includes('deprecated'),
+    abstract: modifiers.includes('abstract'), jsdoc: (node.jsDoc || []).map(doc => doc.getText()).join('\n') || null };
+}
+function constraints(node, context) {
+  const sf = node.getSourceFile();
+  const constants = [];
+  for (const statement of sf.statements) {
+    if (ts.isImportDeclaration(statement) && statement.moduleSpecifier.text === 'internal:constants' && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings)) {
+      constants.push(...statement.importClause.namedBindings.elements.map(item => item.name.text));
+    }
+  }
+  const guards = [];
+  const scan = current => {
+    if (ts.isIfStatement(current) || ts.isConditionalExpression(current)) {
+      const condition = compact(current.condition || current.expression);
+      if (constants.some(name => new RegExp(`\\b${name}\\b`).test(condition))) guards.push(condition);
+    }
+    ts.forEachChild(current, scan);
+  };
+  scan(node);
+  const overrides = (context.config?.moduleOverrides || []).filter(item => Object.keys(item.overrides || {}).some(file => file === context.path)).map(item => ({ test: item.test, replacement: item.overrides[context.path] }));
+  return { execution: context.namespace === 'engine-runtime' ? ['game-runtime'] : ['edit-scene'], targetAvailable: 'unknown',
+    features: context.features || [], importedConstants: constants.sort(compare), guards: [...new Set(guards)].sort(compare), moduleOverrides: overrides,
+    editModeDeclared: metadata(node).decorators.some(value => /executeInEditMode/.test(value)), jsonTransfer: 'named-reference-or-value-dto-required' };
+}
+module.exports = { compact, typeInfo, signatureInfo, signatures, metadata, constraints };
