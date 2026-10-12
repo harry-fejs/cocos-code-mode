@@ -896,6 +896,28 @@ declare namespace ccp3x {
         jointType: "cc.FixedConstraint" | "cc.HingeConstraint" | "cc.PointToPointConstraint"
     };
 
+    interface LightBakeManageArgs {
+        operation: "start" | "inspect" | "cancel";
+        sceneUuid?: string;
+        jobId?: string;
+    }
+    interface LightBakeManageResult {
+        jobId: string;
+        sceneUuid: string;
+        status: "running" | "completed" | "cancelled" | "failed" | "indeterminate";
+        startedAt: number;
+        updatedAt: number;
+        finishedAt: number | null;
+        outputPath: string;
+        probeCount: number;
+        processId: number | null;
+        native: { started: boolean; finished: boolean; error: boolean; processOpen: boolean; timerOpen: boolean; serverOpen: boolean };
+        verification: { outputFile: boolean; topologyUnchanged: boolean; coefficientsFinite: boolean; coefficientsChanged: boolean };
+        reason: string | null;
+    }
+    /** Native Creator 3.8.8 light-probe SH bake only (at most 256 finite noncoplanar probes; bounded scene GI settings). start requires the exact current edit sceneUuid; inspect/cancel require an owned jobId. Completion requires native/output/coefficient verification, not an end broadcast. Output is retained; no caller code/path, texture-lightmap bake, scene save or save/reopen persistence proof. */
+    function lightBakeManage(args: LightBakeManageArgs): LightBakeManageResult;
+
     /** Candidate: configure bounded serialized cc.AudioSource properties on one existing typed node or AudioSource component. Only volume, loop, playOnAwake, and a proven cc.AudioClip UUID are accepted; no playback is started. Typed preflight, one successful scene snapshot, read-back, and rollback on failure are part of the contract. Live evidence is required before qualification. */
     function audioSourceConfigure(args: {
         reference: InstanceReference & { type: "cc.Node" | "cc.AudioSource" },

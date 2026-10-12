@@ -254,17 +254,18 @@ describe('camera authoring adapters', () => {
 });
 
 describe('final scene adapters', () => {
-  it('creates a scene asset only after asset-db identity read-back', async () => {
-    const calls = [];
-    global.Editor = { Message: { request: async (service, message, ...args) => {
-      calls.push([service, message, ...args]);
+  it('refuses a directory masquerading as a scene before returning a SceneAsset reference', async () => {
+    let directory = true;
+    global.Editor = { Message: { request: async (_service, message, id) => {
       if (message === 'copy-asset') return { uuid: 'scene-1' };
-      if (message === 'query-asset-info') return { uuid: 'scene-1', type: 'cc.SceneAsset' };
-      throw new Error(`unexpected ${service}:${message}`);
+      if (message === 'query-asset-info') return id === 'scene-1'
+        ? { uuid: 'scene-1', type: directory ? 'cc.Asset' : 'cc.SceneAsset', isDirectory: directory }
+        : { uuid: 'template', type: 'cc.SceneAsset', isDirectory: false };
+      throw new Error(`unexpected ${message}`);
     } } };
+    await assert.rejects(new SceneTools().sceneCreate({ assetPath: 'db://assets/final.scene' }), error => error.code === 'SCENE_CREATE_UNCONFIRMED');
+    directory = false;
     assert.deepEqual(await new SceneTools().sceneCreate({ assetPath: 'db://assets/final.scene' }), { success: true, reference: { id: 'scene-1', type: 'cc.SceneAsset' } });
-    assert.equal(calls[0][1], 'copy-asset');
-    assert.equal(calls[1][1], 'query-asset-info');
   });
 
   it('returns authoritative node and component inspection payloads', async () => {

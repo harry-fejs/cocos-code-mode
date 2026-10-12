@@ -1,0 +1,10 @@
+{
+  "date":"2026-10-12",
+  "creator":"3.8.8",
+  "project":"G:/_ws/_helpers/cc-minimal-388",
+  "artifact":{"commit":"af514a7","builtAt":"2026-10-12T16:21:21.772Z","dirty":true},
+  "qualified":{"physics2dConfigure":{"path":"physics.gravity","write":{"x":0,"y":-9.5,"z":0},"readBack":{"x":0,"y":-9.5,"z":0},"restored":{"x":0,"y":-10,"z":0}},"physics3dConfigure":{"restored":true},"negative":{"code":"UNSUPPORTED_SETTING","path":"general.designResolution"},"scenePresetIdentity":{"type":"cc.SceneAsset","isDirectory":false},"animationGraph":{"nativePresetCreated":true,"inspect":{"nativeShape":true,"structuralValid":true,"layerCount":1,"stateMachineCount":1,"stateCount":3,"semanticsVerified":false,"runtimeVerified":false},"cleaned":true}},
+  "blocked":{"materialEdit":"Creator3.8.8 apply-material accepts the dump but query-material does not retain changed technique/mainColor on disposable material; adapter correctly fails read-back and rollback verification. No material qualification or portfolio promotion.","previewResolutionSet":"No positive IPC/read-back witness.","bitmapFontImportSettingsConfigure":"Derived fields remain read-only by design."},
+  "sourceChanges":["source/utcp/tools/p4-contract-tools.ts","source/utcp/tools/asset-tools.ts","source/utcp/tools/portfolio-validation-tools.ts","tests/unit/p4-contract-tools.test.js","tests/unit/asset-batch-and-missing-audit.test.js","tests/unit/p3-remaining-capabilities.test.js"],
+  "portfolioPromoted":false
+}

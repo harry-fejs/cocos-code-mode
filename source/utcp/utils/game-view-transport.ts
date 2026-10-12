@@ -44,7 +44,7 @@ const HOST_INSPECTION = `(() => {
         for (const element of root.querySelectorAll('*')) {
             if (element.tagName === 'ENGINE-VIEW' && element.previewClient && element.getClientRects().length) {
                 const client = element.previewClient;
-                views.push({ platform: element._platform, enabled: element._isPreviewEnabled,
+                views.push({ platform: element._platform, enabled: typeof element.isPreviewEnabled === 'boolean' ? element.isPreviewEnabled : element._isPreviewEnabled,
                     ready: client.isPreviewReady, loaded: client._loaded, failed: client.isPreviewFailed,
                     webContentsId: client._loaded && client.webview ? client.webview.getWebContentsId() : null });
             }
@@ -149,7 +149,8 @@ async function readHost(main: HostContents, deadline: number): Promise<PreviewHo
 function renderer(electron: ElectronHost, host: PreviewHost): HostContents {
     if (host.platform !== 'gameView' || !host.enabled || !host.ready || !host.loaded || host.failed || !Number.isSafeInteger(host.webContentsId)) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Game-view transport is not running and ready.' });
     const target = electron.webContents.fromId(host.webContentsId!);
-    if (!target || target.id !== host.webContentsId || target.isDestroyed() || target.getType() !== 'webview' || !/preload(?:%5[Cc]|\\|\/)preview(?:%5[Cc]|\\|\/)preload\.js/.test(target.getURL())) {
+    const previewUrl = target ? decodeURIComponent(target.getURL()).replace(/\\/g, '/') : '';
+    if (!target || target.id !== host.webContentsId || target.isDestroyed() || target.getType() !== 'webview' || !/(?:^|[=/])preload\/(?:preview\/preload|web\/preview)\.js(?:$|[?#])/.test(previewUrl)) {
         throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: 'Creator preview host does not identify its game-view renderer.' });
     }
     return target;

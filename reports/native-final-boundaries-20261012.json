@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-12",
+  "terrainPublicEvidence": "reports/terrain-public-qualification-20261012.json",
+  "terrainNodeRemoved": true,
+  "terrainOwnedSourceRemoved": true,
+  "localizationCleanup": {
+    "status": 200,
+    "body": {
+      "supported": true,
+      "language": "en-US",
+      "checkedKeys": 2,
+      "missingKeys": [
+        "ccp_fixture_hello",
+        "ccp_fixture_absent"
+      ]
+    }
+  },
+  "lightBake": {
+    "package": "lightmap1.0.4",
+    "backendPresent": "resources/tools/lightmap-tools/LightFX.exe",
+    "sceneMethods": [
+      {
+        "file": "C:\\ProgramData\\cocos\\editors\\Creator\\3.8.8\\resources\\app.asar\\modules\\editor-extensions\\extensions\\lightmap\\dist\\lightmap\\scene.ccc",
+        "keys": [
+          "apply",
+          "cancel",
+          "clear",
+          "bakeLightProbe",
+          "cancelLightProbe"
+        ],
+        "functions": {
+          "cancel": "cancel(){lightMap.cancel()}",
+          "bakeLightProbe": "bakeLightProbe(e,t){lightMap.bakeLightProbe(e,t)}",
+          "cancelLightProbe": "cancelLightProbe(){lightMap.cancelLightProbe()}"
+        }
+      }
+    ],
+    "remainingPrerequisite": "Native scene functions delegate to inaccessible closure lightMap; exact dispatch config/backend busy state/output/cancel/event ownership unresolved. Installed native capability exists; not classified unavailable. No bake or blanket cancel dispatched.",
+    "research": "agent://NativeBakeContract"
+  },
+  "portfolioPromoted": false,
+  "parentComplete": false
+}

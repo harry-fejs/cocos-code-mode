@@ -1428,7 +1428,19 @@ export class AssetTools {
         let targetPath = normalizePath(args.assetPath);
         const type = args.preset;
         const presetMap: Record<string, { source: string, extension: string }> = {
-            material: { source: 'db://internal/default_file_content/mtl', extension: '.mtl' }, effect: { source: 'db://internal/default_file_content/effect', extension: '.effect' }, scene: { source: 'db://internal/default_file_content/scene', extension: '.scene' }, prefab: { source: 'db://internal/default_file_content/prefab', extension: '.prefab' }, 'animation-clip': { source: 'db://internal/default_file_content/anim', extension: '.anim' }, 'render-texture': { source: 'db://internal/default_file_content/rt', extension: '.rt' }, 'physics-material': { source: 'db://internal/default_file_content/pmtl', extension: '.pmtl' }, 'animation-graph': { source: 'db://internal/default_file_content/animgraph', extension: '.animgraph' }, 'animation-graph-variant': { source: 'db://internal/default_file_content/animgraphvari', extension: '.animgraphvari' }, 'animation-mask': { source: 'db://internal/default_file_content/animask', extension: '.animask' }, 'auto-atlas': { source: 'db://internal/default_file_content/pac', extension: '.pac' }, 'effect-header': { source: 'db://internal/default_file_content/chunk', extension: '.chunk' }, terrain: { source: 'db://internal/default_file_content/terrain', extension: '.terrain' },
+            material: { source: 'db://internal/default_file_content/material/default.mtl', extension: '.mtl' },
+            effect: { source: 'db://internal/default_file_content/effect/default.effect', extension: '.effect' },
+            scene: { source: 'db://internal/default_file_content/scene/default.scene', extension: '.scene' },
+            prefab: { source: 'db://internal/default_file_content/prefab/default.prefab', extension: '.prefab' },
+            'animation-clip': { source: 'db://internal/default_file_content/animation-clip/default.anim', extension: '.anim' },
+            'render-texture': { source: 'db://internal/default_file_content/render-texture/default.rt', extension: '.rt' },
+            'physics-material': { source: 'db://internal/default_file_content/physics-material/default.pmtl', extension: '.pmtl' },
+            'animation-graph': { source: 'db://internal/default_file_content/animation-graph/default.animgraph', extension: '.animgraph' },
+            'animation-graph-variant': { source: 'db://internal/default_file_content/animation-graph-variant/default.animgraph', extension: '.animgraph' },
+            'animation-mask': { source: 'db://internal/default_file_content/animation-mask/default.mask', extension: '.mask' },
+            'auto-atlas': { source: 'db://internal/default_file_content/auto-atlas/default.pac', extension: '.pac' },
+            'effect-header': { source: 'db://internal/default_file_content/effect-header/default.effect', extension: '.effect' },
+            terrain: { source: 'db://internal/default_file_content/terrain/default.terrain', extension: '.terrain' },
         };
         const assetOptions: AssetOperationOption = { overwrite: args.options?.overwrite ?? false, rename: args.options?.rename ?? false };
         let created: AssetInfo | null;

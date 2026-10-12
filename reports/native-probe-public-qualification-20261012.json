@@ -1,0 +1,102 @@
+{
+  "binding": {
+    "instanceId": "66c93094c38e683932a88418ec6cf267",
+    "projectPath": "G:\\_ws\\_helpers\\cc-minimal-388",
+    "editorVersion": "3.8.8",
+    "projectMatches": true,
+    "build": {
+      "version": "2.1.0",
+      "commit": "af514a7",
+      "branch": "feat/cocos-pilot-api-capability-expansion",
+      "dirty": true,
+      "builtAt": "2026-10-12T15:44:37.062Z",
+      "mode": "readable"
+    },
+    "probe": {
+      "status": "responsive",
+      "sceneReady": true,
+      "code": null,
+      "evidence": {
+        "requestId": "98954fe64a18b854",
+        "startedAt": 1791820028767,
+        "ageMs": 0,
+        "shared": false,
+        "settled": true
+      }
+    },
+    "capturedAt": 1791820028768,
+    "elapsedMs": 0
+  },
+  "reviewedArtifact": {
+    "commit": "af514a7",
+    "builtAt": "2026-10-12T15:44:37.062Z"
+  },
+  "cancel": {
+    "finishedAt": 1791819977038,
+    "jobId": "d3052288-3dd5-4784-b24a-0f5fecd8025e",
+    "native": {
+      "error": false,
+      "finished": false,
+      "processOpen": false,
+      "serverOpen": false,
+      "started": false,
+      "timerOpen": false
+    },
+    "outputPath": "G:\\_ws\\_helpers\\cc-minimal-388\\temp\\ccp-bake\\d3052288-3dd5-4784-b24a-0f5fecd8025e",
+    "probeCount": 8,
+    "processId": null,
+    "reason": null,
+    "sceneUuid": "dea1eab2-6a27-4b71-8419-f9c04daa3303",
+    "startedAt": 1791819977018,
+    "status": "cancelled",
+    "updatedAt": 1791819977038,
+    "verification": {
+      "coefficientsChanged": false,
+      "coefficientsFinite": true,
+      "outputFile": false,
+      "topologyUnchanged": true
+    }
+  },
+  "positive": {
+    "finishedAt": 1791819981050,
+    "jobId": "1ac1d133-eaf2-465b-9e10-d940420b5d13",
+    "native": {
+      "error": false,
+      "finished": true,
+      "processOpen": false,
+      "serverOpen": false,
+      "started": true,
+      "timerOpen": false
+    },
+    "outputPath": "G:\\_ws\\_helpers\\cc-minimal-388\\temp\\ccp-bake\\1ac1d133-eaf2-465b-9e10-d940420b5d13",
+    "probeCount": 8,
+    "processId": null,
+    "reason": null,
+    "sceneUuid": "dea1eab2-6a27-4b71-8419-f9c04daa3303",
+    "startedAt": 1791819977042,
+    "status": "completed",
+    "updatedAt": 1791819981050,
+    "verification": {
+      "coefficientsChanged": true,
+      "coefficientsFinite": true,
+      "outputFile": true,
+      "topologyUnchanged": true
+    }
+  },
+  "persistenceSame": true,
+  "foreignRefusal": {
+    "code": "BAKE_JOB_NOT_FOUND"
+  },
+  "overlapRefusal": {
+    "code": "BAKE_OPERATION_FAILED",
+    "retrySafe": false
+  },
+  "cleanup": {
+    "probeNodeAbsent": true,
+    "ownedOutputDirectoriesRemoved": true,
+    "debuggerDetached": true,
+    "sceneDirty": false
+  },
+  "limitation": "Immediate cancel before native timer/process assignment is fail-closed and may remain running; no blind retry or foreign cancellation.",
+  "portfolioPromoted": false
+}

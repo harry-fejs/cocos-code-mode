@@ -9,6 +9,10 @@ import type { EngineClassRequest } from './engine-api-availability';
 import { inspectRemovedPrefabIdentity } from './prefab-removed-inspect';
 import { executeUiReflow } from './ui-reflow';
 import type { UiReflowRequest, UiReflowEngine, UiReflowFacade } from './ui-reflow';
+import { loadLocalizationRuntime } from './localization-runtime';
+import { executeTerrainEdit } from './terrain-edit';
+import type { TerrainEditRequest, TerrainEditResult, TerrainEngine, TerrainPersistence } from './terrain-edit';
+import path from 'path';
 
 
 export function load() { }
@@ -72,6 +76,23 @@ function getSceneExecuteGlobals(): Record<string, any> {
 }
 
 export const methods = {
+    async terrainHeightEdit(request: TerrainEditRequest): Promise<TerrainEditResult> {
+        const globals = globalThis as unknown as { cc: TerrainEngine; cce: { Ipc: { send(message: string, ...args: unknown[]): Promise<unknown> }; SceneFacadeManager: { queryMode(): string } } };
+        let manager: TerrainPersistence['manager'];
+        try {
+            // Creator's installed manager is the same serializer/source writer used by its terrain editor.
+            const module = require(path.join(Editor.App.path, 'builtin', 'scene', 'dist', 'script', '3d', 'manager', 'terrain', 'index.ccc')) as { default: TerrainPersistence['manager'] };
+            manager = module.default;
+        } catch (error: unknown) {
+            return { success: false, changed: false, verified: false, mutationStarted: false, nodeUuid: request?.nodeUuid, componentUuid: request?.componentUuid, assetUuid: request?.assetUuid, restoration: 'not-needed', error: { code: 'UNSUPPORTED_EDITOR_API', message: error instanceof Error ? error.message : String(error) } };
+        }
+        return executeTerrainEdit(request, globals.cc, methods.findRuntimeNodeUuid, {
+            manager,
+            queryMode: () => globals.cce.SceneFacadeManager.queryMode(),
+            saveSource: (assetUuid, bytes) => globals.cce.Ipc.send('save-asset', assetUuid, bytes),
+        });
+    },
+
     async audioPlayback(request: AudioPlaybackRequest): Promise<AudioPlaybackResult> {
         // The scene renderer supplies the native engine; the adapter validates its runtime capabilities.
         const globals = globalThis as unknown as { cc: AudioRuntimeEngine };
@@ -1090,25 +1111,27 @@ export const methods = {
 
     async inspectLocalization(): Promise<{ supported: boolean, currentLanguage: string | null, languages: string[], directions: Record<string, string>, error?: string }> {
         try {
-            const mod = require('db://localization-editor/l10n');
-            const l10n = mod.l10n;
-            const languages = Array.from(l10n.languages ?? []) as string[];
+            const l10n = await loadLocalizationRuntime();
+            const languages = Array.isArray(l10n.languages) ? l10n.languages.filter((language): language is string => typeof language === 'string').slice(0,32) : [];
             const directions: Record<string, string> = {};
-            for (const language of languages.slice(0, 32)) directions[language] = String(l10n.direction(language));
-            return { supported: true, currentLanguage: l10n.currentLanguage ?? null, languages, directions };
-        } catch (error: any) {
-            return { supported: false, currentLanguage: null, languages: [], directions: {}, error: String(error?.message ?? error) };
+            const unavailableDirections: string[] = [];
+            for (const language of languages) {
+                try { const direction = l10n.direction(language); if (direction !== 'ltr' && direction !== 'rtl') throw new Error('Invalid text direction'); directions[language] = direction; }
+                catch { unavailableDirections.push(language); }
+            }
+            return { supported: true, currentLanguage: typeof l10n.currentLanguage === 'string' && l10n.currentLanguage ? l10n.currentLanguage : null, languages, directions, ...(unavailableDirections.length ? { error: `Text direction unavailable for: ${unavailableDirections.join(', ')}`.slice(0,512) } : {}) };
+        } catch (error: unknown) {
+            return { supported: false, currentLanguage: null, languages: [], directions: {}, error: String(error instanceof Error ? error.message : error).slice(0,512) };
         }
     },
     async validateLocalization(keys: string[]): Promise<{ supported: boolean, language: string | null, checkedKeys: number, missingKeys: string[], error?: string }> {
         try {
-            const mod = require('db://localization-editor/l10n');
-            const l10n = mod.l10n;
+            const l10n = await loadLocalizationRuntime();
             const boundedKeys = Array.from(new Set((keys ?? []).filter((key): key is string => typeof key === 'string' && key.length > 0))).slice(0, 256);
             const missingKeys = boundedKeys.filter((key) => !l10n.exists(key));
-            return { supported: true, language: l10n.currentLanguage ?? null, checkedKeys: boundedKeys.length, missingKeys };
-        } catch (error: any) {
-            return { supported: false, language: null, checkedKeys: 0, missingKeys: [], error: String(error?.message ?? error) };
+            return { supported: true, language: typeof l10n.currentLanguage === 'string' && l10n.currentLanguage ? l10n.currentLanguage : null, checkedKeys: boundedKeys.length, missingKeys };
+        } catch (error: unknown) {
+            return { supported: false, language: null, checkedKeys: 0, missingKeys: [], error: String(error instanceof Error ? error.message : error).slice(0,512) };
         }
     },
 };

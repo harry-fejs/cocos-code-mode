@@ -333,6 +333,10 @@ export class BuildTools {
         catch {
             throw new ToolError({ code: 'BUILD_SUBMISSION_OUTCOME_UNKNOWN', status: 502, message: 'Builder returned no usable task identity after submission.', details: { submission: 'outcome-unknown', retrySafe: false }, recovery: 'Inspect the builder queue before retrying; a build may already have been submitted.' });
         }
+        const observed: unknown = await Editor.Message.request('builder', 'query-task', taskId).catch(() => null);
+        if (!observed || typeof observed !== 'object' || !('id' in observed) || taskIdentity(observed.id) !== taskId) {
+            throw new ToolError({ code: 'BUILD_SUBMISSION_OUTCOME_UNKNOWN', status: 502, message: 'Builder submission returned a value that does not identify an existing native task.', details: { submission: 'outcome-unknown', returnedCandidate: taskId, retrySafe: false }, recovery: 'Inspect the exact caller-supplied taskId in the builder queue; do not resubmit.' });
+        }
         return { success: true, submission: 'submitted', taskId };
     }
 

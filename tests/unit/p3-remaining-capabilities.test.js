@@ -42,7 +42,7 @@ describe('remaining P3 capability contracts', () => {
       verified: true,
     });
     assert.deepEqual(calls.map((call) => call.message), ['generate-available-url', 'copy-asset', 'query-asset-info']);
-    assert.equal(calls[1].args[0], 'db://internal/default_file_content/animgraph');
+    assert.equal(calls[1].args[0], 'db://internal/default_file_content/animation-graph/default.animgraph');
   });
 
   it('rejects unsafe graph paths and refuses success without identity', async () => {

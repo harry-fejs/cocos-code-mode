@@ -379,3 +379,11 @@ Windows:
 ``` powershell
 claude mcp add --transport stdio --env UTCP_CONFIG_FILE="%userprofile%/.utcp_config.json" -- ccp cmd /c npx @utcp/code-mode-mcp
 ```
+
+### Creator 3.8.8 native probe baking
+
+`lightBakeManage` provides finite `start`, `inspect`, and owned `cancel` operations for native light-probe SH baking on Creator 3.8.8. Start binds the exact current edit-scene UUID and accepts no caller code or output path. The scene must contain 4–256 finite noncoplanar probes; GI samples are bounded to 64–1024, bounces to 1–4, and scale to 0–10. An existing native job or attached renderer debugger is refused.
+
+Completion requires the original scene/native owner/output identity, native Finished without Error, closed process/timer/server, an actual result file, unchanged probe topology and nine finite changed RGB SH coefficients per probe. Native end broadcasts alone are not success. Output remains under the project `temp/ccp-bake/<jobId>` directory for caller inspection. Cancellation never falls back to a global foreign-job cancel; an uncertain timeout remains indeterminate rather than being retried.
+
+This version-specific adapter inspects the installed native lightmap owner through a temporary Chromium debugger session and detaches afterward. It does not patch engine code, generate texture lightmaps, automatically save a scene, or authorize publish. Disposable public start/inspect/cancel, foreign-job refusal and saved/reloaded SH persistence evidence: `reports/native-probe-public-qualification-20261012.json`.

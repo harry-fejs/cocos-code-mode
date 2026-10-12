@@ -1,0 +1,10 @@
+{
+  "date":"2026-10-12",
+  "project":"G:/_ws/_helpers/cc-minimal-388",
+  "creator":"3.8.8",
+  "localization":{"package":"cocos/cocos-creator-extensions localization-editor1.0.4 official source, built/packed and installed on disposable project","loaderFix":"Asset DB exact db://localization-editor/l10n.ts identity -> pathToFileURL -> Creator SystemJS.import; Node require db URI was incorrect","realTable":{"language":"en-US","key":"ccp_fixture_hello","translation":"Hello CCP"},"publicValidate":{"http":200,"supported":true,"checkedKeys":2,"missingKeys":["ccp_fixture_absent"]},"publicInspect":{"supported":true,"language":"en-US","languages":["en-US"],"directions":{},"partialError":"Text direction unavailable for en-US; official package Intl.Locale.textInfo unsupported in this renderer"},"tableCleanup":"official clear-translate-data called after disposable scene save"},
+  "tilemap":{"publicCreate":{"representation":"tmx-source","nativeCreated":false,"nativeType":"cc.TiledMapAsset","importer":"tiled-map","bytes":456,"sha256":"3c5185a6c87ed9476bda9624c657c7f8cd6be4e8535d162db7368c9846e1184a","validation":true},"negativeCodes":["TILEMAP_SOURCE_CONFLICT","TILE_GID_OUT_OF_RANGE","INVALID_ARGUMENT"],"fixtureAssetsDeleted":true},
+  "hierarchy":{"publicPages":["Main Light","Main Camera"],"pageSize":1,"childrenCount":2,"stableRevision":true,"liveTopologyChangeRefused":"HIERARCHY_REVISION_CONFLICT409","createdNodeDeleted":true},
+  "limits":["Metadata bundle validation positive is separate from runtime load/release qualification","Terrain height/layer persistence and lightBake finite job API remain unresolved; do not claim whole parent plan complete","No portfolio promotion, signing or publish"],
+  "wholeParentComplete":false
+}

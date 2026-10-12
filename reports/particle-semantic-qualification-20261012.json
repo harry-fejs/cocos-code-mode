@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-12",
+  "creator": "3.8.8",
+  "project": "G:/_ws/_helpers/cc-minimal-388",
+  "artifact": "af514a7-dirty",
+  "fixture": {
+    "node": "9eDQoh+dRJ+JYsJHb7O2aV",
+    "component": "db52iWnBJPGqvUdGqJWVZF",
+    "type": "cc.ParticleSystem"
+  },
+  "positive": {
+    "property": "enabled",
+    "offVerified": true,
+    "onVerified": true,
+    "componentReadback": true,
+    "sceneSavedClean": true,
+    "persistence": "not-qualified"
+  },
+  "scope": "Serialized ParticleSystem editor configuration through authoritative query/set/readback; not runtime particle playback, ParticleSystem2D, or visual qualification",
+  "cleanup": "fixture removed by owner thread evidence; no portfolio promotion",
+  "limitations": [
+    "Scene subtree reference was unavailable after reopen during curve persistence probe; no persistence claim",
+    "Editor serialized enabled property off/on readback is qualified",
+    "Runtime particle playback, ParticleSystem2D and visual output remain unqualified"
+  ]
+}

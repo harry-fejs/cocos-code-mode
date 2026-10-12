@@ -1,0 +1,10 @@
+{
+  "date":"2026-10-12",
+  "creator":"3.8.8",
+  "project":"G:/_ws/_helpers/cc-minimal-388",
+  "terrain":{"route":"Creator.TerrainManager.saveAsset(false, exactComponent); serialize exportAsset()._exportNativeData; asset-db reimport and fresh asset reload","scope":"fresh compiled helper in real edit-scene facade, not installed-public replay after final context fix","heightWrites":[{"i":0,"j":0,"height":1.25},{"i":1,"j":1,"height":-0.5}],"beforeSha256":"a0ce8c75d606ac2fd7a09a53a866126520249669ecd67a52b6e4b8b9500f312d","afterSha256":"02760a001a0b0dc437c2ecaa9adc21fa253c9a7a5a14c87b8f3dc9b9d076529f","sourceBytes":131072,"reimported":true,"freshReloaded":true,"restoredOriginalHeightsAndHash":true,"injectedWriterRefusal":{"success":false,"code":"TERRAIN_WRITE_FAILED","changed":false,"restoration":"confirmed"}},
+  "bundle":{"nativeBuildTask":"ccp-bundle-runtime-20261012","nativeBuildSuccessMs":34000,"path":"build/ccp-bundle-runtime/web-mobile-debug/assets/ccp_bundle_fixture","publicRuntimeValidator":{"loaded":true,"identityVerified":true,"resource":{"path":"payload","type":"JsonAsset","uuid":"938f5637-928d-49f1-bf0f-8a7319a406e1","loaded":true},"released":true,"removed":true,"absent":true,"unrelatedPreserved":true},"negativeMissingOutput":"BUNDLE_BUILD_REQUIRED","sessionStoppedAndReset":true},
+  "lightBake":{"package":"native lightmap1.0.4","messages":["bakeLightProbe","cancelLightProbe","lightmap:start","lightmap:progress","lightmap:finished","lightmap:end"],"disposition":"Available native dispatch/events, but no request-linked job identity or safe fixture/output contract yet; no bake mutation or fake unavailable claim"},
+  "wholeParentComplete":false,
+  "noPortfolioPromotion":true
+}

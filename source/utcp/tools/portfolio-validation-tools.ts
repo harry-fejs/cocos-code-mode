@@ -6,8 +6,10 @@ import { InstanceReferenceSchema, IInstanceReference } from '../schemas';
 import { AssetTools } from './asset-tools';
 import { ExpansionTools } from './expansion-tools';
 import { inspectNativeAnimationGraph } from '../../native-animation-graph-inspect';
+import { validateTerrainEditRequest } from '../../terrain-edit';
+import type { TerrainCell, TerrainEditResult } from '../../terrain-edit';
 
-const GRAPH_PRESET = 'db://internal/default_file_content/animgraph';
+const GRAPH_PRESET = 'db://internal/default_file_content/animation-graph/default.animgraph';
 const ASSET_PATH_PATTERN = /^db:\/\/assets\/[A-Za-z0-9._/-]+$/;
 const SKELETAL_FIELDS = ['playOnLoad', 'useBakedAnimation'] as const;
 type SkeletalField = typeof SKELETAL_FIELDS[number];
@@ -470,14 +472,32 @@ export class PortfolioValidationTools {
         }
     }
 
-    @utcpTool('terrainEdit', 'Edit bounded Terrain serialized height/layer data when Creator exposes a supported terrain write API; otherwise fail closed.', {
-        type: 'object', additionalProperties: false,
-        properties: { reference: InstanceReferenceSchema, path: { type: 'string', minLength: 1, maxLength: 128, pattern: '^(height|layers)(?:\\.[A-Za-z0-9_]+)*$' }, value: {}, },
-        required: ['reference', 'path', 'value'],
-    }, { type: 'object', properties: { reference: InstanceReferenceSchema, path: { type: 'string' }, changed: { type: 'boolean' }, readBack: {}, verified: { type: 'boolean' } }, required: ['reference', 'path', 'changed', 'readBack', 'verified'] }, 'POST', ['terrain', 'edit', 'configure'])
-    async terrainEdit(args: { reference: IInstanceReference, path: string, value: unknown }): Promise<Record<string, unknown>> {
-        if (!args?.reference?.id || typeof args.reference.id !== 'string' || typeof args.path !== 'string' || !/^(height|layers)(?:\\.[A-Za-z0-9_]+)*$/.test(args.path)) invalid('terrainEdit requires a supported height or layers path and reference.');
-        throw new ToolError({ code: 'UNSUPPORTED_EDITOR_API', status: 422, message: 'Creator 3.7.3 does not expose a supported persistent Terrain height/layer write API.', details: { reference: args.reference, path: args.path }, recovery: 'Use terrainCreate/terrainInspect for editor-side terrain authoring, or provide a Creator version exposing a terrain write API.' });
+    @utcpTool('terrainEdit', 'Persist up to 256 native Terrain height cells through Creator TerrainManager, verify source bytes, and reimport/reload the exact asset. Legacy path edits remain unsupported.', {
+        type: 'object',
+        oneOf: [
+            { type: 'object', additionalProperties: false, properties: { nodeReference: InstanceReferenceSchema, componentReference: InstanceReferenceSchema, assetReference: InstanceReferenceSchema,
+                cells: { type: 'array', minItems: 1, maxItems: 256, items: { type: 'object', additionalProperties: false, properties: { i: { type: 'integer', minimum: 0 }, j: { type: 'integer', minimum: 0 }, height: { type: 'number', minimum: -256, maximum: 255.9921875 } }, required: ['i', 'j', 'height'] } } }, required: ['nodeReference', 'componentReference', 'assetReference', 'cells'] },
+            { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, path: { type: 'string', minLength: 1, maxLength: 128, pattern: '^(height|layers)(?:\\.[A-Za-z0-9_]+)*$' }, value: {} }, required: ['reference', 'path', 'value'] },
+        ],
+    }, { type: 'object', properties: { success: { type: 'boolean' }, changed: { type: 'boolean' }, verified: { type: 'boolean' }, mutationStarted: { type: 'boolean' }, nodeUuid: { type: 'string' }, componentUuid: { type: 'string' }, assetUuid: { type: 'string' }, restoration: { type: 'string', enum: ['not-needed', 'confirmed', 'failed'] }, previous: { type: 'array' }, readBack: { type: 'array' }, sourceBeforeSha256: { type: 'string' }, sourceAfterSha256: { type: 'string' }, sourceBytes: { type: 'integer' }, reimported: { type: 'boolean' }, reloaded: { type: 'boolean' }, writer: { type: 'string' }, error: { type: 'object' } }, required: ['success', 'changed', 'verified', 'mutationStarted', 'nodeUuid', 'componentUuid', 'assetUuid', 'restoration'] }, 'POST', ['terrain', 'edit', 'height', 'persist'])
+    async terrainEdit(args: { nodeReference: IInstanceReference; componentReference: IInstanceReference; assetReference: IInstanceReference; cells: TerrainCell[] } | { reference: IInstanceReference; path: string; value: unknown }): Promise<TerrainEditResult> {
+        if (args && 'path' in args) {
+            if (!args.reference?.id || typeof args.path !== 'string' || !/^(height|layers)(?:\.[A-Za-z0-9_]+)*$/.test(args.path)) invalid('Legacy terrainEdit requires a height/layers path and reference.');
+            throw new ToolError({ code: 'UNSUPPORTED_EDITOR_API', status: 422, message: 'Generic terrain height/layers property paths are not a native persistent edit route.', recovery: 'Use exact nodeReference, componentReference, assetReference and bounded cells instead.' });
+        }
+        if (!args || args.nodeReference?.type !== 'cc.Node' || args.componentReference?.type !== 'cc.Terrain' || args.assetReference?.type !== 'cc.TerrainAsset') invalid('terrainEdit requires exact cc.Node, cc.Terrain and cc.TerrainAsset typed references.');
+        const request = { nodeUuid: args.nodeReference.id, componentUuid: args.componentReference.id, assetUuid: args.assetReference.id, cells: args.cells };
+        try { validateTerrainEditRequest(request); } catch (error: unknown) { invalid(error instanceof Error ? error.message : String(error)); }
+        const raw = await Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'terrainHeightEdit', args: [request] }) as unknown;
+        if (!raw || typeof raw !== 'object' || !('nodeUuid' in raw) || raw.nodeUuid !== request.nodeUuid || !('componentUuid' in raw) || raw.componentUuid !== request.componentUuid || !('assetUuid' in raw) || raw.assetUuid !== request.assetUuid || !('success' in raw) || typeof raw.success !== 'boolean' || !('mutationStarted' in raw) || typeof raw.mutationStarted !== 'boolean' || !('restoration' in raw) || !['not-needed', 'confirmed', 'failed'].includes(String(raw.restoration))) {
+            throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Terrain scene operation returned invalid identity/evidence; mutation state is unknown.' });
+        }
+        const result = raw as TerrainEditResult;
+        if (!result.success) throw new ToolError({ code: result.error?.code ?? 'TERRAIN_OPERATION_FAILED', status: result.mutationStarted ? 502 : 422, message: result.error?.message ?? 'Native terrain persistence failed.', details: { ...result } });
+        if (!result.verified || !Array.isArray(result.readBack) || result.readBack.length !== request.cells.length || typeof result.sourceBeforeSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(result.sourceBeforeSha256) || typeof result.sourceAfterSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(result.sourceAfterSha256) || result.writer !== 'Creator.TerrainManager.saveAsset' || (result.changed && (!result.reimported || !result.reloaded))) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Terrain success lacked native source/reload verification.' });
+        const expectedCells = request.cells.map(cell => ({ i: cell.i, j: cell.j, height: (Math.trunc(32768 + cell.height * 128) - 32768) / 128 }));
+        if (typeof result.changed !== 'boolean' || result.restoration !== 'not-needed' || !result.readBack!.every((cell, index) => cell.i === expectedCells[index].i && cell.j === expectedCells[index].j && cell.height === expectedCells[index].height) || !Number.isInteger(result.sourceBytes) || result.sourceBytes! < 28 || result.sourceBytes! > 8 * 1024 * 1024 || (result.changed && result.sourceBeforeSha256 === result.sourceAfterSha256)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Terrain returned inconsistent native cell/source postconditions.' });
+        return result;
     }
 
     @utcpTool('modelImportConfigure', 'Configure one typed model importer property with reimport and read-back.', {

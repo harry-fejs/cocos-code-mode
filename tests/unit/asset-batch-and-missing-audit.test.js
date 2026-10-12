@@ -38,17 +38,18 @@ describe('asset batch and missing-reference tools', () => {
     assert.deepEqual(result.outcomes.map((item) => item.ok), [true, false, true]);
   });
 
-  it('creates Creator 3.7 preset assets from flat internal templates with native extensions', async () => {
+  it('creates Creator preset assets from exact versioned internal templates with native extensions', async () => {
     const calls = [];
     const restore = withEditor(async (service, message, ...args) => {
       calls.push({ service, message, args });
       if (message === 'copy-asset') return { uuid: 'scene-uuid', type: 'cc.SceneAsset' };
-      if (message === 'query-asset-info') return { uuid: 'scene-uuid', type: 'cc.SceneAsset', url: 'db://assets/qualification.scene' };
+      if (message === 'query-asset-info') return { uuid: 'scene-uuid', type: 'cc.SceneAsset', url: 'db://assets/qualification.scene', isDirectory: false };
       throw new Error(`unexpected request ${service} ${message}`);
     });
     try {
       const result = await new AssetTools().assetCreate({ assetPath: 'db://assets/qualification', preset: 'scene' });
       assert.deepEqual(result, { reference: { id: 'scene-uuid', type: 'cc.SceneAsset' } });
+      assert.equal(calls[0].args[0], 'db://internal/default_file_content/scene/default.scene');
     } finally {
       restore();
     }

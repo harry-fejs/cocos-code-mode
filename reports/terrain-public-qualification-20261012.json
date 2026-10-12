@@ -1,0 +1,150 @@
+{
+  "date": "2026-10-12",
+  "binding": {
+    "instanceId": "cf9d1fc13ba908b1d9401aa4ea095c78",
+    "projectPath": "G:\\_ws\\_helpers\\cc-minimal-388",
+    "editorVersion": "3.8.8",
+    "projectMatches": true,
+    "build": {
+      "version": "2.1.0",
+      "commit": "af514a7",
+      "branch": "feat/cocos-pilot-api-capability-expansion",
+      "dirty": true,
+      "builtAt": "2026-10-12T00:53:12.724Z",
+      "mode": "readable"
+    },
+    "probe": {
+      "status": "responsive",
+      "sceneReady": true,
+      "code": null,
+      "evidence": {
+        "requestId": "e9622b65445ce08a",
+        "startedAt": 1791766836981,
+        "ageMs": 0,
+        "shared": false,
+        "settled": true
+      }
+    },
+    "capturedAt": 1791766836982,
+    "elapsedMs": 0
+  },
+  "fixture": {
+    "nodeReference": {
+      "id": "d47IQQGbFHvrZvYsVt5ZRY",
+      "type": "cc.Node"
+    },
+    "componentReference": {
+      "id": "09Wp3Ryi5GBK7YfK1ksurB",
+      "type": "cc.Terrain"
+    },
+    "assetReference": {
+      "id": "be7d6536-d003-4ac9-aeae-aebd60617394",
+      "type": "cc.TerrainAsset"
+    },
+    "vertices": [
+      33,
+      33
+    ],
+    "height": 0
+  },
+  "fixtureSetup": "Disposable programmatic Terrain initialized isTerrainChange=false, matching native editor state; not an ordinary-user fixture claim",
+  "positive": {
+    "success": true,
+    "changed": true,
+    "verified": true,
+    "mutationStarted": true,
+    "nodeUuid": "d47IQQGbFHvrZvYsVt5ZRY",
+    "componentUuid": "09Wp3Ryi5GBK7YfK1ksurB",
+    "assetUuid": "be7d6536-d003-4ac9-aeae-aebd60617394",
+    "restoration": "not-needed",
+    "previous": [
+      {
+        "i": 0,
+        "j": 0,
+        "height": 0
+      },
+      {
+        "i": 1,
+        "j": 1,
+        "height": 0
+      }
+    ],
+    "sourceBeforeSha256": "a0ce8c75d606ac2fd7a09a53a866126520249669ecd67a52b6e4b8b9500f312d",
+    "readBack": [
+      {
+        "i": 0,
+        "j": 0,
+        "height": 1.25
+      },
+      {
+        "i": 1,
+        "j": 1,
+        "height": -0.5
+      }
+    ],
+    "sourceAfterSha256": "02760a001a0b0dc437c2ecaa9adc21fa253c9a7a5a14c87b8f3dc9b9d076529f",
+    "sourceBytes": 131072,
+    "reimported": true,
+    "reloaded": true,
+    "writer": "Creator.TerrainManager.saveAsset"
+  },
+  "negative": {
+    "error": "Every terrain cell must fit the native vertex bounds before mutation.",
+    "code": "OUT_OF_BOUNDS",
+    "details": {
+      "success": false,
+      "changed": false,
+      "verified": false,
+      "mutationStarted": false,
+      "nodeUuid": "d47IQQGbFHvrZvYsVt5ZRY",
+      "componentUuid": "09Wp3Ryi5GBK7YfK1ksurB",
+      "assetUuid": "be7d6536-d003-4ac9-aeae-aebd60617394",
+      "restoration": "not-needed",
+      "error": {
+        "code": "OUT_OF_BOUNDS",
+        "message": "Every terrain cell must fit the native vertex bounds before mutation."
+      }
+    }
+  },
+  "restore": {
+    "success": true,
+    "changed": true,
+    "verified": true,
+    "mutationStarted": true,
+    "nodeUuid": "d47IQQGbFHvrZvYsVt5ZRY",
+    "componentUuid": "09Wp3Ryi5GBK7YfK1ksurB",
+    "assetUuid": "be7d6536-d003-4ac9-aeae-aebd60617394",
+    "restoration": "not-needed",
+    "previous": [
+      {
+        "i": 0,
+        "j": 0,
+        "height": 1.25
+      },
+      {
+        "i": 1,
+        "j": 1,
+        "height": -0.5
+      }
+    ],
+    "sourceBeforeSha256": "02760a001a0b0dc437c2ecaa9adc21fa253c9a7a5a14c87b8f3dc9b9d076529f",
+    "readBack": [
+      {
+        "i": 0,
+        "j": 0,
+        "height": 0
+      },
+      {
+        "i": 1,
+        "j": 1,
+        "height": 0
+      }
+    ],
+    "sourceAfterSha256": "a0ce8c75d606ac2fd7a09a53a866126520249669ecd67a52b6e4b8b9500f312d",
+    "sourceBytes": 131072,
+    "reimported": true,
+    "reloaded": true,
+    "writer": "Creator.TerrainManager.saveAsset"
+  },
+  "noPortfolioPromotion": true
+}
