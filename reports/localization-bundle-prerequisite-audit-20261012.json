@@ -4,8 +4,8 @@
   "project":"G:/_ws/_helpers/cc-minimal-388",
   "namespace":"ccp3x_55175",
   "localization":{"supported":false,"languages":[],"error":"Cannot find module db://localization-editor/l10n"},
-  "bundle":{"total":0,"assets":[],"positiveFixture":false},
-  "disposition":"blocked prerequisite, not implementation failure; no package installation or invented runtime witness performed",
-  "next":"Install/authorize localization editor resource and create a real bundle asset fixture under a separately approved qualification pass before promotion.",
+  "bundle":{"fixture":"ccp-bundle-fixture.png","uuid":"fab02a9a-b9bd-4120-bd56-fea301fe4339","metadata":{"bundleName":"ccp3x-qualification","priority":10,"compressionType":{"web":"merge_dep"},"isRemoteBundle":{"web":false}},"validator":{"valid":true,"issues":[],"runtimeCaveat":"Metadata validation only; runtime loading is not claimed."},"positiveMetadataWitness":true,"fixtureCleaned":true},
+  "disposition":"bundle metadata validation is now positively evidenced; runtime load/release remains unqualified. Localization remains blocked on missing editor package/resource.",
+  "next":"Install/authorize localization editor resource and produce a real localization table/resource fixture before localization promotion.",
   "noPortfolioPromotion":true
 }
