@@ -10,7 +10,7 @@ for (const version of ['3.7.3', '3.8.8']) {
   const source = path.join(sourceRoot, version);
   const index = JSON.parse(fs.readFileSync(path.join(source, 'index.json'), 'utf8'));
   if (index.version !== version || index.schemaVersion !== 1 || !Array.isArray(index.domains)) throw new Error('Invalid pilot catalog index');
-  const files = ['index.json', ...index.domains.map(domain => domain.file)];
+  const files = ['index.json', 'provenance.json', ...index.domains.map(domain => domain.file)];
   for (const file of files) {
     if (path.basename(file) !== file || !file.endsWith('.json')) throw new Error('Unsafe catalog runtime path');
     total += fs.statSync(path.join(source, file)).size;
