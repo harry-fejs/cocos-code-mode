@@ -1129,6 +1129,11 @@ declare namespace ccp3x {
         total: number; truncated: boolean;
     };
 
+    /** Reads complete UTF-8 decoded content within the normal/verbose byte cap; oversized sources throw rather than truncate. */
+    function projectReadFile(args: { filePath: string; verbose?: boolean }): { content: string; bytes: number };
+    /** Reads a line window (radius 0–50) from a size-limited source. Beyond-EOF requests may return an empty snippet; no truncation field is exposed. */
+    function projectFileSnippet(args: { filePath: string; line: number; radius?: number }): { snippet: string; startLine: number; endLine: number };
+
     /** Tracks only this module's main-process broadcastObserve listeners; excludes panel/arbitrary Creator listeners. No callbacks or event payloads are exposed. */
     function editorListenersInspect(): { supported: true; listeners: Array<{ topic: string; state: 'registered' | 'removal-failed' }>; limitation: string };
 

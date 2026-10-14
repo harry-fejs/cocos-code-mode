@@ -109,6 +109,7 @@
 - Refine broadcast observation declaration into discriminated payload/omitted outcomes and remove the obsolete broad overload.
 - Refuse explicit snapshot/abort IPC rejection in the transaction probe; describe its actual snapshot/abort-only scope and preserve failure boundaries.
 - Declare project-relative file existence and bounded directory metadata APIs with optional entry sizes and truncation.
+- Declare project UTF-8 text reads and line snippets with explicit oversized-source refusal and line-window response semantics.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
