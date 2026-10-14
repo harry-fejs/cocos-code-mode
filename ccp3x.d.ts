@@ -712,7 +712,6 @@ declare namespace ccp3x {
     function uiResponsivePreview(args: { resolutions: { width: number, height: number }[], reference?: InstanceReference }): { supported: boolean, comparisons: Array<{ resolution: { width: number, height: number }, scale: { x: number, y: number }, projectedRects: unknown[], evidence: string }>, stable: boolean, caveat: string };
     /** Rejects with UNSUPPORTED_PREVIEW_IPC on Creator 3.7.3 because preview:set-resolution is not exposed. */
     function previewResolutionSet(args: { width: number, height: number }): { width: number, height: number, persisted: boolean, supported: boolean, readBack?: unknown };
-    function editorUndoTransactionProbe(): { supported: boolean, boundaries: string[], clean: boolean };
 
     function physics2dQuery(args?: { reference?: InstanceReference }): { valid: boolean; nodes: Array<Record<string, unknown>>; issues: string[]; checkedNodes: number };
     function physics3dQuery(args?: { reference?: InstanceReference }): { valid: boolean; nodes: Array<Record<string, unknown>>; issues: string[]; checkedNodes: number };
@@ -1124,6 +1123,9 @@ declare namespace ccp3x {
 
     /** Tracks only this module's main-process broadcastObserve listeners; excludes panel/arbitrary Creator listeners. No callbacks or event payloads are exposed. */
     function editorListenersInspect(): { supported: true; listeners: Array<{ topic: string; state: 'registered' | 'removal-failed' }>; limitation: string };
+
+    /** Snapshot/abort IPC acceptance only, not undo/redo or independent cleanliness proof. Failure may leave ambiguous transaction state; inspect before retry. */
+    function editorUndoTransactionProbe(): { supported: true; boundaries: ['snapshot', 'snapshot-abort']; clean: true };
 
     /** Observes the latest event in a short listener window; probe topic emits a marker. Payloads may be sensitive. No event-delivery or whole-response byte guarantee. Cleanup failures throw; inspect owned listeners before retry. */
     function broadcastObserve(args: { topic: 'ccp3x:probe' | 'scene:change' | 'asset-db:change' }): {

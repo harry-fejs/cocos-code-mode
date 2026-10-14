@@ -900,8 +900,21 @@ export class AdvancedCapabilityTools {
         }
     }
 
-    @utcpTool('editorUndoTransactionProbe', 'Probe snapshot, undo, redo, and snapshot-abort lifecycle boundaries without leaving a pending transaction.', { type: 'object', properties: {} }, { type: 'object', properties: { supported: { type: 'boolean' }, boundaries: { type: 'array' }, clean: { type: 'boolean' } }, required: ['supported', 'boundaries', 'clean'] }, 'POST', ['editor', 'undo', 'transaction', 'probe'])
-    async editorUndoTransactionProbe(): Promise<Record<string, unknown>> { const boundaries: string[] = []; try { await Editor.Message.request('scene', 'snapshot'); boundaries.push('snapshot'); await Editor.Message.request('scene', 'snapshot-abort'); boundaries.push('snapshot-abort'); return { supported: true, boundaries, clean: true }; } catch (error) { throw new ToolError({ code: 'UNDO_PROBE_FAILED', status: 422, message: 'Creator undo transaction lifecycle is unavailable.', details: { cause: error instanceof Error ? error.message : String(error) } }); } }
+    @utcpTool('editorUndoTransactionProbe', 'Probe snapshot and snapshot-abort IPC acceptance only; does not exercise undo/redo or prove transaction ownership.', { type: 'object', properties: {} }, { type: 'object', properties: { supported: { type: 'boolean' }, boundaries: { type: 'array' }, clean: { type: 'boolean' } }, required: ['supported', 'boundaries', 'clean'] }, 'POST', ['editor', 'undo', 'transaction', 'probe'])
+    async editorUndoTransactionProbe(): Promise<Record<string, unknown>> {
+        const boundaries: string[] = [];
+        try {
+            const snapshot: unknown = await Editor.Message.request('scene', 'snapshot');
+            if (snapshot === false) throw new Error('Creator refused snapshot');
+            boundaries.push('snapshot');
+            const aborted: unknown = await Editor.Message.request('scene', 'snapshot-abort');
+            if (aborted === false) throw new Error('Creator refused snapshot-abort');
+            boundaries.push('snapshot-abort');
+            return { supported: true, boundaries, clean: true };
+        } catch (error) {
+            throw new ToolError({ code: 'UNDO_PROBE_FAILED', status: 422, message: 'Snapshot probe failed; transaction state may require inspection.', details: { boundaries, cause: error instanceof Error ? error.message : String(error) }, recovery: 'Inspect the current scene transaction state before retrying; no automatic undo, redo or abort replay is performed.' });
+        }
+    }
 
     @utcpTool('broadcastObserve', 'Observe one allowlisted Creator broadcast through a byte-bounded register, observe, and dispose lifecycle.', { type: 'object', additionalProperties: false, properties: { topic: { type: 'string', enum: ['ccp3x:probe', 'scene:change', 'asset-db:change'] } }, required: ['topic'] }, { type: 'object', properties: { topic: { type: 'string' }, supported: { type: 'boolean' }, observed: { type: 'boolean' }, lifecycle: { type: 'array' }, eventBytes: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['topic', 'supported', 'observed', 'lifecycle', 'eventBytes', 'truncated'] }, 'GET', ['broadcast', 'event', 'observe'])
     async broadcastObserve(args: { topic: string }): Promise<Record<string, unknown>> {

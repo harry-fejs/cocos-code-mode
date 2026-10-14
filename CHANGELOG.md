@@ -107,6 +107,7 @@
 - Attempt owned listener removal even when broadcast registration throws after a partial add; retain uncertain cleanup failures for inspection.
 - Close broadcast payload capture before listener removal and release captured payload when cleanup throws; late callbacks no longer replace the observed event.
 - Refine broadcast observation declaration into discriminated payload/omitted outcomes and remove the obsolete broad overload.
+- Refuse explicit snapshot/abort IPC rejection in the transaction probe; describe its actual snapshot/abort-only scope and preserve failure boundaries.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
