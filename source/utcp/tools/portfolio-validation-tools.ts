@@ -109,11 +109,14 @@ function metadataNames(value: unknown, keys: string[]): string[] {
         const candidate = (value as Record<string, unknown>)[key];
         if (!Array.isArray(candidate)) continue;
         if (candidate.length > 256) throw new ToolError({ code: 'UNSUPPORTED_METADATA', status: 422, message: 'Animation metadata inventory exceeds 256 entries; partial validation is refused.' });
-        const names = candidate.map((item) => {
-            if (typeof item === 'string') return item;
-            if (item && typeof item === 'object' && typeof (item as any).name === 'string') return (item as any).name;
-            throw new ToolError({ code: 'UNSUPPORTED_METADATA', status: 422, message: 'Animation metadata entry must be a string or an object with a string name.' });
-        });
+        const names: string[] = [];
+        for (let index = 0; index < candidate.length; index++) {
+            if (!Object.prototype.hasOwnProperty.call(candidate, index)) throw new ToolError({ code: 'UNSUPPORTED_METADATA', status: 422, message: 'Animation metadata inventory contains a missing entry.' });
+            const item = candidate[index];
+            if (typeof item === 'string') names.push(item);
+            else if (item && typeof item === 'object' && typeof (item as any).name === 'string') names.push((item as any).name);
+            else throw new ToolError({ code: 'UNSUPPORTED_METADATA', status: 422, message: 'Animation metadata entry must be a string or an object with a string name.' });
+        }
         if (names.length) return names;
     }
     return [];

@@ -68,6 +68,7 @@
 - Preserve empty joint paths for validation and refuse malformed animation metadata entries rather than dropping them; retarget diagnostics flag empty source/target joints.
 - Compare exposed clip joint paths against retarget target metadata and diagnose missing, duplicate or empty clip joints; no automatic retargeting claim.
 - Bound skeleton importer JSON reads through one file handle and refuse observed file growth/replacement before metadata validation.
+- Reject sparse animation metadata arrays instead of skipping missing slots; retain dense empty/duplicate entries for diagnostics.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
