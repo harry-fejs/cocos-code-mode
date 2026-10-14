@@ -93,6 +93,7 @@
 - Deduplicate animation catalog traversal and cap visited nodes using the existing Spine inspection budget convention; incomplete traversal reports truncated.
 - Construct animation catalog clip/Spine details only up to maxItems while retaining full inventory totals; avoid mapping discarded details or probing unrelated skeleton runtime data.
 - Declare animation clip assignment immediate read-back and heuristic compatibility audit outputs without persistence/playback qualification claims.
+- Resolve Animation clip assignment through serialized component UUID/index instead of writing the first component's clips.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

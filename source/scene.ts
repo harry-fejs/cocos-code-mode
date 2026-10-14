@@ -896,6 +896,10 @@ export const methods = {
             });
         }
         if (!clip || typeof clip !== 'object') throw new Error(`AnimationClip ${request.clipUuid} could not be loaded`);
+        const nodeDump = await (globalThis as any).Editor.Message.request('scene', 'query-node', request.nodeUuid);
+        const componentIndex = nodeDump?.__comps__?.findIndex((component: any) =>
+            component?.value?.uuid?.value === animation.uuid);
+        if (!animation.uuid || !Number.isInteger(componentIndex) || componentIndex < 0) throw new Error('Animation component is missing from the serialized scene node');
         if (!Array.isArray(animation.clips)) animation.clips = [];
         if (!animation.clips.some((candidate: any) => candidate?.uuid === request.clipUuid)) animation.clips.push(clip);
         const clipName = typeof request.clipName === 'string' && request.clipName ? request.clipName : (clip.name ?? request.clipUuid);
@@ -909,7 +913,7 @@ export const methods = {
                 return entry;
             });
             await (globalThis as any).Editor.Message.request('scene', 'snapshot');
-            const applied = await (globalThis as any).Editor.Message.request('scene', 'set-property', { uuid: request.nodeUuid, path: '__comps__.0.clips', dump: { value: entries, type: clipsProperty.type } });
+            const applied = await (globalThis as any).Editor.Message.request('scene', 'set-property', { uuid: request.nodeUuid, path: `__comps__.${componentIndex}.clips`, dump: { value: entries, type: clipsProperty.type } });
             if (applied === false) throw new Error('Creator refused Animation clip assignment');
         }
         const readBack = (Array.isArray(animation.clips) ? animation.clips : []).find((candidate: any) => candidate?.uuid === request.clipUuid);
