@@ -90,6 +90,7 @@
 - Declare bounded skeletal clip metadata inspection/validation APIs and refuse valid=true when the inspected inventory is truncated.
 - Reject malformed or sparse Creator skeletal clip inventories instead of filtering entries or reporting a false empty inventory.
 - Declare animation catalog and regular Animation component inventories with nullable identities and explicit discovery/truncation scope.
+- Deduplicate animation catalog traversal and cap visited nodes using the existing Spine inspection budget convention; incomplete traversal reports truncated.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

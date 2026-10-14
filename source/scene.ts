@@ -820,8 +820,12 @@ export const methods = {
         const maxItems = Number.isInteger(request.maxItems) ? Math.max(1, Math.min(request.maxItems!, 1000)) : 200;
         const findings: Record<string, unknown>[] = [];
         const stack: any[] = [root];
-        while (stack.length && findings.length < maxItems) {
+        const visitedNodes = new Set<any>();
+        const maxVisitedNodes = Math.min(100000, Math.max(maxItems, maxItems * 100));
+        while (stack.length && findings.length < maxItems && visitedNodes.size < maxVisitedNodes) {
             const node = stack.pop();
+            if (!node || visitedNodes.has(node)) continue;
+            visitedNodes.add(node);
             for (const component of Array.isArray(node?.components) ? node.components : []) {
                 const className = String(component?.constructor?.name ?? '');
                 const isAnimation = ['Animation', 'cc.Animation', 'SkeletalAnimation', 'cc.SkeletalAnimation'].includes(className);
@@ -855,7 +859,9 @@ export const methods = {
                 });
                 if (findings.length >= maxItems) break;
             }
-            for (const child of node?.children || []) stack.push(child);
+            for (const child of node?.children || []) {
+                if (child && !visitedNodes.has(child)) stack.push(child);
+            }
         }
         return { nodeUuid: request.nodeUuid ?? root?.uuid ?? null, findings, total: findings.length, truncated: stack.length > 0 || findings.length >= maxItems };
     },
