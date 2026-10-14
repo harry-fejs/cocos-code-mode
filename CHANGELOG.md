@@ -36,6 +36,7 @@
 - Reject invalid build wait timing before IPC and return the last observed task when polling sleep reaches deadline, without another query.
 - Add exact Game View animation clip name/UUID inventory with bounded output, duplicate-name diagnostics and no getState/playback/listener calls.
 - Add clipOffset/nextOffset paging to runtime clip inventory in current native order; pages remain live reads rather than a frozen collection snapshot.
+- Preserve native null Animation clip slots as explicit empty inventory entries with null identities; offsets count original slots, not filtered clips.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

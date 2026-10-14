@@ -126,20 +126,22 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
                 if (!Number.isInteger(limit) || limit < 1 || limit > 128) fail('INVALID_ARGUMENT', 'maxClips must be1..128.');
                 const offset = args.clipOffset ?? 0;
                 if (!Number.isInteger(offset) || offset < 0 || offset > clipList.length) fail('INVALID_ARGUMENT', 'clipOffset must be within the current clip collection.');
-                const inventory: Array<{ clipName: string; clipUuid: string; uniqueName: boolean }> = [];
+                const inventory: Array<{ clipName: string | null; clipUuid: string | null; uniqueName: boolean; empty: boolean }> = [];
                 const names = new Map<string, number>();
                 for (const candidate of clipList) {
+                    if (candidate === null) continue;
                     const clip = objectValue(candidate);
                     if (!clip || typeof clip.name !== 'string' || !clip.name || clip.name.length > 256 || typeof clip.uuid !== 'string' || !clip.uuid || clip.uuid.length > 256) fail('INVALID_RUNTIME_RESPONSE', 'Runtime clip identity is unavailable or exceeds bounds.');
                     const name = (clip as RuntimeValue).name as string;
                     names.set(name, (names.get(name) ?? 0) + 1);
                 }
                 for (const candidate of clipList.slice(offset, offset + limit)) {
+                    if (candidate === null) { inventory.push({ clipName: null, clipUuid: null, uniqueName: false, empty: true }); continue; }
                     const clip = candidate as RuntimeClip;
-                    inventory.push({ clipName: clip.name, clipUuid: clip.uuid, uniqueName: names.get(clip.name) === 1 });
+                    inventory.push({ clipName: clip.name, clipUuid: clip.uuid, uniqueName: names.get(clip.name) === 1, empty: false });
                 }
                 assertTarget(); assertDeadline();
-                if (c.clips !== clipsValue || inventory.some((item, index) => { const clip = clipList[offset + index] as RuntimeClip; return !clip || clip.name !== item.clipName || clip.uuid !== item.clipUuid; })) fail('RUNTIME_TARGET_CHANGED', 'Clip inventory changed during inspection.');
+                if (c.clips !== clipsValue || inventory.some((item, index) => { const clip = clipList[offset + index] as RuntimeClip | null; return item.empty ? clip !== null : !clip || clip.name !== item.clipName || clip.uuid !== item.clipUuid; })) fail('RUNTIME_TARGET_CHANGED', 'Clip inventory changed during inspection.');
                 const nextOffset = offset + inventory.length < clipList.length ? offset + inventory.length : null;
                 return { ...identity, clips: inventory, totalClips: clipList.length, clipOffset: offset, nextOffset, truncated: nextOffset !== null };
             }
