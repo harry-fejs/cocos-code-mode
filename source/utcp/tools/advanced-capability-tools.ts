@@ -12,6 +12,7 @@ import { requireCreator38 } from '../utils/creator38-capability';
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:@[A-Za-z0-9_-]+)?/gi;
 const SERIALIZED_LIMIT = 5 * 1024 * 1024;
 const MAX_ITEMS = 128;
+const broadcastListeners = new Map<(...payload: unknown[]) => void, { topic: string; state: 'registered' | 'removal-failed' }>();
 
 type AssetRow = { uuid: string, url: string, type?: string, importer?: string, file?: string, isDirectory?: boolean };
 
@@ -904,6 +905,8 @@ export class AdvancedCapabilityTools {
 
     @utcpTool('broadcastObserve', 'Observe one allowlisted Creator broadcast through a byte-bounded register, observe, and dispose lifecycle.', { type: 'object', additionalProperties: false, properties: { topic: { type: 'string', enum: ['ccp3x:probe', 'scene:change', 'asset-db:change'] } }, required: ['topic'] }, { type: 'object', properties: { topic: { type: 'string' }, supported: { type: 'boolean' }, observed: { type: 'boolean' }, lifecycle: { type: 'array' }, eventBytes: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['topic', 'supported', 'observed', 'lifecycle', 'eventBytes', 'truncated'] }, 'GET', ['broadcast', 'event', 'observe'])
     async broadcastObserve(args: { topic: string }): Promise<Record<string, unknown>> {
+        if (!['ccp3x:probe', 'scene:change', 'asset-db:change'].includes(args?.topic)) invalid('Broadcast topic is not allowlisted.');
+        if (broadcastListeners.size >= MAX_ITEMS) throw new ToolError({ code: 'LISTENER_LIMIT_EXCEEDED', status: 429, message: 'Owned broadcast listener limit reached; inspect retained listeners before retrying.' });
         const messages = Editor.Message as unknown as {
             addBroadcastListener?: (topic: string, handler: (...payload: unknown[]) => void) => void,
             removeBroadcastListener?: (topic: string, handler: (...payload: unknown[]) => void) => void,
@@ -915,12 +918,19 @@ export class AdvancedCapabilityTools {
         const handler = (...payload: unknown[]) => { observed = payload; };
         const lifecycle = ['registered'];
         messages.addBroadcastListener(args.topic, handler);
+        broadcastListeners.set(handler, { topic: args.topic, state: 'registered' });
         try {
             if (args.topic === 'ccp3x:probe') messages.broadcast(args.topic, marker);
             await new Promise((resolve) => setTimeout(resolve, 50));
             if (observed !== null) lifecycle.push('observed');
         } finally {
-            messages.removeBroadcastListener(args.topic, handler);
+            try {
+                messages.removeBroadcastListener(args.topic, handler);
+                broadcastListeners.delete(handler);
+            } catch (error) {
+                broadcastListeners.set(handler, { topic: args.topic, state: 'removal-failed' });
+                throw error;
+            }
             lifecycle.push('disposed');
         }
         const serialized = observed === null ? '' : JSON.stringify(observed) ?? '';
@@ -932,6 +942,6 @@ export class AdvancedCapabilityTools {
 
     @utcpTool('editorListenersInspect', 'Inspect the bounded CCP listener lifecycle surface; never claims arbitrary Creator listener enumeration.', { type: 'object', properties: {} }, { type: 'object', properties: { supported: { type: 'boolean' }, listeners: { type: 'array' }, limitation: { type: 'string' } }, required: ['supported', 'listeners', 'limitation'] }, 'GET', ['editor', 'listeners', 'inspect'])
     async editorListenersInspect(): Promise<Record<string, unknown>> {
-        return { supported: true, listeners: [], limitation: 'Creator 3.7.3 does not expose arbitrary listener enumeration; only CCP-owned broadcast lifecycles are observable.' };
+        return { supported: true, listeners: Array.from(broadcastListeners.values(), listener => ({ ...listener })), limitation: 'Only main-process broadcastObserve listeners owned by this module are tracked; panel and arbitrary Creator listeners are not enumerated. Removal failures remain listed until module teardown.' };
     }
 }

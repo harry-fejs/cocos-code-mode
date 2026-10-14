@@ -1123,6 +1123,9 @@ declare namespace ccp3x {
         sizeBytes: number; modifiedAt: string | null;
     };
 
+    /** Tracks only this module's main-process broadcastObserve listeners; excludes panel/arbitrary Creator listeners. No callbacks or event payloads are exposed. */
+    function editorListenersInspect(): { supported: true; listeners: Array<{ topic: string; state: 'registered' | 'removal-failed' }>; limitation: string };
+
     /** Inspect materials, shader effects and the render pipeline. Read-only — use inspectorSetProperty to change material properties. Result shapes are whatever the engine returns and are not yet runtime-verified. */
     function materialQuery(args: {
         operation: "effects" | "effect" | "material" | "serialized_material" | "render_pipeline" | "physics_material",
