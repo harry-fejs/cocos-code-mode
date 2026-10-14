@@ -981,8 +981,8 @@ export const methods = {
             inspect: true,
             playback: typeof target.play === 'function' || typeof target.setAnimation === 'function' || typeof target.playAnimation === 'function',
             crossFade: typeof target.crossFade === 'function',
-            tracks: isSpine && !!(target.getState || target.getAnimationState || target.animationState),
-            seek: !!target.getState,
+            tracks: isSpine && (typeof target.getState === 'function' || typeof target.getAnimationState === 'function' || (target.animationState !== null && typeof target.animationState === 'object' && Array.isArray(target.animationState.tracks))),
+            seek: typeof target.getState === 'function',
             cacheMode: typeof target.setAnimationCacheMode === 'function',
             cacheInvalidation: typeof target.invalidAnimationCache === 'function',
         };
