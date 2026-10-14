@@ -363,6 +363,20 @@ declare namespace ccp3x {
         animations: Array<{ nodeUuid: string | null; defaultClip: string | null; clips: string[] }>;
     };
 
+    /** Assigns to regular Animation; success is immediate read-back, not scene save/reopen proof. Inspect before retry after ambiguous failure. */
+    function animationClipAssign(args: { nodeReference: InstanceReference; clipReference: InstanceReference; clipName?: string }): {
+        nodeReference: InstanceReference; clipReference: InstanceReference;
+        nodeUuid: string; clipUuid: string; clipName: string; success: true;
+        clips: Array<{ uuid: string | null; name: string | null }>;
+    };
+    /** Method-presence heuristics for the first selected component, not exact target identity or successful playback/cache qualification. */
+    function animationCompatibilityAudit(args: { nodeReference: InstanceReference }): {
+        nodeReference: { id: string; type: 'cc.Node' }; nodeUuid: string; component: string | null;
+        supports: { inspect: true; playback: boolean; crossFade: boolean; tracks: boolean; seek: boolean; cacheMode: boolean; cacheInvalidation: boolean };
+        supportedCacheModes: Array<'REALTIME' | 'SHARED_CACHE' | 'PRIVATE_CACHE'>;
+        unsupportedOperations: string[]; recommendations: string[];
+    };
+
     /** Configure serialized SkeletalAnimation fields with read-back; failure restores attempted fields or throws rollback failure. */
     function skeletalAnimationConfigure(args: { reference: InstanceReference; properties: { playOnLoad?: boolean; useBakedAnimation?: boolean } }): {
         reference: InstanceReference,
