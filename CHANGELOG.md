@@ -59,6 +59,7 @@
 - Reject localization inspection when the current language changes during direction lookup; preserve stable and partially available direction snapshots.
 - Diagnose unsorted serialized AnimationBlend1D thresholds without rewriting assets or inferring playable/runtime validity.
 - Diagnose serialized AnimationBlend2D algorithm values outside the native 0/1/2 enum; no asset rewriting or runtime-validity inference.
+- Diagnose exact duplicate FREEFORM_CARTESIAN threshold coordinates that produce non-finite native blend weights; directional algorithms remain separately unqualified.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

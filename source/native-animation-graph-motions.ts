@@ -61,6 +61,18 @@ export function inspectGraphMotionClips(value: unknown) {
             checkBinding(object.paramX, `${next.path}.paramX`);
             checkBinding(object.paramY, `${next.path}.paramY`);
             if (typeof object.algorithm !== 'number' || !Number.isInteger(object.algorithm) || object.algorithm < 0 || object.algorithm > 2) add('INVALID_BLEND_ALGORITHM', `${next.path}.algorithm`);
+            if (object.algorithm === 1 && Array.isArray(object._items)) {
+                const coordinates = new Map<number, Set<number>>();
+                for (let index = 0; index < Math.min(object._items.length, 512); index++) {
+                    const item = resolve(object._items[index], `${next.path}._items[${index}]`);
+                    const threshold = resolve(item?.threshold, `${next.path}._items[${index}].threshold`);
+                    if (!threshold || typeof threshold.x !== 'number' || !Number.isFinite(threshold.x) || typeof threshold.y !== 'number' || !Number.isFinite(threshold.y)) continue;
+                    let ys = coordinates.get(threshold.x);
+                    if (!ys) { ys = new Set<number>(); coordinates.set(threshold.x, ys); }
+                    if (ys.has(threshold.y)) add('DUPLICATE_CARTESIAN_THRESHOLD', `${next.path}._items[${index}].threshold`);
+                    ys.add(threshold.y);
+                }
+            }
         }
         if (type === 'cc.animation.AnimationBlend1DItem' && (typeof object.threshold !== 'number' || !Number.isFinite(object.threshold))) add('INVALID_BLEND_THRESHOLD', `${next.path}.threshold`);
         if (type === 'cc.animation.AnimationBlend2DItem') {
