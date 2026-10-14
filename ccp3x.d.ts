@@ -976,6 +976,8 @@ declare namespace ccp3x {
     function skeletalAnimationEvents(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; maxEvents?: number; timeoutMs?: number }): Record<string, unknown>;
     /** Exact attached Game View Animation/SkeletalAnimation clip read; no playback mutation. */
     function animationPlaybackObserve(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; timeoutMs?: number }): Record<string, unknown>;
+    /** Component controls refuse other active clips; exact requested clip read-back. No replay on unknown outcome. */
+    function animationPlaybackControl(args: { sessionId: string; nodeReference: { id: string }; componentId: string; operation: 'play' | 'pause' | 'resume' | 'stop'; clipName: string; clipUuid: string; timeoutMs?: number }): Record<string, unknown>;
     function animationGraphPreview(args: { sessionId: string; nodeReference: { id: string }; componentId: string; operation: 'inspect' | 'setVariable'; variable?: { name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean }; timeoutMs?: number }): Record<string, unknown>;
     /** Exact runtime graph variable observation; no write. Deadline expiry is an error. */
     function animationGraphWaitForVariable(args: { sessionId: string; nodeReference: { id: string }; componentId: string; graphUuid: string; name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean; timeoutMs?: number; pollMs?: number }): { matched: true; observations: number; graphUuid: string; variable: { name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean }; writes: false };
