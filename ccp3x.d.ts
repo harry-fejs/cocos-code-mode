@@ -416,19 +416,20 @@ declare namespace ccp3x {
     function imageSourceMetadataValidate(args: { reference: InstanceReference; width?: number; height?: number; formats?: string[]; hasAlpha?: boolean; orientation?: number; minDensity?: number; maxDensity?: number; pages?: number }): {
         valid: boolean,
         reference: InstanceReference,
-        metadata: Record<string, unknown>,
+        metadata: ReturnType<typeof imageSourceMetadataInspect>,
         issues: Array<Record<string, unknown>>
     };
 
-    function imageSourceMetadataBatchValidate(args: { items: Array<{ reference: InstanceReference; width?: number; height?: number; formats?: string[]; hasAlpha?: boolean; orientation?: number; minDensity?: number; maxDensity?: number; pages?: number }> }): {
-        outcomes: Array<Record<string, unknown>>,
+    /** 1..32 requests. succeeded counts completed calls, including valid:false; failed counts thrown errors. */
+    function imageSourceMetadataBatchValidate(args: { items: Array<Parameters<typeof imageSourceMetadataValidate>[0]> }): {
+        outcomes: Array<{ index: number; ok: true; result: ReturnType<typeof imageSourceMetadataValidate> } | { index: number; ok: false; reference: InstanceReference; error: { message: string } }>,
         succeeded: number,
         failed: number,
         invalid: number,
         partial: boolean
     };
     function imageSourceMetadataBatchInspect(args: { references: InstanceReference[] }): {
-        items: Array<Record<string, unknown>>,
+        items: Array<{ index: number; ok: true; result: ReturnType<typeof imageSourceMetadataInspect> } | { index: number; ok: false; reference: InstanceReference; error: { message: string } }>,
         succeeded: number,
         failed: number
     };
