@@ -339,6 +339,15 @@ declare namespace ccp3x {
         issues: Array<{ code: string; index?: number; clip?: string }>
     };
 
+    /** Editor clip metadata only; maxClips is 1–200. Raw clip fields require narrowing; no runtime binding/playback proof. */
+    function skeletalAnimationInspect(args: { nodeReference: InstanceReference; maxClips?: number }): {
+        reference: InstanceReference; clips: Array<Record<string, unknown>>; totalClips: number; truncated: boolean;
+    };
+    /** Checks identities in the inspected prefix; truncated inventories return valid=false. clipCount is total inventory size, not checked count. */
+    function skeletalAnimationValidate(args: { nodeReference: InstanceReference; maxClips?: number }): {
+        valid: boolean; issues: string[]; clipCount: number;
+    };
+
     /** Configure serialized SkeletalAnimation fields with read-back; failure restores attempted fields or throws rollback failure. */
     function skeletalAnimationConfigure(args: { reference: InstanceReference; properties: { playOnLoad?: boolean; useBakedAnimation?: boolean } }): {
         reference: InstanceReference,

@@ -87,6 +87,7 @@
 - Refuse output audit rows when file identity, size, timestamps or resolved path changes across hashing.
 - Declare read-only Terrain component metadata and localization availability inspection APIs without geometry, persistence or runtime qualification claims.
 - Declare prefab create-from-node, full apply and full restore APIs with source hashes, response truncation and explicit unsaved-scene semantics.
+- Declare bounded skeletal clip metadata inspection/validation APIs and refuse valid=true when the inspected inventory is truncated.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

@@ -860,6 +860,7 @@ export class AnimationTools {
     async skeletalAnimationValidate(args: { nodeReference?: IInstanceReference, maxClips?: number }): Promise<{ valid: boolean, issues: string[], clipCount: number }> {
         const inspected = await this.skeletalAnimationInspect(args);
         const issues: string[] = [];
+        if (inspected.truncated) issues.push('clip inventory is truncated; validation coverage is incomplete');
         inspected.clips.forEach((clip, index) => {
             if (!clip || typeof clip !== 'object') issues.push(`clip[${index}] is not an object`);
             else if (typeof clip.uuid !== 'string' && typeof clip.id !== 'string' && typeof clip.name !== 'string') issues.push(`clip[${index}] has no stable identity`);
