@@ -90,6 +90,7 @@ export class P4ContractTools {
             try {
                 result = await Promise.race([executeComponentOperation({ kind: 'particle', operation: 'inspect', sessionId: args.sessionId, nodeReference: args.nodeReference, componentId: args.componentId, timeoutMs: Math.min(remaining, 1000) }), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Particle state read exceeded caller deadline; no playback mutation dispatched.' })), remaining); })]);
             } finally { clearTimeout(timer); }
+            if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Particle state read completed after caller deadline; no playback mutation dispatched.' });
             observations++;
             const state = result.state as { playing?: unknown; particleCount?: unknown } | undefined;
             if (!state || typeof state.playing !== 'boolean') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Particle inspect returned no valid state.' });
