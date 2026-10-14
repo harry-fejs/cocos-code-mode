@@ -100,7 +100,7 @@ export class ComponentRuntimeTools {
     }, { type: 'object', properties: { matched: { type: 'boolean' }, timedOut: { type: 'boolean' }, observations: { type: 'integer' }, state: animationStateSchema }, required: ['matched', 'timedOut', 'observations', 'state'] }, 'POST', ['skeletal', 'animation', 'wait', 'read-only'])
     async skeletalAnimationWaitForState(args: SkeletalArgs & { playing?: boolean; paused?: boolean; minTime?: number; pollMs?: number }) {
         const timeoutMs = args?.timeoutMs ?? 3000; const pollMs = args?.pollMs ?? 100;
-        if (args.playing === undefined && args.paused === undefined && args.minTime === undefined
+        if (!args || args.playing === undefined && args.paused === undefined && args.minTime === undefined
             || args.playing !== undefined && typeof args.playing !== 'boolean' || args.paused !== undefined && typeof args.paused !== 'boolean'
             || args.minTime !== undefined && (typeof args.minTime !== 'number' || !Number.isFinite(args.minTime) || args.minTime < 0 || args.minTime > 3600)
             || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000 || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide bounded state conditions, timeout and poll interval.' });
@@ -112,6 +112,7 @@ export class ComponentRuntimeTools {
             let timer: NodeJS.Timeout | undefined; let result: Record<string, unknown>;
             try { result = await Promise.race([executeComponentOperation(operation), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read exceeded caller deadline; no playback mutation dispatched.' })), remaining); })]); }
             finally { clearTimeout(timer); }
+            if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read completed after caller deadline; no playback mutation dispatched.' });
             const state = result.state as { playing?: unknown; paused?: unknown; time?: unknown } | undefined;
             if (!state || typeof state.playing !== 'boolean' || typeof state.paused !== 'boolean') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Invalid skeletal state observation.' });
             if (args.minTime !== undefined && (typeof state.time !== 'number' || !Number.isFinite(state.time))) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Skeletal clip time is unavailable.' });

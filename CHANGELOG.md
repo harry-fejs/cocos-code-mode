@@ -47,6 +47,7 @@
 - Add optional runtime resource expectedUuid guard to bundle validation; mismatch refuses resource load and preserves owned bundle cleanup, never treats emitted compressed tokens as decoded UUIDs.
 - Complete public bundle runtime validation declarations/guidance including typed resource UUID expectations and verified cleanup return contract.
 - Do not credit terminal build responses received after a positive wait deadline; keep the bounded zero-wait snapshot behavior.
+- Refuse late skeletal state matches after caller deadline and reject null wait input before observation; timely read-only matches remain supported.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
