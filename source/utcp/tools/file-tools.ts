@@ -140,7 +140,10 @@ export class FileTools {
         const walk = (directory: string): void => {
             if (files.length >= limit) return;
             let entries: fs.Dirent[];
-            try { entries = fs.readdirSync(directory, { withFileTypes: true }); } catch { return; }
+            try { entries = fs.readdirSync(directory, { withFileTypes: true }); }
+            catch {
+                throw new ToolError({ code: 'PROJECT_SEARCH_FAILED', status: 503, message: 'A project directory could not be read; search results are incomplete.', recovery: 'Check directory availability and permissions before retrying the read-only search.' });
+            }
             for (const entry of entries) {
                 if (files.length >= limit) return;
                 if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'library' || entry.name === 'temp') continue;

@@ -113,6 +113,7 @@
 - Refuse project snippet line requests beyond EOF instead of returning inverted start/end ranges.
 - Check decoded snippet text byte size after read and before line splitting; reject growth beyond the source cap despite a stale pre-read stat.
 - Declare glob-like project file search with returned-match counts and explicit result-cap/completeness limitations.
+- Fail project file search when directory enumeration errors instead of returning incomplete or empty success.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
