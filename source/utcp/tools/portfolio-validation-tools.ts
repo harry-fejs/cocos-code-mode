@@ -564,13 +564,13 @@ export class PortfolioValidationTools {
         return new AssetTools().assetImportSettingsSet(args);
     }
 
-    @utcpTool('modelImportInspect', 'Inspect typed model importer settings and output metadata.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, { type: 'object', properties: { reference: InstanceReferenceSchema, importer: { type: 'string' }, settings: { type: 'object' }, schema: { type: 'object' }, outputs: { type: 'array' } }, required: ['reference', 'importer', 'settings', 'schema', 'outputs'] }, 'GET', ['model', 'import', 'inspect'])
+    @utcpTool('modelImportInspect', 'Inspect typed model importer settings and output metadata.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, { type: 'object', properties: { reference: InstanceReferenceSchema, importer: { type: 'string' }, settings: { type: 'object' }, schema: { type: 'object' }, outputs: { type: 'array' }, totalOutputs: { type: 'integer' }, outputsTruncated: { type: 'boolean' } }, required: ['reference', 'importer', 'settings', 'schema', 'outputs', 'totalOutputs', 'outputsTruncated'] }, 'GET', ['model', 'import', 'inspect'])
     async modelImportInspect(args: { reference: IInstanceReference }): Promise<Record<string, unknown>> {
         const asset = await info(args.reference);
         if (!/fbx|gltf|model/i.test(String(asset.importer ?? ''))) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: 'Reference is not a model asset.' });
         const result = await new AssetTools().assetImportSettingsGet({ reference: args.reference });
         const subAssets = asset.subAssets && typeof asset.subAssets === 'object' ? Object.values(asset.subAssets as Record<string, unknown>) : [];
-        return { reference: result.reference, importer: result.importer, settings: result.settings, schema: result.schema, outputs: subAssets.slice(0, 128) };
+        return { reference: result.reference, importer: result.importer, settings: result.settings, schema: result.schema, outputs: subAssets.slice(0, 128), totalOutputs: subAssets.length, outputsTruncated: subAssets.length > 128 };
     }
 
     @utcpTool('modelImportValidate', 'Validate typed model importer settings and imported mesh/skeleton/LOD outputs.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, { type: 'object', properties: { valid: { type: 'boolean' }, reference: InstanceReferenceSchema, importer: { type: 'string' }, issues: { type: 'array' }, outputs: { type: 'array' } }, required: ['valid', 'reference', 'importer', 'issues', 'outputs'] }, 'GET', ['model', 'import', 'validate'])
@@ -578,7 +578,7 @@ export class PortfolioValidationTools {
         const inspected = await this.modelImportInspect(args);
         const outputs = Array.isArray(inspected.outputs) ? inspected.outputs : [];
         const issues: Array<Record<string, unknown>> = [];
-        if (!outputs.length) issues.push({ code: 'OUTPUTS_UNAVAILABLE', message: 'No imported model sub-assets were exposed by asset-db.' });
+        if (inspected.outputsTruncated) issues.push({ code: 'OUTPUTS_TRUNCATED', message: 'Importer output inventory exceeds validation bound.' });
         for (const [index, output] of outputs.entries()) {
             if (!output || typeof output !== 'object' || Array.isArray(output)) { issues.push({ code: 'OUTPUT_IDENTITY_INVALID', index }); continue; }
             const row = output as Record<string, unknown>;
