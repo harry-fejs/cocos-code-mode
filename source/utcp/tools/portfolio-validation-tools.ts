@@ -112,8 +112,8 @@ function metadataNames(value: unknown, keys: string[]): string[] {
         const names = candidate.map((item) => {
             if (typeof item === 'string') return item;
             if (item && typeof item === 'object' && typeof (item as any).name === 'string') return (item as any).name;
-            return '';
-        }).filter((item): item is string => !!item);
+            throw new ToolError({ code: 'UNSUPPORTED_METADATA', status: 422, message: 'Animation metadata entry must be a string or an object with a string name.' });
+        });
         if (names.length) return names;
     }
     return [];
@@ -352,6 +352,8 @@ export class PortfolioValidationTools {
         const targetSet = new Set(target.joints);
         if (sourceSet.size !== source.joints.length) issues.push({ code: 'SOURCE_JOINTS_DUPLICATE' });
         if (targetSet.size !== target.joints.length) issues.push({ code: 'TARGET_JOINTS_DUPLICATE' });
+        if (source.joints.some(joint => !joint)) issues.push({ code: 'SOURCE_JOINTS_EMPTY' });
+        if (target.joints.some(joint => !joint)) issues.push({ code: 'TARGET_JOINTS_EMPTY' });
         const missing = source.joints.filter((joint) => !targetSet.has(joint)).slice(0, 256);
         const extra = target.joints.filter((joint) => !sourceSet.has(joint)).slice(0, 256);
         if (missing.length) issues.push({ code: 'TARGET_JOINTS_MISSING', joints: missing });
