@@ -9,6 +9,7 @@
 - Add implementation-only exact skeletal clip observe/state wait and task-linked expected-output SHA-256 manifest inspection. Read-only paths, bounded deadlines/bytes and explicit producer-freshness limits; live qualification remains pending.
 - Add implementation-only official-table text diagnostics for simple-brace placeholder mismatch and explicitly supplied Unicode repertoire; no font/layout/fallback/runtime validity inference.
 - Add bounded native animation-graph variable-reference and conservative entry-path diagnostics; incomplete graphs cannot prove absent paths, and playable/runtime validity remains unverified.
+- Extend graph diagnostics with authoritative direct-clip asset identity/type checks; transport errors do not masquerade as missing assets and empty coverage does not grant success.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

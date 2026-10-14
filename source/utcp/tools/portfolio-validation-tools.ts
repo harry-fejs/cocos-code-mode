@@ -7,6 +7,7 @@ import { AssetTools } from './asset-tools';
 import { ExpansionTools } from './expansion-tools';
 import { inspectNativeAnimationGraph } from '../../native-animation-graph-inspect';
 import { diagnoseNativeGraphReferences } from '../../native-animation-graph-diagnostics';
+import { inspectGraphClipAssets } from '../../native-animation-graph-clips';
 import { validateTerrainEditRequest } from '../../terrain-edit';
 import type { TerrainCell, TerrainEditResult } from '../../terrain-edit';
 
@@ -251,12 +252,13 @@ export class PortfolioValidationTools {
         return { ...graph, valid: false as const };
     }
 
-    @utcpTool('animationGraphDiagnostics', 'Report undeclared variable references and conservative structural entry paths from bounded native graph inspection. No condition evaluation, clip existence or playable/runtime validity claim.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, {
-        type: 'object', properties: { reference: InstanceReferenceSchema, complete: { type: 'boolean' }, issues: { type: 'array', maxItems: 256 }, truncated: { type: 'boolean' }, checkedStates: { type: 'integer' }, checkedConditions: { type: 'integer' }, semanticsVerified: { type: 'boolean', const: false }, runtimeVerified: { type: 'boolean', const: false }, verificationScope: { type: 'string' } }, required: ['reference', 'complete', 'issues', 'truncated', 'checkedStates', 'checkedConditions', 'semanticsVerified', 'runtimeVerified', 'verificationScope'],
+    @utcpTool('animationGraphDiagnostics', 'Report undeclared variables, conservative structural entry paths and authoritative direct-clip Asset DB identity/type checks. No blend-tree, condition evaluation or playable/runtime validity claim.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, {
+        type: 'object', properties: { reference: InstanceReferenceSchema, complete: { type: 'boolean' }, issues: { type: 'array', maxItems: 256 }, truncated: { type: 'boolean' }, checkedStates: { type: 'integer' }, checkedConditions: { type: 'integer' }, clips: { type: 'array', maxItems: 256 }, checkedClips: { type: 'integer' }, directClipsValid: { type: 'boolean' }, clipVerificationScope: { type: 'string' }, semanticsVerified: { type: 'boolean', const: false }, runtimeVerified: { type: 'boolean', const: false }, verificationScope: { type: 'string' } }, required: ['reference', 'complete', 'issues', 'truncated', 'checkedStates', 'checkedConditions', 'clips', 'checkedClips', 'directClipsValid', 'clipVerificationScope', 'semanticsVerified', 'runtimeVerified', 'verificationScope'],
     }, 'GET', ['animation', 'graph', 'diagnostics', 'read-only'])
     async animationGraphDiagnostics(args: { reference: IInstanceReference }) {
         const graph = await this.animationGraphInspect(args);
-        return { reference: graph.reference, ...diagnoseNativeGraphReferences(graph) };
+        const clips = await inspectGraphClipAssets(graph.states, uuid => Editor.Message.request('asset-db', 'query-asset-info', uuid));
+        return { reference: graph.reference, ...diagnoseNativeGraphReferences(graph), ...clips };
     }
 
     @utcpTool('animationGraphCreate', 'Create a native Creator animation graph through asset-db and verify its stable imported identity.', {

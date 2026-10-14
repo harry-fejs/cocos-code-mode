@@ -80,6 +80,8 @@ Implementation-only additions: `skeletalAnimationPlay({operation:'observe', ...}
 
 `animationGraphDiagnostics` reports undeclared variable references and conservative state entry paths from the existing bounded native graph inspector. Conditions are not evaluated, incomplete structures cannot prove an absent path, and native serializer/blend-tree/clip/runtime verification remains pending. `animationGraphValidate.valid` remains false.
 
+Graph diagnostics also query unique directly inspected clip UUIDs through Asset DB, reporting missing assets, wrong types and identity drift. Query failure is not interpreted as absence; an empty clip set does not grant `directClipsValid`. This does not cover blend-tree descendants, graph source drift during queries, imported output, bindings or runtime loading.
+
 * QA: `scripts/smoke-utcp.js` (expects 88) · Perf: `a769a46` bench + `e419276` trim.
 
 
