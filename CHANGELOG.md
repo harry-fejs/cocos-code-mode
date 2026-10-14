@@ -63,6 +63,7 @@
 - Diagnose recursive serialized motion cycles while retaining shared-subtree traversal; cycles no longer grant complete motion diagnostics.
 - Diagnose mismatched serialized blend item types in 1D/2D/direct collections; wrong-type objects no longer grant complete traversal.
 - Diagnose malformed collection/scalar motion child shapes rather than granting complete structural traversal.
+- Report untyped and foreign motion objects as unsupported rather than silently granting complete traversal.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

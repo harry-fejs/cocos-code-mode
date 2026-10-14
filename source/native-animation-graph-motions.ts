@@ -89,7 +89,7 @@ export function inspectGraphMotionClips(value: unknown) {
             : type === 'cc.animation.StateMachine' ? ['_states'] : type === 'cc.animation.Motion' ? ['motion']
             : ['cc.animation.AnimationBlend1D', 'cc.animation.AnimationBlend2D', 'cc.animation.AnimationBlendDirect'].includes(String(type)) ? ['_items']
             : ['cc.animation.AnimationBlend1DItem', 'cc.animation.AnimationBlend2DItem', 'cc.animation.AnimationBlendDirectItem', 'cc.animation.AnimationBlendItem'].includes(String(type)) ? ['motion'] : [];
-        if (typeof type === 'string' && type.startsWith('cc.animation.') && !fields.length && type !== 'cc.animation.ClipMotion' && !['cc.animation.State', 'cc.animation.EmptyState'].includes(type)) add('UNSUPPORTED_MOTION_OBJECT', next.path);
+        if (!fields.length && !['cc.animation.ClipMotion', 'cc.animation.State', 'cc.animation.EmptyState'].includes(String(type))) add('UNSUPPORTED_MOTION_OBJECT', next.path);
         for (const field of fields) {
             const child = object[field];
             if (child === null && field === 'motion') continue;
