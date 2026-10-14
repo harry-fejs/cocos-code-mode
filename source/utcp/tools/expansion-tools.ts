@@ -193,6 +193,35 @@ export class ExpansionTools {
     }, 'GET', ['localization', 'resources', 'inspect', 'read-only'])
     async localizationResourceInspect() { requireCreator38('localizationResourceInspect'); return inspectLocalizationResources(); }
 
+    @utcpTool('localizationFallbackCoverage', 'Inspect direct and configured editor-fallback key presence using official resource-list/table IPC. Empty values remain explicit and do not imply fallback. No runtime override, subtag chain, rendering or language switch inference.', {
+        type: 'object', additionalProperties: false, properties: { locale: { type: 'string', minLength: 1, maxLength: 64 }, keys: { type: 'array', minItems: 1, maxItems: 64, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 256 } } }, required: ['locale', 'keys'],
+    }, { type: 'object', properties: { locale: { type: 'string' }, fallbackLanguage: { type: 'string' }, complete: { type: 'boolean' }, items: { type: 'array', maxItems: 64 }, writes: { type: 'boolean', const: false }, runtimeVerified: { type: 'boolean', const: false }, verificationScope: { type: 'string' } }, required: ['locale', 'fallbackLanguage', 'complete', 'items', 'writes', 'runtimeVerified', 'verificationScope'] }, 'POST', ['localization', 'fallback', 'coverage', 'read-only'])
+    async localizationFallbackCoverage(args: { locale: string; keys: string[] }) {
+        requireCreator38('localizationFallbackCoverage');
+        if (!args || Object.keys(args).some(key => !['locale', 'keys'].includes(key)) || typeof args.locale !== 'string' || args.locale.length > 64 || !/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/.test(args.locale)
+            || !Array.isArray(args.keys) || args.keys.length < 1 || args.keys.length > 64 || new Set(args.keys).size !== args.keys.length
+            || args.keys.some(key => typeof key !== 'string' || !key.trim() || key.length > 256 || ['__proto__', 'constructor', 'prototype'].includes(key))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide bounded locale and unique translation keys.' });
+        const resources = await this.localizationResourceInspect();
+        if (!resources.languages.includes(args.locale) || !resources.languages.includes(resources.fallbackLanguage)) throw new ToolError({ code: 'LOCALIZATION_RESOURCE_UNAVAILABLE', status: 422, message: 'Requested and configured fallback locales must both be declared by the official package.' });
+        const direct = await this.localizationTableInspect({ locale: args.locale, keys: args.keys, maxBytes: 65536 });
+        const fallback = args.locale === resources.fallbackLanguage ? direct : await this.localizationTableInspect({ locale: resources.fallbackLanguage, keys: args.keys, maxBytes: 65536 });
+        const directValues = new Map(direct.items.map(item => [item.key, item.value]));
+        const fallbackValues = new Map(fallback.items.map(item => [item.key, item.value]));
+        const directMissing = new Set(direct.missingKeys); const fallbackMissing = new Set(fallback.missingKeys);
+        const items = args.keys.map(key => {
+            const value = directValues.get(key); const fallbackValue = fallbackValues.get(key);
+            const status = value !== undefined ? value.trim() ? 'direct' : 'direct-empty'
+                : !directMissing.has(key) ? 'unknown'
+                : fallbackValue !== undefined ? fallbackValue.trim() ? 'fallback-present' : 'fallback-empty'
+                : fallbackMissing.has(key) ? 'missing-both' : 'unknown';
+            return { key, status };
+        });
+        const after = await this.localizationResourceInspect();
+        if (JSON.stringify(after.languages) !== JSON.stringify(resources.languages) || after.fallbackLanguage !== resources.fallbackLanguage || after.defaultLanguage !== resources.defaultLanguage) throw new ToolError({ code: 'LOCALIZATION_RESOURCE_CHANGED', status: 409, message: 'Official resource configuration changed during coverage; inspect again.' });
+        return { locale: args.locale, fallbackLanguage: resources.fallbackLanguage, complete: !direct.truncated && !fallback.truncated && items.every(item => item.status !== 'unknown'), items, writes: false as const, runtimeVerified: false as const,
+            verificationScope: 'Official editor-configured fallback table presence only. Runtime options/localStorage, subtag hierarchy, concurrent table changes, fonts/layout and actual fallback resolution are not verified.' };
+    }
+
     @utcpTool('localizationTableInspect', 'Read selected existing translation keys from official localization-editor main IPC. No language change, restart or write. Missing keys are explicit; returned values have a whole-response byte bound.', {
         type: 'object', additionalProperties: false,
         properties: { locale: { type: 'string', minLength: 1, maxLength: 64 }, keys: { type: 'array', minItems: 1, maxItems: 64, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 256 } }, maxBytes: { type: 'integer', minimum: 1024, maximum: 65536, default: 16384 } }, required: ['locale', 'keys'],
