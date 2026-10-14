@@ -150,9 +150,12 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
             let timer: ReturnType<typeof setTimeout> | undefined; let poll: ReturnType<typeof setInterval> | undefined; const start = Date.now(); let reason = 'deadline';
             try {
                 await new Promise<void>((done, reject) => {
-                    const capture = (type: string, eventState: unknown) => { try { assertAnimation(); if (Date.now() >= args.expiresAt) { done(); return; } if (eventState !== state) return; events.push({ sequence: events.length + 1, type, elapsedMs: Date.now() - start, clipName: clip.name, clipUuid: clip.uuid, state: snapshot() }); if (events.length >= (args.maxEvents ?? 20)) { reason = 'max-events'; done(); } } catch (error) { reject(error); } };
+                    let settled = false;
+                    const finish = () => { if (settled) return; settled = true; done(); };
+                    const abort = (error: unknown) => { if (settled) return; settled = true; reject(error); };
+                    const capture = (type: string, eventState: unknown) => { if (settled) return; try { assertAnimation(); if (Date.now() >= args.expiresAt) { finish(); return; } if (eventState !== state) return; events.push({ sequence: events.length + 1, type, elapsedMs: Date.now() - start, clipName: clip.name, clipUuid: clip.uuid, state: snapshot() }); if (events.length >= (args.maxEvents ?? 20)) { reason = 'max-events'; finish(); } } catch (error) { abort(error); } };
                     for (const type of ['play', 'pause', 'resume', 'stop', 'lastframe', 'finished']) { const callback: RuntimeCallback = (_type: unknown, eventState: unknown) => capture(type, eventState); listeners.push({ type, callback }); c.on!.call(c, type, callback); }
-                    timer = setTimeout(done, Math.max(0, args.expiresAt - Date.now())); poll = setInterval(() => { try { assertAnimation(); } catch (error) { reject(error); } }, 25);
+                    timer = setTimeout(finish, Math.max(0, args.expiresAt - Date.now())); poll = setInterval(() => { if (settled) return; try { assertAnimation(); } catch (error) { abort(error); } }, 25);
                 });
                 assertAnimation(); return { ...animationIdentity, events, reason, elapsedMs: Date.now() - start, state: snapshot() };
                 } finally { clearTimeout(timer); clearInterval(poll); let cleanupFailed = false; for (const listener of listeners) { try { c.off!.call(c, listener.type, listener.callback); } catch { cleanupFailed = true; } } if (cleanupFailed) fail('RUNTIME_LISTENER_CLEANUP_FAILED', 'Animation listeners could not all be removed.'); }
