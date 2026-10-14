@@ -1117,6 +1117,12 @@ declare namespace ccp3x {
         maxBytes?: number
     }): { logLines: string[], total: number, truncated: boolean };
 
+    /** Fixed project log metadata only; path is project-relative. Does not expose file contents or launch an external application. */
+    function editorGetLogFileInfo(): {
+        path: 'temp/logs/project.log'; exists: boolean; isFile: boolean;
+        sizeBytes: number; modifiedAt: string | null;
+    };
+
     /** Inspect materials, shader effects and the render pipeline. Read-only — use inspectorSetProperty to change material properties. Result shapes are whatever the engine returns and are not yet runtime-verified. */
     function materialQuery(args: {
         operation: "effects" | "effect" | "material" | "serialized_material" | "render_pipeline" | "physics_material",

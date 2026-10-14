@@ -102,6 +102,7 @@
 - Recheck serialized Animation component index after snapshot and refuse reordered targets before clip assignment.
 - Require complete ordered clip UUID inventory read-back after assignment; requested clip presence alone no longer grants success.
 - Reject noncallable animation state accessors in compatibility heuristics; direct Spine state fallback requires a tracks array.
+- Declare fixed project log-file metadata inspection with a project-relative path and nullable modification timestamp.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
