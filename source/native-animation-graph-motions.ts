@@ -29,15 +29,20 @@ export function inspectGraphMotionClips(value: unknown) {
         if (!variable || variable.__type__ !== 'cc.animation.PlainVariable' || (variable._type !== 0 && variable._type !== 3)) add('BLEND_VARIABLE_NOT_NUMERIC', path);
     };
     const seen = new Set<Row>();
-    const stack: Array<{ value: unknown; path: string; depth: number }> = [{ value: root, path: '$', depth: 0 }];
+    const active = new Set<Row>();
+    const stack: Array<{ value: unknown; path: string; depth: number; exit?: Row }> = [{ value: root, path: '$', depth: 0 }];
     while (stack.length) {
-        if (visitedObjects >= 2048) { truncated = true; break; }
         const next = stack.pop()!;
+        if (next.exit) { active.delete(next.exit); continue; }
+        if (visitedObjects >= 2048) { truncated = true; break; }
         if (next.depth > 64) { truncated = true; continue; }
         const object = resolve(next.value, next.path);
         if (!object) { add('INVALID_MOTION_OBJECT', next.path); continue; }
+        if (active.has(object)) { add('MOTION_REFERENCE_CYCLE', next.path); continue; }
         if (seen.has(object)) continue;
         seen.add(object); visitedObjects++;
+        active.add(object);
+        stack.push({ value: object, path: next.path, depth: next.depth, exit: object });
         const type = object.__type__;
         if (type === 'cc.animation.ClipMotion') {
             const clip = row(object.clip);
