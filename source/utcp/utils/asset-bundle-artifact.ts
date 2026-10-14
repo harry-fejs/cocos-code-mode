@@ -64,6 +64,17 @@ export function resolveBundleArtifact(project: string, requested: string, name: 
     const types = data.types;
     const paths = data.paths;
     if (!Array.isArray(data.deps) || data.deps.length || !Array.isArray(data.uuids) || data.uuids.length > 10000 || data.uuids.some(uuid => typeof uuid !== 'string') || types !== undefined && (!Array.isArray(types) || types.some(type => typeof type !== 'string' || !BUNDLE_RESOURCE_TYPES.some(allowed => type === `cc.${allowed}`))) || !paths || typeof paths !== 'object' || Array.isArray(paths) || Object.values(paths).some(entry => !Array.isArray(entry) || !BUNDLE_RESOURCE_TYPES.some(allowed => entry[1] === `cc.${allowed}` || Array.isArray(types) && types[entry[1]] === `cc.${allowed}`)) || Array.isArray(data.redirect) && data.redirect.length) prerequisite('Only standalone, bounded data-only bundles without external dependencies, redirects or custom asset types are supported.');
+    const uuidList = data.uuids as string[];
+    const uuidSet = new Set(uuidList);
+    if (uuidSet.size !== uuidList.length || uuidList.some(uuid => !uuid || uuid.length > 256 || /[\u0000-\u001f\u007f]/.test(uuid))) invalid('Bundle UUID metadata must contain unique bounded nonempty identities.');
+    for (const [id, entry] of Object.entries(paths as Record<string, unknown[]>)) {
+        const resourcePath = entry[0];
+        if (typeof resourcePath !== 'string' || !resourcePath || resourcePath.length > 256 || /[\\:\u0000-\u001f\u007f]/.test(resourcePath)
+            || resourcePath.split('/').some(segment => !segment || segment === '.' || segment === '..')) invalid('Every bundle resource path must be a bounded relative forward-slash path.');
+        const identityValid = data.debug === true ? uuidSet.has(id) : /^(0|[1-9][0-9]*)$/.test(id) && Number.isSafeInteger(Number(id)) && Number(id) < uuidList.length;
+        if (!identityValid) invalid('Bundle resource identity must resolve through emitted UUID metadata.');
+        if (typeof entry[1] !== 'string' && (!Number.isInteger(entry[1]) || (entry[1] as number) < 0 || !Array.isArray(types) || (entry[1] as number) >= types.length)) invalid('Bundle resource type index must resolve through emitted types metadata.');
+    }
     for (const key of ['base', 'importBase', 'nativeBase']) {
         const value = data[key];
         if (value !== undefined && (typeof value !== 'string' || value.includes('\\') || value.includes(':') || value.startsWith('/') || value.split('/').some(segment => segment === '..' || segment === '.'))) invalid('Bundle config resource bases must remain relative to this bundle.');
