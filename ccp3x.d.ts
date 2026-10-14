@@ -1066,6 +1066,10 @@ declare namespace ccp3x {
         missingKeys: [],
         error: string
     };
+    /** Creator3.8.8 official package IPC; edits one existing key with expected-value conflict guard. Live qualification pending. */
+    function localizationTableEdit(args: { locale: string; key: string; value: string; expectedValue: string }): { supported: true; locale: string; key: string; changed: boolean; persisted: true; mutationDispatched: boolean; previousValueSha256: string; readBackValueSha256: string; evidence: { channel: 'localization-editor'; readMethod: 'get-translate-data-object'; writeMethod: 'save-translate-data'; payloadBytes: number; redacted: true } };
+    /** Finite Game View3.7 component controls; inspect never dispatches playback. */
+    function particlePlayback(args: { sessionId: string; nodeReference: { id: string }; componentId?: string; operation: 'play' | 'stop' | 'clear' | 'inspect'; timeoutMs?: number }): { success: true; sessionId: string; targetId: string; componentId: string; nodeUuid: string; state: { playing: boolean; paused: boolean | null; stopped: boolean | null; particleCount: number | null; time: number | null } };
 
     /** Generates options only: no persistence/build dispatch or asset/toolchain qualification. */
     function buildTemplate(args: { operation: 'list' | 'create'; platform?: 'web-mobile' | 'web-desktop' | 'android' | 'ios' | 'windows' | 'mac'; mode?: 'debug' | 'release'; name?: string; scenes?: Array<{ uuid: string; url: string }>; startScene?: string; packageName?: string; orientation?: 'auto' | 'portrait' | 'landscape'; buildPath?: string; remoteServerAddress?: string }): { options?: Record<string, unknown>; platforms?: string[]; modes?: string[]; writes: false; readiness?: string; requirements?: string[] };

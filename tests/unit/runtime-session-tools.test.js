@@ -74,6 +74,20 @@ async function start() {
 }
 
 describe('bounded Creator game-view lifecycle', () => {
+  it('recovers explicit safe transient state reads without dispatching playback', async () => {
+    const control = installPreview();
+    const inspect = transport.inspectGameViewRuntime;
+    let reads = 0;
+    transport.inspectGameViewRuntime = async () => {
+      reads++;
+      if (reads < 3) throw new ToolError({ code: 'ASSET_QUERY_FAILED', message: 'Transient observation failure', details: { retrySafe: true, mutationDispatched: false } });
+      return inspect();
+    };
+    const observed = await tools.previewControl({ operation: 'state', timeoutMs: 1000 });
+    assert.equal(observed.preview.state, 'stop');
+    assert.equal(reads, 3);
+    assert.deepEqual(control.commands, []);
+  });
   it('rejects an unloaded browser platform without queuing a native start', async () => {
     const control = installPreview();
     control.platform = 'browser';

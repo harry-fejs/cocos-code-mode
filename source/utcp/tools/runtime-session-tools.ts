@@ -1,6 +1,7 @@
 import { utcpTool } from '../decorators';
 import { ToolError } from '../tool-error';
 import { dispatchGameViewLifecycle, inspectGameViewRuntime } from '../utils/game-view-transport';
+import { retryTransient } from '../utils/retry-policy';
 import {
     RuntimeSession,
     RuntimeSessionError,
@@ -186,7 +187,7 @@ export class RuntimeSessionTools {
     }
 
     private async readPreviewState(deadline: number): Promise<PreviewState> {
-        const result = await withRuntimeStateTimeout(inspectGameViewRuntime(), deadline);
+        const result = await retryTransient(() => withRuntimeStateTimeout(inspectGameViewRuntime(), deadline), { attempts: 3, delayMs: 50, deadline });
         return { state: result.running ? result.paused ? 'pause' : 'play' : 'stop', sceneUuid: result.sceneUuid,
             gamePaused: result.running ? result.paused : null, enabled: result.enabled, ready: result.ready,
             platform: result.platform, webContentsId: result.webContentsId };

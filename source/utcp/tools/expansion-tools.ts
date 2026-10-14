@@ -186,6 +186,120 @@ export class ExpansionTools {
         return await Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'inspectLocalization', args: [] }) as any;
     }
 
+    @utcpTool(
+        'localizationTableEdit',
+        'Edit one existing localization table value through the official localization-editor main IPC with preflight, conflict guard, read-back and rollback.',
+        {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+                locale: { type: 'string', minLength: 1, maxLength: 64 },
+                key: { type: 'string', minLength: 1, maxLength: 256 },
+                value: { type: 'string', maxLength: 4096 },
+                expectedValue: { type: 'string', maxLength: 4096 },
+            },
+            required: ['locale', 'key', 'value', 'expectedValue'],
+        },
+        {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+                supported: { type: 'boolean', const: true },
+                locale: { type: 'string', minLength: 1, maxLength: 64 },
+                key: { type: 'string', minLength: 1, maxLength: 256 },
+                changed: { type: 'boolean' },
+                persisted: { type: 'boolean', const: true },
+                mutationDispatched: { type: 'boolean' },
+                previousValueSha256: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+                readBackValueSha256: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+                evidence: {
+                    type: 'object',
+                    additionalProperties: false,
+                    properties: {
+                        channel: { type: 'string', const: 'localization-editor' },
+                        readMethod: { type: 'string', const: 'get-translate-data-object' },
+                        writeMethod: { type: 'string', const: 'save-translate-data' },
+                        payloadBytes: { type: 'integer', minimum: 1, maximum: 65536 },
+                        redacted: { type: 'boolean', const: true },
+                    },
+                    required: ['channel', 'readMethod', 'writeMethod', 'payloadBytes', 'redacted'],
+                },
+            },
+            required: ['supported', 'locale', 'key', 'changed', 'persisted', 'mutationDispatched', 'previousValueSha256', 'readBackValueSha256', 'evidence'],
+        },
+        'POST',
+        ['localization', 'table', 'edit'],
+    )
+    async localizationTableEdit(args: { locale: string, key: string, value: string, expectedValue: string }): Promise<{ supported: true, locale: string, key: string, changed: boolean, persisted: true, mutationDispatched: boolean, previousValueSha256: string, readBackValueSha256: string, evidence: { channel: 'localization-editor', readMethod: 'get-translate-data-object', writeMethod: 'save-translate-data', payloadBytes: number, redacted: true } }> {
+        requireCreator38('localizationTableEdit');
+        const input = args as unknown;
+        const record = input && typeof input === 'object' && !Array.isArray(input) ? input as Record<string, unknown> : null;
+        if (!record || Object.keys(record).length !== 4
+            || typeof record.locale !== 'string' || record.locale.length < 1 || record.locale.length > 64
+            || typeof record.key !== 'string' || record.key.length < 1 || record.key.length > 256
+            || typeof record.value !== 'string' || record.value.length > 4096
+            || typeof record.expectedValue !== 'string' || record.expectedValue.length > 4096) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'localizationTableEdit requires only locale, key, value and expectedValue within bounded lengths.' });
+        }
+        const locale = record.locale;
+        const key = record.key;
+        const desiredValue = record.value;
+        const expectedValue = record.expectedValue;
+        const requestMain = async (method: string, ...methodArgs: unknown[]): Promise<unknown> => Editor.Message.request('localization-editor', method, ...methodArgs);
+        const readTable = async (): Promise<Record<string, unknown>> => {
+            let raw: unknown;
+            try { raw = await requestMain('get-translate-data-object', locale); }
+            catch (error) {
+                throw new ToolError({ code: 'LOCALIZATION_UNSUPPORTED', status: 422, message: 'Creator localization-editor does not expose the official table read IPC.', details: { route: 'localizationTableEdit', requiredVersion: '3.8.8', channel: 'localization-editor', method: 'get-translate-data-object', cause: String(error instanceof Error ? error.message : error).slice(0, 256) }, recovery: 'Use Creator3.8.8 with the official localization-editor package enabled; no filesystem fallback is available.' });
+            }
+            if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new ToolError({ code: 'LOCALIZATION_INVALID_RESPONSE', status: 502, message: 'Creator localization-editor returned an invalid table response.' });
+            const table = raw as Record<string, unknown>;
+            if (table.locale !== locale || !table.items || typeof table.items !== 'object' || Array.isArray(table.items)) throw new ToolError({ code: 'LOCALIZATION_INVALID_RESPONSE', status: 502, message: 'Creator localization-editor returned a table with an invalid locale or item map.' });
+            return table;
+        };
+        const sha256 = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex');
+        const table = await readTable();
+        const itemMap = table.items as Record<string, unknown>;
+        const currentItem = itemMap[key];
+        if (!currentItem || typeof currentItem !== 'object' || Array.isArray(currentItem)) throw new ToolError({ code: 'LOCALIZATION_KEY_NOT_FOUND', status: 404, message: `Localization key '${key}' is not present in locale '${locale}'.` });
+        const currentRecord = currentItem as Record<string, unknown>;
+        if (currentRecord.key !== key || typeof currentRecord.value !== 'string') throw new ToolError({ code: 'LOCALIZATION_INVALID_RESPONSE', status: 502, message: 'Creator localization-editor returned an invalid translation item.' });
+        const previousValue = currentRecord.value;
+        if (previousValue !== expectedValue) throw new ToolError({ code: 'LOCALIZATION_CONFLICT', status: 409, message: `Localization key '${key}' changed since the expected value was read.`, details: { locale, key, expectedValueSha256: sha256(expectedValue), actualValueSha256: sha256(previousValue) }, recovery: 'Re-read the table and retry with the current expectedValue.' });
+        if (Array.isArray(currentRecord.associations) && currentRecord.associations.length > 64
+            || Array.isArray(currentRecord._variants) && currentRecord._variants.length > 64) {
+            throw new ToolError({ code: 'LOCALIZATION_PAYLOAD_TOO_LARGE', status: 413, message: 'Translation metadata exceeds supported bounds; no edit was dispatched.' });
+        }
+        const payloadItem: Record<string, unknown> = { ...currentRecord, value: desiredValue };
+        const payloadBytes = Buffer.byteLength(JSON.stringify(payloadItem), 'utf8');
+        if (payloadBytes < 1 || payloadBytes > 65536) throw new ToolError({ code: 'LOCALIZATION_PAYLOAD_TOO_LARGE', status: 413, message: 'Localization table edit payload exceeds the bounded 65536-byte limit.' });
+        const evidence = { channel: 'localization-editor' as const, readMethod: 'get-translate-data-object' as const, writeMethod: 'save-translate-data' as const, payloadBytes, redacted: true as const };
+        const previousValueSha256 = sha256(previousValue);
+        if (previousValue === desiredValue) return { supported: true, locale, key, changed: false, persisted: true, mutationDispatched: false, previousValueSha256, readBackValueSha256: previousValueSha256, evidence };
+        const mutationDispatched = true;
+        try {
+            await requestMain('save-translate-data', locale, [payloadItem], { replaceValue: true, replaceVariant: true, replaceAssociation: true });
+            const readBackTable = await readTable();
+            const readBackItem = (readBackTable.items as Record<string, unknown>)[key];
+            const readBackValue = readBackItem && typeof readBackItem === 'object' && !Array.isArray(readBackItem) ? (readBackItem as Record<string, unknown>).value : undefined;
+            if (typeof readBackValue !== 'string' || readBackValue !== desiredValue) throw new Error('persistent read-back mismatch');
+            return { supported: true, locale, key, changed: true, persisted: true, mutationDispatched, previousValueSha256, readBackValueSha256: sha256(readBackValue), evidence };
+        } catch (error) {
+            let restored = false;
+            let restoreCause = '';
+            try {
+                await requestMain('save-translate-data', locale, [currentRecord], { replaceValue: true, replaceVariant: true, replaceAssociation: true });
+                const restoredTable = await readTable();
+                const restoredItem = (restoredTable.items as Record<string, unknown>)[key];
+                const restoredValue = restoredItem && typeof restoredItem === 'object' && !Array.isArray(restoredItem) ? (restoredItem as Record<string, unknown>).value : undefined;
+                restored = restoredValue === previousValue;
+                if (!restored) restoreCause = 'restore read-back mismatch';
+            } catch (restoreError) { restoreCause = String(restoreError instanceof Error ? restoreError.message : restoreError).slice(0, 256); }
+            if (!restored) throw new ToolError({ code: 'LOCALIZATION_ROLLBACK_FAILED', status: 500, message: 'Localization table edit failed and the original value could not be verified after restore.', details: { locale, key, mutationDispatched, restored: false, cause: String(error instanceof Error ? error.message : error).slice(0, 256), restoreCause }, recovery: 'Stop and inspect the localization table before retrying.' });
+            throw new ToolError({ code: 'LOCALIZATION_EDIT_FAILED', status: 502, message: 'Localization table edit failed; the original value was restored and verified.', details: { locale, key, mutationDispatched, restored: true, cause: String(error instanceof Error ? error.message : error).slice(0, 256) }, recovery: 'Retry only after re-reading the locale table.' });
+        }
+    }
+
     @utcpTool('particleValidate', 'Validate bounded particle system presence and serialized component configuration.', { type: 'object', properties: { reference: InstanceReferenceSchema } }, { type: 'object', properties: { valid: { type: 'boolean' }, issues: { type: 'array' }, checkedNodes: { type: 'integer' } }, required: ['valid', 'issues', 'checkedNodes'] }, 'GET', ['particle', 'validate'])
     async particleValidate(args: { reference?: IInstanceReference }): Promise<{ valid: boolean, issues: string[], checkedNodes: number }> {
         const result = await this.particleInspect(args);
