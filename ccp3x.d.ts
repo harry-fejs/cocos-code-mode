@@ -145,11 +145,12 @@ declare namespace ccp3x {
 
     /** Asset-level dependency analysis: used_by = assets/scripts referencing this asset (who breaks if deleted), depends_on = assets it references. Wider than findNodesByAsset, which only scans the open scene. */
     function assetFindReferences(args: {
-        direction: "used_by" | "depends_on",
+        direction?: "used_by" | "depends_on",
         reference: InstanceReference,
         assetKind?: "asset" | "script" | "all",
-        resolveUrls?: boolean
-    }): { references: InstanceReference[], assets?: { uuid: string, url?: string, type?: string }[], total: number };
+        resolveUrls?: boolean,
+        limit?: number
+    }): { references: InstanceReference[], assets?: { uuid: string, url?: string, type?: string }[], total: number, truncated: boolean };
 
     /** Search the asset database with filters (glob pattern, ccType, importer, extname, isBundle). At least one filter required. */
     function assetQuery(args: {
@@ -227,6 +228,31 @@ declare namespace ccp3x {
         failed: number;
         invalid: number;
         partial: boolean;
+    };
+
+    /** Bounded Asset DB metadata, not runtime/dynamic-load completeness. Each direction carries its own truncation flag. */
+    function scriptDependencyImpactInspect(args: { reference: InstanceReference; limit?: number; resolveAssets?: boolean }): {
+        reference: InstanceReference;
+        dependencies: { references: InstanceReference[]; assets?: Array<{ uuid: string; url?: string; type?: string }>; total: number; truncated: boolean };
+        users: { references: InstanceReference[]; assets?: Array<{ uuid: string; url?: string; type?: string }>; total: number; truncated: boolean };
+    };
+
+    /** Inspect 1–32 scripts; truncated aggregates either direction of successful items only. Errors remain separate outcomes. */
+    function scriptDependencyImpactBatchInspect(args: { references: InstanceReference[]; limit?: number; resolveAssets?: boolean }): {
+        items: Array<
+            { index: number; ok: true; result: ReturnType<typeof scriptDependencyImpactInspect> } |
+            { index: number; ok: false; reference: InstanceReference; error: { message: string } }
+        >;
+        succeeded: number;
+        failed: number;
+        truncated: boolean;
+    };
+
+    /** Shape validation only; valid=true does not certify an untruncated or complete dependency graph. */
+    function scriptDependencyImpactValidate(args: { reference: InstanceReference }): {
+        valid: boolean;
+        reference: InstanceReference;
+        issues: Array<{ code: 'IMPACT_RESULT_MALFORMED'; direction: 'dependencies' | 'users' }>;
     };
 
     /** Inspect typed model importer settings and up to 128 imported outputs; outputsTruncated means validation cannot claim complete coverage. */
