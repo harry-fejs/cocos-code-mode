@@ -80,7 +80,7 @@ Implementation-only additions: `skeletalAnimationPlay({operation:'observe', ...}
 
 `animationGraphDiagnostics` reports undeclared variable references and conservative state entry paths from the existing bounded native graph inspector. Conditions are not evaluated, incomplete structures cannot prove an absent path, and native serializer/blend-tree/clip/runtime verification remains pending. `animationGraphValidate.valid` remains false.
 
-Graph diagnostics also query unique directly inspected clip UUIDs through Asset DB, reporting missing assets, wrong types and identity drift. Query failure is not interpreted as absence; an empty clip set does not grant `directClipsValid`. This does not cover blend-tree descendants, imported output, bindings or runtime loading.
+Graph diagnostics query unique clip UUIDs through Asset DB, including descendants of native 1D/2D/direct blends and nested state machines. `motionTraversalComplete` and motion issues expose bounded/unsupported coverage independently of asset identity checks. Query failure is not absence; empty clip coverage grants no validity. Binding, blend parameter semantics, imported output and runtime loading remain unverified.
 
 Graph diagnostics recheck graph Asset DB identity/path/type and source SHA-256 after clip queries. Changed source returns `GRAPH_SOURCE_CHANGED`, not mixed evidence. Bounded file-handle reads check size/time/file identity. Endpoint equality is not an atomic Asset DB transaction or proof against transient ABA changes.
 

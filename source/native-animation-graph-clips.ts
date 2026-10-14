@@ -17,5 +17,5 @@ export async function inspectGraphClipAssets(states: Record<string, unknown>[], 
         clips.push({ uuid, status: asset.uuid !== uuid ? 'identity-mismatch' : assetType === 'cc.AnimationClip' ? 'verified' : 'wrong-type', assetType });
     }
     return { clips, checkedClips: clips.length, directClipsValid: clips.length > 0 && clips.every(clip => clip.status === 'verified'),
-        clipVerificationScope: 'Direct inspected clip references queried through Asset DB. Empty set is not proof of motion coverage; blend-tree descendants, binding, import output and runtime loading are not verified.' };
+        clipVerificationScope: 'Inspected serialized clip references queried through Asset DB. Empty set is not proof of motion coverage; consult motionTraversalComplete. Binding, import output and runtime loading are not verified.' };
 }

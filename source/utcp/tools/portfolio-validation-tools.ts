@@ -9,6 +9,7 @@ import { inspectNativeAnimationGraph } from '../../native-animation-graph-inspec
 import { diagnoseNativeGraphReferences } from '../../native-animation-graph-diagnostics';
 import { inspectGraphClipAssets } from '../../native-animation-graph-clips';
 import { readGraphSnapshot } from '../../native-animation-graph-snapshot';
+import { inspectGraphMotionClips } from '../../native-animation-graph-motions';
 import { validateTerrainEditRequest } from '../../terrain-edit';
 import type { TerrainCell, TerrainEditResult } from '../../terrain-edit';
 
@@ -253,8 +254,8 @@ export class PortfolioValidationTools {
         return { ...graph, valid: false as const };
     }
 
-    @utcpTool('animationGraphDiagnostics', 'Report undeclared variables, conservative structural entry paths and authoritative direct-clip Asset DB identity/type checks. No blend-tree, condition evaluation or playable/runtime validity claim.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, {
-        type: 'object', properties: { reference: InstanceReferenceSchema, complete: { type: 'boolean' }, issues: { type: 'array', maxItems: 256 }, truncated: { type: 'boolean' }, checkedStates: { type: 'integer' }, checkedConditions: { type: 'integer' }, clips: { type: 'array', maxItems: 256 }, checkedClips: { type: 'integer' }, directClipsValid: { type: 'boolean' }, clipVerificationScope: { type: 'string' }, semanticsVerified: { type: 'boolean', const: false }, runtimeVerified: { type: 'boolean', const: false }, verificationScope: { type: 'string' } }, required: ['reference', 'complete', 'issues', 'truncated', 'checkedStates', 'checkedConditions', 'clips', 'checkedClips', 'directClipsValid', 'clipVerificationScope', 'semanticsVerified', 'runtimeVerified', 'verificationScope'],
+    @utcpTool('animationGraphDiagnostics', 'Report variables, structural paths and Asset DB clip identities through bounded native 1D/2D/direct blend descendants. Unsupported motion shapes are explicit; no playable/runtime validity claim.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, {
+        type: 'object', properties: { reference: InstanceReferenceSchema, complete: { type: 'boolean' }, issues: { type: 'array', maxItems: 256 }, truncated: { type: 'boolean' }, checkedStates: { type: 'integer' }, checkedConditions: { type: 'integer' }, clips: { type: 'array', maxItems: 2048 }, checkedClips: { type: 'integer' }, directClipsValid: { type: 'boolean' }, clipVerificationScope: { type: 'string' }, motionIssues: { type: 'array', maxItems: 128 }, motionTraversalComplete: { type: 'boolean' }, motionTraversalTruncated: { type: 'boolean' }, inspectedMotionObjects: { type: 'integer' }, semanticsVerified: { type: 'boolean', const: false }, runtimeVerified: { type: 'boolean', const: false }, verificationScope: { type: 'string' } }, required: ['reference', 'complete', 'issues', 'truncated', 'checkedStates', 'checkedConditions', 'clips', 'checkedClips', 'directClipsValid', 'clipVerificationScope', 'motionIssues', 'motionTraversalComplete', 'motionTraversalTruncated', 'inspectedMotionObjects', 'semanticsVerified', 'runtimeVerified', 'verificationScope'],
     }, 'GET', ['animation', 'graph', 'diagnostics', 'read-only'])
     async animationGraphDiagnostics(args: { reference: IInstanceReference }) {
         const asset = await info(args?.reference);
@@ -262,12 +263,13 @@ export class PortfolioValidationTools {
         if (reference.id !== args.reference.id) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Graph Asset DB identity differs from requested UUID.' });
         const before = await readGraphSnapshot(asset.file);
         const graph = inspectNativeAnimationGraph(before.value);
-        const clips = await inspectGraphClipAssets(graph.states, uuid => Editor.Message.request('asset-db', 'query-asset-info', uuid));
+        const motions = inspectGraphMotionClips(before.value);
+        const clips = await inspectGraphClipAssets(motions.clipReferences, uuid => Editor.Message.request('asset-db', 'query-asset-info', uuid));
         const current = await info(args.reference);
         if (current.uuid !== reference.id || current.file !== asset.file || current.type !== asset.type) throw new ToolError({ code: 'GRAPH_SOURCE_CHANGED', status: 409, message: 'Graph asset identity/source changed during diagnostics.' });
         const after = await readGraphSnapshot(current.file);
         if (after.sourceSha256 !== before.sourceSha256) throw new ToolError({ code: 'GRAPH_SOURCE_CHANGED', status: 409, message: 'Graph source bytes changed during clip queries; no mixed snapshot returned.' });
-        return { reference, ...diagnoseNativeGraphReferences(graph), ...clips };
+        return { reference, ...diagnoseNativeGraphReferences(graph), ...clips, motionIssues: motions.motionIssues, motionTraversalComplete: motions.motionTraversalComplete, motionTraversalTruncated: motions.motionTraversalTruncated, inspectedMotionObjects: motions.inspectedMotionObjects };
     }
 
     @utcpTool('animationGraphCreate', 'Create a native Creator animation graph through asset-db and verify its stable imported identity.', {
