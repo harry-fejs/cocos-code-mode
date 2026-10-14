@@ -368,8 +368,9 @@ export class BuildTools {
     }, { type: 'object', properties: { completed: { type: 'boolean' }, timedOut: { type: 'boolean' }, task: { type: 'object' } }, required: ['completed', 'timedOut', 'task'] }, 'GET', ['build', 'task', 'wait', 'poll'])
     async buildTaskWait(args: { taskId: string | number, timeoutMs?: number, pollMs?: number }): Promise<{ completed: boolean, timedOut: boolean, task: IBuildTaskSummary }> {
         const taskId = taskIdentity(args.taskId);
-        const timeoutMs = Math.min(Math.max(args.timeoutMs ?? 30000, 0), 120000);
-        const pollMs = Math.min(Math.max(args.pollMs ?? 500, 50), 5000);
+        const timeoutMs = args.timeoutMs ?? 30000;
+        const pollMs = args.pollMs ?? 500;
+        if (!Number.isInteger(timeoutMs) || timeoutMs < 0 || timeoutMs > 120000 || !Number.isInteger(pollMs) || pollMs < 50 || pollMs > 5000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'timeoutMs must be0..120000 and pollMs50..5000 integers.' });
         const deadline = Date.now() + timeoutMs;
         let item: unknown;
         do {
@@ -384,6 +385,7 @@ export class BuildTools {
             if (BUILD_TERMINAL_STATES[String(task.state).toLowerCase()] === true) return { completed: true, timedOut: false, task };
             if (Date.now() >= deadline) return { completed: false, timedOut: true, task };
             await sleep(Math.min(pollMs, Math.max(1, deadline - Date.now())));
+            if (Date.now() >= deadline) return { completed: false, timedOut: true, task };
         } while (true);
     }
     @utcpTool('buildLogInspect', 'Inspect bounded structured diagnostics exposed by one Creator build task.', {
