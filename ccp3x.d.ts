@@ -400,6 +400,26 @@ declare namespace ccp3x {
         spriteFrameCount: number
     };
 
+    function imageSourceMetadataInspect(args: { reference: InstanceReference }): {
+        reference: InstanceReference,
+        source: { url: string | null; bytes: number },
+        width: number | null,
+        height: number | null,
+        format: string | null,
+        space: string | null,
+        channels: number | null,
+        hasAlpha: boolean | null,
+        orientation: number | null,
+        density: number | null,
+        pages: number | null
+    };
+    function imageSourceMetadataValidate(args: { reference: InstanceReference; width?: number; height?: number; formats?: string[]; hasAlpha?: boolean; orientation?: number; minDensity?: number; maxDensity?: number; pages?: number }): {
+        valid: boolean,
+        reference: InstanceReference,
+        metadata: Record<string, unknown>,
+        issues: Array<Record<string, unknown>>
+    };
+
     /** Perform operations on assets (move, copy, delete, open, refresh, reimport, save_meta). */
     function assetOperate(args: {
         operation: "move" | "copy" | "delete" | "open" | "refresh" | "reimport" | "save_meta" | 'stage_import_setting' | 'apply_import_settings' | 'restore_import_settings',
