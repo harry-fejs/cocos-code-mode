@@ -371,11 +371,16 @@ export class BuildTools {
         const timeoutMs = Math.min(Math.max(args.timeoutMs ?? 30000, 0), 120000);
         const pollMs = Math.min(Math.max(args.pollMs ?? 500, 50), 5000);
         const deadline = Date.now() + timeoutMs;
-        let item: any;
+        let item: unknown;
         do {
-            item = await Editor.Message.request('builder', 'query-task', taskId);
+            const queryBudget = timeoutMs === 0 ? 1000 : Math.max(1, deadline - Date.now());
+            let timer: NodeJS.Timeout | undefined;
+            try { item = await Promise.race([Editor.Message.request('builder', 'query-task', taskId), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'BUILD_TASK_QUERY_TIMEOUT', status: 504, message: 'Build task observation exceeded query deadline; native task was not cancelled.', details: { taskId, mutationDispatched: false } })), queryBudget); })]); }
+            finally { clearTimeout(timer); }
             if (!item) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Build task ${taskId} not found`, recovery: 'Query build tasks and retry with an existing task id.' });
-            const task = slimTask(item);
+            if (typeof item !== 'object' || Array.isArray(item)) throw new ToolError({ code: 'BUILD_TASK_INVALID_RESPONSE', status: 502, message: 'Creator returned malformed build task metadata.' });
+            const task = slimTask(item as BuildTaskRecord);
+            if (task.id !== taskId) throw new ToolError({ code: 'BUILD_TASK_IDENTITY_MISMATCH', status: 502, message: 'Creator returned another task identity; no terminal success inferred.' });
             if (BUILD_TERMINAL_STATES[String(task.state).toLowerCase()] === true) return { completed: true, timedOut: false, task };
             if (Date.now() >= deadline) return { completed: false, timedOut: true, task };
             await sleep(Math.min(pollMs, Math.max(1, deadline - Date.now())));
