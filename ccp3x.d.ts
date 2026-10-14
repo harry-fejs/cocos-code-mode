@@ -1275,7 +1275,7 @@ declare namespace ccp3x {
     function buildTaskWait(args: { taskId: string | number; timeoutMs?: number; pollMs?: number }): {
         completed: boolean,
         timedOut: boolean,
-        task: Record<string, unknown>
+        task: ReturnType<typeof buildLogInspect>['task']
     };
 
     /** Candidate: validate 1-256 unique localization keys (each at most 256 characters) in the current Creator language through the fixed ccp3x package scene seam. Unsupported localization packages return supported=false; this call never changes language or restarts Creator. */
