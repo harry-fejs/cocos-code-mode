@@ -480,6 +480,12 @@ declare namespace ccp3x {
     function particleInspect(args?: { reference?: InstanceReference }): { systems: Array<Record<string, unknown>>; count: number };
     function particleValidate(args?: { reference?: InstanceReference }): { valid: boolean; issues: string[]; checkedNodes: number };
     function particleConfigure(args: { reference: InstanceReference; properties: Record<string, unknown> }): { reference: InstanceReference; componentReference: InstanceReference; properties: Record<string, unknown>; changed: string[]; verified: true };
+
+    function audioSourceInspect(args?: { reference?: InstanceReference }): { sources: Array<Record<string, unknown>>; count: number };
+    function audioSourceAudit(args?: { reference?: InstanceReference }): { valid: boolean; sources: Array<Record<string, unknown>>; issues: string[]; checkedSources: number };
+    function audioAssetValidate(args: { reference: InstanceReference }): { valid: boolean; importer: string; type: string; issues: string[] };
+    function audioAssetCompatibilityAudit(args: { assets: Array<InstanceReference & { type: 'cc.AudioClip' }>; target: 'web-mobile' | 'web-desktop' | 'native-mobile' | 'native-desktop'; maxIssues?: number }): { target: string; valid: boolean; complete: boolean; items: Array<Record<string, unknown>>; issues: Array<Record<string, unknown>> };
+
     function broadcastObserve(args: { topic: "ccp3x:probe" | "scene:change" | "asset-db:change" }): { topic: string, supported: boolean, observed: boolean, lifecycle: string[], event: unknown, eventBytes: number, truncated: boolean, retainedListener: false };
 
     /** Get list of globally available component types. */
