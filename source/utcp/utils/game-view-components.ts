@@ -162,7 +162,9 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
                 return { ...animationIdentity, state: snapshot() };
             }
             if ((args.kind === 'animation' || args.kind === 'skeletal') && args.operation !== 'observe') {
-                const play = requireDefined(c.play, 'animation play'); const pause = requireDefined(c.pause, 'animation pause'); const resume = requireDefined(c.resume, 'animation resume'); const stop = requireDefined(c.stop, 'animation stop');
+                if (!['play', 'pause', 'resume', 'stop'].includes(args.operation)) fail('INVALID_ARGUMENT', 'Unknown animation operation.');
+                const method = args.operation === 'play' ? c.play : args.operation === 'pause' ? c.pause : args.operation === 'resume' ? c.resume : c.stop;
+                if (typeof method !== 'function') fail('UNSUPPORTED_RUNTIME_COMPONENT', 'Requested Animation playback API is unavailable; no mutation dispatched.');
                 for (const otherClip of c.clips as Array<RuntimeClip | null>) {
                     if (otherClip === null || otherClip === clip) continue;
                     const otherState = getState(otherClip.name);
@@ -171,7 +173,7 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
                 if (args.operation === 'pause' && (!state.isPlaying || state.isPaused)) fail('INVALID_ANIMATION_STATE', 'Pause requires a playing clip.');
                 if (args.operation === 'resume' && (!state.isPlaying || !state.isPaused)) fail('INVALID_ANIMATION_STATE', 'Resume requires a paused clip.');
                 assertAnimation(); assertDeadline(); mutated = true;
-                if (args.operation === 'play') play.call(c, args.clipName); else if (args.operation === 'pause') pause.call(c); else if (args.operation === 'resume') resume.call(c); else if (args.operation === 'stop') stop.call(c); else fail('INVALID_ARGUMENT', 'Unknown animation operation.');
+                if (args.operation === 'play') method!.call(c, args.clipName); else method!.call(c);
                 assertAnimation(); const result = snapshot();
                 if (args.operation === 'stop' ? result.playing : !result.playing || result.paused !== (args.operation === 'pause')) fail('READBACK_MISMATCH', 'Animation state did not match operation.');
                 return { ...animationIdentity, state: result };
