@@ -206,6 +206,29 @@ declare namespace ccp3x {
         classId: string | null;
     };
 
+    /** Inspect 1–32 scripts. Envelope truncated=false does not imply each dependency inventory is complete; check item.result.truncated. */
+    function scriptAssetBatchInspect(args: { references: InstanceReference[]; maxDependencies?: number }): {
+        items: Array<
+            { index: number; ok: true; result: ReturnType<typeof scriptAssetInspect> } |
+            { index: number; ok: false; reference: InstanceReference; error: { message: string } }
+        >;
+        succeeded: number;
+        failed: number;
+        truncated: false;
+    };
+
+    /** Validate 1–32 scripts. succeeded counts completed inspections, including valid=false; invalid counts those negative results. partial means mixed success/error outcomes. */
+    function scriptAssetBatchValidate(args: { references: InstanceReference[] }): {
+        outcomes: Array<
+            { index: number; ok: true; result: ReturnType<typeof scriptAssetValidate> } |
+            { index: number; ok: false; reference: InstanceReference; error: { message: string } }
+        >;
+        succeeded: number;
+        failed: number;
+        invalid: number;
+        partial: boolean;
+    };
+
     /** Inspect typed model importer settings and up to 128 imported outputs; outputsTruncated means validation cannot claim complete coverage. */
     function modelImportInspect(args: { reference: InstanceReference }): {
         reference: InstanceReference,
