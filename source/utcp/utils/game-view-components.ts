@@ -161,8 +161,8 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
             }
             if ((args.kind === 'animation' || args.kind === 'skeletal') && args.operation !== 'observe') {
                 const play = requireDefined(c.play, 'animation play'); const pause = requireDefined(c.pause, 'animation pause'); const resume = requireDefined(c.resume, 'animation resume'); const stop = requireDefined(c.stop, 'animation stop');
-                for (const otherClip of c.clips as RuntimeClip[]) {
-                    if (otherClip === clip) continue;
+                for (const otherClip of c.clips as Array<RuntimeClip | null>) {
+                    if (otherClip === null || otherClip === clip) continue;
                     const otherState = getState(otherClip.name);
                     if (otherState?.isPlaying) fail('ANIMATION_TARGET_BUSY', 'Another clip is active on this component; component-wide control would affect an unrelated playback.');
                 }
