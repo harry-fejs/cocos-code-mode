@@ -22,6 +22,7 @@
 - Add exact graph-UUID/session/node/component read-only typed variable wait with bounded caller deadline, graph drift/type/missing-variable refusal and no setValue dispatch.
 - Add exact session/node/component/clip Game View animation observation for regular Animation and SkeletalAnimation, without playback/listener mutation or edit-scene substitution.
 - Add exact Game View regular Animation/SkeletalAnimation play/pause/resume/stop controls with state read-back and other-active-clip refusal; no automatic mutation replay.
+- Add regular Animation/SkeletalAnimation exact-clip lifecycle event observation with bounded capture/listener cleanup; no playback dispatch or historical-event claim.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
