@@ -348,11 +348,15 @@ export class AnimationTools {
             throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'maxClips must be an integer from 1 to 200.' });
         }
         const info = await Editor.Message.request('scene', 'query-animation-clips-info', nodeId);
-        const clips: AnimationClipRecord[] = Array.isArray(info)
-            ? info.filter((clip): clip is AnimationClipRecord => !!clip && typeof clip === 'object' && !Array.isArray(clip))
-            : info && typeof info === 'object' && 'clips' in info && Array.isArray(info.clips)
-                ? info.clips.filter((clip: unknown): clip is AnimationClipRecord => !!clip && typeof clip === 'object' && !Array.isArray(clip))
-                : [];
+        const clips = Array.isArray(info) ? info : info && typeof info === 'object' && 'clips' in info ? info.clips : undefined;
+        if (!Array.isArray(clips)) {
+            throw new ToolError({ code: 'ANIMATION_METADATA_INVALID', status: 502, message: 'Creator clip metadata must be an array or an object containing a clips array.' });
+        }
+        for (const clip of clips) {
+            if (!clip || typeof clip !== 'object' || Array.isArray(clip)) {
+                throw new ToolError({ code: 'ANIMATION_METADATA_INVALID', status: 502, message: 'Creator clip inventory contains a missing or malformed entry.' });
+            }
+        }
         return { reference: { id: nodeId, type: args.nodeReference?.type ?? 'cc.Node' }, clips: clips.slice(0, maxClips), totalClips: clips.length, truncated: clips.length > maxClips };
     }
     @utcpTool(
