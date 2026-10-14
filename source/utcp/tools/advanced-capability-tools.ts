@@ -916,10 +916,11 @@ export class AdvancedCapabilityTools {
         const marker = `ccp3x-${Date.now()}`;
         let observed: unknown[] | null = null;
         const handler = (...payload: unknown[]) => { observed = payload; };
-        const lifecycle = ['registered'];
-        messages.addBroadcastListener(args.topic, handler);
-        broadcastListeners.set(handler, { topic: args.topic, state: 'registered' });
+        const lifecycle: string[] = [];
         try {
+            messages.addBroadcastListener(args.topic, handler);
+            broadcastListeners.set(handler, { topic: args.topic, state: 'registered' });
+            lifecycle.push('registered');
             if (args.topic === 'ccp3x:probe') messages.broadcast(args.topic, marker);
             await new Promise((resolve) => setTimeout(resolve, 50));
             if (observed !== null) lifecycle.push('observed');
