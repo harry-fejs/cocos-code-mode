@@ -198,7 +198,9 @@ export class FileTools {
         if (!fs.existsSync(filePath)) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `File not found: ${args.filePath}` });
         const stat = fs.statSync(filePath);
         if (!stat.isFile() || stat.size > MAX_FILE_BYTES) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: 'Snippet source must be a regular file within the bounded file size.' });
-        const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
+        const content = fs.readFileSync(filePath, 'utf8');
+        if (Buffer.byteLength(content, 'utf8') > MAX_FILE_BYTES) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: 'Snippet content exceeds the bounded file size.' });
+        const lines = content.split(/\r?\n/);
         if (args.line > lines.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Requested line exceeds the source line count (${lines.length}).` });
         const startLine = Math.max(1, args.line - radius);
         const endLine = Math.min(lines.length, args.line + radius);
