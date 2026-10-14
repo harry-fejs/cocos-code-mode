@@ -43,19 +43,46 @@ function validateSkeletal(args: SkeletalArgs, operation: string): ComponentOpera
     validateComponentTarget({ sessionId: args?.sessionId ?? '', nodeReference: { id: args?.nodeReference?.id ?? '' }, componentId: args?.componentId }, true);
     requireComponentText(args.clipName, 'clipName');
     requireComponentText(args.clipUuid, 'clipUuid');
-    if (!['play', 'pause', 'resume', 'stop'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'operation must be play, pause, resume, or stop.' });
+    if (!['play', 'pause', 'resume', 'stop', 'observe'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'operation must be play, pause, resume, stop, or observe.' });
     return { kind: 'skeletal', operation, sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, clipName: args.clipName!, clipUuid: args.clipUuid!, timeoutMs: validateTimeout(args.timeoutMs) };
 }
 
 export class ComponentRuntimeTools {
-    @utcpTool('skeletalAnimationPlay', 'Play, pause, resume, or stop one exact cc.SkeletalAnimation clip in the active Game View. Spine and DragonBones are unsupported and fail closed.', {
-        type: 'object', additionalProperties: false, properties: { ...targetProperties, operation: { type: 'string', enum: ['play', 'pause', 'resume', 'stop'] }, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } },
+    @utcpTool('skeletalAnimationPlay', 'Play, pause, resume, stop or observe one exact cc.SkeletalAnimation clip in Game View. observe is read-only; Spine and DragonBones are unsupported.', {
+        type: 'object', additionalProperties: false, properties: { ...targetProperties, operation: { type: 'string', enum: ['play', 'pause', 'resume', 'stop', 'observe'] }, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } },
         required: ['sessionId', 'nodeReference', 'componentId', 'operation', 'clipName', 'clipUuid'],
     }, componentOutputSchema, 'POST', ['skeletal', 'animation', 'playback', 'runtime'])
     async skeletalAnimationPlay(args: SkeletalArgs): Promise<Record<string, unknown>> {
         const operation = args?.operation;
         if (typeof operation !== 'string') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'operation is required.' });
         return executeComponentOperation(validateSkeletal(args, operation));
+    }
+
+    @utcpTool('skeletalAnimationWaitForState', 'Poll one exact SkeletalAnimation clip state without changing playback. Missing metrics/invalidated targets fail closed; caller deadline bounds each observation.', {
+        type: 'object', additionalProperties: false, properties: { ...targetProperties, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, playing: { type: 'boolean' }, paused: { type: 'boolean' }, minTime: { type: 'number', minimum: 0, maximum: 3600 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000, default: 3000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000, default: 100 } }, required: ['sessionId', 'nodeReference', 'componentId', 'clipName', 'clipUuid'],
+    }, { type: 'object', properties: { matched: { type: 'boolean' }, timedOut: { type: 'boolean' }, observations: { type: 'integer' }, state: animationStateSchema }, required: ['matched', 'timedOut', 'observations', 'state'] }, 'POST', ['skeletal', 'animation', 'wait', 'read-only'])
+    async skeletalAnimationWaitForState(args: SkeletalArgs & { playing?: boolean; paused?: boolean; minTime?: number; pollMs?: number }) {
+        const timeoutMs = args?.timeoutMs ?? 3000; const pollMs = args?.pollMs ?? 100;
+        if (args.playing === undefined && args.paused === undefined && args.minTime === undefined
+            || args.playing !== undefined && typeof args.playing !== 'boolean' || args.paused !== undefined && typeof args.paused !== 'boolean'
+            || args.minTime !== undefined && (typeof args.minTime !== 'number' || !Number.isFinite(args.minTime) || args.minTime < 0 || args.minTime > 3600)
+            || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000 || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide bounded state conditions, timeout and poll interval.' });
+        const deadline = Date.now() + timeoutMs; let observations = 0;
+        for (;;) {
+            const remaining = deadline - Date.now();
+            if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state observation deadline expired.' });
+            const operation = validateSkeletal({ ...args, timeoutMs: Math.max(100, Math.min(remaining, 1000)) }, 'observe');
+            let timer: NodeJS.Timeout | undefined; let result: Record<string, unknown>;
+            try { result = await Promise.race([executeComponentOperation(operation), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read exceeded caller deadline; no playback mutation dispatched.' })), remaining); })]); }
+            finally { clearTimeout(timer); }
+            const state = result.state as { playing?: unknown; paused?: unknown; time?: unknown } | undefined;
+            if (!state || typeof state.playing !== 'boolean' || typeof state.paused !== 'boolean') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Invalid skeletal state observation.' });
+            if (args.minTime !== undefined && (typeof state.time !== 'number' || !Number.isFinite(state.time))) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Skeletal clip time is unavailable.' });
+            observations++;
+            const matched = (args.playing === undefined || args.playing === state.playing) && (args.paused === undefined || args.paused === state.paused) && (args.minTime === undefined || (state.time as number) >= args.minTime);
+            if (matched || Date.now() >= deadline) return { matched, timedOut: !matched, observations, state };
+            await new Promise(resolve => setTimeout(resolve, Math.min(pollMs, Math.max(0, deadline - Date.now()))));
+        }
     }
 
     @utcpTool('skeletalAnimationEvents', 'Observe bounded cc.SkeletalAnimation lifecycle events for one exact clip, with deadline and listener cleanup. Spine and DragonBones are unsupported.', {

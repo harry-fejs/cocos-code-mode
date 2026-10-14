@@ -74,6 +74,8 @@ Read-only runtime state observation retries only explicitly marked safe transien
 
 Finite component routes use the attached Game View session and exact node/component/clip IDs: `audioPlaybackControl/Observe`, `particlePlayback`, `skeletalAnimationPlay/Events` (Animation/SkeletalAnimation only), and `animationGraphPreview` (inspect or typed float/integer/boolean variable read-back). Animation event observation is bounded and removes its listeners. Spine/DragonBones/ParticleSystem2D are not covered. `tweenSequenceControl` consumes only validated canonical descriptors/code metadata, never evaluates project source; start/stop/inspect own one sequence handle. Creator3.7 lacks isolated Tween pause/resume, so those operations fail rather than pausing unrelated target actions. Runtime binding diagnostics in `tweenSequenceValidate` require sessionId. Evidence scopes and latest installed replay limits are recorded in `reports/runtime-component-capabilities-20261012.json`.
 
+Implementation-only additions: `skeletalAnimationPlay({operation:'observe', ...})` and `skeletalAnimationWaitForState` read one exact clip without playback mutation or event listeners. Wait requires at least one `playing`, `paused` or `minTime` condition; caller deadline is 100–10000ms. `buildTaskOutputInspect` derives the output directory from one successful native task and hashes 1–64 explicit expected files under a bounded byte budget. It returns `producerVerified:false`: task linkage is not producer freshness, packaging, device or launch proof. Full regression and Creator-live qualification remain deferred.
+
 * QA: `scripts/smoke-utcp.js` (expects 88) · Perf: `a769a46` bench + `e419276` trim.
 
 

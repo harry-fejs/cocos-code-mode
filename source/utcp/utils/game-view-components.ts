@@ -125,6 +125,10 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
             const snapshot = () => ({ playing: state.isPlaying, paused: state.isPaused, time: finiteNumber(state.time), duration: finiteNumber(state.duration), speed: finiteNumber(state.speed) });
             const skeletalCtor = cc.SkeletalAnimation ?? cc.js?.getClassByName('cc.SkeletalAnimation');
             const animationIdentity = { ...identity, componentType: args.kind === 'skeletal' ? 'cc.SkeletalAnimation' : typeof skeletalCtor === 'function' && c instanceof skeletalCtor ? 'cc.SkeletalAnimation' : 'cc.Animation', clipName: clip.name, clipUuid: clip.uuid };
+            if (args.operation === 'observe' && args.kind !== 'events') {
+                assertDeadline(); assertAnimation();
+                return { ...animationIdentity, state: snapshot() };
+            }
             if ((args.kind === 'animation' || args.kind === 'skeletal') && args.operation !== 'observe') {
                 const play = requireDefined(c.play, 'animation play'); const pause = requireDefined(c.pause, 'animation pause'); const resume = requireDefined(c.resume, 'animation resume'); const stop = requireDefined(c.stop, 'animation stop');
                 for (const otherClip of c.clips as RuntimeClip[]) {
@@ -183,7 +187,7 @@ export async function executeComponentOperation(args: ComponentOperation): Promi
     validateComponentTarget(args, args.kind !== 'particle');
     const runtime = new RuntimeSessionTools(); const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId }); const session = inspected.session;
     if (!session || !('status' in session) || !('targetId' in session) || !('targetKind' in session) || session.sessionId !== args.sessionId || session.status !== 'attached' || session.targetKind !== 'game-view' || typeof session.targetId !== 'string' || !inspected.ready) { if (session && 'status' in session && session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: 'The runtime session is stopped.' }); throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'The exact attached Game View session is not ready.' }); }
-    const mutation = args.kind !== 'events' && args.operation !== 'inspect'; const result = await executeGameViewOperation(session.targetId, createComponentOperationSource(args), (args.timeoutMs ?? 1000) + 2000, mutation) as Record<string, unknown> | null;
+    const mutation = args.kind !== 'events' && !['inspect', 'observe'].includes(args.operation); const result = await executeGameViewOperation(session.targetId, createComponentOperationSource(args), (args.timeoutMs ?? 1000) + 2000, mutation) as Record<string, unknown> | null;
     if (!result || typeof result !== 'object' || Array.isArray(result)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Component operation returned no typed runtime state.' });
     if (typeof result.code === 'string') throw new ToolError({ code: result.code, status: /NOT_FOUND$/.test(result.code) ? 404 : result.code.startsWith('UNSUPPORTED') ? 422 : 409, message: typeof result.message === 'string' ? result.message : 'Component operation failed.', details: { mutationDispatched: result.mutationDispatched === true, retrySafe: result.mutationDispatched === false } });
     if (result.nodeUuid !== args.nodeReference.id || typeof result.componentId !== 'string' || !result.componentId || args.componentId !== undefined && result.componentId !== args.componentId) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Runtime component response does not identify the requested component.' });

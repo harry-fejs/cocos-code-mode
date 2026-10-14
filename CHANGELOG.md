@@ -6,6 +6,7 @@
 - Add bounded project-code tween create/inspect/static validation with explicit new-source ownership and runtime-unavailable separation; no native tween asset or automatic target binding.
 - Reconcile duplicate workflow overrides, exact source routes and current hashes while preserving approved historical denominator identities separately from reproducible semantic hashes. Current coverage is not fresh live qualification.
 - Add implementation-only official localization table inspection/key coverage across explicit locales and read-only Game View particle state wait. Declarations and discovery guidance included; later full regression/live qualification is pending by owner instruction.
+- Add implementation-only exact skeletal clip observe/state wait and task-linked expected-output SHA-256 manifest inspection. Read-only paths, bounded deadlines/bytes and explicit producer-freshness limits; live qualification remains pending.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

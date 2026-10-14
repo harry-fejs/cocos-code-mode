@@ -968,7 +968,9 @@ declare namespace ccp3x {
     }): AudioPlaybackResult;
     /** Observe actual Game View audio state without edit-renderer substitution. */
     function audioPlaybackObserve(args: { sessionId: string; nodeReference: { id: string } }): AudioPlaybackResult;
-    function skeletalAnimationPlay(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; operation: 'play' | 'pause' | 'resume' | 'stop'; timeoutMs?: number }): Record<string, unknown>;
+    function skeletalAnimationPlay(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; operation: 'play' | 'pause' | 'resume' | 'stop' | 'observe'; timeoutMs?: number }): Record<string, unknown>;
+    /** Exact clip state observation only; never starts/pauses/stops playback. Verification pending. */
+    function skeletalAnimationWaitForState(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; playing?: boolean; paused?: boolean; minTime?: number; timeoutMs?: number; pollMs?: number }): { matched: boolean; timedOut: boolean; observations: number; state: Record<string, unknown> };
     function skeletalAnimationEvents(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; maxEvents?: number; timeoutMs?: number }): Record<string, unknown>;
     function animationGraphPreview(args: { sessionId: string; nodeReference: { id: string }; componentId: string; operation: 'inspect' | 'setVariable'; variable?: { name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean }; timeoutMs?: number }): Record<string, unknown>;
     /** Canonical descriptor/source only; no project code evaluation. Isolated pause/resume is version/API-dependent. */
@@ -1076,6 +1078,8 @@ declare namespace ccp3x {
     function particlePlayback(args: { sessionId: string; nodeReference: { id: string }; componentId?: string; operation: 'play' | 'stop' | 'clear' | 'inspect'; timeoutMs?: number }): { success: true; sessionId: string; targetId: string; componentId: string; nodeUuid: string; state: { playing: boolean; paused: boolean | null; stopped: boolean | null; particleCount: number | null; time: number | null } };
     /** No-mutation particle state polling under exact session/node/component identity; verification pending. */
     function particleWaitForState(args: { sessionId: string; nodeReference: { id: string }; componentId: string; playing?: boolean; maxParticleCount?: number; timeoutMs?: number; pollMs?: number }): { matched: boolean; timedOut: boolean; observations: number; state: Record<string, unknown> };
+    /** Expected-file hashes tied to successful task options, not proof of producer freshness. Verification pending. */
+    function buildTaskOutputInspect(args: { taskId: string | number; expectedFiles: string[]; maxBytes?: number }): { taskId: string; platform: string; state: 'success'; artifactPath: string; files: Array<{ path: string; bytes: number; sha256: string }>; totalBytes: number; producerVerified: false; verificationScope: string };
 
     /** Generates options only: no persistence/build dispatch or asset/toolchain qualification. */
     function buildTemplate(args: { operation: 'list' | 'create'; platform?: 'web-mobile' | 'web-desktop' | 'android' | 'ios' | 'windows' | 'mac'; mode?: 'debug' | 'release'; name?: string; scenes?: Array<{ uuid: string; url: string }>; startScene?: string; packageName?: string; orientation?: 'auto' | 'portrait' | 'landscape'; buildPath?: string; remoteServerAddress?: string }): { options?: Record<string, unknown>; platforms?: string[]; modes?: string[]; writes: false; readiness?: string; requirements?: string[] };

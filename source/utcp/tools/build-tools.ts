@@ -6,6 +6,7 @@ import { buildBuildPresetAudit, BuildPresetAuditResult } from '../../build-prese
 import { BUILD_SETTING_RULES, BuildProfileArgs, BuildSettingsArgs, BuildTemplateArgs, createBuildTemplate, manageBuildProfiles, manageBuildSettings } from '../build-profiles';
 import { inspectBuildPreflight, inspectBuildEnvironment } from '../build-preflight';
 import { BuildTaskConfigArgs, manageBuildTaskConfig } from '../build-task-config';
+import { BuildOutputManifestArgs, inspectBuildOutputManifest } from '../build-output-manifest';
 // Slim view of a build task for agent consumption (full IBuildTaskItemJSON is huge)
 interface IBuildTaskSummary {
     id: string;
@@ -233,6 +234,11 @@ function slimTask(task: BuildTaskRecord): IBuildTaskSummary {
 }
 
 export class BuildTools {
+    @utcpTool('buildTaskOutputInspect', 'Hash selected expected files under one exact successful task output folder. Task/options rechecked and symlink/growth/byte bounds enforced. Does not infer producer freshness, APK/device success or launch correctness.', {
+        type: 'object', additionalProperties: false, properties: { taskId: { type: ['string', 'integer'] }, expectedFiles: { type: 'array', minItems: 1, maxItems: 64, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 512 } }, maxBytes: { type: 'integer', minimum: 1, maximum: 268435456, default: 33554432 } }, required: ['taskId', 'expectedFiles'],
+    }, { type: 'object', properties: { taskId: { type: 'string' }, platform: { type: 'string' }, state: { type: 'string', const: 'success' }, artifactPath: { type: 'string' }, files: { type: 'array' }, totalBytes: { type: 'integer' }, producerVerified: { type: 'boolean', const: false }, verificationScope: { type: 'string' } }, required: ['taskId', 'platform', 'state', 'artifactPath', 'files', 'totalBytes', 'producerVerified', 'verificationScope'] }, 'POST', ['build', 'task', 'output', 'manifest', 'read-only'])
+    async buildTaskOutputInspect(args: BuildOutputManifestArgs) { return inspectBuildOutputManifest(args); }
+
     @utcpTool('buildPreflight', 'Read-only authoritative scene UUID/URL/start-scene, registered target and bundle/server preflight. Does not dispatch or claim toolchain/signing readiness.', { type: 'object', additionalProperties: false, properties: { options: { type: 'object', maxProperties: 64 } }, required: ['options'] }, { type: 'object', properties: { valid: { type: 'boolean' }, complete: { type: 'boolean' }, targetAvailable: { type: 'boolean' }, sceneCount: { type: 'integer' }, issues: { type: 'array' }, writes: { type: 'boolean' }, toolchainVerified: { type: 'boolean' }, signingVerified: { type: 'boolean' } }, required: ['valid', 'complete', 'targetAvailable', 'sceneCount', 'issues', 'writes', 'toolchainVerified', 'signingVerified'] }, 'POST', ['build', 'preflight', 'read-only'])
     async buildPreflight(args: { options: Record<string, unknown> }) { return inspectBuildPreflight(args.options); }
 
