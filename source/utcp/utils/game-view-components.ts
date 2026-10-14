@@ -190,8 +190,8 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
                 assertAnimation(); return { ...animationIdentity, events, reason, elapsedMs: Date.now() - start, state: snapshot() };
                 } finally { clearTimeout(timer); clearInterval(poll); let cleanupFailed = false; for (const listener of listeners) { try { c.off!.call(c, listener.type, listener.callback); } catch { cleanupFailed = true; } } if (cleanupFailed) fail('RUNTIME_LISTENER_CLEANUP_FAILED', 'Animation listeners could not all be removed.'); }
         }
-        if (args.kind !== 'graph' || !c.graph || typeof c.getVariables !== 'function' || typeof c.getValue !== 'function' || typeof c.setValue !== 'function' || typeof c.getCurrentStateStatus !== 'function' || typeof c.getCurrentClipStatuses !== 'function' || typeof c.getCurrentTransition !== 'function') fail('UNSUPPORTED_RUNTIME_COMPONENT', 'AnimationController graph/runtime status APIs are unavailable.');
-        const getVariables = c.getVariables!.bind(c); const getValue = c.getValue!.bind(c); const setValue = c.setValue!.bind(c); const getCurrentStateStatus = c.getCurrentStateStatus!.bind(c); const getCurrentClipStatuses = c.getCurrentClipStatuses!.bind(c); const getCurrentTransition = c.getCurrentTransition!.bind(c);
+        if (args.kind !== 'graph' || !c.graph || typeof c.getVariables !== 'function' || typeof c.getValue !== 'function' || typeof c.getCurrentStateStatus !== 'function' || typeof c.getCurrentClipStatuses !== 'function' || typeof c.getCurrentTransition !== 'function') fail('UNSUPPORTED_RUNTIME_COMPONENT', 'AnimationController graph/runtime status APIs are unavailable.');
+        const getVariables = c.getVariables!.bind(c); const getValue = c.getValue!.bind(c); const getCurrentStateStatus = c.getCurrentStateStatus!.bind(c); const getCurrentClipStatuses = c.getCurrentClipStatuses!.bind(c); const getCurrentTransition = c.getCurrentTransition!.bind(c);
         const graph = c.graph; const graphUuid = objectValue(graph)?.uuid;
         if (args.expectedGraphUuid !== undefined && graphUuid !== args.expectedGraphUuid) fail('RUNTIME_TARGET_CHANGED', 'Runtime graph UUID does not match caller precondition.');
         const assertGraph = () => { assertTarget(); if (c.graph !== graph || objectValue(graph)?.uuid !== graphUuid) fail('RUNTIME_TARGET_CHANGED', 'AnimationController graph identity changed during operation.'); };
@@ -207,6 +207,8 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
             const value = getValue(name); variables.push({ name, type: description.type, value: typeof value === 'boolean' || typeof value === 'number' && Number.isFinite(value) || typeof value === 'string' && value.length <= 256 ? value : null });
         }
         if (args.operation === 'setVariable') {
+            if (typeof c.setValue !== 'function') fail('UNSUPPORTED_GRAPH_VARIABLE', 'AnimationController variable mutation API is unavailable; no mutation dispatched.');
+            const setValue = c.setValue!.bind(c);
             const variable = requireDefined(args.variable, 'variable'); const entry = requireDefined(variables.find(item => item.name === variable.name), 'graph variable');
             const currentValue = entry.value;
             const declaredType = variable.type === 'boolean' ? 1 : variable.type === 'integer' ? 3 : 0;
