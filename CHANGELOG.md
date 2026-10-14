@@ -96,6 +96,7 @@
 - Resolve Animation clip assignment through serialized component UUID/index instead of writing the first component's clips.
 - Build Animation clip assignment payload without mutating runtime clips first; refuse unavailable serialization metadata instead of reporting runtime-only success.
 - Refuse Animation clip assignment when the loaded/cache asset UUID differs from the requested clip before serialized mutation.
+- Require loaded assignment assets to be instances of the current engine AnimationClip constructor; refuse unverifiable asset classes before writing.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
