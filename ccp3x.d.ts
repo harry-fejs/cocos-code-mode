@@ -458,6 +458,15 @@ declare namespace ccp3x {
     /** Rejects with UNSUPPORTED_PREVIEW_IPC on Creator 3.7.3 because preview:set-resolution is not exposed. */
     function previewResolutionSet(args: { width: number, height: number }): { width: number, height: number, persisted: boolean, supported: boolean, readBack?: unknown };
     function editorUndoTransactionProbe(): { supported: boolean, boundaries: string[], clean: boolean };
+
+    function physics2dQuery(args?: { reference?: InstanceReference }): { valid: boolean; nodes: Array<Record<string, unknown>>; issues: string[]; checkedNodes: number };
+    function physics3dQuery(args?: { reference?: InstanceReference }): { valid: boolean; nodes: Array<Record<string, unknown>>; issues: string[]; checkedNodes: number };
+    function shaderValidate(args: { effectName: string }): { valid: boolean; effectName: string; diagnostics: Array<Record<string, unknown>>; result: unknown };
+    /** Creates a native graph asset only when Creator returns and preserves an imported UUID; failure attempts rollback. */
+    function animationGraphCreate(args: { assetPath: string; options?: { overwrite?: boolean; rename?: boolean } }): { reference: InstanceReference; assetPath: string; verified: true };
+    /** Creator 3.7 legacy terrain path editing is refused; native cell edit requires Creator 3.8. */
+    function terrainEdit(args: Record<string, unknown>): Record<string, unknown>;
+    function modelImportConfigure(args: { reference: InstanceReference; path: string; value: unknown }): { changed: boolean; path: string; previous: unknown; readBack: unknown; result: Record<string, unknown> };
     function broadcastObserve(args: { topic: "ccp3x:probe" | "scene:change" | "asset-db:change" }): { topic: string, supported: boolean, observed: boolean, lifecycle: string[], event: unknown, eventBytes: number, truncated: boolean, retainedListener: false };
 
     /** Get list of globally available component types. */
