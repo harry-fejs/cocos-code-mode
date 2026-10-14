@@ -219,6 +219,46 @@ declare namespace ccp3x {
         truncated: boolean
     };
 
+    /** Inspect imported model skeleton metadata; this is read-only and metadata-only. */
+    function modelSkeletonInspect(args: { reference: InstanceReference; maxJoints?: number }): {
+        reference: InstanceReference,
+        skeletonId: string | null,
+        joints: string[],
+        totalJoints: number,
+        truncated: boolean
+    };
+
+    /** Validate imported model joint identity and uniqueness; does not prove runtime skeleton binding. */
+    function modelSkeletonValidate(args: { reference: InstanceReference }): {
+        valid: boolean,
+        reference: InstanceReference,
+        skeletonId: string | null,
+        jointCount: number,
+        issues: Array<{ code: string; index?: number; joint?: string }>
+    };
+
+    /** Inspect imported animation clip metadata; no runtime playback or clip binding claim. */
+    function modelAnimationInspect(args: { reference: InstanceReference; maxClips?: number }): {
+        reference: InstanceReference,
+        skeletonId: string | null,
+        clips: string[],
+        totalClips: number,
+        truncated: boolean
+    };
+
+    /** Compare source/target/optional clip metadata only; automaticRetargeting is always false. */
+    function animationRetargetValidate(args: { sourceReference: InstanceReference; targetReference: InstanceReference; clipReference?: InstanceReference }): {
+        valid: boolean,
+        automaticRetargeting: false,
+        sourceReference: InstanceReference,
+        targetReference: InstanceReference,
+        clipReference?: InstanceReference,
+        source: { jointCount: number; joints: string[]; skeletonId?: string },
+        target: { jointCount: number; joints: string[]; skeletonId?: string },
+        clip?: { clipCount: number; clips: string[]; skeletonId?: string },
+        issues: Array<Record<string, unknown>>
+    };
+
     /** Assign a platform-aware Creator texture-compression preset and return deterministic reimport evidence. */
     function assetCompressionConfigure(args: {
         reference: InstanceReference,
