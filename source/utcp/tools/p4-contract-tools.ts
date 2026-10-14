@@ -47,7 +47,7 @@ export class P4ContractTools {
         type: 'object', additionalProperties: false,
         properties: {
             sessionId: { type: 'string', minLength: 1, maxLength: 64 },
-            operation: { type: 'string', enum: ['play', 'stop', 'clear'] },
+            operation: { type: 'string', enum: ['play', 'stop', 'clear', 'inspect'] },
             nodeReference: {
                 type: 'object', additionalProperties: false,
                 properties: { id: { type: 'string', minLength: 1, maxLength: 256 } },
@@ -61,8 +61,8 @@ export class P4ContractTools {
     async particlePlayback(args: { sessionId?: string, operation?: string, nodeReference?: { id?: string }, componentId?: string, timeoutMs?: number }): Promise<Record<string, unknown>> {
         const sessionId = requireText(args?.sessionId, 'sessionId', 64);
         const nodeId = requireText(args?.nodeReference?.id, 'nodeReference.id');
-        if (!['play', 'stop', 'clear'].includes(String(args.operation))) {
-            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'operation must be play, stop, or clear.' });
+        if (!['play', 'stop', 'clear', 'inspect'].includes(String(args.operation))) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'operation must be play, stop, clear, or inspect.' });
         }
         if (args.componentId !== undefined) requireText(args.componentId, 'componentId');
         if (args.timeoutMs !== undefined && (!Number.isInteger(args.timeoutMs) || args.timeoutMs < 100 || args.timeoutMs > 3000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'timeoutMs must be an integer from 100 to 3000.' });

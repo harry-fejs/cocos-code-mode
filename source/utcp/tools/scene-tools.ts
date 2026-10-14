@@ -245,9 +245,10 @@ export class SceneTools {
         if (typeof args?.assetPath !== 'string' || !/^db:\/\/assets\/.+\.scene$/.test(args.assetPath) || args.assetPath.includes('..')) {
             throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'assetPath must be a db://assets scene path without traversal.' });
         }
-        const template = 'db://internal/default_file_content/scene/default.scene';
-        const templateInfo = await Editor.Message.request('asset-db', 'query-asset-info', template) as { type?: string; isDirectory?: boolean } | null;
-        if (templateInfo?.type !== 'cc.SceneAsset' || templateInfo.isDirectory !== false) throw new ToolError({ code: 'UNSUPPORTED_EDITOR_API', status: 422, message: 'Creator default scene template is unavailable.' });
+        const legacy = Editor.App?.version === '3.7.3';
+        const template = legacy ? 'db://internal/default_file_content/scene' : 'db://internal/default_file_content/scene/default.scene';
+        const templateInfo = await Editor.Message.request('asset-db', 'query-asset-info', template) as { type?: string; isDirectory?: boolean; url?: string } | null;
+        if (templateInfo?.type !== (legacy ? 'cc.Asset' : 'cc.SceneAsset') || templateInfo.isDirectory !== false || templateInfo.url !== template) throw new ToolError({ code: 'UNSUPPORTED_EDITOR_API', status: 422, message: 'Creator default scene template identity is unavailable.' });
         const created = await Editor.Message.request('asset-db', 'copy-asset', template, args.assetPath, { overwrite: false, rename: false }) as unknown;
         if (!created || typeof created !== 'object' || !('uuid' in created) || typeof created.uuid !== 'string') {
             throw new ToolError({ code: 'SCENE_CREATE_FAILED', status: 502, message: `Creator did not create scene ${args.assetPath}.` });

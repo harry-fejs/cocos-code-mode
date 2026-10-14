@@ -9,6 +9,7 @@ import { inspectNativeAnimationGraph } from '../../native-animation-graph-inspec
 import { validateTerrainEditRequest } from '../../terrain-edit';
 import type { TerrainCell, TerrainEditResult } from '../../terrain-edit';
 
+import { requireCreator38 } from '../utils/creator38-capability';
 const GRAPH_PRESET = 'db://internal/default_file_content/animation-graph/default.animgraph';
 const ASSET_PATH_PATTERN = /^db:\/\/assets\/[A-Za-z0-9._/-]+$/;
 const SKELETAL_FIELDS = ['playOnLoad', 'useBakedAnimation'] as const;
@@ -182,7 +183,6 @@ async function queryNode(id: string): Promise<any> {
 }
 
 export class PortfolioValidationTools {
-    @utcpTool('assetBundleValidate', 'Validate bounded bundle metadata for one imported asset.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, expectedBundle: { type: 'string', minLength: 1, maxLength: 128 } }, required: ['reference'] }, { type: 'object', properties: { valid: { type: 'boolean' }, reference: { type: 'object' }, bundle: {}, issues: { type: 'array' }, runtimeCaveat: { type: 'string' } }, required: ['valid', 'reference', 'bundle', 'issues', 'runtimeCaveat'] }, 'GET', ['asset', 'bundle', 'validate'])
     async assetBundleValidate(args: { reference: IInstanceReference, expectedBundle?: string }) {
         const asset = await info(args.reference);
         let meta: unknown;
@@ -486,6 +486,7 @@ export class PortfolioValidationTools {
             throw new ToolError({ code: 'UNSUPPORTED_EDITOR_API', status: 422, message: 'Generic terrain height/layers property paths are not a native persistent edit route.', recovery: 'Use exact nodeReference, componentReference, assetReference and bounded cells instead.' });
         }
         if (!args || args.nodeReference?.type !== 'cc.Node' || args.componentReference?.type !== 'cc.Terrain' || args.assetReference?.type !== 'cc.TerrainAsset') invalid('terrainEdit requires exact cc.Node, cc.Terrain and cc.TerrainAsset typed references.');
+        requireCreator38('terrainEdit');
         const request = { nodeUuid: args.nodeReference.id, componentUuid: args.componentReference.id, assetUuid: args.assetReference.id, cells: args.cells };
         try { validateTerrainEditRequest(request); } catch (error: unknown) { invalid(error instanceof Error ? error.message : String(error)); }
         const raw = await Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'terrainHeightEdit', args: [request] }) as unknown;

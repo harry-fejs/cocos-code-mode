@@ -10,7 +10,7 @@ const { ToolRegistry } = requireDist('utcp/decorators.js');
 afterEach(() => { delete global.Editor; });
 
 function setRequest(request) {
-  global.Editor = { Message: { request } };
+  global.Editor = { App: { version: '3.8.8' }, Message: { request } };
 }
 
 function localizationTool() {

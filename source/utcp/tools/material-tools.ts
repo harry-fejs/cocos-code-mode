@@ -261,20 +261,13 @@ export class MaterialTools {
             const after = await queryMaterial(materialId);
             const verification = importer.verifyEdit(plan, after);
             if (!verification.requestedValueMatched || !verification.unaffectedPassesUnchanged) throw new ToolError({ code: 'READBACK_MISMATCH', status: 502, message: `Material '${args.path}' did not match the normalized request or changed another pass.`, details: verification });
-            return {
-                reference: args.reference, path: args.path, changed: !importer.isRestored(plan.before, after), before: plan.before, after,
-                requestedValue: verification.requestedValue, readBackValue: verification.readBackValue, passIndices: plan.passIndices,
-                verification: { requestedValueMatched: true, unaffectedPassesUnchanged: true, unaffectedPassesApplicable: !plan.root },
-                persistence: { nativeApplyInvoked: true, sourceSaved: null, importCompleted: null, generatedOutputVerified: null, reimportVerified: false, reopenVerified: false },
-            };
+            return { reference: args.reference, path: args.path, changed: !importer.isRestored(plan.before, after), before: plan.before, after, requestedValue: verification.requestedValue, readBackValue: verification.readBackValue, passIndices: plan.passIndices, verification: { requestedValueMatched: true, unaffectedPassesUnchanged: true, unaffectedPassesApplicable: !plan.root }, persistence: { nativeApplyInvoked: true, sourceSaved: null, importCompleted: null, generatedOutputVerified: null, reimportVerified: false, reopenVerified: false } };
         } catch (error) {
-            // A rejected/timed-out native save may already have mutated; never infer safe refusal.
             let rollbackCause: string | null = null;
             try { await importer.applyDump(materialId, plan.before); } catch (rollbackError) { rollbackCause = String(rollbackError); }
             let restored = false;
-            let rollback: 'partial' | 'unknown' = 'unknown';
-            try { restored = importer.isRestored(plan.before, await queryMaterial(materialId)); rollback = 'partial'; } catch (readError) { rollbackCause = String(readError); }
-            if (!restored) throw new ToolError({ code: 'ROLLBACK_FAILED', status: 500, message: `materialEdit failed and full material restoration could not be verified.`, details: { rollback, cause: String(error), rollbackCause } });
+            try { restored = importer.isRestored(plan.before, await queryMaterial(materialId)); } catch (readError) { rollbackCause = String(readError); }
+            if (!restored) throw new ToolError({ code: 'ROLLBACK_FAILED', status: 500, message: 'materialEdit failed and full material restoration could not be verified.', details: { cause: String(error), rollbackCause } });
             throw new ToolError({ code: error instanceof ToolError ? error.code : 'MUTATION_FAILED', status: error instanceof ToolError ? error.status : 502, message: `materialEdit failed for '${args.path}'; original material independently restored.`, details: { ...(error instanceof ToolError ? error.details : {}), rollback: 'verified-restored', cause: String(error), rollbackCause } });
         }
     }

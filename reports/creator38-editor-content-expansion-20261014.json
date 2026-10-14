@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-14",
+  "creator": "3.8.8",
+  "scope": "editor/content expansion",
+  "implemented": {
+    "materialEdit": "exact Creator3.8 gate; native apply/readback mismatch and verified rollback remain fail-closed; persistence not claimed",
+    "particleConfigure": "exact Creator3.8 gate; typed serialized property readback and rollback verification",
+    "terrainEdit": "exact Creator3.8 gate; native TerrainManager/source hash/reimport/reload contract retained; fixture qualification remains separate",
+    "localizationInspect": "exact Creator3.8 gate; official localization-editor scene seam only",
+    "localizationValidate": "exact Creator3.8 gate; official localization-editor scene seam only",
+    "assetBundleValidate": "exact Creator3.8 gate; asset-db metadata only",
+    "previewResolutionSet": "exact Creator3.8 gate; success requires typed IPC readback; unsupported/mismatch fail closed"
+  },
+  "blocked": {
+    "materialPersistence": "Creator3.8.8 disposable material did not retain apply-material changes in query-material; no persistence/reopen claim",
+    "previewPositive": "No positive preview set-resolution IPC/readback witness",
+    "localizationTableEdit": "Official package inspect/validate witness exists, but no stable documented persistent table edit API is exposed in current source; no filesystem fallback",
+    "particleLiveQualification": "Class availability observed, but no exact native fixture persistence witness",
+    "terrainLiveQualification": "Native writer route implemented with source/reload checks; current qualification report says fixture/write evidence separate"
+  },
+  "promotion": false,
+  "release": false
+}

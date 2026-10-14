@@ -6,6 +6,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { createHash } from 'crypto';
 import { AUDIO_TARGETS, AudioAssetInfo, AudioAssetReference, AudioCompatibilityAuditResult, AudioTarget, buildAudioAssetCompatibilityAudit } from '../../audio-asset-compatibility-audit';
+import { requireCreator38 } from '../utils/creator38-capability';
 const AUDIO_COMPAT_ISSUE_SCHEMA: any = {
     type: 'object',
     additionalProperties: false,
@@ -119,6 +120,7 @@ export class ExpansionTools {
     async particleConfigure(args: { reference: IInstanceReference, properties: Record<string, unknown> }): Promise<{ reference: IInstanceReference, componentReference: IInstanceReference, properties: Record<string, unknown>, changed: string[], verified: true }> {
         if (!args?.reference?.id || typeof args.reference.id !== 'string') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'reference.id is required.' });
         if (!args.properties || typeof args.properties !== 'object' || Array.isArray(args.properties)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'properties must be a non-empty object.' });
+        requireCreator38('particleConfigure');
         const keys = Object.keys(args.properties);
         if (keys.length < 1 || keys.length > 16 || keys.some((key) => !/^[A-Za-z0-9_.]{1,256}$/.test(key))) throw new ToolError({ code: 'INVALID_PROPERTY', status: 400, message: 'Particle property paths must be 1 to 256 alphanumeric segments.' });
         const node = await (Editor.Message.request('scene', 'query-node', args.reference.id) as unknown as Promise<NodeRecord | null>);
@@ -162,6 +164,9 @@ export class ExpansionTools {
             try {
                 for (const key of [...applied].reverse()) await Editor.Message.request('scene', 'set-property', { uuid: args.reference.id, path: `__comps__.${index}.${key}`, dump: { value: originals[key] as never, type: 'Unknown' } });
                 await Editor.Message.request('scene', 'snapshot');
+                const rollbackNode = await (Editor.Message.request('scene', 'query-node', args.reference.id) as unknown as Promise<NodeRecord | null>);
+                const rollbackValues = rollbackNode?.__comps__?.[index]?.value ?? {};
+                for (const key of applied) if (JSON.stringify(readPath(rollbackValues, key)) !== JSON.stringify(originals[key])) throw new Error(`rollback read-back mismatch for ${key}`);
             } catch (rollbackError) {
                 throw new ToolError({ code: 'ROLLBACK_FAILED', status: 500, message: `Particle configuration failed and node ${args.reference.id} could not be restored.`, details: { cause: error instanceof Error ? error.message : String(error), rollback: rollbackError instanceof Error ? rollbackError.message : String(rollbackError) } });
             }

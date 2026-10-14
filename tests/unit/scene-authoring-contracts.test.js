@@ -10,6 +10,19 @@ const { SetPropertyTool } = requireDist('utcp/tools/set-properties-tool.js');
 const previousEditor = global.Editor;
 afterEach(() => { global.Editor = previousEditor; });
 
+it('creates a Creator3.7 scene from its exact flat native template and confirms the output importer', async () => {
+  const calls = [];
+  global.Editor = { App: { version: '3.7.3' }, Message: { request: async (_module, message, ...args) => {
+    calls.push([message, args[0]]);
+    if (message === 'query-asset-info') return args[0] === 'scene-created' ? { uuid: 'scene-created', type: 'cc.SceneAsset', isDirectory: false } : { type: 'cc.Asset', isDirectory: false, url: args[0] };
+    if (message === 'copy-asset') return { uuid: 'scene-created' };
+    throw new Error(message);
+  } } };
+  const created = await new SceneTools().sceneCreate({ assetPath: 'db://assets/scene.scene' });
+  assert.equal(created.reference.type, 'cc.SceneAsset');
+  assert.deepEqual(calls[0], ['query-asset-info', 'db://internal/default_file_content/scene']);
+});
+
 describe('scene authoring mutation postconditions', () => {
   it('confirms opened scene identity and rejects mismatched read-back', async () => {
     const calls = [];
@@ -260,7 +273,7 @@ describe('final scene adapters', () => {
       if (message === 'copy-asset') return { uuid: 'scene-1' };
       if (message === 'query-asset-info') return id === 'scene-1'
         ? { uuid: 'scene-1', type: directory ? 'cc.Asset' : 'cc.SceneAsset', isDirectory: directory }
-        : { uuid: 'template', type: 'cc.SceneAsset', isDirectory: false };
+        : { uuid: 'template', url: id, type: 'cc.SceneAsset', isDirectory: false };
       throw new Error(`unexpected ${message}`);
     } } };
     await assert.rejects(new SceneTools().sceneCreate({ assetPath: 'db://assets/final.scene' }), error => error.code === 'SCENE_CREATE_UNCONFIRMED');

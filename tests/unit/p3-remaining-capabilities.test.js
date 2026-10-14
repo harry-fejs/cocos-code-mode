@@ -16,7 +16,7 @@ afterEach(() => {
 
 function install(request) {
   previousEditor = global.Editor;
-  global.Editor = { Message: { request } };
+  global.Editor = { App: { version: '3.8.8' }, Message: { request } };
 }
 
 function asset(id, metadata = {}) {

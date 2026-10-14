@@ -15,7 +15,7 @@ type NodeLike = { uuid: string; children: NodeLike[]; position?: TweenVector; sc
 type ActionLike = { getElapsed?: () => number; getOriginalTarget?: () => NodeLike };
 type TweenLike = { tag: (n: number) => TweenLike; delay: (n: number) => TweenLike; to: (n: number, p: Record<string, unknown>, o: { easing: string }) => TweenLike; by: (n: number, p: Record<string, unknown>, o: { easing: string }) => TweenLike; union: () => TweenLike; repeat: (n: number) => TweenLike; call: (cb: () => void) => TweenLike; start: () => TweenLike; stop: () => TweenLike; pause?: (this: TweenLike) => TweenLike; resume?: (this: TweenLike) => TweenLike };
 type ManagerLike = { getActionByTag: (tag: number, node: NodeLike) => ActionLike | null };
-type CcLike = { GAME_VIEW?: boolean; director?: { getScene: () => NodeLike | null; getSystem?: (id: string) => { ActionManager?: ManagerLike } | null; on?: (e: unknown, cb: () => void) => void; off?: (e: unknown, cb: () => void) => void }; isValid?: (v: unknown, strict?: boolean) => boolean; Node?: { EventType?: { NODE_DESTROYED?: unknown } }; Director?: { EVENT_AFTER_UPDATE?: unknown }; Vec3?: new (x: number, y: number, z: number) => TweenVector; tween?: (n: NodeLike) => TweenLike; TweenSystem?: { instance?: { ActionManager?: ManagerLike } }; Tween?: { prototype?: { pause?: () => unknown; resume?: () => unknown } } };
+type CcLike = { GAME_VIEW?: boolean; ENGINE_VERSION?: unknown; VERSION?: unknown; director?: { getScene: () => NodeLike | null; getSystem?: (id: string) => { ActionManager?: ManagerLike } | null; on?: (e: unknown, cb: () => void) => void; off?: (e: unknown, cb: () => void) => void }; isValid?: (v: unknown, strict?: boolean) => boolean; Node?: { EventType?: { NODE_DESTROYED?: unknown } }; Director?: { EVENT_AFTER_UPDATE?: unknown }; Vec3?: new (x: number, y: number, z: number) => TweenVector; tween?: (n: NodeLike) => TweenLike; TweenSystem?: { instance?: { ActionManager?: ManagerLike } }; Tween?: { prototype?: { pause?: () => unknown; resume?: () => unknown } } };
 type Handle = { node: NodeLike; scene: NodeLike; descriptor: string; tween: TweenLike; tag: number; action: ActionLike | null; status: TweenRuntimeState['status']; elapsed: number | null; duration: number; stopOnDisable: boolean; finish: (s: TweenRuntimeState['status']) => void };
 type Store = { scene: NodeLike; handles: Map<string, Handle>; nextTag: number };
 const isNode = (v: unknown): v is NodeLike => !!v && typeof v === 'object' && 'uuid' in v && 'children' in v && Array.isArray(v.children) && typeof (v as { uuid?: unknown }).uuid === 'string';
@@ -28,6 +28,8 @@ export function gameViewTweenOperation(request: TweenRuntimeRequest, cc: CcLike,
     const required = <T>(value: T | null | undefined, message: string): T => { if (value === null || value === undefined) throw new Error(message); return value; };
     try {
         const director = required(cc.director, 'director unavailable');
+        const version = cc.ENGINE_VERSION ?? cc.VERSION;
+        if (typeof version !== 'string' || !/^3\.7\./.test(version)) fail('UNSUPPORTED_VERSION', 'Tween runtime control requires Creator 3.7.x; Creator 3.8 and unknown versions are unsupported.');
         const scene = required(director.getScene(), 'scene unavailable');
         if (cc.GAME_VIEW !== true || scene.uuid !== request.sceneUuid || !isNode(scene)) fail('RUNTIME_TARGET_CHANGED', 'The bound Game View scene changed.');
         const seen = new Set<NodeLike>(); const stack: NodeLike[] = [scene]; let node: NodeLike | undefined;

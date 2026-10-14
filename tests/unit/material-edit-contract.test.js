@@ -21,7 +21,7 @@ describe('materialEdit contract', () => {
 
   it('refuses native readback that ignores the requested technique and verifies restoration', async () => {
     const previous = global.Editor;
-    global.Editor = { Message: {
+    global.Editor = { App: { version: '3.8.8' }, Message: {
       request: async (service, message) => {
         if (service === 'asset-db' && message === 'query-asset-info') return { uuid: 'mat', importer: 'material', type: 'cc.Material' };
         if (service === 'scene' && message === 'query-material') return { effect: 'test-effect', technique: 0, data: [{ passes: [] }, { passes: [] }] };

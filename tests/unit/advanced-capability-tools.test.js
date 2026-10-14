@@ -573,7 +573,7 @@ describe('advanced capability tools', () => {
 
   it('returns typed unsupported evidence for unavailable preview IPC', async () => {
     const previous = global.Editor;
-    global.Editor = { Message: { request: async () => { throw new Error('unsupported'); } } };
+    global.Editor = { App: { version: '3.8.8' }, Message: { request: async () => { throw new Error('unsupported'); } } };
     try {
       await assert.rejects(
         () => new AdvancedCapabilityTools().previewResolutionSet({ width: 800, height: 600 }),

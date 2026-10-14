@@ -8,6 +8,7 @@ import { AssetTools } from './asset-tools';
 import type { AssetImportSettingsSetResult } from './asset-tools';
 import { restorePrefabNode } from '../utils/tools-utils';
 import { boundPrefabResponse, prefabResponseLimit } from '../utils/prefab-response';
+import { requireCreator38 } from '../utils/creator38-capability';
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:@[A-Za-z0-9_-]+)?/gi;
 const SERIALIZED_LIMIT = 5 * 1024 * 1024;
 const MAX_ITEMS = 128;
@@ -884,7 +885,19 @@ export class AdvancedCapabilityTools {
     }
 
     @utcpTool('previewResolutionSet', 'Set an allowlisted preview resolution through Creator IPC and read back the applied value.', { type: 'object', additionalProperties: false, properties: { width: { type: 'integer', minimum: 1, maximum: 8192 }, height: { type: 'integer', minimum: 1, maximum: 8192 } }, required: ['width', 'height'] }, { type: 'object', properties: { width: { type: 'integer' }, height: { type: 'integer' }, persisted: { type: 'boolean' }, supported: { type: 'boolean' } }, required: ['width', 'height', 'persisted', 'supported'] }, 'POST', ['preview', 'resolution', 'set'])
-    async previewResolutionSet(args: { width: number, height: number }): Promise<Record<string, unknown>> { try { const result = await Editor.Message.request('preview', 'set-resolution', { width: args.width, height: args.height }); return { width: args.width, height: args.height, persisted: result !== false, supported: true, readBack: result ?? null }; } catch (error) { throw new ToolError({ code: 'UNSUPPORTED_PREVIEW_IPC', status: 422, message: 'Creator preview resolution IPC is unavailable.', details: { cause: error instanceof Error ? error.message : String(error) } }); } }
+    async previewResolutionSet(args: { width: number, height: number }): Promise<Record<string, unknown>> {
+        requireCreator38('previewResolutionSet');
+        try {
+            const result = await Editor.Message.request('preview', 'set-resolution', { width: args.width, height: args.height });
+            if (!result || typeof result !== 'object' || Array.isArray(result)) throw new ToolError({ code: 'READBACK_MISMATCH', status: 502, message: 'Creator preview resolution IPC returned no typed read-back.' });
+            const response = result as Record<string, unknown>;
+            if (response.width !== args.width || response.height !== args.height) throw new ToolError({ code: 'READBACK_MISMATCH', status: 502, message: 'Creator preview resolution read-back did not match the requested dimensions.', details: { requested: args, readBack: response } });
+            return { width: args.width, height: args.height, persisted: true, supported: true, readBack: response };
+        } catch (error) {
+            if (error instanceof ToolError) throw error;
+            throw new ToolError({ code: 'UNSUPPORTED_PREVIEW_IPC', status: 422, message: 'Creator preview resolution IPC is unavailable.', details: { cause: error instanceof Error ? error.message : String(error) } });
+        }
+    }
 
     @utcpTool('editorUndoTransactionProbe', 'Probe snapshot, undo, redo, and snapshot-abort lifecycle boundaries without leaving a pending transaction.', { type: 'object', properties: {} }, { type: 'object', properties: { supported: { type: 'boolean' }, boundaries: { type: 'array' }, clean: { type: 'boolean' } }, required: ['supported', 'boundaries', 'clean'] }, 'POST', ['editor', 'undo', 'transaction', 'probe'])
     async editorUndoTransactionProbe(): Promise<Record<string, unknown>> { const boundaries: string[] = []; try { await Editor.Message.request('scene', 'snapshot'); boundaries.push('snapshot'); await Editor.Message.request('scene', 'snapshot-abort'); boundaries.push('snapshot-abort'); return { supported: true, boundaries, clean: true }; } catch (error) { throw new ToolError({ code: 'UNDO_PROBE_FAILED', status: 422, message: 'Creator undo transaction lifecycle is unavailable.', details: { cause: error instanceof Error ? error.message : String(error) } }); } }

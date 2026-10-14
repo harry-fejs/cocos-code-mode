@@ -44,7 +44,7 @@ function validateSkeletal(args: SkeletalArgs, operation: string): ComponentOpera
     requireComponentText(args.clipName, 'clipName');
     requireComponentText(args.clipUuid, 'clipUuid');
     if (!['play', 'pause', 'resume', 'stop'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'operation must be play, pause, resume, or stop.' });
-    return { kind: 'animation', operation, sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, clipName: args.clipName!, clipUuid: args.clipUuid!, timeoutMs: validateTimeout(args.timeoutMs) };
+    return { kind: 'skeletal', operation, sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, clipName: args.clipName!, clipUuid: args.clipUuid!, timeoutMs: validateTimeout(args.timeoutMs) };
 }
 
 export class ComponentRuntimeTools {

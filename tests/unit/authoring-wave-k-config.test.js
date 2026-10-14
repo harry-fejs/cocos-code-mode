@@ -27,7 +27,7 @@ describe('Wave K editor configuration contracts', () => {
         rateOverTime: { value: 10, type: 'Float' },
       } }],
     };
-    global.Editor = { Message: { request: async (service, message, payload) => {
+    global.Editor = { App: { version: '3.8.8' }, Message: { request: async (service, message, payload) => {
       if (message === 'query-node') return node;
       if (message === 'set-property') { node.__comps__[0].value.rateOverTime = payload.dump; return true; }
       if (message === 'snapshot') return true;
@@ -43,12 +43,12 @@ describe('Wave K editor configuration contracts', () => {
   it('fails closed for unavailable Creator 3.7 project settings writes', async () => {
     global.Editor = { Message: { request: async () => { throw new Error('Message does not exist: project - set-config'); } } };
     const tools = new P4ContractTools();
-    await assert.rejects(() => tools.physics2dConfigure({ path: 'collisionMatrix', value: {} }), error => error.code === 'UNSUPPORTED_EDITOR_API' && error.status === 422);
-    await assert.rejects(() => tools.physics3dConfigure({ path: 'gravity', value: 9.8 }), error => error.code === 'UNSUPPORTED_EDITOR_API' && error.status === 422);
+    await assert.rejects(() => tools.physics2dConfigure({ path: 'physics.collisionMatrix', value: {} }), error => error.code === 'UNSUPPORTED_EDITOR_API' && error.status === 422);
+    await assert.rejects(() => tools.physics3dConfigure({ path: 'physics.gravity', value: { x: 0, y: -9.8, z: 0 } }), error => error.code === 'UNSUPPORTED_EDITOR_API' && error.status === 422);
   });
 
   it('keeps retarget metadata and preview IPC fail-closed without mutation', async () => {
-    global.Editor = { Message: { request: async (service, message) => {
+    global.Editor = { App: { version: '3.8.8' }, Message: { request: async (service, message) => {
       if (service === 'asset-db' && message === 'query-asset-info') return { uuid: 'model', type: 'cc.FBX', url: 'db://assets/model.fbx', meta: { userData: {} } };
       throw new Error(`Message does not exist: ${service} - ${message}`);
     } } };
