@@ -24,6 +24,7 @@
 - Add exact Game View regular Animation/SkeletalAnimation play/pause/resume/stop controls with state read-back and other-active-clip refusal; no automatic mutation replay.
 - Add regular Animation/SkeletalAnimation exact-clip lifecycle event observation with bounded capture/listener cleanup; no playback dispatch or historical-event claim.
 - Enforce animation event caps during synchronous bursts by settling capture immediately, before listener cleanup microtasks run.
+- Add official localization resource-list inspection for bounded languages/default/fallback metadata and missing-inclusion diagnostics; no switch, restart or runtime fallback inference.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

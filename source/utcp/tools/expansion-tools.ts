@@ -8,6 +8,7 @@ import { createHash } from 'crypto';
 import { AUDIO_TARGETS, AudioAssetInfo, AudioAssetReference, AudioCompatibilityAuditResult, AudioTarget, buildAudioAssetCompatibilityAudit } from '../../audio-asset-compatibility-audit';
 import { requireCreator38 } from '../utils/creator38-capability';
 import { auditTranslationText } from '../localization-text-audit';
+import { inspectLocalizationResources } from '../localization-resource-inspect';
 const AUDIO_COMPAT_ISSUE_SCHEMA: any = {
     type: 'object',
     additionalProperties: false,
@@ -186,6 +187,11 @@ export class ExpansionTools {
     async localizationInspect(): Promise<{ supported: boolean, currentLanguage: string | null, languages: string[], directions: Record<string, string>, error?: string }> {
         return await Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'inspectLocalization', args: [] }) as any;
     }
+
+    @utcpTool('localizationResourceInspect', 'Inspect official editor language/default/fallback resource metadata through main IPC. No runtime import, switch, localStorage or restart; runtime fallback resolution remains unverified.', { type: 'object', additionalProperties: false, properties: {} }, {
+        type: 'object', properties: { languages: { type: 'array', maxItems: 64 }, defaultLanguage: { type: 'string' }, fallbackLanguage: { type: 'string' }, issues: { type: 'array' }, writes: { type: 'boolean', const: false }, runtimeVerified: { type: 'boolean', const: false }, verificationScope: { type: 'string' } }, required: ['languages', 'defaultLanguage', 'fallbackLanguage', 'issues', 'writes', 'runtimeVerified', 'verificationScope'],
+    }, 'GET', ['localization', 'resources', 'inspect', 'read-only'])
+    async localizationResourceInspect() { requireCreator38('localizationResourceInspect'); return inspectLocalizationResources(); }
 
     @utcpTool('localizationTableInspect', 'Read selected existing translation keys from official localization-editor main IPC. No language change, restart or write. Missing keys are explicit; returned values have a whole-response byte bound.', {
         type: 'object', additionalProperties: false,

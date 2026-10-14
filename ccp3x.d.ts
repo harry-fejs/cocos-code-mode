@@ -1078,6 +1078,8 @@ declare namespace ccp3x {
         missingKeys: [],
         error: string
     };
+    /** Official editor resource metadata; runtime overrides/fallback resolution and switching remain unverified. */
+    function localizationResourceInspect(): { languages: string[]; defaultLanguage: string; fallbackLanguage: string; issues: Array<{ code: string; locale: string }>; writes: false; runtimeVerified: false; verificationScope: string };
     /** Creator3.8.8 official package IPC; edits one existing key with expected-value conflict guard. Live qualification pending. */
     function localizationTableEdit(args: { locale: string; key: string; value: string; expectedValue: string }): { supported: true; locale: string; key: string; changed: boolean; persisted: true; mutationDispatched: boolean; previousValueSha256: string; readBackValueSha256: string; evidence: { channel: 'localization-editor'; readMethod: 'get-translate-data-object'; writeMethod: 'save-translate-data'; payloadBytes: number; redacted: true } };
     /** Read selected official package translations with a whole-response cap; no locale switch or write. Verification pending. */
