@@ -98,6 +98,7 @@
 - Refuse Animation clip assignment when the loaded/cache asset UUID differs from the requested clip before serialized mutation.
 - Require loaded assignment assets to be instances of the current engine AnimationClip constructor; refuse unverifiable asset classes before writing.
 - Refuse detached or replaced Animation assignment targets before serialized write and after write read-back.
+- Refuse Animation clip assignment if the captured clip inventory changes before write, preserving concurrent edits rather than overwriting them.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

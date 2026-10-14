@@ -910,7 +910,9 @@ export const methods = {
         const componentIndex = nodeDump?.__comps__?.findIndex((component: any) =>
             component?.value?.uuid?.value === animation.uuid);
         if (!animation.uuid || !Number.isInteger(componentIndex) || componentIndex < 0) throw new Error('Animation component is missing from the serialized scene node');
-        const nextClips = Array.isArray(animation.clips) ? animation.clips.slice() : [];
+        const previousClips = Array.isArray(animation.clips) ? animation.clips.slice() : [];
+        const previousClipUuids = previousClips.map((candidate: any) => candidate?.uuid ?? null);
+        const nextClips = previousClips.slice();
         if (!nextClips.some((candidate: any) => candidate?.uuid === request.clipUuid)) nextClips.push(clip);
         const clipName = typeof request.clipName === 'string' && request.clipName ? request.clipName : (clip.name ?? request.clipUuid);
         const serialized = await (globalThis as any).Editor.Message.request('scene', 'query-component', animation.uuid);
@@ -924,6 +926,10 @@ export const methods = {
         });
         await (globalThis as any).Editor.Message.request('scene', 'snapshot');
         await requireCurrentTarget();
+        const currentClips = Array.isArray(animation.clips) ? animation.clips : [];
+        if (currentClips.length !== previousClips.length || previousClips.some((candidate: any, index: number) => currentClips[index] !== candidate || (currentClips[index]?.uuid ?? null) !== previousClipUuids[index])) {
+            throw new Error('Animation clip inventory changed; inspect the component before retrying');
+        }
         const applied = await (globalThis as any).Editor.Message.request('scene', 'set-property', { uuid: request.nodeUuid, path: `__comps__.${componentIndex}.clips`, dump: { value: entries, type: clipsProperty.type } });
         if (applied === false) throw new Error('Creator refused Animation clip assignment');
         await requireCurrentTarget();
