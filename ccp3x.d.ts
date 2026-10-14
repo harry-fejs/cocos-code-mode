@@ -1205,6 +1205,13 @@ declare namespace ccp3x {
         }>
     };
 
+    /** Wait boundedly for a Creator build task to reach a terminal state; timeout never claims completion. */
+    function buildTaskWait(args: { taskId: string | number; timeoutMs?: number; pollMs?: number }): {
+        completed: boolean,
+        timedOut: boolean,
+        task: Record<string, unknown>
+    };
+
     /** Candidate: validate 1-256 unique localization keys (each at most 256 characters) in the current Creator language through the fixed ccp3x package scene seam. Unsupported localization packages return supported=false; this call never changes language or restarts Creator. */
     function localizationValidate(args: { keys: string[] }): {
         supported: true,
