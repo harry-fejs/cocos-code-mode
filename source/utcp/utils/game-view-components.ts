@@ -114,7 +114,8 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
                 method!.call(c);
             }
             assertTarget();
-            const count = finiteNumber(c.getParticleCount!.call(c));
+            const count = c.getParticleCount!.call(c);
+            if (typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0) fail('UNSUPPORTED_RUNTIME_METRIC', 'Particle count must be a non-negative safe integer.');
             if (typeof c.isPlaying !== 'boolean' || (args.operation === 'play' && !c.isPlaying) || (args.operation === 'stop' && c.isPlaying) || (args.operation === 'clear' && count !== 0)) fail('READBACK_MISMATCH', 'Particle playback postcondition did not match actual engine state.');
             return { ...identity, state: { playing: c.isPlaying, paused: typeof c.isPaused === 'boolean' ? c.isPaused : null, stopped: typeof c.isStopped === 'boolean' ? c.isStopped : null, particleCount: count, time: finiteNumber(c.time) } };
         }

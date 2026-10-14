@@ -52,6 +52,7 @@
 - Separate graph inspect prerequisites from setValue capability; missing setter no longer blocks read-only graph observation while writes refuse before dispatch.
 - Separate ParticleSystem inspect from playback methods and require only the requested mutation capability; missing methods refuse before dispatch with native receiver preservation.
 - Require only the selected native Animation playback method, validate allowlisted operation before mutation, and preserve busy-target/read-back guards.
+- Reject negative, fractional and unsafe ParticleSystem counts before inspection/wait match credit; preserve valid zero-count observation.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

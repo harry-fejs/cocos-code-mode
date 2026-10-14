@@ -94,7 +94,7 @@ export class P4ContractTools {
             observations++;
             const state = result.state as { playing?: unknown; particleCount?: unknown } | undefined;
             if (!state || typeof state.playing !== 'boolean') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Particle inspect returned no valid state.' });
-            if (args.maxParticleCount !== undefined && (typeof state.particleCount !== 'number' || !Number.isFinite(state.particleCount))) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Particle count is unavailable.' });
+            if (typeof state.particleCount !== 'number' || !Number.isSafeInteger(state.particleCount) || state.particleCount < 0) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Particle count must be a non-negative safe integer.' });
             const matched = (args.playing === undefined || state.playing === args.playing) && (args.maxParticleCount === undefined || (state.particleCount as number) <= args.maxParticleCount);
             if (matched || Date.now() >= deadline) return { matched, timedOut: !matched, observations, state };
             await new Promise(resolve => setTimeout(resolve, Math.min(pollMs, Math.max(0, deadline - Date.now()))));
