@@ -325,7 +325,6 @@ declare namespace ccp3x {
     };
 
     function assetBundleValidate(args: { reference: InstanceReference; expectedBundle?: string }): { valid: boolean; reference: InstanceReference; bundle: Record<string, unknown> | null; issues: Array<Record<string, unknown>>; runtimeCaveat: string };
-    function buildLogInspect(args: { taskId: string | number; maxEntries?: number; maxBytes?: number }): { available: boolean; terminal: boolean; state: string; progress: number; task: Record<string, unknown>; entries: Array<Record<string, unknown>>; count: number; truncated: boolean };
 
     /** Analyze project-wide serialized asset reachability from scene/prefab roots with bounded graph evidence. */
     function assetUsageAnalyze(args: {
@@ -555,7 +554,6 @@ declare namespace ccp3x {
     function audioSourceInspect(args?: { reference?: InstanceReference }): { sources: Array<Record<string, unknown>>; count: number };
     function audioSourceAudit(args?: { reference?: InstanceReference }): { valid: boolean; sources: Array<Record<string, unknown>>; issues: string[]; checkedSources: number };
     function audioAssetValidate(args: { reference: InstanceReference }): { valid: boolean; importer: string; type: string; issues: string[] };
-    function audioAssetCompatibilityAudit(args: { assets: Array<InstanceReference & { type: 'cc.AudioClip' }>; target: 'web-mobile' | 'web-desktop' | 'native-mobile' | 'native-desktop'; maxIssues?: number }): { target: string; valid: boolean; complete: boolean; items: Array<Record<string, unknown>>; issues: Array<Record<string, unknown>> };
 
 
     /** Configure serialized AudioSource properties with read-back and rollback on mutation failure; does not start playback. */
