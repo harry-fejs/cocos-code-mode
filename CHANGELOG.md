@@ -74,6 +74,7 @@
 - Refuse model importer validation when output inventory is truncated at the 128-entry inspection bound; validation no longer claims complete coverage.
 - Restore missing-output refusal in model importer validation alongside the truncation guard; an empty inventory is never valid.
 - Reject non-finite AudioSource volume in serialized audio audit instead of granting valid=true for NaN.
+- Require exact cc.AudioClip type during audio asset validation; AnimationClip and misleading importer names no longer pass audio classification.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

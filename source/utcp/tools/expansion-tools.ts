@@ -1408,7 +1408,7 @@ export class ExpansionTools {
         const info: any = await Editor.Message.request('asset-db', 'query-asset-info', args.reference.id);
         if (!info) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Asset ${args.reference.id} not found` });
         const issues: string[] = [];
-        if (!/audio|clip|sound/i.test(String(info.type ?? '')) && !/audio|sound/i.test(String(info.importer ?? ''))) issues.push('asset importer/type is not recognized as audio');
+        if (info.type !== 'cc.AudioClip') issues.push('asset type is not cc.AudioClip');
         return { valid: issues.length === 0, importer: info.importer ?? '', type: info.type ?? '', issues };
     }
 
