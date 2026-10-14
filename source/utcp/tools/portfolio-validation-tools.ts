@@ -134,9 +134,26 @@ async function readSkeletonJointNames(asset: any): Promise<string[]> {
         const file = typeof subAsset?.file === 'string' && subAsset.file ? subAsset.file : libraryFile;
         if (typeof file !== 'string' || !file) continue;
         try {
-            const stat = await fs.stat(file);
-            if (stat.size > MAX_SKELETON_METADATA_BYTES) continue;
-            const parsed = JSON.parse(await fs.readFile(file, 'utf8'));
+            const handle = await fs.open(file, 'r');
+            let parsed: unknown;
+            try {
+                const before = await fs.fstat(handle);
+                if (!before.isFile() || before.size > MAX_SKELETON_METADATA_BYTES) throw new ToolError({ code: 'UNSUPPORTED_METADATA', status: 422, message: 'Skeleton output must be a file of at most 5 MiB.' });
+                const bytes = Buffer.allocUnsafe(before.size + 1);
+                let count = 0;
+                while (count < bytes.length) {
+                    const { bytesRead } = await fs.read(handle, bytes, count, bytes.length - count, null);
+                    if (!bytesRead) break;
+                    count += bytesRead;
+                }
+                const after = await fs.fstat(handle);
+                const current = await fs.stat(file);
+                if (count !== before.size || after.size !== before.size || after.mtimeMs !== before.mtimeMs || after.ctimeMs !== before.ctimeMs
+                    || current.dev !== after.dev || current.ino !== after.ino || current.size !== after.size || current.mtimeMs !== after.mtimeMs || current.ctimeMs !== after.ctimeMs) {
+                    throw new ToolError({ code: 'SKELETON_METADATA_CHANGED', status: 409, message: 'Skeleton importer output changed while reading; no mixed metadata returned.' });
+                }
+                parsed = JSON.parse(bytes.subarray(0, count).toString('utf8'));
+            } finally { await fs.close(handle); }
             const joints = metadataNames(parsed, ['_joints', 'joints', 'jointNames', 'bones', 'boneNames']);
             if (joints.length) return joints;
         } catch (error) {

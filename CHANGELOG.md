@@ -67,6 +67,7 @@
 - Preserve animation metadata duplicates for skeleton validation and refuse inventories exceeding 256 entries instead of validating silently truncated prefixes; retarget comparison reports duplicate source/target joints.
 - Preserve empty joint paths for validation and refuse malformed animation metadata entries rather than dropping them; retarget diagnostics flag empty source/target joints.
 - Compare exposed clip joint paths against retarget target metadata and diagnose missing, duplicate or empty clip joints; no automatic retargeting claim.
+- Bound skeleton importer JSON reads through one file handle and refuse observed file growth/replacement before metadata validation.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
