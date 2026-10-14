@@ -82,6 +82,7 @@
 - Declare SpriteFrame inspect, nullable geometry, validate and batch APIs with discriminated errors and metadata-only scope.
 - Declare image batch inspect/validate and dependency-impact APIs with discriminated errors and explicit per-inventory truncation semantics.
 - Declare basic build-preset validation and explicit-file output audit APIs with precise hash rows and no build/runtime qualification claim.
+- Reject oversized, sparse and malformed build output manifests before filesystem access instead of silently auditing only the first 256 entries.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

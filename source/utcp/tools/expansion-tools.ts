@@ -1844,13 +1844,21 @@ export class ExpansionTools {
         required: ['artifactPath', 'expectedFiles'],
     }, { type: 'object', properties: { valid: { type: 'boolean' }, issues: { type: 'array' }, files: { type: 'array' }, checkedFiles: { type: 'integer' } }, required: ['valid', 'issues', 'files', 'checkedFiles'] }, 'GET', ['build', 'output', 'audit', 'hash'])
     async buildOutputAudit(args: { artifactPath: string, expectedFiles: Array<{ path: string, sha256?: string }> }): Promise<{ valid: boolean, issues: string[], files: Array<Record<string, unknown>>, checkedFiles: number }> {
+        if (!Array.isArray(args?.expectedFiles) || args.expectedFiles.length > 256) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedFiles must be an array of at most 256 entries.' });
+        }
+        for (const expected of args.expectedFiles) {
+            if (!expected || typeof expected !== 'object' || Array.isArray(expected) || typeof expected.path !== 'string' || !expected.path.trim() || (expected.sha256 !== undefined && (typeof expected.sha256 !== 'string' || !/^[a-fA-F0-9]{64}$/.test(expected.sha256)))) {
+                throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Each expected file requires a non-empty path and an optional 64-digit SHA-256 hash.' });
+            }
+        }
         const projectRoot = path.resolve((Editor.Project as any).path);
         const artifactRoot = path.resolve(projectRoot, args.artifactPath);
         const artifactRelative = path.relative(projectRoot, artifactRoot);
         if (artifactRelative.startsWith('..') || path.isAbsolute(artifactRelative)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'artifactPath must remain inside the project' });
         const issues: string[] = [];
         const files: Array<Record<string, unknown>> = [];
-        for (const expected of args.expectedFiles.slice(0, 256)) {
+        for (const expected of args.expectedFiles) {
             const target = path.resolve(artifactRoot, expected.path);
             const targetRelative = path.relative(artifactRoot, target);
             if (targetRelative.startsWith('..') || path.isAbsolute(targetRelative)) {
@@ -1867,6 +1875,6 @@ export class ExpansionTools {
             files.push(row);
             if (expected.sha256 && expected.sha256.toLowerCase() !== sha256) issues.push(`hash-mismatch:${expected.path}`);
         }
-        return { valid: issues.length === 0 && files.length === args.expectedFiles.slice(0, 256).length, issues, files, checkedFiles: files.length };
+        return { valid: issues.length === 0 && files.length === args.expectedFiles.length, issues, files, checkedFiles: files.length };
     }
 }
