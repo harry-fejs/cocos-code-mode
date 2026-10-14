@@ -757,7 +757,6 @@ declare namespace ccp3x {
         changed: Array<'volume' | 'loop' | 'playOnAwake' | 'clip'>,
         verified: true
     };
-    function broadcastObserve(args: { topic: "ccp3x:probe" | "scene:change" | "asset-db:change" }): { topic: string, supported: boolean, observed: boolean, lifecycle: string[], event: unknown, eventBytes: number, truncated: boolean, retainedListener: false };
 
     /** Get list of globally available component types. */
     function nodeGetAvailableComponentTypes(args: {
@@ -1125,6 +1124,16 @@ declare namespace ccp3x {
 
     /** Tracks only this module's main-process broadcastObserve listeners; excludes panel/arbitrary Creator listeners. No callbacks or event payloads are exposed. */
     function editorListenersInspect(): { supported: true; listeners: Array<{ topic: string; state: 'registered' | 'removal-failed' }>; limitation: string };
+
+    /** Observes the latest event in a short listener window; probe topic emits a marker. Payloads may be sensitive. No event-delivery or whole-response byte guarantee. Cleanup failures throw; inspect owned listeners before retry. */
+    function broadcastObserve(args: { topic: 'ccp3x:probe' | 'scene:change' | 'asset-db:change' }): {
+        topic: 'ccp3x:probe' | 'scene:change' | 'asset-db:change'; supported: true;
+        observed: boolean; lifecycle: Array<'registered' | 'observed' | 'disposed'>;
+        eventBytes: number; retainedListener: false;
+    } & (
+        { truncated: true; event: { omitted: true; bytes: number; reason: string } } |
+        { truncated: false; event: unknown[] | null }
+    );
 
     /** Inspect materials, shader effects and the render pipeline. Read-only — use inspectorSetProperty to change material properties. Result shapes are whatever the engine returns and are not yet runtime-verified. */
     function materialQuery(args: {

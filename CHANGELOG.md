@@ -106,6 +106,7 @@
 - Inspect actual module-owned broadcast listener registrations and retained removal failures; cap registrations at 128 and expose no callbacks or payloads.
 - Attempt owned listener removal even when broadcast registration throws after a partial add; retain uncertain cleanup failures for inspection.
 - Close broadcast payload capture before listener removal and release captured payload when cleanup throws; late callbacks no longer replace the observed event.
+- Refine broadcast observation declaration into discriminated payload/omitted outcomes and remove the obsolete broad overload.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
