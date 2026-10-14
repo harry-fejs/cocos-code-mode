@@ -467,6 +467,19 @@ declare namespace ccp3x {
     /** Creator 3.7 legacy terrain path editing is refused; native cell edit requires Creator 3.8. */
     function terrainEdit(args: Record<string, unknown>): Record<string, unknown>;
     function modelImportConfigure(args: { reference: InstanceReference; path: string; value: unknown }): { changed: boolean; path: string; previous: unknown; readBack: unknown; result: Record<string, unknown> };
+
+    function physics2dConfigure(args: { path: string; value: unknown }): { success: boolean; path: string; readBack: unknown };
+    function physics3dConfigure(args: { path: string; value: unknown }): { success: boolean; path: string; readBack: unknown };
+    function physics2dInspect(args?: { reference?: InstanceReference }): { nodes: Array<Record<string, unknown>>; count: number };
+    function physics2dValidate(args?: { reference?: InstanceReference }): { valid: boolean; issues: string[]; checkedNodes: number };
+    function physics2dTopologyAudit(args?: { reference?: InstanceReference }): { valid: boolean; nodes: Array<Record<string, unknown>>; issues: string[]; checkedNodes: number };
+    function physics2dCompatibilityAudit(args: { backend: 'builtin' | 'box2d'; reference?: InstanceReference }): { valid: boolean; backend: 'builtin' | 'box2d'; nodes: Array<Record<string, unknown>>; issues: string[]; checkedNodes: number };
+    function physics3dInspect(args?: { reference?: InstanceReference }): { nodes: Array<Record<string, unknown>>; count: number };
+    function physics3dTopologyAudit(args?: { reference?: InstanceReference }): { valid: boolean; nodes: Array<Record<string, unknown>>; issues: string[]; checkedNodes: number };
+    function physics3dValidate(args?: { reference?: InstanceReference }): { valid: boolean; issues: string[]; checkedNodes: number };
+    function particleInspect(args?: { reference?: InstanceReference }): { systems: Array<Record<string, unknown>>; count: number };
+    function particleValidate(args?: { reference?: InstanceReference }): { valid: boolean; issues: string[]; checkedNodes: number };
+    function particleConfigure(args: { reference: InstanceReference; properties: Record<string, unknown> }): { reference: InstanceReference; componentReference: InstanceReference; properties: Record<string, unknown>; changed: string[]; verified: true };
     function broadcastObserve(args: { topic: "ccp3x:probe" | "scene:change" | "asset-db:change" }): { topic: string, supported: boolean, observed: boolean, lifecycle: string[], event: unknown, eventBytes: number, truncated: boolean, retainedListener: false };
 
     /** Get list of globally available component types. */
