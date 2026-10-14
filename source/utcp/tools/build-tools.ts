@@ -382,6 +382,7 @@ export class BuildTools {
             if (typeof item !== 'object' || Array.isArray(item)) throw new ToolError({ code: 'BUILD_TASK_INVALID_RESPONSE', status: 502, message: 'Creator returned malformed build task metadata.' });
             const task = slimTask(item as BuildTaskRecord);
             if (task.id !== taskId) throw new ToolError({ code: 'BUILD_TASK_IDENTITY_MISMATCH', status: 502, message: 'Creator returned another task identity; no terminal success inferred.' });
+            if (timeoutMs > 0 && Date.now() >= deadline) return { completed: false, timedOut: true, task };
             if (BUILD_TERMINAL_STATES[String(task.state).toLowerCase()] === true) return { completed: true, timedOut: false, task };
             if (Date.now() >= deadline) return { completed: false, timedOut: true, task };
             await sleep(Math.min(pollMs, Math.max(1, deadline - Date.now())));
