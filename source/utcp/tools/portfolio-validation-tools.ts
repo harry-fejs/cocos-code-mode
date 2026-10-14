@@ -578,6 +578,7 @@ export class PortfolioValidationTools {
         const inspected = await this.modelImportInspect(args);
         const outputs = Array.isArray(inspected.outputs) ? inspected.outputs : [];
         const issues: Array<Record<string, unknown>> = [];
+        if (!outputs.length) issues.push({ code: 'OUTPUTS_UNAVAILABLE', message: 'No imported model sub-assets were exposed by asset-db.' });
         if (inspected.outputsTruncated) issues.push({ code: 'OUTPUTS_TRUNCATED', message: 'Importer output inventory exceeds validation bound.' });
         for (const [index, output] of outputs.entries()) {
             if (!output || typeof output !== 'object' || Array.isArray(output)) { issues.push({ code: 'OUTPUT_IDENTITY_INVALID', index }); continue; }

@@ -72,6 +72,7 @@
 - Fail closed on imported model sub-assets with missing UUID, URL or type; malformed settings are not considered valid importer output.
 - Align model output inspection with validation: malformed imported sub-assets fail before publication instead of being returned as stable output metadata.
 - Refuse model importer validation when output inventory is truncated at the 128-entry inspection bound; validation no longer claims complete coverage.
+- Restore missing-output refusal in model importer validation alongside the truncation guard; an empty inventory is never valid.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
