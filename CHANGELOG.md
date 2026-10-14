@@ -44,6 +44,7 @@
 - Recheck exact animation clip/state identity immediately before playback dispatch, refusing preflight drift before mutation.
 - Expose emitted bundle UUID tokens and exact path/type address ambiguity across the full resource metadata, independent of page caps; runtime lookup/decode remains unverified.
 - Refuse duplicate runtime graph variable names and malformed bounded declaration metadata before inspection or mutation; unique variable behavior retained.
+- Add optional runtime resource expectedUuid guard to bundle validation; mismatch refuses resource load and preserves owned bundle cleanup, never treats emitted compressed tokens as decoded UUIDs.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

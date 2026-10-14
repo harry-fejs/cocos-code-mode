@@ -9,7 +9,7 @@ import { createHash } from 'crypto';
 
 export interface AssetBundleRuntimeValidateArgs {
     sessionId: string; bundlePath: string; bundleName: string;
-    resource?: { path: string; type: BundleResourceType }; timeoutMs?: number;
+    resource?: { path: string; type: BundleResourceType; expectedUuid?: string }; timeoutMs?: number;
 }
 const resourceSchema: JsonSchema = {
     type: 'object', additionalProperties: false,
@@ -56,7 +56,7 @@ export class AssetBundleRuntimeTools {
             sessionId: { type: 'string', minLength: 1, maxLength: 64 },
             bundlePath: { type: 'string', minLength: 1, maxLength: 512, description: 'Exact project-relative build/... bundle directory containing emitted config[.version].json and index[.version].js. This explicit target authorizes only its bounded temporary loopback serving.' },
             bundleName: { type: 'string', minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9_-]+$' },
-            resource: { type: 'object', additionalProperties: false, properties: { path: { type: 'string', minLength: 1, maxLength: 256 }, type: { type: 'string', enum: [...BUNDLE_RESOURCE_TYPES] } }, required: ['path', 'type'] },
+            resource: { type: 'object', additionalProperties: false, properties: { path: { type: 'string', minLength: 1, maxLength: 256 }, type: { type: 'string', enum: [...BUNDLE_RESOURCE_TYPES] }, expectedUuid: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['path', 'type'] },
             timeoutMs: { type: 'integer', minimum: 100, maximum: 5000 },
         }, required: ['sessionId', 'bundlePath', 'bundleName'],
     }, {
@@ -74,6 +74,7 @@ export class AssetBundleRuntimeTools {
         const timeoutMs = args.timeoutMs ?? 3000;
         if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 5000) invalid('timeoutMs must be an integer from 100 to 5000.');
         if (args.resource !== undefined && (!args.resource || typeof args.resource.path !== 'string' || args.resource.path.length > 256 || !args.resource.path || args.resource.path.includes('\\') || args.resource.path.includes(':') || args.resource.path.includes('\0') || args.resource.path.split('/').some(part => !part || part === '.' || part === '..') || !BUNDLE_RESOURCE_TYPES.includes(args.resource.type))) invalid('resource must identify one relative forward-slash path and an allowlisted data asset type.');
+        if (args.resource?.expectedUuid !== undefined && (typeof args.resource.expectedUuid !== 'string' || !args.resource.expectedUuid || args.resource.expectedUuid.length > 256 || /[\s\u0000-\u001f\u007f]/.test(args.resource.expectedUuid))) invalid('resource.expectedUuid must be a bounded exact runtime UUID token.');
         const project = typeof Editor.Project?.path === 'string' ? Editor.Project.path : '';
         if (!project) throw new ToolError({ code: 'PROJECT_UNAVAILABLE', status: 503, message: 'An active Creator project is required.' });
         const artifact = resolveBundleArtifact(project, args.bundlePath, args.bundleName);
@@ -84,7 +85,7 @@ export class AssetBundleRuntimeTools {
         if (!inspected.success || !inspected.ready || !session || !('status' in session) || !('targetId' in session) || session.status !== 'attached' || session.targetKind !== 'game-view' || session.sessionId !== args.sessionId) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'The exact attached Game View session must be ready.' });
         const served = await serveBundleArtifact(artifact);
         try {
-            const request = { bundleName: artifact.name, bundleUrl: served.url, version: artifact.version, expiresAt: Date.now() + timeoutMs, ...(args.resource ? { resource: { path: args.resource.path, type: args.resource.type } } : {}) };
+            const request = { bundleName: artifact.name, bundleUrl: served.url, version: artifact.version, expiresAt: Date.now() + timeoutMs, ...(args.resource ? { resource: { path: args.resource.path, type: args.resource.type, expectedUuid: args.resource.expectedUuid } } : {}) };
             const result = await executeGameViewOperation(session.targetId, createBundleOperationSource(request), timeoutMs + 3000, true) as Record<string, unknown> | null;
             if (!result || typeof result !== 'object' || Array.isArray(result)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Game View returned no typed bundle validation result.' });
             if (typeof result.code === 'string') throw new ToolError({ code: result.code, status: result.code.endsWith('NOT_FOUND') ? 404 : result.code.startsWith('UNSUPPORTED') ? 422 : 409,
@@ -93,6 +94,7 @@ export class AssetBundleRuntimeTools {
                 recovery: result.retrySafe === true ? undefined : 'Do not retry a dispatched load blindly. Inspect the bound Game View; its prior native callback or owned bundle may remain pending.' });
             const resource = result.resource as Record<string, unknown> | null;
             if (result.bundleName !== artifact.name || ['loaded', 'identityVerified', 'released', 'removed', 'absent', 'unrelatedPreserved'].some(key => result[key] !== true) || (args.resource ? !resource || resource.path !== args.resource.path || resource.type !== args.resource.type || typeof resource.uuid !== 'string' || !resource.uuid || resource.loaded !== true : resource !== null)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Runtime bundle response did not prove every requested lifecycle postcondition.' });
+            if (args.resource?.expectedUuid !== undefined && resource?.uuid !== args.resource.expectedUuid) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Runtime resource UUID did not match the caller precondition.' });
             const after = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, timeoutMs });
             const afterSession = after.session;
             if (!after.ready || !afterSession || !('status' in afterSession) || !('targetId' in afterSession) || afterSession.status !== 'attached' || afterSession.sessionId !== session.sessionId || afterSession.targetId !== session.targetId || afterSession.targetKind !== session.targetKind) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'The attached Game View identity changed during bundle validation.' });

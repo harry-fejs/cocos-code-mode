@@ -2,7 +2,7 @@ import { BundleResourceType } from './asset-bundle-artifact';
 
 export interface BundleRuntimeRequest {
     bundleName: string; bundleUrl: string; version: string; expiresAt: number;
-    resource?: { path: string; type: BundleResourceType };
+    resource?: { path: string; type: BundleResourceType; expectedUuid?: string };
 }
 interface RuntimeAsset { uuid: string; refCount?: number }
 interface RuntimeBundle {
@@ -117,6 +117,7 @@ export async function validateRuntimeBundle(args: BundleRuntimeRequest): Promise
             if (typeof ctor !== 'function' || typeof owned!.getInfoWithPath !== 'function' || typeof owned!.get !== 'function' || typeof api.loadAny !== 'function') fail('UNSUPPORTED_BUNDLE_RESOURCE', 'The allowlisted resource class or public load API is unavailable.');
             const info = owned!.getInfoWithPath(requested.path, ctor);
             if (!info || info.redirect || !info.uuid) throw { code: 'BUNDLE_RESOURCE_NOT_FOUND', message: 'The exact typed resource is absent from this standalone bundle.' };
+            if (requested.expectedUuid !== undefined && info.uuid !== requested.expectedUuid) fail('BUNDLE_RESOURCE_IDENTITY_MISMATCH', 'Native typed resource lookup differs from the caller expectedUuid; no resource load dispatched.');
             if (api.assets.get(info!.uuid) || owned!.get(requested.path, ctor)) {
                 api.removeBundle(owned!); owned = undefined; leases.delete(args.bundleName);
                 fail('BUNDLE_RESOURCE_ALREADY_LOADED', 'The requested resource was cached by another consumer; no resource load or release was sent.');
