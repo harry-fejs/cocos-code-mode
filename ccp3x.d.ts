@@ -378,11 +378,27 @@ declare namespace ccp3x {
 
     /** Import an external file as an asset into the project. */
     function assetImport(args: {
+
         sourceFilesystemPath: string,
         targetAssetPath: string,
         imageType?: "raw" | "texture" | "normal-map" | "sprite-frame" | "texture-cube",
         options?: { overwrite?: boolean, rename?: boolean }
     }): { reference: InstanceReference };
+    function imageAssetInspect(args: { reference: InstanceReference; maxFrames?: number }): {
+        reference: InstanceReference,
+        importer: string,
+        settings: Record<string, unknown>,
+        schema: Record<string, unknown>,
+        spriteFrames: Array<{ id: string; type: string; url: string | null; name: string | null }>,
+        totalSpriteFrames: number,
+        truncated: boolean
+    };
+    function imageAssetValidate(args: { reference: InstanceReference }): {
+        valid: boolean,
+        reference: InstanceReference,
+        issues: Array<Record<string, unknown>>,
+        spriteFrameCount: number
+    };
 
     /** Perform operations on assets (move, copy, delete, open, refresh, reimport, save_meta). */
     function assetOperate(args: {
