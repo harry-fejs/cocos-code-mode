@@ -1411,6 +1411,16 @@ declare namespace ccp3x {
         task: ReturnType<typeof buildLogInspect>['task']
     };
 
+    /** Basic options checks only (platform present and buildPath length); does not dispatch a task or qualify toolchains/platform support. */
+    function buildPresetValidate(args: { options: Record<string, unknown> }): { valid: boolean; issues: string[]; platform: string };
+
+    /** Inspect up to 256 explicit project-local artifact paths. Not whole-artifact or task provenance verification; callers must stay within the manifest bound. */
+    function buildOutputAudit(args: { artifactPath: string; expectedFiles: Array<{ path: string; sha256?: string }> }): {
+        valid: boolean; issues: string[];
+        files: Array<{ path: string; bytes: number; sha256: string }>;
+        checkedFiles: number;
+    };
+
     /** Candidate: validate 1-256 unique localization keys (each at most 256 characters) in the current Creator language through the fixed ccp3x package scene seam. Unsupported localization packages return supported=false; this call never changes language or restarts Creator. */
     function localizationValidate(args: { keys: string[] }): {
         supported: true,
