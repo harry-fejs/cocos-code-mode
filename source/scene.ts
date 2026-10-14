@@ -925,6 +925,10 @@ export const methods = {
             return entry;
         });
         await (globalThis as any).Editor.Message.request('scene', 'snapshot');
+        const currentNodeDump = await (globalThis as any).Editor.Message.request('scene', 'query-node', request.nodeUuid);
+        if (currentNodeDump?.__comps__?.[componentIndex]?.value?.uuid?.value !== animationUuid) {
+            throw new Error('Serialized Animation component index changed; inspect the node before retrying');
+        }
         await requireCurrentTarget();
         const currentClips = Array.isArray(animation.clips) ? animation.clips : [];
         if (currentClips.length !== previousClips.length || previousClips.some((candidate: any, index: number) => currentClips[index] !== candidate || (currentClips[index]?.uuid ?? null) !== previousClipUuids[index])) {

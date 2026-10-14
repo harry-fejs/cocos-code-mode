@@ -99,6 +99,7 @@
 - Require loaded assignment assets to be instances of the current engine AnimationClip constructor; refuse unverifiable asset classes before writing.
 - Refuse detached or replaced Animation assignment targets before serialized write and after write read-back.
 - Refuse Animation clip assignment if the captured clip inventory changes before write, preserving concurrent edits rather than overwriting them.
+- Recheck serialized Animation component index after snapshot and refuse reordered targets before clip assignment.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
