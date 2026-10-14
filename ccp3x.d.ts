@@ -486,6 +486,18 @@ declare namespace ccp3x {
     function audioAssetValidate(args: { reference: InstanceReference }): { valid: boolean; importer: string; type: string; issues: string[] };
     function audioAssetCompatibilityAudit(args: { assets: Array<InstanceReference & { type: 'cc.AudioClip' }>; target: 'web-mobile' | 'web-desktop' | 'native-mobile' | 'native-desktop'; maxIssues?: number }): { target: string; valid: boolean; complete: boolean; items: Array<Record<string, unknown>>; issues: Array<Record<string, unknown>> };
 
+
+    /** Configure serialized AudioSource properties with read-back and rollback on mutation failure; does not start playback. */
+    function audioSourceConfigure(args: {
+        reference: InstanceReference & { type: 'cc.Node' | 'cc.AudioSource' },
+        properties: { volume?: number; loop?: boolean; playOnAwake?: boolean; clip?: InstanceReference & { type: 'cc.AudioClip' } }
+    }): {
+        reference: InstanceReference,
+        componentReference: InstanceReference & { type: 'cc.AudioSource' },
+        properties: { volume: number; loop: boolean; playOnAwake: boolean; clip: InstanceReference | null },
+        changed: Array<'volume' | 'loop' | 'playOnAwake' | 'clip'>,
+        verified: true
+    };
     function broadcastObserve(args: { topic: "ccp3x:probe" | "scene:change" | "asset-db:change" }): { topic: string, supported: boolean, observed: boolean, lifecycle: string[], event: unknown, eventBytes: number, truncated: boolean, retainedListener: false };
 
     /** Get list of globally available component types. */
