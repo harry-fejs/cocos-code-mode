@@ -199,7 +199,13 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
         if (typeof layerCountValue !== 'number' || !Number.isInteger(layerCountValue) || layerCountValue < 0 || layerCountValue > 16) fail('RUNTIME_GRAPH_LIMIT', 'Graph layer count must be within 0..16.');
         const layerCount = layerCountValue;
         const variables: Array<Record<string, unknown>> = [];
-        for (const [name, description] of getVariables()) { if (variables.length >= 64 || typeof name !== 'string' || typeof description.type !== 'number') fail('INVALID_RUNTIME_RESPONSE', 'Graph variable metadata is invalid.'); const value = getValue(name); variables.push({ name, type: description.type, value: typeof value === 'boolean' || typeof value === 'number' && Number.isFinite(value) || typeof value === 'string' && value.length <= 256 ? value : null }); }
+        const variableNames = new Set<string>();
+        for (const [name, description] of getVariables()) {
+            if (variables.length >= 64 || typeof name !== 'string' || !name || name.length > 256 || !description || typeof description.type !== 'number' || !Number.isInteger(description.type) || description.type < 0 || description.type > 3) fail('INVALID_RUNTIME_RESPONSE', 'Graph variable metadata is invalid or exceeds bounds.');
+            if (variableNames.has(name)) fail('AMBIGUOUS_GRAPH_VARIABLE', 'Graph variable names must identify exactly one declaration; no mutation dispatched.');
+            variableNames.add(name);
+            const value = getValue(name); variables.push({ name, type: description.type, value: typeof value === 'boolean' || typeof value === 'number' && Number.isFinite(value) || typeof value === 'string' && value.length <= 256 ? value : null });
+        }
         if (args.operation === 'setVariable') {
             const variable = requireDefined(args.variable, 'variable'); const entry = requireDefined(variables.find(item => item.name === variable.name), 'graph variable');
             const currentValue = entry.value;
