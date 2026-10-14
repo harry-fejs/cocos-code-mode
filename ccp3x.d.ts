@@ -457,6 +457,7 @@ declare namespace ccp3x {
         dynamicLoadCaveat: string
     };
 
+
     function referenceImageManage(args: { operation: "inspect" | "set" | "clear", reference?: InstanceReference, imagePath?: string }): { operation: string, supported: boolean, persisted: boolean, imagePath?: string | null, reference?: InstanceReference | null, result?: unknown };
     function prefabOverrideDiff(args: { reference: InstanceReference, baselineReference: InstanceReference }): { equal: boolean, changes: { path: string, identity: string, before: unknown, after: unknown }[], source: unknown, baseline: unknown };
     function prefabReferenceAudit(args: { reference: InstanceReference, maxReferences?: number }): { valid: boolean, nestedPrefabs: unknown[], missingReferences: unknown[], source: unknown };
