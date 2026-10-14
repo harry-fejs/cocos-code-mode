@@ -60,6 +60,7 @@ export function inspectGraphMotionClips(value: unknown) {
         if (type === 'cc.animation.AnimationBlend2D') {
             checkBinding(object.paramX, `${next.path}.paramX`);
             checkBinding(object.paramY, `${next.path}.paramY`);
+            if (typeof object.algorithm !== 'number' || !Number.isInteger(object.algorithm) || object.algorithm < 0 || object.algorithm > 2) add('INVALID_BLEND_ALGORITHM', `${next.path}.algorithm`);
         }
         if (type === 'cc.animation.AnimationBlend1DItem' && (typeof object.threshold !== 'number' || !Number.isFinite(object.threshold))) add('INVALID_BLEND_THRESHOLD', `${next.path}.threshold`);
         if (type === 'cc.animation.AnimationBlend2DItem') {
