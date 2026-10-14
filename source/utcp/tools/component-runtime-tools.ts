@@ -8,6 +8,7 @@ import {
     ComponentOperation,
 } from '../utils/game-view-components';
 import { GraphVariableWaitCondition, waitForGraphVariable } from '../graph-variable-wait';
+import { createHash } from 'crypto';
 
 const targetProperties: Record<string, JsonSchema> = {
     sessionId: { type: 'string', minLength: 1, maxLength: 64 },
@@ -49,14 +50,20 @@ function validateSkeletal(args: SkeletalArgs, operation: string): ComponentOpera
 }
 
 export class ComponentRuntimeTools {
-    @utcpTool('animationClipInventory', 'Page bounded clip identities in current native component order. Duplicate names flagged across full collection; no state/playback calls. Pages are live reads, not a frozen snapshot.', { type: 'object', additionalProperties: false, properties: { ...targetProperties, maxClips: { type: 'integer', minimum: 1, maximum: 128, default: 32 }, clipOffset: { type: 'integer', minimum: 0, maximum: 256, default: 0 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } }, required: ['sessionId', 'nodeReference', 'componentId'] }, { type: 'object', properties: { success: { type: 'boolean' }, sessionId: { type: 'string' }, targetId: { type: 'string' }, nodeUuid: { type: 'string' }, componentId: { type: 'string' }, clips: { type: 'array', maxItems: 128 }, totalClips: { type: 'integer' }, clipOffset: { type: 'integer' }, nextOffset: { type: ['integer', 'null'] }, truncated: { type: 'boolean' } }, required: ['success', 'sessionId', 'targetId', 'nodeUuid', 'componentId', 'clips', 'totalClips', 'clipOffset', 'nextOffset', 'truncated'] }, 'POST', ['animation', 'clips', 'inventory', 'read-only'])
-    async animationClipInventory(args: BaseArgs & { maxClips?: number; clipOffset?: number }) {
+    @utcpTool('animationClipInventory', 'Page runtime clip slots with full ordered identity revision. Supply expectedRevision on later pages to refuse changed collection/target. No state/playback calls; revision excludes asset content and playback state.', { type: 'object', additionalProperties: false, properties: { ...targetProperties, maxClips: { type: 'integer', minimum: 1, maximum: 128, default: 32 }, clipOffset: { type: 'integer', minimum: 0, maximum: 256, default: 0 }, expectedRevision: { type: 'string', pattern: '^[a-f0-9]{64}$' }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } }, required: ['sessionId', 'nodeReference', 'componentId'] }, { type: 'object', properties: { success: { type: 'boolean' }, sessionId: { type: 'string' }, targetId: { type: 'string' }, nodeUuid: { type: 'string' }, componentId: { type: 'string' }, clips: { type: 'array', maxItems: 128 }, totalClips: { type: 'integer' }, clipOffset: { type: 'integer' }, nextOffset: { type: ['integer', 'null'] }, truncated: { type: 'boolean' }, revision: { type: 'string' } }, required: ['success', 'sessionId', 'targetId', 'nodeUuid', 'componentId', 'clips', 'totalClips', 'clipOffset', 'nextOffset', 'truncated', 'revision'] }, 'POST', ['animation', 'clips', 'inventory', 'read-only'])
+    async animationClipInventory(args: BaseArgs & { maxClips?: number; clipOffset?: number; expectedRevision?: string }) {
         validateComponentTarget({ sessionId: args?.sessionId ?? '', nodeReference: { id: args?.nodeReference?.id ?? '' }, componentId: args?.componentId }, true);
         const maxClips = args.maxClips ?? 32;
         if (!Number.isInteger(maxClips) || maxClips < 1 || maxClips > 128) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'maxClips must be1..128.' });
         const clipOffset = args.clipOffset ?? 0;
         if (!Number.isInteger(clipOffset) || clipOffset < 0 || clipOffset > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'clipOffset must be0..256.' });
-        return executeComponentOperation({ kind: 'animation', operation: 'inspect', sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, maxClips, clipOffset, timeoutMs: validateTimeout(args.timeoutMs) });
+        if (args.expectedRevision !== undefined && !/^[a-f0-9]{64}$/.test(args.expectedRevision)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedRevision must be a lowercase SHA-256 revision.' });
+        const result = await executeComponentOperation({ kind: 'animation', operation: 'inspect', sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, maxClips, clipOffset, timeoutMs: validateTimeout(args.timeoutMs) });
+        if (typeof result.inventorySnapshot !== 'string') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Clip identity snapshot unavailable.' });
+        const revision = createHash('sha256').update(JSON.stringify([args.sessionId, result.targetId, result.nodeUuid, result.componentId, result.inventorySnapshot])).digest('hex');
+        if (args.expectedRevision !== undefined && args.expectedRevision !== revision) throw new ToolError({ code: 'RUNTIME_INVENTORY_CHANGED', status: 409, message: 'Clip slot identity/order changed since the requested revision; restart paging.' });
+        const { inventorySnapshot, ...inventory } = result;
+        return { ...inventory, revision };
     }
 
     @utcpTool('animationPlaybackObserve', 'Read one exact Animation/SkeletalAnimation clip state in attached Creator3.7 Game View. No playback calls, event listeners or edit-scene substitution. Spine/DragonBones unsupported.', {
