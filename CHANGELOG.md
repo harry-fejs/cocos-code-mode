@@ -57,6 +57,7 @@
 - Refuse malformed localization exists results and language drift during key validation instead of reporting successful key coverage.
 - Revalidate mounted localization runtime asset UUID/path/URL after asynchronous compiler import; reject replaced assets instead of returning a stale runtime.
 - Reject localization inspection when the current language changes during direction lookup; preserve stable and partially available direction snapshots.
+- Diagnose unsorted serialized AnimationBlend1D thresholds without rewriting assets or inferring playable/runtime validity.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

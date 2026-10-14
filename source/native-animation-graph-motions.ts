@@ -44,7 +44,19 @@ export function inspectGraphMotionClips(value: unknown) {
             if (typeof clip?.__uuid__ === 'string' && clip.__uuid__ && clip.__uuid__.length <= 256) clips.add(clip.__uuid__);
             else add('MOTION_CLIP_UNAVAILABLE', next.path);
         }
-        if (type === 'cc.animation.AnimationBlend1D') checkBinding(object.param, `${next.path}.param`);
+        if (type === 'cc.animation.AnimationBlend1D') {
+            checkBinding(object.param, `${next.path}.param`);
+            if (Array.isArray(object._items)) {
+                let previous: number | undefined;
+                for (let index = 0; index < Math.min(object._items.length, 512); index++) {
+                    const item = resolve(object._items[index], `${next.path}._items[${index}]`);
+                    const threshold = item?.threshold;
+                    if (typeof threshold !== 'number' || !Number.isFinite(threshold)) { previous = undefined; continue; }
+                    if (previous !== undefined && threshold < previous) add('UNSORTED_BLEND_THRESHOLDS', `${next.path}._items[${index}].threshold`);
+                    previous = threshold;
+                }
+            }
+        }
         if (type === 'cc.animation.AnimationBlend2D') {
             checkBinding(object.paramX, `${next.path}.paramX`);
             checkBinding(object.paramY, `${next.path}.paramY`);
