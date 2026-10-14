@@ -6,6 +6,7 @@ import { InstanceReferenceSchema, IInstanceReference } from '../schemas';
 import { AssetTools } from './asset-tools';
 import { ExpansionTools } from './expansion-tools';
 import { inspectNativeAnimationGraph } from '../../native-animation-graph-inspect';
+import { diagnoseNativeGraphReferences } from '../../native-animation-graph-diagnostics';
 import { validateTerrainEditRequest } from '../../terrain-edit';
 import type { TerrainCell, TerrainEditResult } from '../../terrain-edit';
 
@@ -248,6 +249,14 @@ export class PortfolioValidationTools {
     async animationGraphValidate(args: { reference: IInstanceReference }) {
         const graph = await this.animationGraphInspect(args);
         return { ...graph, valid: false as const };
+    }
+
+    @utcpTool('animationGraphDiagnostics', 'Report undeclared variable references and conservative structural entry paths from bounded native graph inspection. No condition evaluation, clip existence or playable/runtime validity claim.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema }, required: ['reference'] }, {
+        type: 'object', properties: { reference: InstanceReferenceSchema, complete: { type: 'boolean' }, issues: { type: 'array', maxItems: 256 }, truncated: { type: 'boolean' }, checkedStates: { type: 'integer' }, checkedConditions: { type: 'integer' }, semanticsVerified: { type: 'boolean', const: false }, runtimeVerified: { type: 'boolean', const: false }, verificationScope: { type: 'string' } }, required: ['reference', 'complete', 'issues', 'truncated', 'checkedStates', 'checkedConditions', 'semanticsVerified', 'runtimeVerified', 'verificationScope'],
+    }, 'GET', ['animation', 'graph', 'diagnostics', 'read-only'])
+    async animationGraphDiagnostics(args: { reference: IInstanceReference }) {
+        const graph = await this.animationGraphInspect(args);
+        return { reference: graph.reference, ...diagnoseNativeGraphReferences(graph) };
     }
 
     @utcpTool('animationGraphCreate', 'Create a native Creator animation graph through asset-db and verify its stable imported identity.', {
