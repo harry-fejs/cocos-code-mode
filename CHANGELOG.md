@@ -14,6 +14,7 @@
 - Extend graph clip discovery through bounded native 1D/2D/direct blend descendants with explicit traversal completeness and unsupported/reference diagnostics.
 - Add native blend parameter diagnostics for missing/non-numeric variable bindings and nonfinite constant inputs; no algorithm/runtime validity inference.
 - Diagnose nonfinite native blend thresholds/direct weights and malformed 2D threshold vectors; no guessed normalization or algorithm semantics.
+- Diagnose native condition operator bounds, numeric/boolean operand constants and variable type compatibility, including trigger-only references; runtime evaluation remains unverified.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

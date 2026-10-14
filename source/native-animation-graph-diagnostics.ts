@@ -11,12 +11,33 @@ export function diagnoseNativeGraphReferences(graph: ReturnType<typeof inspectNa
     const variable = (name: unknown, id: string) => {
         if (typeof name === 'string' && name && !declared.has(name)) add({ code: 'UNDECLARED_VARIABLE', id, variable: name });
     };
+    const types = new Map(graph.variables.map(row => [row.name, row.type]));
+    const operandType = (input: unknown, id: string, numeric: boolean) => {
+        if (!input || typeof input !== 'object') { add({ code: 'INVALID_CONDITION_OPERAND', id }); return; }
+        const operand = input as Row;
+        if (typeof operand.variable !== 'string') { add({ code: 'INVALID_CONDITION_OPERAND', id }); return; }
+        if (operand.variable) {
+            if (!declared.has(operand.variable)) return;
+            const type = types.get(operand.variable);
+            if (numeric ? type !== 0 && type !== 3 : type !== 1) add({ code: 'CONDITION_VARIABLE_TYPE_MISMATCH', id, variable: operand.variable });
+        } else if (numeric ? typeof operand.value !== 'number' || !Number.isFinite(operand.value) : typeof operand.value !== 'boolean') add({ code: 'INVALID_CONDITION_CONSTANT', id });
+    };
     for (const condition of graph.conditions) {
         const id = String(condition.id);
         variable(condition.trigger, id);
         for (const field of ['lhs', 'rhs', 'operand']) {
             const operand = condition[field];
             if (operand && typeof operand === 'object') variable((operand as Row).variable, id);
+        }
+        if (condition.serializedType === 'cc.animation.BinaryCondition') {
+            if (!Number.isInteger(condition.operator) || (condition.operator as number) < 0 || (condition.operator as number) > 5) add({ code: 'INVALID_CONDITION_OPERATOR', id });
+            operandType(condition.lhs, id, true); operandType(condition.rhs, id, true);
+        } else if (condition.serializedType === 'cc.animation.UnaryCondition') {
+            if (condition.operator !== 0 && condition.operator !== 1) add({ code: 'INVALID_CONDITION_OPERATOR', id });
+            operandType(condition.operand, id, false);
+        } else if (condition.serializedType === 'cc.animation.TriggerCondition') {
+            if (typeof condition.trigger !== 'string' || !condition.trigger) add({ code: 'INVALID_TRIGGER_REFERENCE', id });
+            else if (declared.has(condition.trigger) && types.get(condition.trigger) !== 2) add({ code: 'CONDITION_VARIABLE_TYPE_MISMATCH', id, variable: condition.trigger });
         }
     }
     for (const state of graph.states) if (state.speedMultiplierEnabled === true) variable(state.speedMultiplier, String(state.id));
@@ -52,5 +73,5 @@ export function diagnoseNativeGraphReferences(graph: ReturnType<typeof inspectNa
     }
     return { complete: complete && !truncated, issues, truncated, checkedStates: graph.states.length, checkedConditions: graph.conditions.length,
         semanticsVerified: false as const, runtimeVerified: false as const,
-        verificationScope: 'Declared-variable references and conservative entry/any-state structural paths only. Conditions, clip assets, blend trees, engine implicit transitions and runtime playability are not verified. Diagnostics from incomplete input are provisional.' };
+        verificationScope: 'Declared-variable/type references, native condition operator/constants and conservative entry/any-state structural paths. Engine evaluation, implicit transitions and runtime playability are not verified. Diagnostics from incomplete input are provisional.' };
 }
