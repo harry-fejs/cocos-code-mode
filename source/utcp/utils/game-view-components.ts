@@ -5,7 +5,7 @@ import { RuntimeSessionTools } from '../tools/runtime-session-tools';
 export interface ComponentTarget { sessionId: string; nodeReference: { id: string }; componentId?: string }
 export interface ComponentOperation extends ComponentTarget {
     kind: 'particle' | 'animation' | 'skeletal' | 'events' | 'graph'; operation: string; clipName?: string; clipUuid?: string;
-    timeoutMs?: number; maxEvents?: number; variable?: { name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean };
+    timeoutMs?: number; maxEvents?: number; variable?: { name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean; expectedValue?: number | boolean };
     expectedGraphUuid?: string;
 }
 interface RuntimeClip { name: string; uuid: string }
@@ -176,6 +176,7 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
             const currentValue = entry.value;
             const declaredType = variable.type === 'boolean' ? 1 : variable.type === 'integer' ? 3 : 0;
             if (entry.type !== declaredType || (variable.type === 'boolean' ? typeof currentValue !== 'boolean' : typeof currentValue !== 'number')) fail('UNSUPPORTED_GRAPH_VARIABLE', 'Only matching Creator3.7 FLOAT, INTEGER and BOOLEAN variables may change.');
+            if (variable.expectedValue !== undefined && getValue(variable.name) !== variable.expectedValue) fail('GRAPH_VARIABLE_CONFLICT', 'Graph variable differs from expectedValue; no mutation dispatched.');
             assertDeadline(); assertGraph(); mutated = true; setValue(variable.name, variable.value); assertGraph(); const readBack = getValue(variable.name); if (readBack !== variable.value) fail('READBACK_MISMATCH', 'Graph variable mutation did not match runtime read-back.'); entry.value = readBack;
         } else if (args.operation !== 'inspect') fail('INVALID_ARGUMENT', 'Unknown graph operation.');
         const layers: Array<Record<string, unknown>> = [];
@@ -186,7 +187,7 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
 
 export function createComponentOperationSource(args: ComponentOperation): string {
     const timeoutMs = args.timeoutMs ?? 1000;
-    const data = { kind: args.kind, operation: args.operation, nodeReference: { id: args.nodeReference.id }, componentId: args.componentId, clipName: args.clipName, clipUuid: args.clipUuid, maxEvents: args.maxEvents, expectedGraphUuid: args.expectedGraphUuid, variable: args.variable ? { name: args.variable.name, type: args.variable.type, value: args.variable.value } : undefined, expiresAt: Date.now() + timeoutMs };
+    const data = { kind: args.kind, operation: args.operation, nodeReference: { id: args.nodeReference.id }, componentId: args.componentId, clipName: args.clipName, clipUuid: args.clipUuid, maxEvents: args.maxEvents, expectedGraphUuid: args.expectedGraphUuid, variable: args.variable ? { name: args.variable.name, type: args.variable.type, value: args.variable.value, expectedValue: args.variable.expectedValue } : undefined, expiresAt: Date.now() + timeoutMs };
     return `(() => { const requireDefined = ${requireDefined.toString()}; const finiteNumber = ${finiteNumber.toString()}; const objectValue = ${objectValue.toString()}; const resolveComponent = ${resolveComponent.toString()}; return (${componentOperation.toString()})(${JSON.stringify(data)}); })()`;
 }
 

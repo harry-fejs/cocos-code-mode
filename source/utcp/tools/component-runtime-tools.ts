@@ -32,7 +32,7 @@ const componentOutputSchema: JsonSchema = {
 type BaseArgs = { sessionId?: string; nodeReference?: { id?: string }; componentId?: string; timeoutMs?: number };
 type SkeletalArgs = BaseArgs & { operation?: string; clipName?: string; clipUuid?: string };
 type EventArgs = BaseArgs & { clipName?: string; clipUuid?: string; maxEvents?: number; timeoutMs?: number };
-type GraphVariable = { name?: string; type?: string; value?: number | boolean };
+type GraphVariable = { name?: string; type?: string; value?: number | boolean; expectedValue?: number | boolean };
 type GraphArgs = BaseArgs & { operation?: string; variable?: GraphVariable; expectedGraphUuid?: string; timeoutMs?: number };
 
 function validateTimeout(value: unknown, name = 'timeoutMs'): number {
@@ -128,7 +128,7 @@ export class ComponentRuntimeTools {
     }
 
     @utcpTool('animationGraphPreview', 'Inspect one exact cc.animation.AnimationController runtime graph, or set one typed FLOAT/INTEGER/BOOLEAN variable with read-back. No dynamic methods or invented graph component are used.', {
-        type: 'object', additionalProperties: false, properties: { ...targetProperties, operation: { type: 'string', enum: ['inspect', 'setVariable'] }, expectedGraphUuid: { type: 'string', minLength: 1, maxLength: 256 }, variable: { type: 'object', additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 256 }, type: { type: 'string', enum: ['float', 'integer', 'boolean'] }, value: {} }, required: ['name', 'type', 'value'] }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } },
+        type: 'object', additionalProperties: false, properties: { ...targetProperties, operation: { type: 'string', enum: ['inspect', 'setVariable'] }, expectedGraphUuid: { type: 'string', minLength: 1, maxLength: 256 }, variable: { type: 'object', additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 256 }, type: { type: 'string', enum: ['float', 'integer', 'boolean'] }, value: {}, expectedValue: { type: ['number', 'boolean'] } }, required: ['name', 'type', 'value'] }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } },
         required: ['sessionId', 'nodeReference', 'componentId', 'operation'],
     }, componentOutputSchema, 'POST', ['animation', 'graph', 'preview', 'runtime'])
     async animationGraphPreview(args: GraphArgs): Promise<Record<string, unknown>> {
@@ -142,9 +142,10 @@ export class ComponentRuntimeTools {
             requireComponentText(candidate.name, 'variable.name');
             if (candidate.type !== 'float' && candidate.type !== 'integer' && candidate.type !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'variable.type must be float, integer, or boolean.' });
             if (candidate.type === 'boolean' ? typeof candidate.value !== 'boolean' : typeof candidate.value !== 'number' || !Number.isFinite(candidate.value) || candidate.type === 'integer' && !Number.isInteger(candidate.value)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'variable.value must match its declared finite type.' });
+            if (candidate.expectedValue !== undefined && (candidate.type === 'boolean' ? typeof candidate.expectedValue !== 'boolean' : typeof candidate.expectedValue !== 'number' || !Number.isFinite(candidate.expectedValue) || candidate.type === 'integer' && !Number.isInteger(candidate.expectedValue))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'variable.expectedValue must match its declared finite type.' });
             const variableType: 'float' | 'integer' | 'boolean' = candidate.type;
             const variableValue: number | boolean = candidate.value as number | boolean;
-            variable = { name: candidate.name, type: variableType, value: variableValue };
+            variable = { name: candidate.name, type: variableType, value: variableValue, expectedValue: candidate.expectedValue };
         }
         return executeComponentOperation({ kind: 'graph', operation: args.operation, sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, variable, expectedGraphUuid: args.expectedGraphUuid, timeoutMs: validateTimeout(args.timeoutMs) });
     }

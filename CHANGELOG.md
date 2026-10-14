@@ -31,6 +31,7 @@
 - Recheck selected direct/fallback translation snapshots before returning coverage and refuse drift; endpoint equality is not an atomic table transaction.
 - Guard AnimationController graph object/UUID identity across inspection and variable mutation; pre-dispatch drift refuses and post-dispatch drift preserves mutation uncertainty.
 - Add optional expectedGraphUuid precondition to Game View graph inspection/variable writes; mismatched UUID refuses before native mutation.
+- Add typed optional expectedValue conflict guard for runtime graph variable writes; stale values refuse before setValue and false/zero preconditions are preserved.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
