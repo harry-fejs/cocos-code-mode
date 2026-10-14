@@ -1112,6 +1112,7 @@ export const methods = {
     async inspectLocalization(): Promise<{ supported: boolean, currentLanguage: string | null, languages: string[], directions: Record<string, string>, error?: string }> {
         try {
             const l10n = await loadLocalizationRuntime();
+            const currentLanguage = l10n.currentLanguage;
             const languages = Array.isArray(l10n.languages) ? l10n.languages.filter((language): language is string => typeof language === 'string').slice(0,32) : [];
             const directions: Record<string, string> = {};
             const unavailableDirections: string[] = [];
@@ -1119,7 +1120,8 @@ export const methods = {
                 try { const direction = l10n.direction(language); if (direction !== 'ltr' && direction !== 'rtl') throw new Error('Invalid text direction'); directions[language] = direction; }
                 catch { unavailableDirections.push(language); }
             }
-            return { supported: true, currentLanguage: typeof l10n.currentLanguage === 'string' && l10n.currentLanguage ? l10n.currentLanguage : null, languages, directions, ...(unavailableDirections.length ? { error: `Text direction unavailable for: ${unavailableDirections.join(', ')}`.slice(0,512) } : {}) };
+            if (l10n.currentLanguage !== currentLanguage) throw new Error('Localization language changed during inspection.');
+            return { supported: true, currentLanguage: typeof currentLanguage === 'string' && currentLanguage ? currentLanguage : null, languages, directions, ...(unavailableDirections.length ? { error: `Text direction unavailable for: ${unavailableDirections.join(', ')}`.slice(0,512) } : {}) };
         } catch (error: unknown) {
             return { supported: false, currentLanguage: null, languages: [], directions: {}, error: String(error instanceof Error ? error.message : error).slice(0,512) };
         }
