@@ -1409,6 +1409,7 @@ export class ExpansionTools {
         if (!info) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Asset ${args.reference.id} not found` });
         const issues: string[] = [];
         if (info.type !== 'cc.AudioClip') issues.push('asset type is not cc.AudioClip');
+        if (info.invalid === true || info.imported === false) issues.push('asset is invalid or not fully imported');
         return { valid: issues.length === 0, importer: info.importer ?? '', type: info.type ?? '', issues };
     }
 

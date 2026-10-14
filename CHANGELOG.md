@@ -75,6 +75,7 @@
 - Restore missing-output refusal in model importer validation alongside the truncation guard; an empty inventory is never valid.
 - Reject non-finite AudioSource volume in serialized audio audit instead of granting valid=true for NaN.
 - Require exact cc.AudioClip type during audio asset validation; AnimationClip and misleading importer names no longer pass audio classification.
+- Refuse explicitly invalid or incomplete audio importer states during audio asset validation.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
