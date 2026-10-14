@@ -33,7 +33,7 @@ type BaseArgs = { sessionId?: string; nodeReference?: { id?: string }; component
 type SkeletalArgs = BaseArgs & { operation?: string; clipName?: string; clipUuid?: string };
 type EventArgs = BaseArgs & { clipName?: string; clipUuid?: string; maxEvents?: number; timeoutMs?: number };
 type GraphVariable = { name?: string; type?: string; value?: number | boolean };
-type GraphArgs = BaseArgs & { operation?: string; variable?: GraphVariable; timeoutMs?: number };
+type GraphArgs = BaseArgs & { operation?: string; variable?: GraphVariable; expectedGraphUuid?: string; timeoutMs?: number };
 
 function validateTimeout(value: unknown, name = 'timeoutMs'): number {
     if (value === undefined) return 1000;
@@ -128,12 +128,13 @@ export class ComponentRuntimeTools {
     }
 
     @utcpTool('animationGraphPreview', 'Inspect one exact cc.animation.AnimationController runtime graph, or set one typed FLOAT/INTEGER/BOOLEAN variable with read-back. No dynamic methods or invented graph component are used.', {
-        type: 'object', additionalProperties: false, properties: { ...targetProperties, operation: { type: 'string', enum: ['inspect', 'setVariable'] }, variable: { type: 'object', additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 256 }, type: { type: 'string', enum: ['float', 'integer', 'boolean'] }, value: {} }, required: ['name', 'type', 'value'] }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } },
+        type: 'object', additionalProperties: false, properties: { ...targetProperties, operation: { type: 'string', enum: ['inspect', 'setVariable'] }, expectedGraphUuid: { type: 'string', minLength: 1, maxLength: 256 }, variable: { type: 'object', additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 256 }, type: { type: 'string', enum: ['float', 'integer', 'boolean'] }, value: {} }, required: ['name', 'type', 'value'] }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } },
         required: ['sessionId', 'nodeReference', 'componentId', 'operation'],
     }, componentOutputSchema, 'POST', ['animation', 'graph', 'preview', 'runtime'])
     async animationGraphPreview(args: GraphArgs): Promise<Record<string, unknown>> {
         validateComponentTarget({ sessionId: args?.sessionId ?? '', nodeReference: { id: args?.nodeReference?.id ?? '' }, componentId: args?.componentId }, true);
         if (args.operation !== 'inspect' && args.operation !== 'setVariable') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'operation must be inspect or setVariable.' });
+        if (args.expectedGraphUuid !== undefined) requireComponentText(args.expectedGraphUuid, 'expectedGraphUuid');
         let variable: ComponentOperation['variable'];
         if (args.operation === 'setVariable') {
             const candidate = args.variable;
@@ -145,7 +146,7 @@ export class ComponentRuntimeTools {
             const variableValue: number | boolean = candidate.value as number | boolean;
             variable = { name: candidate.name, type: variableType, value: variableValue };
         }
-        return executeComponentOperation({ kind: 'graph', operation: args.operation, sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, variable, timeoutMs: validateTimeout(args.timeoutMs) });
+        return executeComponentOperation({ kind: 'graph', operation: args.operation, sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, variable, expectedGraphUuid: args.expectedGraphUuid, timeoutMs: validateTimeout(args.timeoutMs) });
     }
 
     @utcpTool('animationGraphWaitForVariable', 'Observe one exact runtime graph variable until a typed value matches. Exact graph UUID required; inspect-only, no setValue or runtime restart. Target drift/missing/type/deadline errors fail closed.', {

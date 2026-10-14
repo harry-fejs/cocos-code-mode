@@ -6,6 +6,7 @@ export interface ComponentTarget { sessionId: string; nodeReference: { id: strin
 export interface ComponentOperation extends ComponentTarget {
     kind: 'particle' | 'animation' | 'skeletal' | 'events' | 'graph'; operation: string; clipName?: string; clipUuid?: string;
     timeoutMs?: number; maxEvents?: number; variable?: { name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean };
+    expectedGraphUuid?: string;
 }
 interface RuntimeClip { name: string; uuid: string }
 interface RuntimeState { clip: RuntimeClip; isPlaying: boolean; isPaused: boolean; time?: unknown; duration?: unknown; speed?: unknown }
@@ -163,6 +164,7 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
         if (args.kind !== 'graph' || !c.graph || typeof c.getVariables !== 'function' || typeof c.getValue !== 'function' || typeof c.setValue !== 'function' || typeof c.getCurrentStateStatus !== 'function' || typeof c.getCurrentClipStatuses !== 'function' || typeof c.getCurrentTransition !== 'function') fail('UNSUPPORTED_RUNTIME_COMPONENT', 'AnimationController graph/runtime status APIs are unavailable.');
         const getVariables = c.getVariables!.bind(c); const getValue = c.getValue!.bind(c); const setValue = c.setValue!.bind(c); const getCurrentStateStatus = c.getCurrentStateStatus!.bind(c); const getCurrentClipStatuses = c.getCurrentClipStatuses!.bind(c); const getCurrentTransition = c.getCurrentTransition!.bind(c);
         const graph = c.graph; const graphUuid = objectValue(graph)?.uuid;
+        if (args.expectedGraphUuid !== undefined && graphUuid !== args.expectedGraphUuid) fail('RUNTIME_TARGET_CHANGED', 'Runtime graph UUID does not match caller precondition.');
         const assertGraph = () => { assertTarget(); if (c.graph !== graph || objectValue(graph)?.uuid !== graphUuid) fail('RUNTIME_TARGET_CHANGED', 'AnimationController graph identity changed during operation.'); };
         const layerCountValue: unknown = c.layerCount;
         if (typeof layerCountValue !== 'number' || !Number.isInteger(layerCountValue) || layerCountValue < 0 || layerCountValue > 16) fail('RUNTIME_GRAPH_LIMIT', 'Graph layer count must be within 0..16.');
@@ -184,7 +186,7 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
 
 export function createComponentOperationSource(args: ComponentOperation): string {
     const timeoutMs = args.timeoutMs ?? 1000;
-    const data = { kind: args.kind, operation: args.operation, nodeReference: { id: args.nodeReference.id }, componentId: args.componentId, clipName: args.clipName, clipUuid: args.clipUuid, maxEvents: args.maxEvents, variable: args.variable ? { name: args.variable.name, type: args.variable.type, value: args.variable.value } : undefined, expiresAt: Date.now() + timeoutMs };
+    const data = { kind: args.kind, operation: args.operation, nodeReference: { id: args.nodeReference.id }, componentId: args.componentId, clipName: args.clipName, clipUuid: args.clipUuid, maxEvents: args.maxEvents, expectedGraphUuid: args.expectedGraphUuid, variable: args.variable ? { name: args.variable.name, type: args.variable.type, value: args.variable.value } : undefined, expiresAt: Date.now() + timeoutMs };
     return `(() => { const requireDefined = ${requireDefined.toString()}; const finiteNumber = ${finiteNumber.toString()}; const objectValue = ${objectValue.toString()}; const resolveComponent = ${resolveComponent.toString()}; return (${componentOperation.toString()})(${JSON.stringify(data)}); })()`;
 }
 
