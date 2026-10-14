@@ -454,6 +454,43 @@ declare namespace ccp3x {
         imageType?: "raw" | "texture" | "normal-map" | "sprite-frame" | "texture-cube",
         options?: { overwrite?: boolean, rename?: boolean }
     }): { reference: InstanceReference };
+    /** Importer metadata only; no render or geometry correctness claim. */
+    function spriteFrameInspect(args: { reference: InstanceReference }): {
+        reference: InstanceReference; sourceReference: InstanceReference; url: string; importer: string; metadata: unknown;
+    };
+    /** Missing/non-finite numeric metadata is null. metadataAvailable does not imply all geometry fields are available. */
+    function spriteFrameGeometryInspect(args: { reference: InstanceReference }): {
+        reference: InstanceReference; sourceReference: InstanceReference; url: string;
+        geometry: {
+            rect: { x: number | null; y: number | null; width: number | null; height: number | null };
+            originalSize: { width: number | null; height: number | null };
+            offset: { x: number | null; y: number | null };
+            borders: { left: number | null; right: number | null; top: number | null; bottom: number | null };
+            rotated: boolean | null; trimmed: boolean | null;
+        };
+        metadataAvailable: boolean;
+    };
+    function spriteFrameValidate(args: { reference: InstanceReference }): {
+        valid: boolean; reference: InstanceReference; sourceReference: InstanceReference;
+        issues: Array<{ code: 'SPRITE_FRAME_URL_UNAVAILABLE' | 'SPRITE_FRAME_METADATA_UNAVAILABLE' }>;
+    };
+    /** Inspect 1–64 explicit references with independent per-item failures. */
+    function spriteFrameBatchInspect(args: { references: InstanceReference[] }): {
+        items: Array<
+            { index: number; ok: true; result: ReturnType<typeof spriteFrameInspect> } |
+            { index: number; ok: false; reference: InstanceReference; error: { message: string } }
+        >;
+        succeeded: number; failed: number; truncated: false;
+    };
+    /** Validate 1–64 references. succeeded includes valid=false; invalid counts negative validations, failed counts errors. */
+    function spriteFrameBatchValidate(args: { references: InstanceReference[] }): {
+        outcomes: Array<
+            { index: number; ok: true; result: ReturnType<typeof spriteFrameValidate> } |
+            { index: number; ok: false; reference: InstanceReference; error: { message: string } }
+        >;
+        succeeded: number; failed: number; invalid: number; partial: boolean;
+    };
+
     function imageAssetInspect(args: { reference: InstanceReference; maxFrames?: number }): {
         reference: InstanceReference,
         importer: string,

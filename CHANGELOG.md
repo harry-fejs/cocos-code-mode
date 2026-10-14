@@ -79,6 +79,7 @@
 - Declare script asset inspection and class-identity validation APIs with nullable class metadata, bounded dependency inventory, and exact diagnostic codes.
 - Declare script batch inspect/validate APIs with discriminated item outcomes, nullable class metadata, and explicit invalid-versus-error counters.
 - Declare script dependency-impact inspect, batch inspect and shape-validation APIs with directional truncation and discriminated batch errors; align assetFindReferences optional direction/limit and truncation with runtime.
+- Declare SpriteFrame inspect, nullable geometry, validate and batch APIs with discriminated errors and metadata-only scope.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
