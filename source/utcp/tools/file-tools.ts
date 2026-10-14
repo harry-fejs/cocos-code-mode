@@ -199,6 +199,7 @@ export class FileTools {
         const stat = fs.statSync(filePath);
         if (!stat.isFile() || stat.size > MAX_FILE_BYTES) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: 'Snippet source must be a regular file within the bounded file size.' });
         const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
+        if (args.line > lines.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Requested line exceeds the source line count (${lines.length}).` });
         const startLine = Math.max(1, args.line - radius);
         const endLine = Math.min(lines.length, args.line + radius);
         return { snippet: lines.slice(startLine - 1, endLine).join('\n'), startLine, endLine };
