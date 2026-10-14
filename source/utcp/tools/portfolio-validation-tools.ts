@@ -361,6 +361,12 @@ export class PortfolioValidationTools {
         if (source.skeletonId && target.skeletonId && source.skeletonId !== target.skeletonId) issues.push({ code: 'SKELETON_ID_MISMATCH', source: source.skeletonId, target: target.skeletonId });
         if (clip && !clip.clips.length) issues.push({ code: 'CLIP_METADATA_UNAVAILABLE' });
         if (clip?.skeletonId && target.skeletonId && clip.skeletonId !== target.skeletonId) issues.push({ code: 'CLIP_SKELETON_MISMATCH', clip: clip.skeletonId, target: target.skeletonId });
+        if (clip && clip.joints.length) {
+            if (new Set(clip.joints).size !== clip.joints.length) issues.push({ code: 'CLIP_JOINTS_DUPLICATE' });
+            if (clip.joints.some(joint => !joint)) issues.push({ code: 'CLIP_JOINTS_EMPTY' });
+            const missingClipJoints = clip.joints.filter(joint => !targetSet.has(joint));
+            if (missingClipJoints.length) issues.push({ code: 'CLIP_TARGET_JOINTS_MISSING', joints: missingClipJoints });
+        }
         return {
             valid: issues.length === 0,
             automaticRetargeting: false,
