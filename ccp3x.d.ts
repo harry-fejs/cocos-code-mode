@@ -1134,6 +1134,9 @@ declare namespace ccp3x {
     /** Reads a line window (radius 0–50) from a size-limited source. Beyond-EOF line requests throw INVALID_ARGUMENT; no truncation field is exposed. */
     function projectFileSnippet(args: { filePath: string; line: number; radius?: number }): { snippet: string; startLine: number; endLine: number };
 
+    /** Glob-like project-relative path search. total counts returned matches only; truncated indicates the result cap was reached, not an exact remaining count. Unreadable directories are currently skipped; false does not certify exhaustive coverage. */
+    function projectSearchFiles(args: { pattern: string; directory?: string; limit?: number; verbose?: boolean }): { files: string[]; total: number; truncated: boolean };
+
     /** Tracks only this module's main-process broadcastObserve listeners; excludes panel/arbitrary Creator listeners. No callbacks or event payloads are exposed. */
     function editorListenersInspect(): { supported: true; listeners: Array<{ topic: string; state: 'registered' | 'removal-failed' }>; limitation: string };
 

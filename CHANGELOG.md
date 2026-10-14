@@ -112,6 +112,7 @@
 - Declare project UTF-8 text reads and line snippets with explicit oversized-source refusal and line-window response semantics.
 - Refuse project snippet line requests beyond EOF instead of returning inverted start/end ranges.
 - Check decoded snippet text byte size after read and before line splitting; reject growth beyond the source cap despite a stale pre-read stat.
+- Declare glob-like project file search with returned-match counts and explicit result-cap/completeness limitations.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
