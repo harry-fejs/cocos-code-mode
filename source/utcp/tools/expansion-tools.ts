@@ -205,6 +205,8 @@ export class ExpansionTools {
         if (!resources.languages.includes(args.locale) || !resources.languages.includes(resources.fallbackLanguage)) throw new ToolError({ code: 'LOCALIZATION_RESOURCE_UNAVAILABLE', status: 422, message: 'Requested and configured fallback locales must both be declared by the official package.' });
         const direct = await this.localizationTableInspect({ locale: args.locale, keys: args.keys, maxBytes: 65536 });
         const fallback = args.locale === resources.fallbackLanguage ? direct : await this.localizationTableInspect({ locale: resources.fallbackLanguage, keys: args.keys, maxBytes: 65536 });
+        const snapshot = (table: typeof direct) => JSON.stringify({ locale: table.locale, items: table.items.map(item => [item.key, item.valueSha256, item.value]), missingKeys: table.missingKeys, totalFound: table.totalFound, totalMissing: table.totalMissing, truncated: table.truncated });
+        const directSnapshot = snapshot(direct); const fallbackSnapshot = snapshot(fallback);
         const directValues = new Map(direct.items.map(item => [item.key, item.value]));
         const fallbackValues = new Map(fallback.items.map(item => [item.key, item.value]));
         const directMissing = new Set(direct.missingKeys); const fallbackMissing = new Set(fallback.missingKeys);
@@ -216,10 +218,13 @@ export class ExpansionTools {
                 : fallbackMissing.has(key) ? 'missing-both' : 'unknown';
             return { key, status };
         });
+        const directAfter = await this.localizationTableInspect({ locale: args.locale, keys: args.keys, maxBytes: 65536 });
+        const fallbackAfter = args.locale === resources.fallbackLanguage ? directAfter : await this.localizationTableInspect({ locale: resources.fallbackLanguage, keys: args.keys, maxBytes: 65536 });
+        if (snapshot(directAfter) !== directSnapshot || snapshot(fallbackAfter) !== fallbackSnapshot) throw new ToolError({ code: 'LOCALIZATION_TABLE_CHANGED', status: 409, message: 'Selected translation keys changed during coverage; no mixed snapshot returned.' });
         const after = await this.localizationResourceInspect();
         if (JSON.stringify(after.languages) !== JSON.stringify(resources.languages) || after.fallbackLanguage !== resources.fallbackLanguage || after.defaultLanguage !== resources.defaultLanguage) throw new ToolError({ code: 'LOCALIZATION_RESOURCE_CHANGED', status: 409, message: 'Official resource configuration changed during coverage; inspect again.' });
         return { locale: args.locale, fallbackLanguage: resources.fallbackLanguage, complete: !direct.truncated && !fallback.truncated && items.every(item => item.status !== 'unknown'), items, writes: false as const, runtimeVerified: false as const,
-            verificationScope: 'Official editor-configured fallback table presence only. Runtime options/localStorage, subtag hierarchy, concurrent table changes, fonts/layout and actual fallback resolution are not verified.' };
+            verificationScope: 'Official editor-configured fallback table presence with selected-key endpoint snapshot equality. Runtime options/localStorage, subtag hierarchy, atomicity/transient ABA changes, fonts/layout and actual fallback resolution are not verified.' };
     }
 
     @utcpTool('localizationTableInspect', 'Read selected existing translation keys from official localization-editor main IPC. No language change, restart or write. Missing keys are explicit; returned values have a whole-response byte bound.', {
