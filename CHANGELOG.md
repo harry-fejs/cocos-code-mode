@@ -55,6 +55,7 @@
 - Reject negative, fractional and unsafe ParticleSystem counts before inspection/wait match credit; preserve valid zero-count observation.
 - Recheck unique Animation clip-name identity after state lookup; refuse removed or duplicated targets before playback dispatch.
 - Refuse malformed localization exists results and language drift during key validation instead of reporting successful key coverage.
+- Revalidate mounted localization runtime asset UUID/path/URL after asynchronous compiler import; reject replaced assets instead of returning a stale runtime.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
