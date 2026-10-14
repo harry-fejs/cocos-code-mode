@@ -579,8 +579,13 @@ export class PortfolioValidationTools {
         const outputs = Array.isArray(inspected.outputs) ? inspected.outputs : [];
         const issues: Array<Record<string, unknown>> = [];
         if (!outputs.length) issues.push({ code: 'OUTPUTS_UNAVAILABLE', message: 'No imported model sub-assets were exposed by asset-db.' });
+        for (const [index, output] of outputs.entries()) {
+            if (!output || typeof output !== 'object' || Array.isArray(output)) { issues.push({ code: 'OUTPUT_IDENTITY_INVALID', index }); continue; }
+            const row = output as Record<string, unknown>;
+            if (typeof row.uuid !== 'string' || !row.uuid || typeof row.url !== 'string' || !row.url || typeof row.type !== 'string' || !row.type) issues.push({ code: 'OUTPUT_IDENTITY_INVALID', index });
+        }
         const settings = inspected.settings;
-        if (!settings || typeof settings !== 'object') issues.push({ code: 'SETTINGS_UNAVAILABLE' });
+        if (!settings || typeof settings !== 'object' || Array.isArray(settings)) issues.push({ code: 'SETTINGS_UNAVAILABLE' });
         return { valid: issues.length === 0, reference: inspected.reference, importer: inspected.importer, issues, outputs };
     }
     @utcpTool('modelImportOutputsInspect', 'Inspect bounded imported model mesh, skeleton, animation, and scene outputs with stable identities.', { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, maxOutputs: { type: 'integer', minimum: 1, maximum: 128, default: 64 } }, required: ['reference'] }, { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, outputs: { type: 'array' }, total: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['reference', 'outputs', 'total', 'truncated'] }, 'GET', ['model', 'import', 'outputs', 'skeleton', 'animation'])
