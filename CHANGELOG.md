@@ -17,6 +17,7 @@
 - Diagnose native condition operator bounds, numeric/boolean operand constants and variable type compatibility, including trigger-only references; runtime evaluation remains unverified.
 - Correct native TriggerVariable flag decoding so valid trigger conditions are not falsely diagnosed; report invalid trigger flags and malformed PlainVariable defaults.
 - Add read-only built data-bundle artifact preflight using the runtime resolver, config/index hashes and capped resource metadata; no server/load/script execution or runtime claim.
+- Enforce bundle config/index byte caps during file-handle reads and reject growth/replacement before serving/loading; per-file snapshots do not imply atomic config/index coherence.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

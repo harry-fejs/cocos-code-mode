@@ -16,9 +16,26 @@ function prerequisite(message: string): never { throw new ToolError({ code: 'BUN
 function readBounded(root: string, file: string): Buffer {
     const real = fs.realpathSync(path.join(root, file));
     if (!inside(root, real)) invalid('Bundle artifact symlinks must remain inside the approved bundle directory.');
-    const stat = fs.statSync(real);
-    if (!stat.isFile() || stat.size > LIMIT) prerequisite('Bundle config/index must be regular files no larger than 1 MiB.');
-    return fs.readFileSync(real);
+    const handle = fs.openSync(real, 'r');
+    try {
+        const before = fs.fstatSync(handle);
+        if (!before.isFile() || before.size > LIMIT) prerequisite('Bundle config/index must be regular files no larger than 1 MiB.');
+        const bytes = Buffer.allocUnsafe(before.size + 1);
+        let count = 0;
+        while (count < bytes.length) {
+            const read = fs.readSync(handle, bytes, count, bytes.length - count, null);
+            if (!read) break;
+            count += read;
+        }
+        const after = fs.fstatSync(handle);
+        const current = fs.statSync(real);
+        if (count !== before.size || after.size !== before.size || after.mtimeMs !== before.mtimeMs || after.ctimeMs !== before.ctimeMs
+            || current.ino !== after.ino || current.dev !== after.dev || current.size !== after.size || current.mtimeMs !== after.mtimeMs || current.ctimeMs !== after.ctimeMs
+            || fs.realpathSync(path.join(root, file)) !== real) {
+            throw new ToolError({ code: 'BUNDLE_ARTIFACT_CHANGED', status: 409, message: 'Bundle artifact changed during bounded read; no load or serving dispatched.' });
+        }
+        return bytes.subarray(0, count);
+    } finally { fs.closeSync(handle); }
 }
 
 export function resolveBundleArtifact(project: string, requested: string, name: string): BundleArtifact {
