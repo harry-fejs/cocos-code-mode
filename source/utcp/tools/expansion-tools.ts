@@ -281,12 +281,12 @@ export class ExpansionTools {
         return { complete, valid: complete && locales.every(locale => !locale.missingKeys.length && !locale.emptyKeys.length), checkedLocales: locales.length, checkedKeys: args.keys.length, locales, writes: false as const, fallbackVerified: false as const };
     }
 
-    @utcpTool('localizationTableTextAudit', 'Compare simple-brace placeholders and optional explicitly supplied character repertoire across official translation tables. No inferred font glyphs, shaping, fallback, layout or runtime validity.', {
-        type: 'object', additionalProperties: false, properties: { baseLocale: { type: 'string', minLength: 1, maxLength: 64 }, locales: { type: 'array', minItems: 1, maxItems: 8, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 64 } }, keys: { type: 'array', minItems: 1, maxItems: 64, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 256 } }, supportedCharacters: { type: 'string', maxLength: 16384 } }, required: ['baseLocale', 'locales', 'keys'],
+    @utcpTool('localizationTableTextAudit', 'Compare selected simple-brace or i18next identifier placeholders and optional supplied character repertoire across official tables. No ICU/nesting/formatter evaluation, font/layout/fallback/runtime validity inference.', {
+        type: 'object', additionalProperties: false, properties: { baseLocale: { type: 'string', minLength: 1, maxLength: 64 }, locales: { type: 'array', minItems: 1, maxItems: 8, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 64 } }, keys: { type: 'array', minItems: 1, maxItems: 64, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 256 } }, supportedCharacters: { type: 'string', maxLength: 16384 }, placeholderSyntax: { type: 'string', enum: ['simple-braces', 'i18next'], default: 'simple-braces' } }, required: ['baseLocale', 'locales', 'keys'],
     }, { type: 'object', properties: { baseLocale: { type: 'string' }, complete: { type: 'boolean' }, issues: { type: 'array' }, checkedTranslations: { type: 'integer' }, placeholderSyntax: { type: 'string' }, characterCoverageChecked: { type: 'boolean' }, fontVerified: { type: 'boolean', const: false }, layoutVerified: { type: 'boolean', const: false }, runtimeVerified: { type: 'boolean', const: false }, writes: { type: 'boolean', const: false } }, required: ['baseLocale', 'complete', 'issues', 'checkedTranslations', 'placeholderSyntax', 'characterCoverageChecked', 'fontVerified', 'layoutVerified', 'runtimeVerified', 'writes'] }, 'POST', ['localization', 'table', 'text', 'audit', 'read-only'])
-    async localizationTableTextAudit(args: { baseLocale: string; locales: string[]; keys: string[]; supportedCharacters?: string }) {
+    async localizationTableTextAudit(args: { baseLocale: string; locales: string[]; keys: string[]; supportedCharacters?: string; placeholderSyntax?: 'simple-braces' | 'i18next' }) {
         requireCreator38('localizationTableTextAudit');
-        if (!args || Object.keys(args).some(key => !['baseLocale', 'locales', 'keys', 'supportedCharacters'].includes(key))
+        if (!args || Object.keys(args).some(key => !['baseLocale', 'locales', 'keys', 'supportedCharacters', 'placeholderSyntax'].includes(key)) || args.placeholderSyntax !== undefined && args.placeholderSyntax !== 'simple-braces' && args.placeholderSyntax !== 'i18next'
             || typeof args.baseLocale !== 'string' || !/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/.test(args.baseLocale) || args.baseLocale.length > 64
             || !Array.isArray(args.locales) || args.locales.length < 1 || args.locales.length > 8 || new Set(args.locales).size !== args.locales.length
             || args.locales.some(locale => typeof locale !== 'string' || locale.length > 64 || !/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/.test(locale))
@@ -305,13 +305,13 @@ export class ExpansionTools {
                 const expected = baseValues.get(key); const translated = values.get(key);
                 if (expected === undefined || translated === undefined) { issues.push({ locale, key, code: expected === undefined ? 'BASE_VALUE_UNAVAILABLE' : 'TRANSLATION_UNAVAILABLE' }); continue; }
                 checkedTranslations++;
-                const result = auditTranslationText(expected, translated, args.supportedCharacters);
+                const result = auditTranslationText(expected, translated, args.supportedCharacters, args.placeholderSyntax);
                 if (!translated.trim()) issues.push({ locale, key, code: 'EMPTY_TRANSLATION' });
                 if (result.missingPlaceholders.length || result.extraPlaceholders.length) issues.push({ locale, key, code: 'PLACEHOLDER_MISMATCH', missingPlaceholders: result.missingPlaceholders, extraPlaceholders: result.extraPlaceholders });
                 if (result.uncoveredCharacters.length) issues.push({ locale, key, code: 'CHARACTER_NOT_IN_REPERTOIRE', uncoveredCharacters: result.uncoveredCharacters });
             }
         }
-        const response = { baseLocale: args.baseLocale, complete, issues, checkedTranslations, placeholderSyntax: 'simple-braces', characterCoverageChecked: args.supportedCharacters !== undefined, fontVerified: false as const, layoutVerified: false as const, runtimeVerified: false as const, writes: false as const };
+        const response = { baseLocale: args.baseLocale, complete, issues, checkedTranslations, placeholderSyntax: args.placeholderSyntax ?? 'simple-braces', characterCoverageChecked: args.supportedCharacters !== undefined, fontVerified: false as const, layoutVerified: false as const, runtimeVerified: false as const, writes: false as const };
         if (Buffer.byteLength(JSON.stringify(response), 'utf8') > 65536) throw new ToolError({ code: 'LOCALIZATION_PAYLOAD_TOO_LARGE', status: 422, message: 'Text diagnostics exceed bounded response size; request fewer keys/locales.' });
         return response;
     }

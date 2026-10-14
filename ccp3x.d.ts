@@ -1176,8 +1176,8 @@ declare namespace ccp3x {
         count: number,
         truncated: boolean
     };
-    /** Simple-brace placeholders and explicit character repertoire only; no inferred font/layout/runtime validity. */
-    function localizationTableTextAudit(args: { baseLocale: string; locales: string[]; keys: string[]; supportedCharacters?: string }): { baseLocale: string; complete: boolean; checkedTranslations: number; issues: Array<{ locale: string; key: string; code: string; missingPlaceholders?: string[]; extraPlaceholders?: string[]; uncoveredCharacters?: string[] }>; placeholderSyntax: string; characterCoverageChecked: boolean; fontVerified: false; layoutVerified: false; runtimeVerified: false; writes: false };
+    /** Selected simple-braces/i18next identifiers and explicit character repertoire; no formatter/font/layout/runtime validity. */
+    function localizationTableTextAudit(args: { baseLocale: string; locales: string[]; keys: string[]; supportedCharacters?: string; placeholderSyntax?: 'simple-braces' | 'i18next' }): { baseLocale: string; complete: boolean; checkedTranslations: number; issues: Array<{ locale: string; key: string; code: string; missingPlaceholders?: string[]; extraPlaceholders?: string[]; uncoveredCharacters?: string[] }>; placeholderSyntax: string; characterCoverageChecked: boolean; fontVerified: false; layoutVerified: false; runtimeVerified: false; writes: false };
 
     // ── Consolidated (preferred) ── 10 tools replace 26 legacy (removed in 2.0.x)
     /** Consolidated: get properties (instance or settings). Use instead of removed inspectorGet*Properties. */
