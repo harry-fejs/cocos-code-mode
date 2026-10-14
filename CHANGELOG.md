@@ -62,6 +62,7 @@
 - Diagnose exact duplicate FREEFORM_CARTESIAN threshold coordinates that produce non-finite native blend weights; directional algorithms remain separately unqualified.
 - Diagnose recursive serialized motion cycles while retaining shared-subtree traversal; cycles no longer grant complete motion diagnostics.
 - Diagnose mismatched serialized blend item types in 1D/2D/direct collections; wrong-type objects no longer grant complete traversal.
+- Diagnose malformed collection/scalar motion child shapes rather than granting complete structural traversal.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

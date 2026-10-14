@@ -93,6 +93,8 @@ export function inspectGraphMotionClips(value: unknown) {
         for (const field of fields) {
             const child = object[field];
             if (child === null && field === 'motion') continue;
+            const collection = field === '_layers' || field === '_states' || field === '_items';
+            if (collection !== Array.isArray(child)) { add('INVALID_MOTION_CHILD', `${next.path}.${field}`); continue; }
             if (Array.isArray(child)) {
                 if (child.length > 512) truncated = true;
                 for (let index = Math.min(child.length, 512) - 1; index >= 0; index--) {
