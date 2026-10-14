@@ -108,12 +108,13 @@ function metadataNames(value: unknown, keys: string[]): string[] {
     for (const key of keys) {
         const candidate = (value as Record<string, unknown>)[key];
         if (!Array.isArray(candidate)) continue;
+        if (candidate.length > 256) throw new ToolError({ code: 'UNSUPPORTED_METADATA', status: 422, message: 'Animation metadata inventory exceeds 256 entries; partial validation is refused.' });
         const names = candidate.map((item) => {
             if (typeof item === 'string') return item;
             if (item && typeof item === 'object' && typeof (item as any).name === 'string') return (item as any).name;
             return '';
-        }).filter((item): item is string => !!item).slice(0, 256);
-        if (names.length) return [...new Set(names)];
+        }).filter((item): item is string => !!item);
+        if (names.length) return names;
     }
     return [];
 }
@@ -138,7 +139,8 @@ async function readSkeletonJointNames(asset: any): Promise<string[]> {
             const parsed = JSON.parse(await fs.readFile(file, 'utf8'));
             const joints = metadataNames(parsed, ['_joints', 'joints', 'jointNames', 'bones', 'boneNames']);
             if (joints.length) return joints;
-        } catch {
+        } catch (error) {
+            if (error instanceof ToolError) throw error;
             // Importer output may be unavailable while Creator is still reimporting.
         }
     }
@@ -348,6 +350,8 @@ export class PortfolioValidationTools {
         const issues: Array<Record<string, unknown>> = [];
         const sourceSet = new Set(source.joints);
         const targetSet = new Set(target.joints);
+        if (sourceSet.size !== source.joints.length) issues.push({ code: 'SOURCE_JOINTS_DUPLICATE' });
+        if (targetSet.size !== target.joints.length) issues.push({ code: 'TARGET_JOINTS_DUPLICATE' });
         const missing = source.joints.filter((joint) => !targetSet.has(joint)).slice(0, 256);
         const extra = target.joints.filter((joint) => !sourceSet.has(joint)).slice(0, 256);
         if (missing.length) issues.push({ code: 'TARGET_JOINTS_MISSING', joints: missing });

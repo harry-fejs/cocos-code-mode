@@ -64,6 +64,7 @@
 - Diagnose mismatched serialized blend item types in 1D/2D/direct collections; wrong-type objects no longer grant complete traversal.
 - Diagnose malformed collection/scalar motion child shapes rather than granting complete structural traversal.
 - Report untyped and foreign motion objects as unsupported rather than silently granting complete traversal.
+- Preserve animation metadata duplicates for skeleton validation and refuse inventories exceeding 256 entries instead of validating silently truncated prefixes; retarget comparison reports duplicate source/target joints.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
