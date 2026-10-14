@@ -324,6 +324,9 @@ declare namespace ccp3x {
         total: number
     };
 
+    function assetBundleValidate(args: { reference: InstanceReference; expectedBundle?: string }): { valid: boolean; reference: InstanceReference; bundle: Record<string, unknown> | null; issues: Array<Record<string, unknown>>; runtimeCaveat: string };
+    function buildLogInspect(args: { taskId: string | number; maxEntries?: number; maxBytes?: number }): { available: boolean; terminal: boolean; state: string; progress: number; task: Record<string, unknown>; entries: Array<Record<string, unknown>>; count: number; truncated: boolean };
+
     /** Analyze project-wide serialized asset reachability from scene/prefab roots with bounded graph evidence. */
     function assetUsageAnalyze(args: {
         assetPath?: string,
