@@ -38,6 +38,7 @@
 - Add clipOffset/nextOffset paging to runtime clip inventory in current native order; pages remain live reads rather than a frozen collection snapshot.
 - Preserve native null Animation clip slots as explicit empty inventory entries with null identities; offsets count original slots, not filtered clips.
 - Add target-bound SHA-256 clip slot/name/UUID revisions and optional expectedRevision paging guard; excludes playback state and asset bytes.
+- Add resourceOffset/nextOffset paging to built data-bundle preflight; capped metadata remains read-only and does not load or serve resources.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

@@ -19,22 +19,26 @@ const resourceSchema: JsonSchema = {
 
 export class AssetBundleRuntimeTools {
     @utcpTool('assetBundleArtifactInspect', 'Read-only preflight of an explicit project-local built data bundle using the runtime resolver. Hashes config/index and reports bounded resource paths; does not serve, load, execute scripts or infer resource-file/runtime validity.', {
-        type: 'object', additionalProperties: false, properties: { bundlePath: { type: 'string', minLength: 1, maxLength: 512 }, bundleName: { type: 'string', minLength: 1, maxLength: 128 }, maxResources: { type: 'integer', minimum: 1, maximum: 128, default: 32 } }, required: ['bundlePath', 'bundleName'],
-    }, { type: 'object', properties: { bundleName: { type: 'string' }, version: { type: 'string' }, files: { type: 'array' }, resources: { type: 'array' }, resourceCount: { type: 'integer' }, truncated: { type: 'boolean' }, writes: { type: 'boolean', const: false }, runtimeVerified: { type: 'boolean', const: false }, verificationScope: { type: 'string' } }, required: ['bundleName', 'version', 'files', 'resources', 'resourceCount', 'truncated', 'writes', 'runtimeVerified', 'verificationScope'] }, 'POST', ['asset', 'bundle', 'artifact', 'inspect', 'read-only'])
-    async assetBundleArtifactInspect(args: { bundlePath: string; bundleName: string; maxResources?: number }) {
-        if (!args || Object.keys(args).some(key => !['bundlePath', 'bundleName', 'maxResources'].includes(key))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide only bundlePath, bundleName and optional maxResources.' });
+        type: 'object', additionalProperties: false, properties: { bundlePath: { type: 'string', minLength: 1, maxLength: 512 }, bundleName: { type: 'string', minLength: 1, maxLength: 128 }, maxResources: { type: 'integer', minimum: 1, maximum: 128, default: 32 }, resourceOffset: { type: 'integer', minimum: 0, maximum: 10000, default: 0 } }, required: ['bundlePath', 'bundleName'],
+    }, { type: 'object', properties: { bundleName: { type: 'string' }, version: { type: 'string' }, files: { type: 'array' }, resources: { type: 'array' }, resourceCount: { type: 'integer' }, resourceOffset: { type: 'integer' }, nextOffset: { type: ['integer', 'null'] }, truncated: { type: 'boolean' }, writes: { type: 'boolean', const: false }, runtimeVerified: { type: 'boolean', const: false }, verificationScope: { type: 'string' } }, required: ['bundleName', 'version', 'files', 'resources', 'resourceCount', 'resourceOffset', 'nextOffset', 'truncated', 'writes', 'runtimeVerified', 'verificationScope'] }, 'POST', ['asset', 'bundle', 'artifact', 'inspect', 'read-only'])
+    async assetBundleArtifactInspect(args: { bundlePath: string; bundleName: string; maxResources?: number; resourceOffset?: number }) {
+        if (!args || Object.keys(args).some(key => !['bundlePath', 'bundleName', 'maxResources', 'resourceOffset'].includes(key))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide only bundlePath, bundleName and optional resource page bounds.' });
         const limit = args.maxResources ?? 32;
         if (!Number.isInteger(limit) || limit < 1 || limit > 128) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'maxResources must be1..128.' });
+        const resourceOffset = args.resourceOffset ?? 0;
+        if (!Number.isInteger(resourceOffset) || resourceOffset < 0 || resourceOffset > 10000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'resourceOffset must be0..10000.' });
         const project = typeof Editor.Project?.path === 'string' ? Editor.Project.path : '';
         if (!project) throw new ToolError({ code: 'PROJECT_UNAVAILABLE', status: 503, message: 'An active Creator project is required.' });
         const artifact = resolveBundleArtifact(project, args.bundlePath, args.bundleName);
         const config = JSON.parse(artifact.config.toString('utf8')) as { paths: Record<string, unknown[]>; types?: string[] };
         const entries = Object.entries(config.paths);
-        const resources = entries.slice(0, limit).map(([index, entry]) => {
+        if (resourceOffset > entries.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'resourceOffset exceeds current resource count.' });
+        const resources = entries.slice(resourceOffset, resourceOffset + limit).map(([index, entry]) => {
             if (typeof entry[0] !== 'string' || !entry[0] || entry[0].length > 256 || /[\u0000-\u001f\u007f]/.test(entry[0])) throw new ToolError({ code: 'INVALID_BUNDLE_RESOURCE', status: 422, message: 'Bundle resource path metadata is malformed or exceeds bounds.' });
             return { index, path: entry[0], type: typeof entry[1] === 'string' ? entry[1] : config.types?.[entry[1] as number] ?? null };
         });
-        return { bundleName: artifact.name, version: artifact.version, files: [{ name: artifact.configFile, bytes: artifact.config.length, sha256: createHash('sha256').update(artifact.config).digest('hex') }, { name: artifact.indexFile, bytes: artifact.index.length, sha256: createHash('sha256').update(artifact.index).digest('hex') }], resources, resourceCount: entries.length, truncated: entries.length > limit, writes: false as const, runtimeVerified: false as const,
+        const nextOffset = resourceOffset + resources.length < entries.length ? resourceOffset + resources.length : null;
+        return { bundleName: artifact.name, version: artifact.version, files: [{ name: artifact.configFile, bytes: artifact.config.length, sha256: createHash('sha256').update(artifact.config).digest('hex') }, { name: artifact.indexFile, bytes: artifact.index.length, sha256: createHash('sha256').update(artifact.index).digest('hex') }], resources, resourceCount: entries.length, resourceOffset, nextOffset, truncated: nextOffset !== null, writes: false as const, runtimeVerified: false as const,
             verificationScope: 'Contained standalone data-only config/index preflight and hashes of read bytes. Resource payload existence, stable concurrent snapshot, runtime loading and cleanup are not verified.' };
     }
 
