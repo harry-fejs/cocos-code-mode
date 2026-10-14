@@ -395,6 +395,14 @@ declare namespace ccp3x {
         options?: { overwrite?: boolean, rename?: boolean }
     }): { reference: InstanceReference; lifecycle?: { cachedChanged?: true; sourcePersisted?: boolean; sourceSha256?: string; restored?: true; sourceBytesRestored?: true } };
 
+    function assetImporterAudit(args: { reference: InstanceReference }): {
+        valid: boolean,
+        importer: string,
+        settings: Record<string, unknown>,
+        source: { uuid: string; url: string; type: string; name: string; isDirectory: boolean },
+        issues: string[]
+    };
+
     function assetOpen(args: { reference: InstanceReference }): { reference: InstanceReference };
     function assetCatalogManifest(args: { assetPath?: string; maxAssets?: number; maxFileBytes?: number }): {
         assets: Array<{ uuid: string; url: string; type: string; importer: string; bytes: number; sha256: string }>;
