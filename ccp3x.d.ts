@@ -667,6 +667,11 @@ declare namespace ccp3x {
     function shaderValidate(args: { effectName: string }): { valid: boolean; effectName: string; diagnostics: Array<Record<string, unknown>>; result: unknown };
     /** Creates a native graph asset only when Creator returns and preserves an imported UUID; failure attempts rollback. */
     function animationGraphCreate(args: { assetPath: string; options?: { overwrite?: boolean; rename?: boolean } }): { reference: InstanceReference; assetPath: string; verified: true };
+    /** Serialized Terrain component metadata only; properties remain editor descriptors, not normalized geometry or runtime state. */
+    function terrainInspect(args: { reference?: InstanceReference }): {
+        terrains: Array<{ node: { id: string; type: 'cc.Node' }; name: string; properties: unknown }>;
+        count: number;
+    };
     /** Creator 3.7 legacy terrain path editing is refused; native cell edit requires Creator 3.8. */
     function terrainEdit(args: Record<string, unknown>): Record<string, unknown>;
     function modelImportConfigure(args: { reference: InstanceReference; path: string; value: unknown }): { changed: boolean; path: string; previous: unknown; readBack: unknown; result: Record<string, unknown> };
@@ -1433,6 +1438,11 @@ declare namespace ccp3x {
         checkedKeys: 0,
         missingKeys: [],
         error: string
+    };
+    /** Read current localization availability without switching language. Unsupported results may expose error; languages/directions are observations, not persistence proof. */
+    function localizationInspect(): {
+        supported: boolean; currentLanguage: string | null; languages: string[];
+        directions: Record<string, string>; error?: string;
     };
     /** Official editor resource metadata; runtime overrides/fallback resolution and switching remain unverified. */
     function localizationResourceInspect(): { languages: string[]; defaultLanguage: string; fallbackLanguage: string; issues: Array<{ code: string; locale: string }>; writes: false; runtimeVerified: false; verificationScope: string };
