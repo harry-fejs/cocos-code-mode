@@ -168,7 +168,7 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
                 }
                 if (args.operation === 'pause' && (!state.isPlaying || state.isPaused)) fail('INVALID_ANIMATION_STATE', 'Pause requires a playing clip.');
                 if (args.operation === 'resume' && (!state.isPlaying || !state.isPaused)) fail('INVALID_ANIMATION_STATE', 'Resume requires a paused clip.');
-                assertDeadline(); mutated = true;
+                assertAnimation(); assertDeadline(); mutated = true;
                 if (args.operation === 'play') play.call(c, args.clipName); else if (args.operation === 'pause') pause.call(c); else if (args.operation === 'resume') resume.call(c); else if (args.operation === 'stop') stop.call(c); else fail('INVALID_ARGUMENT', 'Unknown animation operation.');
                 assertAnimation(); const result = snapshot();
                 if (args.operation === 'stop' ? result.playing : !result.playing || result.paused !== (args.operation === 'pause')) fail('READBACK_MISMATCH', 'Animation state did not match operation.');

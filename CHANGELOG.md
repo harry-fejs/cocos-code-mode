@@ -41,6 +41,7 @@
 - Add resourceOffset/nextOffset paging to built data-bundle preflight; capped metadata remains read-only and does not load or serve resources.
 - Add project/path/config/index-bound bundle revisions and expectedRevision paging refusal; resource payload bytes and atomic pair coherence remain unverified.
 - Respect native null Animation clip slots during other-active-clip playback checks; retain busy-clip pre-dispatch refusal.
+- Recheck exact animation clip/state identity immediately before playback dispatch, refusing preflight drift before mutation.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
