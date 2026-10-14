@@ -84,6 +84,7 @@
 - Declare basic build-preset validation and explicit-file output audit APIs with precise hash rows and no build/runtime qualification claim.
 - Reject oversized, sparse and malformed build output manifests before filesystem access instead of silently auditing only the first 256 entries.
 - Resolve build audit project/artifact/file paths canonically before hashing; reject junction/symlink escapes while accepting contained dot-prefixed directory names.
+- Refuse output audit rows when file identity, size, timestamps or resolved path changes across hashing.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

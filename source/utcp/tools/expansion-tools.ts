@@ -1883,6 +1883,18 @@ export class ExpansionTools {
                 continue;
             }
             const sha256 = await hashFile(realTarget!);
+            const after = await fs.stat(realTarget!).catch((error: NodeJS.ErrnoException) => {
+                if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return null;
+                throw error;
+            });
+            const currentTarget = await fs.realpath(target).catch((error: NodeJS.ErrnoException) => {
+                if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return null;
+                throw error;
+            });
+            if (!after?.isFile() || after.dev !== stat.dev || after.ino !== stat.ino || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs || currentTarget !== realTarget) {
+                issues.push(`changed:${expected.path}`);
+                continue;
+            }
             const row = { path: path.relative(projectRoot, target).replace(/\\/g, '/'), bytes: stat.size, sha256 };
             files.push(row);
             if (expected.sha256 && expected.sha256.toLowerCase() !== sha256) issues.push(`hash-mismatch:${expected.path}`);
