@@ -975,6 +975,8 @@ declare namespace ccp3x {
     function skeletalAnimationWaitForState(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; playing?: boolean; paused?: boolean; minTime?: number; timeoutMs?: number; pollMs?: number }): { matched: boolean; timedOut: boolean; observations: number; state: Record<string, unknown> };
     function skeletalAnimationEvents(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; maxEvents?: number; timeoutMs?: number }): Record<string, unknown>;
     function animationGraphPreview(args: { sessionId: string; nodeReference: { id: string }; componentId: string; operation: 'inspect' | 'setVariable'; variable?: { name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean }; timeoutMs?: number }): Record<string, unknown>;
+    /** Exact runtime graph variable observation; no write. Deadline expiry is an error. */
+    function animationGraphWaitForVariable(args: { sessionId: string; nodeReference: { id: string }; componentId: string; graphUuid: string; name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean; timeoutMs?: number; pollMs?: number }): { matched: true; observations: number; graphUuid: string; variable: { name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean }; writes: false };
     /** Canonical descriptor/source only; no project code evaluation. Isolated pause/resume is version/API-dependent. */
     function tweenSequenceControl(args: { operation: 'start' | 'pause' | 'resume' | 'stop' | 'inspect'; sessionId: string; filePath?: string; sequence?: unknown; timeoutMs?: number }): Record<string, unknown>;
 

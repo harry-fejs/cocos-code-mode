@@ -19,6 +19,7 @@
 - Add read-only built data-bundle artifact preflight using the runtime resolver, config/index hashes and capped resource metadata; no server/load/script execution or runtime claim.
 - Enforce bundle config/index byte caps during file-handle reads and reject growth/replacement before serving/loading; per-file snapshots do not imply atomic config/index coherence.
 - Validate every built-bundle resource path and emitted UUID/type index before response caps or runtime serving; refuse traversal, unknown identities and duplicate UUID metadata.
+- Add exact graph-UUID/session/node/component read-only typed variable wait with bounded caller deadline, graph drift/type/missing-variable refusal and no setValue dispatch.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

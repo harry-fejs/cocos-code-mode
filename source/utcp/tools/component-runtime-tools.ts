@@ -7,6 +7,7 @@ import {
     validateComponentTarget,
     ComponentOperation,
 } from '../utils/game-view-components';
+import { GraphVariableWaitCondition, waitForGraphVariable } from '../graph-variable-wait';
 
 const targetProperties: Record<string, JsonSchema> = {
     sessionId: { type: 'string', minLength: 1, maxLength: 64 },
@@ -117,5 +118,13 @@ export class ComponentRuntimeTools {
             variable = { name: candidate.name, type: variableType, value: variableValue };
         }
         return executeComponentOperation({ kind: 'graph', operation: args.operation, sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, variable, timeoutMs: validateTimeout(args.timeoutMs) });
+    }
+
+    @utcpTool('animationGraphWaitForVariable', 'Observe one exact runtime graph variable until a typed value matches. Exact graph UUID required; inspect-only, no setValue or runtime restart. Target drift/missing/type/deadline errors fail closed.', {
+        type: 'object', additionalProperties: false, properties: { ...targetProperties, graphUuid: { type: 'string', minLength: 1, maxLength: 256 }, name: { type: 'string', minLength: 1, maxLength: 256 }, type: { type: 'string', enum: ['float', 'integer', 'boolean'] }, value: {}, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000 } }, required: ['sessionId', 'nodeReference', 'componentId', 'graphUuid', 'name', 'type', 'value'],
+    }, { type: 'object', properties: { matched: { type: 'boolean', const: true }, observations: { type: 'integer' }, graphUuid: { type: 'string' }, variable: { type: 'object' }, writes: { type: 'boolean', const: false } }, required: ['matched', 'observations', 'graphUuid', 'variable', 'writes'] }, 'POST', ['animation', 'graph', 'wait', 'read-only'])
+    async animationGraphWaitForVariable(args: BaseArgs & GraphVariableWaitCondition) {
+        validateComponentTarget({ sessionId: args?.sessionId ?? '', nodeReference: { id: args?.nodeReference?.id ?? '' }, componentId: args?.componentId }, true);
+        return waitForGraphVariable(args, timeoutMs => executeComponentOperation({ kind: 'graph', operation: 'inspect', sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, timeoutMs }));
     }
 }
