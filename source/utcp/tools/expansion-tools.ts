@@ -1852,25 +1852,37 @@ export class ExpansionTools {
                 throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Each expected file requires a non-empty path and an optional 64-digit SHA-256 hash.' });
             }
         }
-        const projectRoot = path.resolve((Editor.Project as any).path);
-        const artifactRoot = path.resolve(projectRoot, args.artifactPath);
-        const artifactRelative = path.relative(projectRoot, artifactRoot);
-        if (artifactRelative.startsWith('..') || path.isAbsolute(artifactRelative)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'artifactPath must remain inside the project' });
+        const projectRoot = await fs.realpath(path.resolve((Editor.Project as any).path));
+        const isWithin = (root: string, candidate: string): boolean => {
+            const relative = path.relative(root, candidate);
+            return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+        };
+        const requestedRoot = path.resolve(projectRoot, args.artifactPath);
+        if (!isWithin(projectRoot, requestedRoot)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'artifactPath must remain inside the project' });
+        const artifactRoot = await fs.realpath(requestedRoot);
+        if (!isWithin(projectRoot, artifactRoot)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'artifactPath must resolve inside the project' });
         const issues: string[] = [];
         const files: Array<Record<string, unknown>> = [];
         for (const expected of args.expectedFiles) {
             const target = path.resolve(artifactRoot, expected.path);
-            const targetRelative = path.relative(artifactRoot, target);
-            if (targetRelative.startsWith('..') || path.isAbsolute(targetRelative)) {
+            if (!isWithin(artifactRoot, target)) {
                 issues.push(`outside-artifact:${expected.path}`);
                 continue;
             }
-            const stat = await fs.stat(target).catch(() => null);
+            const realTarget = await fs.realpath(target).catch((error: NodeJS.ErrnoException) => {
+                if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return null;
+                throw error;
+            });
+            if (realTarget && !isWithin(artifactRoot, realTarget)) {
+                issues.push(`outside-artifact:${expected.path}`);
+                continue;
+            }
+            const stat = realTarget ? await fs.stat(realTarget) : null;
             if (!stat?.isFile()) {
                 issues.push(`missing:${expected.path}`);
                 continue;
             }
-            const sha256 = await hashFile(target);
+            const sha256 = await hashFile(realTarget!);
             const row = { path: path.relative(projectRoot, target).replace(/\\/g, '/'), bytes: stat.size, sha256 };
             files.push(row);
             if (expected.sha256 && expected.sha256.toLowerCase() !== sha256) issues.push(`hash-mismatch:${expected.path}`);
