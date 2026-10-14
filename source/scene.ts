@@ -896,6 +896,7 @@ export const methods = {
             });
         }
         if (!clip || typeof clip !== 'object') throw new Error(`AnimationClip ${request.clipUuid} could not be loaded`);
+        if (clip.uuid !== request.clipUuid) throw new Error('Loaded AnimationClip identity does not match the requested UUID');
         const nodeDump = await (globalThis as any).Editor.Message.request('scene', 'query-node', request.nodeUuid);
         const componentIndex = nodeDump?.__comps__?.findIndex((component: any) =>
             component?.value?.uuid?.value === animation.uuid);
