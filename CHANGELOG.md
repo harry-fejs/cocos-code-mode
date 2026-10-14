@@ -12,6 +12,7 @@
 - Extend graph diagnostics with authoritative direct-clip asset identity/type checks; transport errors do not masquerade as missing assets and empty coverage does not grant success.
 - Guard graph diagnostics with bounded source snapshots and post-query graph identity/hash checks; source drift refuses mixed-version evidence.
 - Extend graph clip discovery through bounded native 1D/2D/direct blend descendants with explicit traversal completeness and unsupported/reference diagnostics.
+- Add native blend parameter diagnostics for missing/non-numeric variable bindings and nonfinite constant inputs; no algorithm/runtime validity inference.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

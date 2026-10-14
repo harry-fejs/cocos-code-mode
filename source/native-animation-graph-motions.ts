@@ -16,6 +16,18 @@ export function inspectGraphMotionClips(value: unknown) {
     };
     const root = row(Array.isArray(value) ? value[0] : value);
     const clips = new Set<string>();
+    const declarations = resolve(root?._variables, '$._variables');
+    const checkBinding = (input: unknown, path: string) => {
+        const binding = resolve(input, path);
+        if (!binding || binding.__type__ !== 'cc.animation.BindableNumber' || typeof binding.variable !== 'string') { add('INVALID_BLEND_PARAMETER', path); return; }
+        if (!binding.variable) {
+            if (typeof binding.value !== 'number' || !Number.isFinite(binding.value)) add('INVALID_BLEND_PARAMETER_VALUE', path);
+            return;
+        }
+        if (!declarations || !Object.prototype.hasOwnProperty.call(declarations, binding.variable)) { add('UNDECLARED_BLEND_VARIABLE', path); return; }
+        const variable = resolve(declarations[binding.variable], `${path}.variable`);
+        if (!variable || variable.__type__ !== 'cc.animation.PlainVariable' || (variable._type !== 0 && variable._type !== 3)) add('BLEND_VARIABLE_NOT_NUMERIC', path);
+    };
     const seen = new Set<Row>();
     const stack: Array<{ value: unknown; path: string; depth: number }> = [{ value: root, path: '$', depth: 0 }];
     while (stack.length) {
@@ -31,6 +43,11 @@ export function inspectGraphMotionClips(value: unknown) {
             const clip = row(object.clip);
             if (typeof clip?.__uuid__ === 'string' && clip.__uuid__ && clip.__uuid__.length <= 256) clips.add(clip.__uuid__);
             else add('MOTION_CLIP_UNAVAILABLE', next.path);
+        }
+        if (type === 'cc.animation.AnimationBlend1D') checkBinding(object.param, `${next.path}.param`);
+        if (type === 'cc.animation.AnimationBlend2D') {
+            checkBinding(object.paramX, `${next.path}.paramX`);
+            checkBinding(object.paramY, `${next.path}.paramY`);
         }
         const fields = type === 'cc.animation.AnimationGraph' ? ['_layers'] : type === 'cc.animation.Layer' || type === 'cc.animation.SubStateMachine' ? ['_stateMachine']
             : type === 'cc.animation.StateMachine' ? ['_states'] : type === 'cc.animation.Motion' ? ['motion']
