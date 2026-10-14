@@ -84,7 +84,7 @@ Graph diagnostics query unique clip UUIDs through Asset DB, including descendant
 
 Graph diagnostics recheck graph Asset DB identity/path/type and source SHA-256 after clip queries. Changed source returns `GRAPH_SOURCE_CHANGED`, not mixed evidence. Bounded file-handle reads check size/time/file identity. Endpoint equality is not an atomic Asset DB transaction or proof against transient ABA changes.
 
-Blend motion diagnostics inspect 1D/2D numeric parameter bindings using Creator 3.7 serialized `BindableNumber` and variable enum contracts. Missing declarations, boolean/trigger bindings and nonfinite constants produce motion issues. Threshold/weight algorithms, scene binding and runtime validity remain separate gaps.
+Blend motion diagnostics inspect 1D/2D numeric parameter bindings using Creator 3.7 serialized `BindableNumber` and variable enum contracts. Missing declarations, boolean/trigger bindings, nonfinite constants/thresholds/direct weights and malformed 2D vectors produce motion issues. Negative-weight policy, degenerate thresholds, normalization/algorithm evaluation, scene binding and runtime validity remain separate gaps.
 
 * QA: `scripts/smoke-utcp.js` (expects 88) · Perf: `a769a46` bench + `e419276` trim.
 

@@ -49,6 +49,12 @@ export function inspectGraphMotionClips(value: unknown) {
             checkBinding(object.paramX, `${next.path}.paramX`);
             checkBinding(object.paramY, `${next.path}.paramY`);
         }
+        if (type === 'cc.animation.AnimationBlend1DItem' && (typeof object.threshold !== 'number' || !Number.isFinite(object.threshold))) add('INVALID_BLEND_THRESHOLD', `${next.path}.threshold`);
+        if (type === 'cc.animation.AnimationBlend2DItem') {
+            const threshold = resolve(object.threshold, `${next.path}.threshold`);
+            if (!threshold || typeof threshold.x !== 'number' || !Number.isFinite(threshold.x) || typeof threshold.y !== 'number' || !Number.isFinite(threshold.y)) add('INVALID_BLEND_THRESHOLD', `${next.path}.threshold`);
+        }
+        if (type === 'cc.animation.AnimationBlendDirectItem' && (typeof object.weight !== 'number' || !Number.isFinite(object.weight))) add('INVALID_BLEND_WEIGHT', `${next.path}.weight`);
         const fields = type === 'cc.animation.AnimationGraph' ? ['_layers'] : type === 'cc.animation.Layer' || type === 'cc.animation.SubStateMachine' ? ['_stateMachine']
             : type === 'cc.animation.StateMachine' ? ['_states'] : type === 'cc.animation.Motion' ? ['motion']
             : ['cc.animation.AnimationBlend1D', 'cc.animation.AnimationBlend2D', 'cc.animation.AnimationBlendDirect'].includes(String(type)) ? ['_items']

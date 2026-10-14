@@ -13,6 +13,7 @@
 - Guard graph diagnostics with bounded source snapshots and post-query graph identity/hash checks; source drift refuses mixed-version evidence.
 - Extend graph clip discovery through bounded native 1D/2D/direct blend descendants with explicit traversal completeness and unsupported/reference diagnostics.
 - Add native blend parameter diagnostics for missing/non-numeric variable bindings and nonfinite constant inputs; no algorithm/runtime validity inference.
+- Diagnose nonfinite native blend thresholds/direct weights and malformed 2D threshold vectors; no guessed normalization or algorithm semantics.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
