@@ -259,6 +259,24 @@ declare namespace ccp3x {
         issues: Array<Record<string, unknown>>
     };
 
+    /** Validate bounded imported animation clip names and skeleton identity; no runtime playback claim. */
+    function modelAnimationValidate(args: { reference: InstanceReference }): {
+        valid: boolean,
+        reference: InstanceReference,
+        skeletonId: string | null,
+        clipCount: number,
+        issues: Array<{ code: string; index?: number; clip?: string }>
+    };
+
+    /** Configure serialized SkeletalAnimation fields with read-back; failure restores attempted fields or throws rollback failure. */
+    function skeletalAnimationConfigure(args: { reference: InstanceReference; properties: { playOnLoad?: boolean; useBakedAnimation?: boolean } }): {
+        reference: InstanceReference,
+        componentReference: InstanceReference,
+        properties: { playOnLoad?: boolean; useBakedAnimation?: boolean },
+        changed: string[],
+        verified: true
+    };
+
     /** Assign a platform-aware Creator texture-compression preset and return deterministic reimport evidence. */
     function assetCompressionConfigure(args: {
         reference: InstanceReference,
