@@ -95,7 +95,14 @@ export function inspectGraphMotionClips(value: unknown) {
             if (child === null && field === 'motion') continue;
             if (Array.isArray(child)) {
                 if (child.length > 512) truncated = true;
-                for (let index = Math.min(child.length, 512) - 1; index >= 0; index--) stack.push({ value: child[index], path: `${next.path}.${field}[${index}]`, depth: next.depth + 1 });
+                for (let index = Math.min(child.length, 512) - 1; index >= 0; index--) {
+                    const path = `${next.path}.${field}[${index}]`;
+                    if (field === '_items') {
+                        const item = resolve(child[index], path);
+                        if (!item || item.__type__ !== `${type}Item`) add('INVALID_BLEND_ITEM_TYPE', path);
+                    }
+                    stack.push({ value: child[index], path, depth: next.depth + 1 });
+                }
             } else if (row(child)) stack.push({ value: child, path: `${next.path}.${field}`, depth: next.depth + 1 });
             else add('INVALID_MOTION_CHILD', `${next.path}.${field}`);
         }
