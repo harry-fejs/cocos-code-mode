@@ -29,6 +29,7 @@
 - Add explicit i18next identifier interpolation syntax to localization text audit, preserving simple-brace default; no nesting/formatter/ICU evaluation.
 - Report unsupported/unclosed i18next delimiter syntax and refuse text-audit completeness instead of silently ignoring unmatched tokens.
 - Recheck selected direct/fallback translation snapshots before returning coverage and refuse drift; endpoint equality is not an atomic table transaction.
+- Guard AnimationController graph object/UUID identity across inspection and variable mutation; pre-dispatch drift refuses and post-dispatch drift preserves mutation uncertainty.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

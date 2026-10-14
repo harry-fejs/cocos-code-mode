@@ -162,6 +162,8 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
         }
         if (args.kind !== 'graph' || !c.graph || typeof c.getVariables !== 'function' || typeof c.getValue !== 'function' || typeof c.setValue !== 'function' || typeof c.getCurrentStateStatus !== 'function' || typeof c.getCurrentClipStatuses !== 'function' || typeof c.getCurrentTransition !== 'function') fail('UNSUPPORTED_RUNTIME_COMPONENT', 'AnimationController graph/runtime status APIs are unavailable.');
         const getVariables = c.getVariables!.bind(c); const getValue = c.getValue!.bind(c); const setValue = c.setValue!.bind(c); const getCurrentStateStatus = c.getCurrentStateStatus!.bind(c); const getCurrentClipStatuses = c.getCurrentClipStatuses!.bind(c); const getCurrentTransition = c.getCurrentTransition!.bind(c);
+        const graph = c.graph; const graphUuid = objectValue(graph)?.uuid;
+        const assertGraph = () => { assertTarget(); if (c.graph !== graph || objectValue(graph)?.uuid !== graphUuid) fail('RUNTIME_TARGET_CHANGED', 'AnimationController graph identity changed during operation.'); };
         const layerCountValue: unknown = c.layerCount;
         if (typeof layerCountValue !== 'number' || !Number.isInteger(layerCountValue) || layerCountValue < 0 || layerCountValue > 16) fail('RUNTIME_GRAPH_LIMIT', 'Graph layer count must be within 0..16.');
         const layerCount = layerCountValue;
@@ -172,11 +174,11 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
             const currentValue = entry.value;
             const declaredType = variable.type === 'boolean' ? 1 : variable.type === 'integer' ? 3 : 0;
             if (entry.type !== declaredType || (variable.type === 'boolean' ? typeof currentValue !== 'boolean' : typeof currentValue !== 'number')) fail('UNSUPPORTED_GRAPH_VARIABLE', 'Only matching Creator3.7 FLOAT, INTEGER and BOOLEAN variables may change.');
-            assertDeadline(); mutated = true; setValue(variable.name, variable.value); const readBack = getValue(variable.name); if (readBack !== variable.value) fail('READBACK_MISMATCH', 'Graph variable mutation did not match runtime read-back.'); entry.value = readBack;
+            assertDeadline(); assertGraph(); mutated = true; setValue(variable.name, variable.value); assertGraph(); const readBack = getValue(variable.name); if (readBack !== variable.value) fail('READBACK_MISMATCH', 'Graph variable mutation did not match runtime read-back.'); entry.value = readBack;
         } else if (args.operation !== 'inspect') fail('INVALID_ARGUMENT', 'Unknown graph operation.');
         const layers: Array<Record<string, unknown>> = [];
         for (let index = 0; index < Number(layerCount); index++) { const current = getCurrentStateStatus(index); const transition = getCurrentTransition(index); const clips: Array<Record<string, unknown>> = []; for (const status of getCurrentClipStatuses(index)) { if (clips.length >= 32) fail('RUNTIME_GRAPH_LIMIT', 'Graph layer exceeds 32 current clips.'); const clipValue = objectValue(status.clip); clips.push({ clipName: typeof clipValue?.name === 'string' ? clipValue.name.slice(0, 256) : null, clipUuid: typeof clipValue?.uuid === 'string' ? clipValue.uuid.slice(0, 256) : null, weight: finiteNumber(status.weight) }); } layers.push({ index, current: current ? { progress: finiteNumber(current.progress) } : null, transition: transition ? { duration: finiteNumber(transition.duration) } : null, clips }); }
-        assertTarget(); return { ...identity, graphUuid: typeof objectValue(c.graph)?.uuid === 'string' ? objectValue(c.graph)?.uuid : null, variables, layers };
+        assertGraph(); return { ...identity, graphUuid: typeof graphUuid === 'string' ? graphUuid : null, variables, layers };
     } catch (error) { const known = error as { code?: string; message?: string }; return { code: known.code ?? 'RUNTIME_COMPONENT_FAILED', message: String(known.message ?? 'Component runtime operation failed.').slice(0, 512), mutationDispatched: mutated }; }
 }
 
