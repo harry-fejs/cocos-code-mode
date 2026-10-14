@@ -1121,6 +1121,14 @@ declare namespace ccp3x {
         sizeBytes: number; modifiedAt: string | null;
     };
 
+    /** Project-relative existence metadata; does not read contents or imply importer availability. */
+    function projectFileExists(args: { filePath: string }): { exists: boolean; isDirectory: boolean };
+    /** Lists a bounded prefix of directory entries. total is directory entry count; size is optional, not guaranteed for symlinks/special entries. */
+    function projectListDirectory(args: { dirPath?: string; limit?: number }): {
+        entries: Array<{ name: string; type: 'file' | 'directory'; size?: number }>;
+        total: number; truncated: boolean;
+    };
+
     /** Tracks only this module's main-process broadcastObserve listeners; excludes panel/arbitrary Creator listeners. No callbacks or event payloads are exposed. */
     function editorListenersInspect(): { supported: true; listeners: Array<{ topic: string; state: 'registered' | 'removal-failed' }>; limitation: string };
 
