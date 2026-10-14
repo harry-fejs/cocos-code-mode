@@ -1128,8 +1128,16 @@ export const methods = {
         try {
             const l10n = await loadLocalizationRuntime();
             const boundedKeys = Array.from(new Set((keys ?? []).filter((key): key is string => typeof key === 'string' && key.length > 0))).slice(0, 256);
-            const missingKeys = boundedKeys.filter((key) => !l10n.exists(key));
-            return { supported: true, language: typeof l10n.currentLanguage === 'string' && l10n.currentLanguage ? l10n.currentLanguage : null, checkedKeys: boundedKeys.length, missingKeys };
+            const language = l10n.currentLanguage;
+            const missingKeys: string[] = [];
+            for (const key of boundedKeys) {
+                const exists = l10n.exists(key);
+                if (typeof exists !== 'boolean') throw new Error('Localization exists returned a non-boolean result.');
+                if (l10n.currentLanguage !== language) throw new Error('Localization language changed during key validation.');
+                if (!exists) missingKeys.push(key);
+            }
+            if (l10n.currentLanguage !== language) throw new Error('Localization language changed during key validation.');
+            return { supported: true, language: typeof language === 'string' && language ? language : null, checkedKeys: boundedKeys.length, missingKeys };
         } catch (error: unknown) {
             return { supported: false, language: null, checkedKeys: 0, missingKeys: [], error: String(error instanceof Error ? error.message : error).slice(0,512) };
         }

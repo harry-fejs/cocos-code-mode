@@ -54,6 +54,7 @@
 - Require only the selected native Animation playback method, validate allowlisted operation before mutation, and preserve busy-target/read-back guards.
 - Reject negative, fractional and unsafe ParticleSystem counts before inspection/wait match credit; preserve valid zero-count observation.
 - Recheck unique Animation clip-name identity after state lookup; refuse removed or duplicated targets before playback dispatch.
+- Refuse malformed localization exists results and language drift during key validation instead of reporting successful key coverage.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
