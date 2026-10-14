@@ -832,30 +832,42 @@ export const methods = {
                 const isSpine = ['Skeleton', 'sp.Skeleton'].includes(className);
                 const isDragonBones = ['ArmatureDisplay', 'dragonBones.ArmatureDisplay'].includes(className);
                 if (!isAnimation && !isSpine && !isDragonBones) continue;
-                const clips = Array.isArray(component?.clips) ? component.clips.filter(Boolean).map((clip: any) => ({
-                    name: clip?.name ?? null,
-                    uuid: clip?.uuid ?? null,
-                    duration: typeof clip?.duration === 'number' && Number.isFinite(clip.duration) ? clip.duration : null,
-                    source: 'clip',
-                })) : [];
-                const runtimeData = typeof component?.skeletonData?.getRuntimeData === 'function'
-                    ? component.skeletonData.getRuntimeData()
-                    : component?.skeletonData?.runtimeData;
-                const spineAnimations = isSpine && runtimeData?.animations && typeof runtimeData.animations === 'object'
-                    ? Object.values(runtimeData.animations).map((animation: any) => ({
-                        name: animation?.name ?? null,
-                        uuid: null,
-                        duration: typeof animation?.duration === 'number' && Number.isFinite(animation.duration) ? animation.duration : null,
-                        source: 'spine-runtime',
-                    }))
-                    : [];
-                const animations = (clips.length > 0 ? clips : spineAnimations).slice(0, maxItems);
+                const animations: Record<string, unknown>[] = [];
+                let totalAnimations = 0;
+                for (const clip of Array.isArray(component?.clips) ? component.clips : []) {
+                    if (!clip) continue;
+                    totalAnimations++;
+                    if (animations.length >= maxItems) continue;
+                    animations.push({
+                        name: clip.name ?? null, uuid: clip.uuid ?? null,
+                        duration: typeof clip.duration === 'number' && Number.isFinite(clip.duration) ? clip.duration : null,
+                        source: 'clip',
+                    });
+                }
+                if (isSpine && totalAnimations === 0) {
+                    const runtimeData = typeof component?.skeletonData?.getRuntimeData === 'function'
+                        ? component.skeletonData.getRuntimeData() : component?.skeletonData?.runtimeData;
+                    const entries = runtimeData?.animations;
+                    if (entries && typeof entries === 'object') {
+                        for (const key in entries) {
+                            if (!Object.prototype.hasOwnProperty.call(entries, key)) continue;
+                            totalAnimations++;
+                            if (animations.length >= maxItems) continue;
+                            const animation = entries[key];
+                            animations.push({
+                                name: animation?.name ?? null, uuid: null,
+                                duration: typeof animation?.duration === 'number' && Number.isFinite(animation.duration) ? animation.duration : null,
+                                source: 'spine-runtime',
+                            });
+                        }
+                    }
+                }
                 findings.push({
                     node: { id: node?.uuid ?? null, name: node?.name ?? null },
                     component: className,
                     animations,
-                    totalAnimations: clips.length > 0 ? clips.length : spineAnimations.length,
-                    truncated: (clips.length > 0 ? clips.length : spineAnimations.length) > animations.length,
+                    totalAnimations,
+                    truncated: totalAnimations > animations.length,
                 });
                 if (findings.length >= maxItems) break;
             }
