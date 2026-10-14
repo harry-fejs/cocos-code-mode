@@ -645,6 +645,20 @@ declare namespace ccp3x {
     function prefabReferenceAudit(args: { reference: InstanceReference, maxReferences?: number }): { valid: boolean, nestedPrefabs: unknown[], missingReferences: unknown[], source: unknown };
     function sceneReferenceValidate(args: { reference: InstanceReference, maxReferences?: number }): { valid: boolean, references: string[], missingReferences: string[], source: unknown };
     function prefabInstantiate(args: { reference: InstanceReference, parentReference?: InstanceReference, name?: string }): { reference: InstanceReference, source: { id: string, url: string }, persisted: boolean, readBack?: unknown };
+    /** Creates a linked asset and snapshots the scene; persisted does not certify scene save/reopen. Ambiguous mutation failures must be inspected before retry. */
+    function prefabCreateFromNode(args: { reference: InstanceReference; assetPath: string }): {
+        reference: InstanceReference; asset: { id: string; type: 'cc.Prefab'; url?: string }; persisted: true;
+    };
+    interface PrefabFullOperationResult {
+        reference: InstanceReference; persisted: true; sceneSaved: false; readBack: unknown;
+        sourceReadBack: { id: string; url: string; beforeSha256: string; afterSha256: string };
+        sourceChanges: Array<{ path: string; before: unknown; after: unknown }>;
+        sourceDiffTruncated: boolean; responseTruncated: boolean; readBackTruncated: boolean; result: unknown;
+    }
+    /** Applies the full linked instance; no scene save or selective override scope. */
+    function prefabUpdate(args: { reference: InstanceReference }): PrefabFullOperationResult & { operation: 'apply' };
+    /** Restores the full linked instance; source hashes are retained, but sceneSaved remains false. */
+    function prefabRestore(args: { reference: InstanceReference }): PrefabFullOperationResult & { operation: 'revert' };
     function prefabApplyOverrides(args: { reference: InstanceReference, operation?: 'apply' | 'removed_component_apply', fileID?: string, expectedSourceSha256?: string, maxBytes?: number }): { reference: InstanceReference, operation: 'apply' | 'removed_component_apply', persisted: boolean, readBack: unknown, sourceReadBack: { id: string, url: string, beforeSha256: string, afterSha256: string }, sourceChanges?: Array<{ path: string; before: unknown; after: unknown }>, sourceDiffTruncated?: boolean, responseTruncated: boolean, readBackTruncated?: boolean, sceneSaved: false, outcome?: 'verified', rollbackStatus?: string, fileID?: string };
     function prefabInstanceInspect(args: { reference: InstanceReference; maxOverrides?: number; maxBytes?: number }): { reference: InstanceReference; isPrefabInstance: boolean; prefabReference: InstanceReference | null; overrides: unknown[]; mountedChildren: unknown[]; mountedComponents: unknown[]; removedComponents: unknown[]; overrideCounts: Record<'propertyOverrides' | 'mountedChildren' | 'mountedComponents' | 'removedComponents', number>; totalOverrides: number; truncated: boolean; responseTruncated: boolean; readBackTruncated: boolean; source: { id: string; url: string; sha256: string } | null; readBack: unknown };
     /** Full restore remains distinct; selective removed-component restore uses an authoritative prefab fileID. Nonempty arbitrary paths remain unsupported. */
