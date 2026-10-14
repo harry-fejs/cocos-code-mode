@@ -976,6 +976,8 @@ declare namespace ccp3x {
     function skeletalAnimationEvents(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; maxEvents?: number; timeoutMs?: number }): Record<string, unknown>;
     /** Exact attached Game View Animation/SkeletalAnimation clip read; no playback mutation. */
     function animationPlaybackObserve(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; timeoutMs?: number }): Record<string, unknown>;
+    /** Read runtime clip identities without playback/state creation; duplicate names are flagged. */
+    function animationClipInventory(args: { sessionId: string; nodeReference: { id: string }; componentId: string; maxClips?: number; timeoutMs?: number }): { success: true; sessionId: string; targetId: string; nodeUuid: string; componentId: string; clips: Array<{ clipName: string; clipUuid: string; uniqueName: boolean }>; totalClips: number; truncated: boolean };
     /** Component controls refuse other active clips; exact requested clip read-back. No replay on unknown outcome. */
     function animationPlaybackControl(args: { sessionId: string; nodeReference: { id: string }; componentId: string; operation: 'play' | 'pause' | 'resume' | 'stop'; clipName: string; clipUuid: string; timeoutMs?: number }): Record<string, unknown>;
     /** Observe only events emitted after listener registration; finite deadline and cleanup, no playback dispatch. */

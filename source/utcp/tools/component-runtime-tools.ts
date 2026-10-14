@@ -49,6 +49,14 @@ function validateSkeletal(args: SkeletalArgs, operation: string): ComponentOpera
 }
 
 export class ComponentRuntimeTools {
+    @utcpTool('animationClipInventory', 'List bounded clip name/UUID identities on one exact Game View Animation component. Duplicate names are flagged; no getState/playback/listeners or edit-scene fallback.', { type: 'object', additionalProperties: false, properties: { ...targetProperties, maxClips: { type: 'integer', minimum: 1, maximum: 128, default: 32 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } }, required: ['sessionId', 'nodeReference', 'componentId'] }, { type: 'object', properties: { success: { type: 'boolean' }, sessionId: { type: 'string' }, targetId: { type: 'string' }, nodeUuid: { type: 'string' }, componentId: { type: 'string' }, clips: { type: 'array', maxItems: 128 }, totalClips: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['success', 'sessionId', 'targetId', 'nodeUuid', 'componentId', 'clips', 'totalClips', 'truncated'] }, 'POST', ['animation', 'clips', 'inventory', 'read-only'])
+    async animationClipInventory(args: BaseArgs & { maxClips?: number }) {
+        validateComponentTarget({ sessionId: args?.sessionId ?? '', nodeReference: { id: args?.nodeReference?.id ?? '' }, componentId: args?.componentId }, true);
+        const maxClips = args.maxClips ?? 32;
+        if (!Number.isInteger(maxClips) || maxClips < 1 || maxClips > 128) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'maxClips must be1..128.' });
+        return executeComponentOperation({ kind: 'animation', operation: 'inspect', sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, maxClips, timeoutMs: validateTimeout(args.timeoutMs) });
+    }
+
     @utcpTool('animationPlaybackObserve', 'Read one exact Animation/SkeletalAnimation clip state in attached Creator3.7 Game View. No playback calls, event listeners or edit-scene substitution. Spine/DragonBones unsupported.', {
         type: 'object', additionalProperties: false, properties: { ...targetProperties, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } }, required: ['sessionId', 'nodeReference', 'componentId', 'clipName', 'clipUuid'],
     }, componentOutputSchema, 'POST', ['animation', 'observe', 'runtime', 'read-only'])

@@ -7,6 +7,7 @@ export interface ComponentOperation extends ComponentTarget {
     kind: 'particle' | 'animation' | 'skeletal' | 'events' | 'graph'; operation: string; clipName?: string; clipUuid?: string;
     timeoutMs?: number; maxEvents?: number; variable?: { name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean; expectedValue?: number | boolean };
     expectedGraphUuid?: string;
+    maxClips?: number;
 }
 interface RuntimeClip { name: string; uuid: string }
 interface RuntimeState { clip: RuntimeClip; isPlaying: boolean; isPaused: boolean; time?: unknown; duration?: unknown; speed?: unknown }
@@ -118,6 +119,27 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
         if (args.kind === 'animation' || args.kind === 'skeletal' || args.kind === 'events') {
             const clipsValue: unknown = c.clips;
             if (!Array.isArray(clipsValue) || clipsValue.length > 256) fail('UNSUPPORTED_RUNTIME_COMPONENT', 'Animation clips/state API is unavailable or exceeds 256 clips.');
+            const clipList = clipsValue as unknown[];
+            if (args.operation === 'inspect' && args.kind === 'animation') {
+                assertDeadline();
+                const limit = args.maxClips ?? 32;
+                if (!Number.isInteger(limit) || limit < 1 || limit > 128) fail('INVALID_ARGUMENT', 'maxClips must be1..128.');
+                const inventory: Array<{ clipName: string; clipUuid: string; uniqueName: boolean }> = [];
+                const names = new Map<string, number>();
+                for (const candidate of clipList) {
+                    const clip = objectValue(candidate);
+                    if (!clip || typeof clip.name !== 'string' || !clip.name || clip.name.length > 256 || typeof clip.uuid !== 'string' || !clip.uuid || clip.uuid.length > 256) fail('INVALID_RUNTIME_RESPONSE', 'Runtime clip identity is unavailable or exceeds bounds.');
+                    const name = (clip as RuntimeValue).name as string;
+                    names.set(name, (names.get(name) ?? 0) + 1);
+                }
+                for (const candidate of clipList.slice(0, limit)) {
+                    const clip = candidate as RuntimeClip;
+                    inventory.push({ clipName: clip.name, clipUuid: clip.uuid, uniqueName: names.get(clip.name) === 1 });
+                }
+                assertTarget(); assertDeadline();
+                if (c.clips !== clipsValue || clipList.some((candidate, index) => { const clip = candidate as RuntimeClip; return index < inventory.length && (clip.name !== inventory[index].clipName || clip.uuid !== inventory[index].clipUuid); })) fail('RUNTIME_TARGET_CHANGED', 'Clip inventory changed during inspection.');
+                return { ...identity, clips: inventory, totalClips: clipList.length, truncated: clipList.length > limit };
+            }
             const clips = (clipsValue as unknown[]).filter((value: unknown): value is RuntimeClip => { const item = objectValue(value); return !!item && typeof item.name === 'string' && typeof item.uuid === 'string' && item.name === args.clipName; });
             if (clips.length !== 1 || clips[0].uuid !== args.clipUuid) fail('ANIMATION_CLIP_NOT_FOUND', 'Clip name must identify exactly one clip with the requested UUID.');
             const clip = clips[0]; const getState = requireDefined(c.getState, 'animation getState').bind(c); const state = requireDefined(getState(args.clipName!), 'animation state');
@@ -187,7 +209,7 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
 
 export function createComponentOperationSource(args: ComponentOperation): string {
     const timeoutMs = args.timeoutMs ?? 1000;
-    const data = { kind: args.kind, operation: args.operation, nodeReference: { id: args.nodeReference.id }, componentId: args.componentId, clipName: args.clipName, clipUuid: args.clipUuid, maxEvents: args.maxEvents, expectedGraphUuid: args.expectedGraphUuid, variable: args.variable ? { name: args.variable.name, type: args.variable.type, value: args.variable.value, expectedValue: args.variable.expectedValue } : undefined, expiresAt: Date.now() + timeoutMs };
+    const data = { kind: args.kind, operation: args.operation, nodeReference: { id: args.nodeReference.id }, componentId: args.componentId, clipName: args.clipName, clipUuid: args.clipUuid, maxEvents: args.maxEvents, maxClips: args.maxClips, expectedGraphUuid: args.expectedGraphUuid, variable: args.variable ? { name: args.variable.name, type: args.variable.type, value: args.variable.value, expectedValue: args.variable.expectedValue } : undefined, expiresAt: Date.now() + timeoutMs };
     return `(() => { const requireDefined = ${requireDefined.toString()}; const finiteNumber = ${finiteNumber.toString()}; const objectValue = ${objectValue.toString()}; const resolveComponent = ${resolveComponent.toString()}; return (${componentOperation.toString()})(${JSON.stringify(data)}); })()`;
 }
 
