@@ -184,6 +184,26 @@ declare namespace ccp3x {
         outputsTruncated: boolean
     };
 
+    /** Inspect typed model importer settings and up to 128 imported outputs; outputsTruncated means validation cannot claim complete coverage. */
+    function modelImportInspect(args: { reference: InstanceReference }): {
+        reference: InstanceReference,
+        importer: string,
+        settings: Record<string, unknown>,
+        schema: Record<string, unknown>,
+        outputs: Array<Record<string, unknown>>,
+        totalOutputs: number,
+        outputsTruncated: boolean
+    };
+
+    /** Validate imported model output identities and settings; truncated inventories return valid=false. */
+    function modelImportValidate(args: { reference: InstanceReference }): {
+        valid: boolean,
+        reference: InstanceReference,
+        importer: string,
+        issues: Array<{ code: string; index?: number; message?: string }>,
+        outputs: Array<Record<string, unknown>>
+    };
+
     /** Assign a platform-aware Creator texture-compression preset and return deterministic reimport evidence. */
     function assetCompressionConfigure(args: {
         reference: InstanceReference,
