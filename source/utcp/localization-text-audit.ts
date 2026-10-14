@@ -5,6 +5,7 @@ export interface TranslationTextDiagnostics {
     uncoveredCharacters: string[];
     characterCoverageChecked: boolean;
     placeholderSyntax: TranslationPlaceholderSyntax;
+    syntaxSupported: boolean;
     runtimeVerified: false;
 }
 
@@ -14,6 +15,8 @@ export function auditTranslationText(base: string, translated: string, supported
     const placeholders = (value: string): Set<string> => new Set(Array.from(value.matchAll(pattern), match => match[1]));
     const expected = placeholders(base);
     const actual = placeholders(translated);
+    const unsupported = (value: string) => syntax === 'i18next' && /\{\{|\}\}/.test(value.replace(pattern, ''));
+    const syntaxSupported = !unsupported(base) && !unsupported(translated);
     const supported = supportedCharacters === undefined ? undefined : new Set(supportedCharacters);
     const uncovered = new Set<string>();
     if (supported) {
@@ -24,6 +27,6 @@ export function auditTranslationText(base: string, translated: string, supported
         missingPlaceholders: [...expected].filter(name => !actual.has(name)).sort(),
         extraPlaceholders: [...actual].filter(name => !expected.has(name)).sort(),
         uncoveredCharacters: [...uncovered].sort(), characterCoverageChecked: supported !== undefined,
-        placeholderSyntax: syntax, runtimeVerified: false,
+        placeholderSyntax: syntax, syntaxSupported, runtimeVerified: false,
     };
 }

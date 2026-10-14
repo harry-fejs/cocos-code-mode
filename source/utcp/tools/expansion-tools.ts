@@ -306,6 +306,7 @@ export class ExpansionTools {
                 if (expected === undefined || translated === undefined) { issues.push({ locale, key, code: expected === undefined ? 'BASE_VALUE_UNAVAILABLE' : 'TRANSLATION_UNAVAILABLE' }); continue; }
                 checkedTranslations++;
                 const result = auditTranslationText(expected, translated, args.supportedCharacters, args.placeholderSyntax);
+                if (!result.syntaxSupported) { complete = false; issues.push({ locale, key, code: 'PLACEHOLDER_SYNTAX_UNSUPPORTED' }); }
                 if (!translated.trim()) issues.push({ locale, key, code: 'EMPTY_TRANSLATION' });
                 if (result.missingPlaceholders.length || result.extraPlaceholders.length) issues.push({ locale, key, code: 'PLACEHOLDER_MISMATCH', missingPlaceholders: result.missingPlaceholders, extraPlaceholders: result.extraPlaceholders });
                 if (result.uncoveredCharacters.length) issues.push({ locale, key, code: 'CHARACTER_NOT_IN_REPERTOIRE', uncoveredCharacters: result.uncoveredCharacters });

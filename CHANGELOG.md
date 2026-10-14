@@ -27,6 +27,7 @@
 - Add official localization resource-list inspection for bounded languages/default/fallback metadata and missing-inclusion diagnostics; no switch, restart or runtime fallback inference.
 - Add official configured fallback table coverage with direct/empty/fallback/missing/unknown outcomes and resource-config recheck; no runtime fallback or language-switch claim.
 - Add explicit i18next identifier interpolation syntax to localization text audit, preserving simple-brace default; no nesting/formatter/ICU evaluation.
+- Report unsupported/unclosed i18next delimiter syntax and refuse text-audit completeness instead of silently ignoring unmatched tokens.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
