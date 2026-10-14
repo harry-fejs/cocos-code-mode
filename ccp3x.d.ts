@@ -507,6 +507,31 @@ declare namespace ccp3x {
         spriteFrameCount: number
     };
 
+    /** Inspect 1–32 images. Check each result.truncated; the batch envelope does not aggregate SpriteFrame truncation. */
+    function imageAssetBatchInspect(args: { references: InstanceReference[]; maxFrames?: number }): {
+        items: Array<
+            { index: number; ok: true; result: ReturnType<typeof imageAssetInspect> } |
+            { index: number; ok: false; reference: InstanceReference; error: { message: string } }
+        >;
+        succeeded: number; failed: number; truncated: false;
+    };
+    /** Validate 1–32 image importer metadata results, not decoding or rendered output. succeeded includes valid=false. */
+    function imageAssetBatchValidate(args: { references: InstanceReference[] }): {
+        outcomes: Array<
+            { index: number; ok: true; result: ReturnType<typeof imageAssetValidate> } |
+            { index: number; ok: false; reference: InstanceReference; error: { message: string } }
+        >;
+        succeeded: number; failed: number; invalid: number; partial: boolean;
+    };
+    /** Bounded metadata only. Compare spriteFrames.length with totalSpriteFrames for capped outputs; inspect each dependency direction's truncated flag. */
+    function imageDependencyImpactInspect(args: { reference: InstanceReference; limit?: number; maxFrames?: number; resolveAssets?: boolean }): {
+        reference: InstanceReference;
+        spriteFrames: ReturnType<typeof imageAssetInspect>['spriteFrames'];
+        totalSpriteFrames: number;
+        dependencies: ReturnType<typeof assetFindReferences>;
+        users: ReturnType<typeof assetFindReferences>;
+    };
+
     function imageSourceMetadataInspect(args: { reference: InstanceReference }): {
         reference: InstanceReference,
         source: { url: string | null; bytes: number },
