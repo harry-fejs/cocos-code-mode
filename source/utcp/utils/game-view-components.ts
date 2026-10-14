@@ -154,7 +154,17 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
             if (clips.length !== 1 || clips[0].uuid !== args.clipUuid) fail('ANIMATION_CLIP_NOT_FOUND', 'Clip name must identify exactly one clip with the requested UUID.');
             const clip = clips[0]; const getState = requireDefined(c.getState, 'animation getState').bind(c); const state = requireDefined(getState(args.clipName!), 'animation state');
             if (state.clip !== clip || typeof state.isPlaying !== 'boolean' || typeof state.isPaused !== 'boolean') fail('UNSUPPORTED_RUNTIME_COMPONENT', 'The named AnimationState is unavailable or identifies another clip.');
-            const assertAnimation = () => { assertTarget(); if (getState(args.clipName!) !== state || state.clip !== clip || clip.uuid !== args.clipUuid || clip.name !== args.clipName || !Array.isArray(c.clips) || !c.clips.includes(clip)) fail('RUNTIME_TARGET_CHANGED', 'Animation clip/state identity changed.'); };
+            const assertAnimation = () => {
+                assertTarget();
+                if (getState(args.clipName!) !== state || state.clip !== clip || clip.uuid !== args.clipUuid || clip.name !== args.clipName || !Array.isArray(c.clips) || c.clips.length > 256) fail('RUNTIME_TARGET_CHANGED', 'Animation clip/state identity changed.');
+                let matches = 0;
+                for (const candidate of c.clips as Array<RuntimeClip | null>) {
+                    if (candidate?.name !== args.clipName) continue;
+                    if (candidate !== clip) fail('RUNTIME_TARGET_CHANGED', 'Animation clip name became ambiguous.');
+                    matches++;
+                }
+                if (matches !== 1) fail('RUNTIME_TARGET_CHANGED', 'Animation clip name no longer identifies exactly one clip.');
+            };
             const snapshot = () => ({ playing: state.isPlaying, paused: state.isPaused, time: finiteNumber(state.time), duration: finiteNumber(state.duration), speed: finiteNumber(state.speed) });
             const skeletalCtor = cc.SkeletalAnimation ?? cc.js?.getClassByName('cc.SkeletalAnimation');
             const animationIdentity = { ...identity, componentType: args.kind === 'skeletal' ? 'cc.SkeletalAnimation' : typeof skeletalCtor === 'function' && c instanceof skeletalCtor ? 'cc.SkeletalAnimation' : 'cc.Animation', clipName: clip.name, clipUuid: clip.uuid };
