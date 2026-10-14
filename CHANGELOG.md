@@ -42,6 +42,7 @@
 - Add project/path/config/index-bound bundle revisions and expectedRevision paging refusal; resource payload bytes and atomic pair coherence remain unverified.
 - Respect native null Animation clip slots during other-active-clip playback checks; retain busy-clip pre-dispatch refusal.
 - Recheck exact animation clip/state identity immediately before playback dispatch, refusing preflight drift before mutation.
+- Expose emitted bundle UUID tokens and exact path/type address ambiguity across the full resource metadata, independent of page caps; runtime lookup/decode remains unverified.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

@@ -34,12 +34,16 @@ export class AssetBundleRuntimeTools {
         const files = [{ name: artifact.configFile, bytes: artifact.config.length, sha256: createHash('sha256').update(artifact.config).digest('hex') }, { name: artifact.indexFile, bytes: artifact.index.length, sha256: createHash('sha256').update(artifact.index).digest('hex') }];
         const revision = createHash('sha256').update(JSON.stringify([project, artifact.root, artifact.name, artifact.version, files])).digest('hex');
         if (args.expectedRevision !== undefined && args.expectedRevision !== revision) throw new ToolError({ code: 'BUNDLE_ARTIFACT_CHANGED', status: 409, message: 'Bundle identity/config/index revision changed; restart resource paging.' });
-        const config = JSON.parse(artifact.config.toString('utf8')) as { paths: Record<string, unknown[]>; types?: string[] };
+        const config = JSON.parse(artifact.config.toString('utf8')) as { paths: Record<string, unknown[]>; types?: string[]; uuids: string[]; debug?: boolean };
         const entries = Object.entries(config.paths);
         if (resourceOffset > entries.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'resourceOffset exceeds current resource count.' });
+        const resourceType = (entry: unknown[]) => typeof entry[1] === 'string' ? entry[1] : config.types?.[entry[1] as number] ?? null;
+        const addressCounts = new Map<string, number>();
+        for (const [, entry] of entries) { const address = JSON.stringify([entry[0], resourceType(entry)]); addressCounts.set(address, (addressCounts.get(address) ?? 0) + 1); }
         const resources = entries.slice(resourceOffset, resourceOffset + limit).map(([index, entry]) => {
             if (typeof entry[0] !== 'string' || !entry[0] || entry[0].length > 256 || /[\u0000-\u001f\u007f]/.test(entry[0])) throw new ToolError({ code: 'INVALID_BUNDLE_RESOURCE', status: 422, message: 'Bundle resource path metadata is malformed or exceeds bounds.' });
-            return { index, path: entry[0], type: typeof entry[1] === 'string' ? entry[1] : config.types?.[entry[1] as number] ?? null };
+            const type = resourceType(entry);
+            return { index, path: entry[0], type, emittedUuid: config.debug === true ? index : config.uuids[Number(index)], uniqueAddress: addressCounts.get(JSON.stringify([entry[0], type])) === 1 };
         });
         const nextOffset = resourceOffset + resources.length < entries.length ? resourceOffset + resources.length : null;
         return { bundleName: artifact.name, version: artifact.version, files, revision, resources, resourceCount: entries.length, resourceOffset, nextOffset, truncated: nextOffset !== null, writes: false as const, runtimeVerified: false as const,
