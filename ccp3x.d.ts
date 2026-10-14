@@ -348,6 +348,21 @@ declare namespace ccp3x {
         valid: boolean; issues: string[]; clipCount: number;
     };
 
+    /** Scene-side discovery, not playback qualification. total counts returned findings, not all scene components; inspect both truncation levels. */
+    function animationCatalogInspect(args: { nodeReference: InstanceReference; maxItems?: number }): {
+        nodeReference: { id: string; type: 'cc.Node' }; nodeUuid: string | null;
+        findings: Array<{
+            node: { id: string | null; name: string | null }; component: string;
+            animations: Array<{ name: string | null; uuid: string | null; duration: number | null; source: 'clip' | 'spine-runtime' }>;
+            totalAnimations: number; truncated: boolean;
+        }>;
+        total: number; truncated: boolean;
+    };
+    /** Lists regular Animation components, not SkeletalAnimation/Spine. No finite traversal or response cap is currently exposed. */
+    function animationComponentsList(args?: { nodeReference?: InstanceReference; recursive?: boolean }): {
+        animations: Array<{ nodeUuid: string | null; defaultClip: string | null; clips: string[] }>;
+    };
+
     /** Configure serialized SkeletalAnimation fields with read-back; failure restores attempted fields or throws rollback failure. */
     function skeletalAnimationConfigure(args: { reference: InstanceReference; properties: { playOnLoad?: boolean; useBakedAnimation?: boolean } }): {
         reference: InstanceReference,
