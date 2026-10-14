@@ -914,6 +914,7 @@ export const methods = {
         const previousClipUuids = previousClips.map((candidate: any) => candidate?.uuid ?? null);
         const nextClips = previousClips.slice();
         if (!nextClips.some((candidate: any) => candidate?.uuid === request.clipUuid)) nextClips.push(clip);
+        const expectedClipUuids = nextClips.map((candidate: any) => candidate?.uuid ?? null);
         const clipName = typeof request.clipName === 'string' && request.clipName ? request.clipName : (clip.name ?? request.clipUuid);
         const serialized = await (globalThis as any).Editor.Message.request('scene', 'query-component', animation.uuid);
         const clipsProperty = serialized?.value?.clips;
@@ -937,8 +938,10 @@ export const methods = {
         const applied = await (globalThis as any).Editor.Message.request('scene', 'set-property', { uuid: request.nodeUuid, path: `__comps__.${componentIndex}.clips`, dump: { value: entries, type: clipsProperty.type } });
         if (applied === false) throw new Error('Creator refused Animation clip assignment');
         await requireCurrentTarget();
-        const readBack = (Array.isArray(animation.clips) ? animation.clips : []).find((candidate: any) => candidate?.uuid === request.clipUuid);
-        if (!readBack) throw new Error('Animation clip assignment read-back failed');
+        const readBackClips = Array.isArray(animation.clips) ? animation.clips : [];
+        if (readBackClips.length !== expectedClipUuids.length || expectedClipUuids.some((uuid: string | null, index: number) => (readBackClips[index]?.uuid ?? null) !== uuid)) {
+            throw new Error('Animation clip inventory read-back failed; inspect the component before retrying');
+        }
         return { nodeUuid: request.nodeUuid, clipUuid: request.clipUuid, clipName, clips: animation.clips.map((candidate: any) => ({ uuid: candidate?.uuid ?? null, name: candidate?.name ?? null })), success: true };
     },
 
