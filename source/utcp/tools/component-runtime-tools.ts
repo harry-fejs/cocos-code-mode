@@ -49,6 +49,15 @@ function validateSkeletal(args: SkeletalArgs, operation: string): ComponentOpera
 }
 
 export class ComponentRuntimeTools {
+    @utcpTool('animationPlaybackObserve', 'Read one exact Animation/SkeletalAnimation clip state in attached Creator3.7 Game View. No playback calls, event listeners or edit-scene substitution. Spine/DragonBones unsupported.', {
+        type: 'object', additionalProperties: false, properties: { ...targetProperties, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } }, required: ['sessionId', 'nodeReference', 'componentId', 'clipName', 'clipUuid'],
+    }, componentOutputSchema, 'POST', ['animation', 'observe', 'runtime', 'read-only'])
+    async animationPlaybackObserve(args: SkeletalArgs): Promise<Record<string, unknown>> {
+        validateComponentTarget({ sessionId: args?.sessionId ?? '', nodeReference: { id: args?.nodeReference?.id ?? '' }, componentId: args?.componentId }, true);
+        requireComponentText(args.clipName, 'clipName'); requireComponentText(args.clipUuid, 'clipUuid');
+        return executeComponentOperation({ kind: 'animation', operation: 'observe', sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, clipName: args.clipName!, clipUuid: args.clipUuid!, timeoutMs: validateTimeout(args.timeoutMs) });
+    }
+
     @utcpTool('skeletalAnimationPlay', 'Play, pause, resume, stop or observe one exact cc.SkeletalAnimation clip in Game View. observe is read-only; Spine and DragonBones are unsupported.', {
         type: 'object', additionalProperties: false, properties: { ...targetProperties, operation: { type: 'string', enum: ['play', 'pause', 'resume', 'stop', 'observe'] }, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } },
         required: ['sessionId', 'nodeReference', 'componentId', 'operation', 'clipName', 'clipUuid'],
