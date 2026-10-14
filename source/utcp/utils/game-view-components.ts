@@ -104,12 +104,14 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
         const assertTarget = () => { if (!valid()) fail('RUNTIME_TARGET_CHANGED', 'Game View node/component identity changed.'); };
         const assertDeadline = () => { if (Date.now() >= args.expiresAt) fail('RUNTIME_STATE_TIMEOUT', 'Component operation deadline expired.'); };
         if (args.kind === 'particle') {
-            if (typeof c.play !== 'function' || typeof c.stop !== 'function' || typeof c.clear !== 'function' || typeof c.getParticleCount !== 'function') fail('UNSUPPORTED_RUNTIME_COMPONENT', 'ParticleSystem playback APIs are unavailable.');
+            if (typeof c.getParticleCount !== 'function') fail('UNSUPPORTED_RUNTIME_COMPONENT', 'ParticleSystem count observation API is unavailable.');
             if (!['play', 'stop', 'clear', 'inspect'].includes(args.operation)) fail('INVALID_ARGUMENT', 'Unknown particle operation.');
             assertDeadline();
             if (args.operation !== 'inspect') {
+                const method = args.operation === 'play' ? c.play : args.operation === 'stop' ? c.stop : c.clear;
+                if (typeof method !== 'function') fail('UNSUPPORTED_RUNTIME_COMPONENT', 'Requested ParticleSystem playback API is unavailable; no mutation dispatched.');
                 mutated = true;
-                if (args.operation === 'play') c.play!.call(c); else if (args.operation === 'stop') c.stop!.call(c); else c.clear!.call(c);
+                method!.call(c);
             }
             assertTarget();
             const count = finiteNumber(c.getParticleCount!.call(c));
