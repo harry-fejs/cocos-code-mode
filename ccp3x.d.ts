@@ -420,6 +420,19 @@ declare namespace ccp3x {
         issues: Array<Record<string, unknown>>
     };
 
+    function imageSourceMetadataBatchValidate(args: { items: Array<{ reference: InstanceReference; width?: number; height?: number; formats?: string[]; hasAlpha?: boolean; orientation?: number; minDensity?: number; maxDensity?: number; pages?: number }> }): {
+        outcomes: Array<Record<string, unknown>>,
+        succeeded: number,
+        failed: number,
+        invalid: number,
+        partial: boolean
+    };
+    function imageSourceMetadataBatchInspect(args: { references: InstanceReference[] }): {
+        items: Array<Record<string, unknown>>,
+        succeeded: number,
+        failed: number
+    };
+
     /** Perform operations on assets (move, copy, delete, open, refresh, reimport, save_meta). */
     function assetOperate(args: {
         operation: "move" | "copy" | "delete" | "open" | "refresh" | "reimport" | "save_meta" | 'stage_import_setting' | 'apply_import_settings' | 'restore_import_settings',
