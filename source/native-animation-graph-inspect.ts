@@ -75,7 +75,11 @@ export function inspectNativeAnimationGraph(value: unknown) {
                 const path = `$._variables.${name}`, variable = resolve(declarations[name], path);
                 if (!variable) continue;
                 if (variable.__type__ !== `${PREFIX}PlainVariable` && variable.__type__ !== `${PREFIX}TriggerVariable`) issue('UNSUPPORTED_VARIABLE_TYPE', path);
-                variables.push({ name: text(name), serializedType: text(variable.__type__), type: scalar(variable._type), value: scalar(variable._value), flags: scalar(variable._flags) });
+                const trigger = variable.__type__ === `${PREFIX}TriggerVariable`;
+                const flags = variable._flags;
+                const triggerFlagsValid = typeof flags === 'number' && Number.isInteger(flags) && flags >= 0 && flags <= 3;
+                if (trigger && !triggerFlagsValid) issue('INVALID_TRIGGER_FLAGS', path);
+                variables.push({ name: text(name), serializedType: text(variable.__type__), type: trigger ? 2 : scalar(variable._type), value: trigger ? triggerFlagsValid ? !!((flags as number) & 1) : null : scalar(variable._value), flags: scalar(flags) });
             }
         }
     }

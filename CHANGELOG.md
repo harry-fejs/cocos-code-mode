@@ -15,6 +15,7 @@
 - Add native blend parameter diagnostics for missing/non-numeric variable bindings and nonfinite constant inputs; no algorithm/runtime validity inference.
 - Diagnose nonfinite native blend thresholds/direct weights and malformed 2D threshold vectors; no guessed normalization or algorithm semantics.
 - Diagnose native condition operator bounds, numeric/boolean operand constants and variable type compatibility, including trigger-only references; runtime evaluation remains unverified.
+- Correct native TriggerVariable flag decoding so valid trigger conditions are not falsely diagnosed; report invalid trigger flags and malformed PlainVariable defaults.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

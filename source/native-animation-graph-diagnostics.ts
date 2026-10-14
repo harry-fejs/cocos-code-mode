@@ -12,6 +12,14 @@ export function diagnoseNativeGraphReferences(graph: ReturnType<typeof inspectNa
         if (typeof name === 'string' && name && !declared.has(name)) add({ code: 'UNDECLARED_VARIABLE', id, variable: name });
     };
     const types = new Map(graph.variables.map(row => [row.name, row.type]));
+    for (const declaration of graph.variables) {
+        const id = `variable:${String(declaration.name)}`;
+        if (declaration.serializedType === 'cc.animation.PlainVariable') {
+            if (![0, 1, 3].includes(declaration.type as number)) add({ code: 'INVALID_VARIABLE_TYPE', id });
+            else if (declaration.type === 1 ? typeof declaration.value !== 'boolean'
+                : typeof declaration.value !== 'number' || !Number.isFinite(declaration.value) || declaration.type === 3 && !Number.isInteger(declaration.value)) add({ code: 'INVALID_VARIABLE_DEFAULT', id });
+        }
+    }
     const operandType = (input: unknown, id: string, numeric: boolean) => {
         if (!input || typeof input !== 'object') { add({ code: 'INVALID_CONDITION_OPERAND', id }); return; }
         const operand = input as Row;
