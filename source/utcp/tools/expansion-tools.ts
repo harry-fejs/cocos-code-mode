@@ -1397,7 +1397,7 @@ export class ExpansionTools {
             const playOnAwake = propertyValue(props.playOnAwake);
             const name = nodeName(node);
             if (clip === null || clip === undefined || clip === '') issues.push(`${name}: missing clip`);
-            if (typeof volume !== 'number' || volume < 0 || volume > 1) issues.push(`${name}: volume must be between 0 and 1`);
+            if (typeof volume !== 'number' || !Number.isFinite(volume) || volume < 0 || volume > 1) issues.push(`${name}: volume must be between 0 and 1`);
             return { node: { id: node.uuid, type: 'cc.Node' }, name, clip, volume, loop, playOnAwake };
         }));
         return { valid: issues.length === 0, sources, issues, checkedSources: sources.length };

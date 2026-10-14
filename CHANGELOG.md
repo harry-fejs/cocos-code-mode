@@ -73,6 +73,7 @@
 - Align model output inspection with validation: malformed imported sub-assets fail before publication instead of being returned as stable output metadata.
 - Refuse model importer validation when output inventory is truncated at the 128-entry inspection bound; validation no longer claims complete coverage.
 - Restore missing-output refusal in model importer validation alongside the truncation guard; an empty inventory is never valid.
+- Reject non-finite AudioSource volume in serialized audio audit instead of granting valid=true for NaN.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
