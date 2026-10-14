@@ -184,6 +184,28 @@ declare namespace ccp3x {
         outputsTruncated: boolean
     };
 
+    /** Imported script metadata only. Missing class identity is null; dependencies are capped at maxDependencies (1–128). Does not compile or execute source. */
+    function scriptAssetInspect(args: { reference: InstanceReference; maxDependencies?: number }): {
+        reference: InstanceReference;
+        className: string | null;
+        classId: string | null;
+        url: string;
+        importer: string;
+        bytes: number;
+        dependencies: string[];
+        totalDependencies: number;
+        truncated: boolean;
+    };
+
+    /** Validate exposed script class identity, not compilation, runtime behavior, or complete dependency coverage. */
+    function scriptAssetValidate(args: { reference: InstanceReference }): {
+        valid: boolean;
+        reference: InstanceReference;
+        issues: Array<{ code: 'SCRIPT_NAME_UNAVAILABLE' | 'SCRIPT_CLASS_ID_UNAVAILABLE' }>;
+        className: string | null;
+        classId: string | null;
+    };
+
     /** Inspect typed model importer settings and up to 128 imported outputs; outputsTruncated means validation cannot claim complete coverage. */
     function modelImportInspect(args: { reference: InstanceReference }): {
         reference: InstanceReference,
