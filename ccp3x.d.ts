@@ -362,6 +362,7 @@ declare namespace ccp3x {
         dynamicLoadCaveat: string
     };
 
+
     /** Overwrite the content of an existing text-based asset (TypeScript, JSON, effect, txt...). Identify by db:// path or uuid. Binary not supported. */
     function assetSaveContent(args: { assetPath?: string, reference?: InstanceReference, content: string }): { reference: InstanceReference, filesystemPath?: string };
 
