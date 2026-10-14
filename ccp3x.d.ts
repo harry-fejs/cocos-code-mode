@@ -204,6 +204,21 @@ declare namespace ccp3x {
         outputs: Array<Record<string, unknown>>
     };
 
+    /** Inspect up to 128 imported model outputs with stable identities; truncated is true when the inventory exceeds maxOutputs. */
+    function modelImportOutputsInspect(args: { reference: InstanceReference; maxOutputs?: number }): {
+        reference: InstanceReference,
+        outputs: Array<{
+            uuid: string,
+            url: string,
+            type: string,
+            importer: string | null,
+            name: string | null,
+            userData: unknown
+        }>,
+        total: number,
+        truncated: boolean
+    };
+
     /** Assign a platform-aware Creator texture-compression preset and return deterministic reimport evidence. */
     function assetCompressionConfigure(args: {
         reference: InstanceReference,
