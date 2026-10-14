@@ -76,6 +76,8 @@ Finite component routes use the attached Game View session and exact node/compon
 
 Implementation-only additions: `skeletalAnimationPlay({operation:'observe', ...})` and `skeletalAnimationWaitForState` read one exact clip without playback mutation or event listeners. Wait requires at least one `playing`, `paused` or `minTime` condition; caller deadline is 100–10000ms. `buildTaskOutputInspect` derives the output directory from one successful native task and hashes 1–64 explicit expected files under a bounded byte budget. It returns `producerVerified:false`: task linkage is not producer freshness, packaging, device or launch proof. Full regression and Creator-live qualification remain deferred.
 
+`localizationTableTextAudit` compares `{identifier}` placeholder names against an explicit base locale and optionally reports characters absent from a supplied repertoire. It reads official localization tables only. This is not ICU/printf validation, native font glyph extraction, shaping, layout, fallback resolution or runtime qualification; those gaps remain in the central API plan.
+
 * QA: `scripts/smoke-utcp.js` (expects 88) · Perf: `a769a46` bench + `e419276` trim.
 
 
