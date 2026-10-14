@@ -915,7 +915,8 @@ export class AdvancedCapabilityTools {
         if (typeof messages.addBroadcastListener !== 'function' || typeof messages.removeBroadcastListener !== 'function') throw new ToolError({ code: 'UNSUPPORTED_BROADCAST_IPC', status: 422, message: 'Creator broadcast listener lifecycle is unavailable.' });
         const marker = `ccp3x-${Date.now()}`;
         let observed: unknown[] | null = null;
-        const handler = (...payload: unknown[]) => { observed = payload; };
+        let capturing = true;
+        const handler = (...payload: unknown[]) => { if (capturing) observed = payload; };
         const lifecycle: string[] = [];
         try {
             messages.addBroadcastListener(args.topic, handler);
@@ -925,10 +926,12 @@ export class AdvancedCapabilityTools {
             await new Promise((resolve) => setTimeout(resolve, 50));
             if (observed !== null) lifecycle.push('observed');
         } finally {
+            capturing = false;
             try {
                 messages.removeBroadcastListener(args.topic, handler);
                 broadcastListeners.delete(handler);
             } catch (error) {
+                observed = null;
                 broadcastListeners.set(handler, { topic: args.topic, state: 'removal-failed' });
                 throw error;
             }
