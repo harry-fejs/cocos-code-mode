@@ -186,6 +186,65 @@ export class ExpansionTools {
         return await Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'inspectLocalization', args: [] }) as any;
     }
 
+    @utcpTool('localizationTableInspect', 'Read selected existing translation keys from official localization-editor main IPC. No language change, restart or write. Missing keys are explicit; returned values have a whole-response byte bound.', {
+        type: 'object', additionalProperties: false,
+        properties: { locale: { type: 'string', minLength: 1, maxLength: 64 }, keys: { type: 'array', minItems: 1, maxItems: 64, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 256 } }, maxBytes: { type: 'integer', minimum: 1024, maximum: 65536, default: 16384 } }, required: ['locale', 'keys'],
+    }, { type: 'object', properties: { locale: { type: 'string' }, items: { type: 'array' }, missingKeys: { type: 'array' }, requestedKeys: { type: 'integer' }, totalFound: { type: 'integer' }, totalMissing: { type: 'integer' }, truncated: { type: 'boolean' }, writes: { type: 'boolean', const: false } }, required: ['locale', 'items', 'missingKeys', 'requestedKeys', 'totalFound', 'totalMissing', 'truncated', 'writes'] }, 'POST', ['localization', 'table', 'inspect', 'read-only'])
+    async localizationTableInspect(args: { locale: string; keys: string[]; maxBytes?: number }) {
+        requireCreator38('localizationTableInspect');
+        const maxBytes = args?.maxBytes ?? 16384;
+        if (!args || Object.keys(args).some(key => !['locale', 'keys', 'maxBytes'].includes(key)) || typeof args.locale !== 'string' || !args.locale.trim() || args.locale.length > 64
+            || !Array.isArray(args.keys) || args.keys.length < 1 || args.keys.length > 64 || new Set(args.keys).size !== args.keys.length
+            || args.keys.some(key => typeof key !== 'string' || !key.trim() || key.length > 256 || ['__proto__', 'constructor', 'prototype'].includes(key))
+            || !Number.isInteger(maxBytes) || maxBytes < 1024 || maxBytes > 65536) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide bounded locale, unique keys and maxBytes1024..65536.' });
+        }
+        if (!/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/.test(args.locale)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Locale must be a bounded language tag.' });
+        const raw: unknown = await Editor.Message.request('localization-editor', 'get-translate-data-object', args.locale);
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !('locale' in raw) || raw.locale !== args.locale || !('items' in raw) || !raw.items || typeof raw.items !== 'object' || Array.isArray(raw.items)) {
+            throw new ToolError({ code: 'LOCALIZATION_INVALID_RESPONSE', status: 502, message: 'Official package returned an invalid translation table identity.' });
+        }
+        const table = raw.items as Record<string, unknown>;
+        const response = { locale: args.locale, items: [] as Array<{ key: string; value: string; valueSha256: string }>, missingKeys: [] as string[], requestedKeys: args.keys.length, totalFound: 0, totalMissing: 0, truncated: false, writes: false as const };
+        for (const key of args.keys) {
+            if (!Object.prototype.hasOwnProperty.call(table, key)) { response.missingKeys.push(key); continue; }
+            const item = table[key];
+            if (!item || typeof item !== 'object' || !('key' in item) || item.key !== key || !('value' in item) || typeof item.value !== 'string') throw new ToolError({ code: 'LOCALIZATION_INVALID_RESPONSE', status: 502, message: 'Translation item identity/value is invalid.' });
+            response.items.push({ key, value: item.value, valueSha256: createHash('sha256').update(item.value, 'utf8').digest('hex') });
+        }
+        response.totalFound = response.items.length;
+        response.totalMissing = response.missingKeys.length;
+        while (Buffer.byteLength(JSON.stringify(response), 'utf8') > maxBytes) {
+            response.truncated = true;
+            if (response.items.length) response.items.pop();
+            else if (response.missingKeys.length) response.missingKeys.pop();
+            else throw new ToolError({ code: 'LOCALIZATION_PAYLOAD_TOO_LARGE', status: 422, message: 'Required translation identity exceeds maxBytes.' });
+        }
+        return response;
+    }
+
+    @utcpTool('localizationTableCoverage', 'Compare selected translation keys across explicit official package locales. Reports presence/empty values only; no inferred fallback, font/layout, runtime validity or writes.', {
+        type: 'object', additionalProperties: false,
+        properties: { locales: { type: 'array', minItems: 1, maxItems: 8, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 64 } }, keys: { type: 'array', minItems: 1, maxItems: 64, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 256 } } }, required: ['locales', 'keys'],
+    }, { type: 'object', properties: { complete: { type: 'boolean' }, valid: { type: 'boolean' }, checkedLocales: { type: 'integer' }, checkedKeys: { type: 'integer' }, locales: { type: 'array' }, writes: { type: 'boolean', const: false }, fallbackVerified: { type: 'boolean', const: false } }, required: ['complete', 'valid', 'checkedLocales', 'checkedKeys', 'locales', 'writes', 'fallbackVerified'] }, 'POST', ['localization', 'table', 'coverage', 'read-only'])
+    async localizationTableCoverage(args: { locales: string[]; keys: string[] }) {
+        requireCreator38('localizationTableCoverage');
+        if (!args || Object.keys(args).some(key => !['locales', 'keys'].includes(key)) || !Array.isArray(args.locales) || args.locales.length < 1 || args.locales.length > 8
+            || new Set(args.locales).size !== args.locales.length || args.locales.some(locale => typeof locale !== 'string' || !locale.trim() || locale.length > 64)
+            || !Array.isArray(args.keys) || args.keys.length < 1 || args.keys.length > 64 || new Set(args.keys).size !== args.keys.length
+            || args.keys.some(key => typeof key !== 'string' || !key.trim() || key.length > 256)) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide1..8 distinct locales and1..64 distinct bounded keys.' });
+        }
+        if (args.locales.some(locale => !/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/.test(locale))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Locales must be bounded language tags.' });
+        const locales: Array<{ locale: string; missingKeys: string[]; emptyKeys: string[]; checkedKeys: number; complete: boolean }> = [];
+        for (const locale of args.locales) {
+            const inspected = await this.localizationTableInspect({ locale, keys: args.keys, maxBytes: 65536 });
+            locales.push({ locale, missingKeys: inspected.missingKeys, emptyKeys: inspected.items.filter(item => !item.value.trim()).map(item => item.key), checkedKeys: args.keys.length, complete: !inspected.truncated });
+        }
+        const complete = locales.every(locale => locale.complete);
+        return { complete, valid: complete && locales.every(locale => !locale.missingKeys.length && !locale.emptyKeys.length), checkedLocales: locales.length, checkedKeys: args.keys.length, locales, writes: false as const, fallbackVerified: false as const };
+    }
+
     @utcpTool(
         'localizationTableEdit',
         'Edit one existing localization table value through the official localization-editor main IPC with preflight, conflict guard, read-back and rollback.',
@@ -241,6 +300,9 @@ export class ExpansionTools {
             || typeof record.expectedValue !== 'string' || record.expectedValue.length > 4096) {
             throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'localizationTableEdit requires only locale, key, value and expectedValue within bounded lengths.' });
         }
+        if (!/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/.test(record.locale) || ['__proto__', 'constructor', 'prototype'].includes(record.key)) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Invalid locale or reserved translation key.' });
+        }
         const locale = record.locale;
         const key = record.key;
         const desiredValue = record.value;
@@ -260,6 +322,7 @@ export class ExpansionTools {
         const sha256 = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex');
         const table = await readTable();
         const itemMap = table.items as Record<string, unknown>;
+        if (!Object.prototype.hasOwnProperty.call(itemMap, key)) throw new ToolError({ code: 'LOCALIZATION_KEY_NOT_FOUND', status: 404, message: 'Translation key is absent from the selected locale.' });
         const currentItem = itemMap[key];
         if (!currentItem || typeof currentItem !== 'object' || Array.isArray(currentItem)) throw new ToolError({ code: 'LOCALIZATION_KEY_NOT_FOUND', status: 404, message: `Localization key '${key}' is not present in locale '${locale}'.` });
         const currentRecord = currentItem as Record<string, unknown>;

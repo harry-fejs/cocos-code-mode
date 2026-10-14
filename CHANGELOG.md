@@ -5,6 +5,7 @@
 - Add authoritative build preflight, redacted registered-toolchain inspection and guarded terminal native task options updates. Native task updates explicitly do not persist history or dispatch builds.
 - Add bounded project-code tween create/inspect/static validation with explicit new-source ownership and runtime-unavailable separation; no native tween asset or automatic target binding.
 - Reconcile duplicate workflow overrides, exact source routes and current hashes while preserving approved historical denominator identities separately from reproducible semantic hashes. Current coverage is not fresh live qualification.
+- Add implementation-only official localization table inspection/key coverage across explicit locales and read-only Game View particle state wait. Declarations and discovery guidance included; later full regression/live qualification is pending by owner instruction.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
