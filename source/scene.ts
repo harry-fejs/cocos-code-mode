@@ -885,6 +885,13 @@ export const methods = {
         const animation: any = (Array.isArray(node.components) ? node.components : []).find((component: any) =>
             ['Animation', 'cc.Animation'].includes(String(component?.constructor?.name ?? '')));
         if (!animation) throw new Error('No cc.Animation component found');
+        const animationUuid = animation.uuid;
+        const requireCurrentTarget = async () => {
+            const currentNode = await methods.findRuntimeNodeUuid(request.nodeUuid);
+            if (currentNode !== node || !Array.isArray(currentNode?.components) || !currentNode.components.includes(animation) || animation.uuid !== animationUuid) {
+                throw new Error('Animation assignment target changed; inspect the node before retrying');
+            }
+        };
         let clip: any = (Array.isArray(animation.clips) ? animation.clips : []).find((candidate: any) => candidate?.uuid === request.clipUuid);
         if (!clip) {
             const assets = (globalThis as any).cc?.assetManager?.assets;
@@ -916,8 +923,10 @@ export const methods = {
             return entry;
         });
         await (globalThis as any).Editor.Message.request('scene', 'snapshot');
+        await requireCurrentTarget();
         const applied = await (globalThis as any).Editor.Message.request('scene', 'set-property', { uuid: request.nodeUuid, path: `__comps__.${componentIndex}.clips`, dump: { value: entries, type: clipsProperty.type } });
         if (applied === false) throw new Error('Creator refused Animation clip assignment');
+        await requireCurrentTarget();
         const readBack = (Array.isArray(animation.clips) ? animation.clips : []).find((candidate: any) => candidate?.uuid === request.clipUuid);
         if (!readBack) throw new Error('Animation clip assignment read-back failed');
         return { nodeUuid: request.nodeUuid, clipUuid: request.clipUuid, clipName, clips: animation.clips.map((candidate: any) => ({ uuid: candidate?.uuid ?? null, name: candidate?.name ?? null })), success: true };
