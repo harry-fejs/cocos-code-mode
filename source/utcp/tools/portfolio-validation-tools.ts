@@ -595,7 +595,10 @@ export class PortfolioValidationTools {
         const maxOutputs = args.maxOutputs ?? 64;
         if (!Number.isInteger(maxOutputs) || maxOutputs < 1 || maxOutputs > 128) invalid('maxOutputs must be an integer from 1 to 128.');
         const raw = asset.subAssets && typeof asset.subAssets === 'object' ? Object.values(asset.subAssets as Record<string, any>) : [];
-        const outputs = raw.slice(0, maxOutputs).map((output: any) => ({ uuid: output.uuid ?? null, url: output.url ?? null, type: output.type ?? null, importer: output.importer ?? null, name: output.name ?? null, userData: output.userData ?? null }));
+        const outputs = raw.slice(0, maxOutputs).map((output: any, index) => {
+            if (!output || typeof output !== 'object' || Array.isArray(output) || typeof output.uuid !== 'string' || !output.uuid || typeof output.url !== 'string' || !output.url || typeof output.type !== 'string' || !output.type) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: `Imported model output ${index} has incomplete identity.` });
+            return { uuid: output.uuid, url: output.url, type: output.type, importer: output.importer ?? null, name: output.name ?? null, userData: output.userData ?? null };
+        });
         return { reference: assetReference(asset, args.reference.id), outputs, total: raw.length, truncated: raw.length > outputs.length };
     }
 

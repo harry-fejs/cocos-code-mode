@@ -70,6 +70,7 @@
 - Bound skeleton importer JSON reads through one file handle and refuse observed file growth/replacement before metadata validation.
 - Reject sparse animation metadata arrays instead of skipping missing slots; retain dense empty/duplicate entries for diagnostics.
 - Fail closed on imported model sub-assets with missing UUID, URL or type; malformed settings are not considered valid importer output.
+- Align model output inspection with validation: malformed imported sub-assets fail before publication instead of being returned as stable output metadata.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
