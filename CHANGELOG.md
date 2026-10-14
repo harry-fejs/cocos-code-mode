@@ -16,6 +16,7 @@
 - Diagnose nonfinite native blend thresholds/direct weights and malformed 2D threshold vectors; no guessed normalization or algorithm semantics.
 - Diagnose native condition operator bounds, numeric/boolean operand constants and variable type compatibility, including trigger-only references; runtime evaluation remains unverified.
 - Correct native TriggerVariable flag decoding so valid trigger conditions are not falsely diagnosed; report invalid trigger flags and malformed PlainVariable defaults.
+- Add read-only built data-bundle artifact preflight using the runtime resolver, config/index hashes and capped resource metadata; no server/load/script execution or runtime claim.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

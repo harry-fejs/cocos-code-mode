@@ -5,6 +5,7 @@ import { BUNDLE_RESOURCE_TYPES, BundleResourceType, resolveBundleArtifact, serve
 import { createBundleOperationSource } from '../utils/game-view-bundle';
 import { executeGameViewOperation } from '../utils/game-view-transport';
 import { RuntimeSessionTools } from './runtime-session-tools';
+import { createHash } from 'crypto';
 
 export interface AssetBundleRuntimeValidateArgs {
     sessionId: string; bundlePath: string; bundleName: string;
@@ -17,6 +18,26 @@ const resourceSchema: JsonSchema = {
 };
 
 export class AssetBundleRuntimeTools {
+    @utcpTool('assetBundleArtifactInspect', 'Read-only preflight of an explicit project-local built data bundle using the runtime resolver. Hashes config/index and reports bounded resource paths; does not serve, load, execute scripts or infer resource-file/runtime validity.', {
+        type: 'object', additionalProperties: false, properties: { bundlePath: { type: 'string', minLength: 1, maxLength: 512 }, bundleName: { type: 'string', minLength: 1, maxLength: 128 }, maxResources: { type: 'integer', minimum: 1, maximum: 128, default: 32 } }, required: ['bundlePath', 'bundleName'],
+    }, { type: 'object', properties: { bundleName: { type: 'string' }, version: { type: 'string' }, files: { type: 'array' }, resources: { type: 'array' }, resourceCount: { type: 'integer' }, truncated: { type: 'boolean' }, writes: { type: 'boolean', const: false }, runtimeVerified: { type: 'boolean', const: false }, verificationScope: { type: 'string' } }, required: ['bundleName', 'version', 'files', 'resources', 'resourceCount', 'truncated', 'writes', 'runtimeVerified', 'verificationScope'] }, 'POST', ['asset', 'bundle', 'artifact', 'inspect', 'read-only'])
+    async assetBundleArtifactInspect(args: { bundlePath: string; bundleName: string; maxResources?: number }) {
+        if (!args || Object.keys(args).some(key => !['bundlePath', 'bundleName', 'maxResources'].includes(key))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide only bundlePath, bundleName and optional maxResources.' });
+        const limit = args.maxResources ?? 32;
+        if (!Number.isInteger(limit) || limit < 1 || limit > 128) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'maxResources must be1..128.' });
+        const project = typeof Editor.Project?.path === 'string' ? Editor.Project.path : '';
+        if (!project) throw new ToolError({ code: 'PROJECT_UNAVAILABLE', status: 503, message: 'An active Creator project is required.' });
+        const artifact = resolveBundleArtifact(project, args.bundlePath, args.bundleName);
+        const config = JSON.parse(artifact.config.toString('utf8')) as { paths: Record<string, unknown[]>; types?: string[] };
+        const entries = Object.entries(config.paths);
+        const resources = entries.slice(0, limit).map(([index, entry]) => {
+            if (typeof entry[0] !== 'string' || !entry[0] || entry[0].length > 256 || /[\u0000-\u001f\u007f]/.test(entry[0])) throw new ToolError({ code: 'INVALID_BUNDLE_RESOURCE', status: 422, message: 'Bundle resource path metadata is malformed or exceeds bounds.' });
+            return { index, path: entry[0], type: typeof entry[1] === 'string' ? entry[1] : config.types?.[entry[1] as number] ?? null };
+        });
+        return { bundleName: artifact.name, version: artifact.version, files: [{ name: artifact.configFile, bytes: artifact.config.length, sha256: createHash('sha256').update(artifact.config).digest('hex') }, { name: artifact.indexFile, bytes: artifact.index.length, sha256: createHash('sha256').update(artifact.index).digest('hex') }], resources, resourceCount: entries.length, truncated: entries.length > limit, writes: false as const, runtimeVerified: false as const,
+            verificationScope: 'Contained standalone data-only config/index preflight and hashes of read bytes. Resource payload existence, stable concurrent snapshot, runtime loading and cleanup are not verified.' };
+    }
+
     @utcpTool('assetBundleRuntimeValidate', 'Load one explicit project-local built data bundle in the attached Game View, verify exact cc.assetManager identity and optional typed resource, then releaseAll/removeBundle and verify absence. Preloaded/shared assets are refused. Serves only the approved build folder on temporary loopback; no project scripts or external URLs.', {
         type: 'object', additionalProperties: false,
         properties: {

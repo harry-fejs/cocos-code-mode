@@ -968,6 +968,8 @@ declare namespace ccp3x {
     }): AudioPlaybackResult;
     /** Observe actual Game View audio state without edit-renderer substitution. */
     function audioPlaybackObserve(args: { sessionId: string; nodeReference: { id: string } }): AudioPlaybackResult;
+    /** Build-folder data-only preflight; no serving, load or runtime validity inference. */
+    function assetBundleArtifactInspect(args: { bundlePath: string; bundleName: string; maxResources?: number }): { bundleName: string; version: string; files: Array<{ name: string; bytes: number; sha256: string }>; resources: Array<{ index: string; path: string; type: string | null }>; resourceCount: number; truncated: boolean; writes: false; runtimeVerified: false; verificationScope: string };
     function skeletalAnimationPlay(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; operation: 'play' | 'pause' | 'resume' | 'stop' | 'observe'; timeoutMs?: number }): Record<string, unknown>;
     /** Exact clip state observation only; never starts/pauses/stops playback. Verification pending. */
     function skeletalAnimationWaitForState(args: { sessionId: string; nodeReference: { id: string }; componentId: string; clipName: string; clipUuid: string; playing?: boolean; paused?: boolean; minTime?: number; timeoutMs?: number; pollMs?: number }): { matched: boolean; timedOut: boolean; observations: number; state: Record<string, unknown> };
