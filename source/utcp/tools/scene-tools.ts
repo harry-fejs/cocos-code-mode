@@ -1084,7 +1084,7 @@ export class SceneTools {
         const outcomes: Array<Record<string, unknown>> = [];
         for (const [index, item] of args.items.entries()) {
             try { outcomes.push({ index, ok: true, result: await this.sceneScriptRepair(item) }); }
-            catch (error) { outcomes.push({ index, ok: false, nodeReference: item?.nodeReference, error: { message: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512) } }); }
+            catch (error) { outcomes.push({ index, ok: false, nodeReference: item?.nodeReference, error: { code: error instanceof ToolError ? error.code : 'SCRIPT_REPAIR_FAILED', message: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512), recovery: error instanceof ToolError ? error.recovery?.slice(0, 512) : undefined, retrySafe: false } }); }
         }
         const succeeded = outcomes.filter((outcome) => outcome.ok === true).length;
         return { outcomes, succeeded, failed: outcomes.length - succeeded, partial: succeeded > 0 && succeeded < outcomes.length };
@@ -1143,7 +1143,7 @@ export class SceneTools {
             try {
                 outcomes.push({ index, ok: true, result: await this.sceneScriptAttach({ nodeReference, scriptReference: args.scriptReference }) });
             } catch (error) {
-                outcomes.push({ index, ok: false, nodeReference, error: { message: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512) } });
+                outcomes.push({ index, ok: false, nodeReference, error: { code: error instanceof ToolError ? error.code : 'SCRIPT_ATTACH_FAILED', message: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512), recovery: error instanceof ToolError ? error.recovery?.slice(0, 512) : undefined, retrySafe: false } });
             }
         }
         const succeeded = outcomes.filter((outcome) => outcome.ok === true).length;
@@ -1178,7 +1178,7 @@ export class SceneTools {
             try {
                 outcomes.push({ index, ok: true, result: await this.sceneScriptDetach(item) });
             } catch (error) {
-                outcomes.push({ index, ok: false, nodeReference: item?.nodeReference, error: { message: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512) } });
+                outcomes.push({ index, ok: false, nodeReference: item?.nodeReference, error: { code: error instanceof ToolError ? error.code : 'SCRIPT_DETACH_FAILED', message: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512), recovery: error instanceof ToolError ? error.recovery?.slice(0, 512) : undefined, retrySafe: false } });
             }
         }
         const succeeded = outcomes.filter((outcome) => outcome.ok === true).length;
