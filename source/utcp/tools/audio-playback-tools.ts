@@ -122,7 +122,7 @@ export class AudioPlaybackTools {
         properties: { ...targetProperties, userActivation: { type: 'string', enum: ['active', 'inactive', 'unknown'] }, minDuration: { type: 'number', minimum: 0, maximum: 86400 }, maxDuration: { type: 'number', minimum: 0, maximum: 86400 }, playing: { type: 'boolean' }, minVolume: { type: 'number', minimum: 0, maximum: 1 }, maxVolume: { type: 'number', minimum: 0, maximum: 1 }, loop: { type: 'boolean' }, loaded: { type: 'boolean' }, playbackState: { type: 'string', enum: ['init', 'playing', 'paused', 'stopped', 'interrupted'] }, maxTime: { type: 'number', minimum: 0, maximum: 3600 }, minTime: { type: 'number', minimum: 0, maximum: 3600 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000 } },
         required: ['sessionId', 'nodeReference'],
     }, { type: 'object', additionalProperties: false, properties: { matched: { type: 'boolean', const: true }, observations: { type: 'integer' }, observation: outputSchema }, required: ['matched', 'observations', 'observation'] }, 'POST', ['audio', 'playback', 'wait', 'read-only'])
-    async audioPlaybackWaitForState(args: AudioPlaybackObserveArgs & { userActivation?: 'active' | 'inactive' | 'unknown'; minDuration?: number; maxDuration?: number; playing?: boolean; minVolume?: number; maxVolume?: number; loop?: boolean; loaded?: boolean; playbackState?: AudioPlaybackSuccess['state']['playbackState']; maxTime?: number; minTime?: number; timeoutMs?: number; pollMs?: number }) {
+    async audioPlaybackWaitForState(args: AudioPlaybackObserveArgs & { userActivation?: 'active' | 'inactive' | 'unknown'; minDuration?: number; maxDuration?: number; playing?: boolean; minVolume?: number; maxVolume?: number; loop?: boolean; loaded?: boolean; playbackState?: AudioPlaybackSuccess['state']['playbackState']; maxTime?: number; minTime?: number; timeoutMs?: number; pollMs?: number }, assertActive?: () => void) {
         validate(args, 'observe');
         const timeoutMs = args.timeoutMs ?? 3000;
         const pollMs = args.pollMs ?? 100;
@@ -145,6 +145,7 @@ export class AudioPlaybackTools {
         let sourceIdentity: string | undefined;
         let observations = 0;
         for (;;) {
+            assertActive?.();
             const remaining = deadline - Date.now();
             if (remaining <= 0) throw new ToolError({ code: 'AUDIO_STATE_TIMEOUT', status: 409, message: 'Audio observation deadline expired; no playback mutation dispatched.' });
             let timer: NodeJS.Timeout | undefined;
@@ -154,6 +155,7 @@ export class AudioPlaybackTools {
                     timer = setTimeout(() => reject(new ToolError({ code: 'AUDIO_STATE_TIMEOUT', status: 409, message: 'Audio read exceeded the caller deadline; in-flight observation may still settle.' })), remaining);
                 })]);
             } finally { clearTimeout(timer); }
+            assertActive?.();
             if (Date.now() >= deadline) throw new ToolError({ code: 'AUDIO_STATE_TIMEOUT', status: 409, message: 'Audio observation completed after the caller deadline.' });
             if (observation.success !== true || observation.operation !== 'observe' || observation.sessionId !== args.sessionId || observation.nodeUuid !== args.nodeReference.id
                 || typeof observation.targetId !== 'string' || !observation.targetId) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Audio observation identity is invalid.' });

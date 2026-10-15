@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Apply scenario cooperative cancellation to audioWait before each read and after observation settlement. Pending native observation remains owned; cancellation does not stop sound playback or dispatch another read.
 - Stop scenario animationWait/graphWait polling after cancellation using an internal guard before dispatch and after read settlement. Caller cancellation retains ownership of the pending primitive; no native read abort or public JSON cancellation token.
 - Pin Game View target identity across animationGraphWaitForVariable observations. The same graph UUID on a replacement target cannot satisfy an existing wait; no variable writes or runtime restart.
 - Preserve type-only namespace decorator exclusion through erased as/assertion/non-null/satisfies base wrappers, preventing syntax fallback from reviving erased import bindings.
