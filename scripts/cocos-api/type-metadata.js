@@ -28,6 +28,7 @@ function typeInfo(checker, type, node) {
     try {
     if (current.flags & ts.TypeFlags.Any) unresolved.push({ kind: 'any', reference: current.aliasSymbol?.name || current.intrinsicName || 'any' });
     if (current.flags & ts.TypeFlags.Unknown) unresolved.push({ kind: 'unknown', reference: 'unknown' });
+    if (current.flags & ts.TypeFlags.TypeParameter) visit(checker.getBaseConstraintOfType(current));
     if (current.isUnionOrIntersection?.()) current.types.forEach(visit);
     if (checker.isArrayType(current) || checker.isTupleType(current)) {
       checker.getTypeArguments(current).forEach(visit);
