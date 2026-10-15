@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Treat compiler-resolved decorator alias decisions as authoritative over syntax fallback, preventing type-only/unresolved/different-target imports named executeInEditMode from earning declared edit-mode metadata.
 - Add menu and signed-int32 executionOrder class metadata to scriptComponentCreate using escaped native decorators, composable with dependencies/multiplicity. Source declarations only; no lifecycle invocation, edit-mode execution or automatic attachment.
 - Recognize compiler-resolved value import aliases of executeInEditMode in decorator declaration metadata; no native module identity, execution or qualification inferred from the resolved target name.
 - Add disallowMultiple class metadata to scriptComponentCreate with explicit true/false/omitted behavior through the native decorator. Compose with requiredComponents; source declaration only, not immediate scene attachment/removal or a global singleton guarantee.

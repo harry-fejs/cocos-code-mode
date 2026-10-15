@@ -384,7 +384,7 @@ function constraints(node, context, checker) {
       const symbol = checker.getSymbolAtLocation(expression);
       if (symbol && symbol.flags & ts.SymbolFlags.Alias) {
         const target = checker.getAliasedSymbol(symbol);
-        if (!checker.getTypeOnlyAliasDeclaration(symbol) && target?.declarations?.length && target.name === 'executeInEditMode') return true;
+        return !checker.getTypeOnlyAliasDeclaration(symbol) && !!target?.declarations?.length && target.name === 'executeInEditMode';
       }
     }
     if (ts.isElementAccessExpression(expression)) {
