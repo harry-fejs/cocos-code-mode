@@ -500,6 +500,7 @@ export class SceneTools {
                     const restoredNode = await Editor.Message.request('scene', 'query-node', nodeId);
                     const restoredComponents = cameraComponentsFromNode(restoredNode);
                     const restoredIndex = requireUniqueCamera(restoredComponents);
+                    if (restoredIndex !== componentIndex) throw new Error('Camera identity/index changed after restoration.');
                     if (JSON.stringify(cameraComponentField(restoredComponents[restoredIndex], property)) !== JSON.stringify(previous.get(property))) failures.push(property);
                 } catch { failures.push(property); }
             }
