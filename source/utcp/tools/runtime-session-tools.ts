@@ -515,7 +515,7 @@ export class RuntimeSessionTools {
     }
     @utcpTool(
         'runtimeScenarioRun',
-        'Run a finite allow-listed runtime scenario using typed state steps and session-bound audio observation checkpoints.',
+        'Run finite typed runtime, audio and exact-clip animation checkpoints with deadlines and cooperative cancellation. No automatic action replay.',
         {
             type: 'object',
             additionalProperties: false,
@@ -528,13 +528,17 @@ export class RuntimeSessionTools {
                     items: {
                         type: 'object', additionalProperties: false,
                         properties: {
-                            operation: { type: 'string', enum: ['wait', 'assert', 'observe', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'] },
+                            operation: { type: 'string', enum: ['wait', 'assert', 'observe', 'animationObserve', 'animationAssert', 'animationWait', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'] },
                             paused: { type: 'boolean' },
                             minFrameCount: { type: 'integer', minimum: 0, maximum: 1000000000 },
                             timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 },
                             nodeReference: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['id'] },
+                            componentId: { type: 'string', minLength: 1, maxLength: 256 },
+                            clipName: { type: 'string', minLength: 1, maxLength: 256 },
+                            clipUuid: { type: 'string', minLength: 1, maxLength: 256 },
                             playing: { type: 'boolean' },
                             loaded: { type: 'boolean' },
+                            minTime: { type: 'number', minimum: 0, maximum: 3600 },
                             audioOperation: { type: 'string', enum: ['play', 'pause', 'stop', 'seek'] },
                             time: { type: 'number', minimum: 0 },
                         },
@@ -552,7 +556,7 @@ export class RuntimeSessionTools {
         'POST',
         ['runtime', 'scenario', 'run', 'steps'],
     )
-    async runtimeScenarioRun(args: { sessionId: string, runId?: string, steps: Array<{ operation: 'wait' | 'assert' | 'observe' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', nodeReference?: { id: string }, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, runId: string, outcomes: Array<Record<string, unknown>> }> {
+    async runtimeScenarioRun(args: { sessionId: string, runId?: string, steps: Array<{ operation: 'wait' | 'assert' | 'observe' | 'animationObserve' | 'animationAssert' | 'animationWait' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', nodeReference?: { id: string }, componentId?: string, clipName?: string, clipUuid?: string, minTime?: number, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, runId: string, outcomes: Array<Record<string, unknown>> }> {
         if (!Array.isArray(args.steps) || args.steps.length === 0 || args.steps.length > 16) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runtimeScenarioRun requires 1-16 typed steps.' });
         if (typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded runtime sessionId is required.' });
         if (args.runId !== undefined && (typeof args.runId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(args.runId))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runId must be a fresh bounded alphanumeric/hyphen/underscore identity.' });
@@ -560,6 +564,17 @@ export class RuntimeSessionTools {
         if (!Number.isInteger(totalTimeoutMs) || totalTimeoutMs < 100 || totalTimeoutMs > 60000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'totalTimeoutMs must be an integer from 100 to 60000.' });
         const scenarioDeadline = Date.now() + totalTimeoutMs;
         const steps = Array.from(args.steps, (step, index) => {
+            if (step && ['animationObserve', 'animationAssert', 'animationWait'].includes(step.operation)) {
+                const invalid = Object.keys(step).some(key => !['operation', 'nodeReference', 'componentId', 'clipName', 'clipUuid', 'playing', 'paused', 'minTime', 'timeoutMs'].includes(key))
+                    || !step.nodeReference || typeof step.nodeReference !== 'object' || Array.isArray(step.nodeReference) || Object.keys(step.nodeReference).some(key => key !== 'id')
+                    || [step.nodeReference?.id, step.componentId, step.clipName, step.clipUuid].some(value => typeof value !== 'string' || !value.trim() || value.length > 256)
+                    || step.playing !== undefined && typeof step.playing !== 'boolean' || step.paused !== undefined && typeof step.paused !== 'boolean'
+                    || step.minTime !== undefined && (typeof step.minTime !== 'number' || !Number.isFinite(step.minTime) || step.minTime < 0 || step.minTime > 3600)
+                    || step.timeoutMs !== undefined && (!Number.isInteger(step.timeoutMs) || step.timeoutMs < 100 || step.timeoutMs > (step.operation === 'animationWait' ? 10000 : 3000))
+                    || (step.operation === 'animationObserve' ? step.playing !== undefined || step.paused !== undefined || step.minTime !== undefined : step.playing === undefined && step.paused === undefined && step.minTime === undefined);
+                if (invalid) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Invalid animation scenario step ${index}.` });
+                return { ...step, nodeReference: { id: step.nodeReference!.id } };
+            }
             if (!step || typeof step !== 'object' || Array.isArray(step)
                 || Object.keys(step).some(key => !['operation', 'nodeReference', 'audioOperation', 'time', 'playing', 'loaded', 'paused', 'minFrameCount', 'timeoutMs'].includes(key))
                 || !['wait', 'assert', 'observe', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'].includes(step.operation)
@@ -599,6 +614,23 @@ export class RuntimeSessionTools {
                         ? this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount })
                         : step.operation === 'observe'
                             ? this.runtimeStateObserve({ sessionId: args.sessionId })
+                            : step.operation === 'animationObserve' || step.operation === 'animationAssert' || step.operation === 'animationWait'
+                                ? import('./component-runtime-tools').then(async ({ ComponentRuntimeTools }) => {
+                                    if (scenario.cancelled) throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario cancelled before animation dispatch.' });
+                                    const timeoutMs = Math.min(step.timeoutMs ?? (step.operation === 'animationWait' ? 10000 : 3000), stepDeadline - Date.now());
+                                    if (timeoutMs < 100) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Animation deadline elapsed before dispatch.' });
+                                    const animation = new ComponentRuntimeTools();
+                                    const target = { sessionId: args.sessionId, nodeReference: step.nodeReference!, componentId: step.componentId!, clipName: step.clipName!, clipUuid: step.clipUuid!, timeoutMs };
+                                    if (step.operation === 'animationWait') {
+                                        const result = await animation.animationPlaybackWaitForState({ ...target, playing: step.playing, paused: step.paused, minTime: step.minTime });
+                                        return { ...result, passed: result.matched === true };
+                                    }
+                                    const observation = await animation.animationPlaybackObserve(target);
+                                    if (step.operation === 'animationObserve') return observation;
+                                    const state = observation.state as { playing?: unknown; paused?: unknown; time?: unknown } | undefined;
+                                    if (!state || typeof state.playing !== 'boolean' || typeof state.paused !== 'boolean' || step.minTime !== undefined && (typeof state.time !== 'number' || !Number.isFinite(state.time))) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Animation assertion requires available typed state metrics.' });
+                                    return { ...observation, passed: (step.playing === undefined || state.playing === step.playing) && (step.paused === undefined || state.paused === step.paused) && (step.minTime === undefined || (state.time as number) >= step.minTime) };
+                                })
                             : step.operation === 'audioObserve' || step.operation === 'audioAssert' || step.operation === 'audioControl' || step.operation === 'audioWait'
                                 ? import('./audio-playback-tools').then(async ({ AudioPlaybackTools }) => {
                                     if (scenario.cancelled) throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario cancelled before audio dispatch.' });
