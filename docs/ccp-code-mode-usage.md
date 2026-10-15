@@ -119,6 +119,8 @@ Offline selection preparation: `node scripts/cocos-api/eligibility-ledger.js --c
 
 Ledger `routeEvidence` retains all matching static candidates for bridge tool records, including legitimate multi-operation routes. It does not populate `chosenRoute` or `ownerDecision`; those require workflow selection. A native route target belongs to its own namespace, not the bridge tool namespace. Non-bridge records with the same member name never inherit bridge route evidence.
 
+Offline ledger declarationGroupId groups only exact version/namespace/source file hash/span/semantic hash plus member/kind/static/visibility/context identity. All raw rows and dispositions remain intact; missing provenance stays ungrouped. This detects shared declaration views, not inherited behavioral equivalence, manual duplicate workflow selection or distinct-feature counts. declarationGrouping statistics are provenance counts only, never coverage/qualification.
+
 Use `editorQuery({category:'engine_api',operation:'compare_version',targetVersion:'3.7.3',recordId,compareVersion:'3.8.8',compareRecordId})` to compare two exact records sharing a semanticKey. Results compare signature/metadata/resolution hashes and retain catalog identities; missing records do not imply removals. Comparison grants no execution permission.
 
 `runtimeScenarioRun` accepts `totalTimeoutMs` (100–60000, default30000). All steps share that wall-clock deadline; expiry stops subsequent steps and retains failedStep/prior outcomes. An in-flight native request may still complete: timeout does not cancel, replay or restore an action. Inspect the bound session before another mutation.

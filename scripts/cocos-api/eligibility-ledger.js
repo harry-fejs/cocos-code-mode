@@ -81,8 +81,16 @@ function generateLedger(catalogRoot, output) {
           return typeof targetRecord.namespace === 'string' && targetRecord.namespace.length > 0;
         });
         const attachedRoutes = routeMatches?.length ? routeMatches : null;
+        const source = record.source;
+        const declarationGroupId = source && typeof source.root === 'string' && typeof source.path === 'string'
+          && typeof source.sha256 === 'string' && /^[a-f0-9]{64}$/.test(source.sha256)
+          && Number.isSafeInteger(source.line) && source.line > 0 && Number.isSafeInteger(source.endLine) && source.endLine >= source.line
+          && typeof source.semanticHash === 'string' && /^[a-f0-9]{64}$/.test(source.semanticHash)
+          ? hash([record.version, record.namespace, source.root, source.path, source.sha256, source.line, source.endLine, source.semanticHash,
+            record.member ?? null, record.kind, record.static ?? null, record.visibility ?? null, record.internal ?? null, record.contextConstraints ?? null]) : null;
         rows.push({ key, recordId: record.id, semanticKey: record.semanticKey, version: record.version, domain: record.domain ?? null,
           workflowId: record.namespace === 'bridge' && record.kind === 'tool' ? `bridge:${record.member}` : null, desiredOutcome: null, intendedContext: record.contextConstraints?.execution ?? null,
+          declarationGroupId,
           sourceEvidence: { catalogHash: lookup.catalogHash, shard: shard.file, shardSha256: shard.sha256, routeArtifact: routeEvidence, source: record.source ?? null },
           existingBridgeTool: record.namespace === 'bridge' && record.kind === 'tool' ? record.member : null,
           operation: record.namespace === 'bridge' && Array.isArray(record.operations) ? record.operations : null,
@@ -92,9 +100,11 @@ function generateLedger(catalogRoot, output) {
     }
     if (rows.length !== indexed.recordCount) throw new Error('Ledger must account for every indexed record.');
     rows.sort((a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+    const declarationCounts = new Map();
+    for (const row of rows) if (row.declarationGroupId) declarationCounts.set(row.declarationGroupId, (declarationCounts.get(row.declarationGroupId) || 0) + 1);
     const ledger = { schemaVersion: 1, version: lookup.version, catalogHash: lookup.catalogHash,
       lookupSha256: indexed.lookupSha256, sourceIndexSha256: lookup.sourceIndexSha256, sourceEvidence,
-      recordCount: rows.length, counts, selectionComplete: false, qualificationComplete: false, rows };
+      recordCount: rows.length, counts, declarationGrouping: { basis: 'exact-version-source-span-hash-member-kind-static-visibility-context', groups: declarationCounts.size, duplicateGroups: Array.from(declarationCounts.values()).filter(count => count > 1).length, ungroupedRecords: rows.filter(row => !row.declarationGroupId).length, workflowSelectionInferred: false }, selectionComplete: false, qualificationComplete: false, rows };
     const bytes = Buffer.from(JSON.stringify(stable({ ...ledger, ledgerHash: hash(ledger) })) + '\n');
     const fd = fs.openSync(destination, 'wx');
     try { fs.writeFileSync(fd, bytes); } finally { fs.closeSync(fd); }
