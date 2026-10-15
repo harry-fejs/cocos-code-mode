@@ -475,6 +475,7 @@ export class RuntimeSessionTools {
         if (session.targetKind !== 'game-view') throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: `Runtime target ${session.targetKind} has no verified transport.` });
         const timeoutMs = args.timeoutMs ?? 10000;
         if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'timeoutMs must be an integer from 100 to 10000.' });
+        args = { ...args };
         const started = Date.now();
         const deadline = started + timeoutMs;
         const observe = async (): Promise<RuntimeState> => {
