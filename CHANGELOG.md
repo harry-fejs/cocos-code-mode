@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Include switch discriminants in execution-guard provenance with existing compiler-symbol shadowing checks; no case-selection or runtime reachability inference.
 - Add Label/Sprite/Button/EditBox/ScrollView/Slider/Toggle/ProgressBar typed scalar/array references to scriptComponentCreate for HUD/menu/form data authoring. Native decorators, null/empty defaults and separate Inspector assignment; no UI creation, lookup, callback installation or automatic binding.
 - Include while/do/for condition operands in execution-guard provenance, preserving alias/symbol matching and safely ignoring absent for-loop conditions; no runtime reachability inference.
 - Add inclusive minSpeed/maxSpeed (-1e6..1e6) read-only Animation/SkeletalAnimation wait conditions and scenario animation assert/wait checkpoints. Signed speed supports reverse playback inspection; invalid/reversed windows preflight, unavailable metrics refuse. No speed or playback writes.

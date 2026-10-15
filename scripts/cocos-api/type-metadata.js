@@ -328,7 +328,7 @@ function constraints(node, context, checker) {
   const guards = [];
   const scan = current => {
     const shortCircuit = ts.isBinaryExpression(current) && (current.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken || current.operatorToken.kind === ts.SyntaxKind.BarBarToken || current.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken);
-    const expressionGuard = ts.isIfStatement(current) || ts.isWhileStatement(current) || ts.isDoStatement(current);
+    const expressionGuard = ts.isIfStatement(current) || ts.isWhileStatement(current) || ts.isDoStatement(current) || ts.isSwitchStatement(current);
     if (expressionGuard || ts.isConditionalExpression(current) || ts.isForStatement(current) || shortCircuit) {
       const expression = shortCircuit ? current.left : expressionGuard ? current.expression : current.condition;
       const usesConstant = part => {
