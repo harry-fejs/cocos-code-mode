@@ -182,6 +182,7 @@ export class AudioPlaybackTools {
 
     private async execute(args: AudioPlaybackObserveArgs, operation: AudioPlaybackOperation, time?: number, timeoutMs?: number): Promise<AudioPlaybackSuccess> {
         validate(args, operation, time, timeoutMs);
+        args = { ...args, nodeReference: { id: args.nodeReference.id } };
         try {
             const runtime = new RuntimeSessionTools();
             const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId });

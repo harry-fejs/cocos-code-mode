@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Pin validated audio execution session/node and expected source/clip guards before readiness awaits. Caller changes cannot redirect observe/control targets or alter response identity checks mid-request; no playback replay.
 - Treat parentheses around literal edit-mode decorator booleans as transparent, preserving true enable credit while false/dynamic arguments remain unpromoted; no expression evaluation.
 - Pin shared component runtime dispatch args, node identity and nested variable before readiness awaits. Caller changes cannot turn a pending inspect into a write or redirect its component/clip/variable payload; no automatic mutation replay.
 - Snapshot validated runtimeNodeObserve session/node identity and hierarchy revision guard before readiness awaits, preventing caller changes from redirecting the serialized native read or replacing the expected revision mid-request. No node mutation/replay added.
