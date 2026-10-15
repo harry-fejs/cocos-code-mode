@@ -180,7 +180,8 @@ export class AudioPlaybackTools {
     private async execute(args: AudioPlaybackObserveArgs, operation: AudioPlaybackOperation, time?: number, timeoutMs?: number): Promise<AudioPlaybackSuccess> {
         validate(args, operation, time, timeoutMs);
         try {
-            const inspected = await new RuntimeSessionTools().runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId });
+            const runtime = new RuntimeSessionTools();
+            const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId });
             const session = inspected.session;
             if (session && 'status' in session && session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: 'The runtime session is stopped.' });
             if (!inspected.success || !inspected.ready || !session || !('targetId' in session) || session.sessionId !== args.sessionId) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'The attached runtime session is not ready.' });
@@ -199,6 +200,12 @@ export class AudioPlaybackTools {
                 || typeof state.currentTime !== 'number' || !Number.isFinite(state.currentTime) || state.currentTime < 0 || typeof state.duration !== 'number' || !Number.isFinite(state.duration) || state.duration < 0
                 || state.volume !== null && (typeof state.volume !== 'number' || !Number.isFinite(state.volume) || state.volume < 0 || state.volume > 1) || state.loop !== null && typeof state.loop !== 'boolean'
                 || !['active', 'inactive', 'unknown'].includes(state.userActivation) || state.activationRequirement !== 'unknown') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Audio success contains unavailable or inconsistent state metrics.', details: { mutationDispatched: operation !== 'observe', pendingMayComplete: operation !== 'observe', retrySafe: false }, recovery: 'Inspect the exact audio target before further control; no automatic replay.' });
+            const uncertainty = { mutationDispatched: operation !== 'observe', pendingMayComplete: operation !== 'observe', retrySafe: false };
+            let after: Awaited<ReturnType<RuntimeSessionTools['runtimeSessionLifecycle']>>;
+            try { after = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId }); }
+            catch (error) { throw new ToolError({ code: 'AUDIO_SESSION_RECHECK_FAILED', status: 502, message: 'Audio operation settled but session continuity could not be confirmed.', details: { ...uncertainty, cause: error instanceof ToolError ? error.code : 'SESSION_INSPECTION_FAILED' }, recovery: 'Reconcile the exact session and audio target before further control; no replay.' }); }
+            const current = after.session;
+            if (!after.success || !after.ready || !current || !('status' in current) || current.status !== 'attached' || current.sessionId !== session.sessionId || current.targetId !== session.targetId || current.targetKind !== session.targetKind || current.createdAt !== session.createdAt) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Audio session identity/lifecycle changed during execution.', details: uncertainty, recovery: 'Inspect the current session; do not replay the prior audio action.' });
             return result;
         } catch (error) {
             if (error instanceof ToolError) throw error;
