@@ -90,6 +90,13 @@ function typeInfo(checker, type, node) {
 function signatureInfo(checker, signature, declaration, index) {
   const unresolved = [];
   const genericReferences = new Map();
+  const receiverSymbol = signature.thisParameter;
+  const receiverDeclaration = receiverSymbol?.valueDeclaration || receiverSymbol?.declarations?.[0];
+  const receiver = receiverSymbol ? typeInfo(checker, checker.getTypeOfSymbolAtLocation(receiverSymbol, receiverDeclaration || declaration), receiverDeclaration?.type) : null;
+  if (receiver) {
+    unresolved.push(...receiver.unresolved);
+    for (const reference of receiver.references) genericReferences.set(json(reference), reference);
+  }
   const parameters = signature.parameters.map((symbol, position) => {
     const parameter = symbol.valueDeclaration || symbol.declarations?.[0] || declaration.parameters?.[position];
     const info = typeInfo(checker, checker.getTypeOfSymbolAtLocation(symbol, parameter || declaration), parameter?.type);
@@ -112,7 +119,7 @@ function signatureInfo(checker, signature, declaration, index) {
     return { name: parameter.symbol?.name || checker.typeToString(parameter), constraint: info?.type || null, default: compact(declared?.default) };
   });
   return { overload: index, kind: ts.isSetAccessorDeclaration(declaration) ? 'set' : ts.isGetAccessorDeclaration(declaration) ? 'get' : 'call',
-    text: checker.signatureToString(signature, declaration, ts.TypeFormatFlags.NoTruncation), typeParameters, parameters,
+    text: checker.signatureToString(signature, declaration, ts.TypeFormatFlags.NoTruncation), typeParameters, parameters, receiver,
     returnType: result.type, declaredReturnType: result.declaredType, returnReferences: result.references,
     references: [...genericReferences.values()].sort((a, b) => compare(json(a), json(b))), unresolved };
 }
