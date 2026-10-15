@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Snapshot validated runtimeNodeObserve session/node identity and hierarchy revision guard before readiness awaits, preventing caller changes from redirecting the serialized native read or replacing the expected revision mid-request. No node mutation/replay added.
 - Preserve combined in out invariant annotations on generic signature/class constructor type parameters instead of collapsing them to in; individual in/out/null metadata remains compatible.
 - Snapshot validated runtimeScenarioAssert arguments before readiness observation so caller changes to paused/frame bounds cannot grant false passes. Original mismatch issues/state retained; no runtime mutation/replay.
 - Grant editModeDeclared only to bare decorators or exact single true arguments; dynamic/false/empty/invalid call arguments are not evaluated or promoted as proven enable declarations.

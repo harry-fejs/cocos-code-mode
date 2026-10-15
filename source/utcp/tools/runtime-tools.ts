@@ -26,6 +26,7 @@ export class RuntimeTools {
         const childOffset = args.childOffset ?? 0;
         if (!Number.isSafeInteger(childOffset) || childOffset < 0 || childOffset > 9999) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'childOffset must be0..9999.' });
         if (args.expectedHierarchyRevision !== undefined && (typeof args.expectedHierarchyRevision !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedHierarchyRevision))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedHierarchyRevision must be lowercase SHA256.' });
+        args = { ...args, nodeReference: { id: args.nodeReference.id } };
         const deadline = Date.now() + timeoutMs;
         const phase = async <T>(operation: () => Promise<T>): Promise<T> => {
             const remaining = deadline - Date.now();
