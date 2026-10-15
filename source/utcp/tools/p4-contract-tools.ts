@@ -83,6 +83,7 @@ export class P4ContractTools {
             || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000 || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) {
             throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide playing/count condition and bounded timeout/poll interval.' });
         }
+        args = { ...args, nodeReference: { id: args.nodeReference.id } };
         const deadline = Date.now() + timeoutMs; let observations = 0;
         for (;;) {
             const remaining = deadline - Date.now();

@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Snapshot validated particle wait session/node/component identity and playing/count predicates before asynchronous polling. Caller mutations cannot redirect the target or alter count matching; no playback mutation/replay added.
+- Preserve TypeScript const-generic type-parameter modifiers in signature metadata alongside constraint/default/provenance fields; no inference of runtime generic behavior.
 - Snapshot validated node wait session/node identity, activation/hierarchy predicates, transform tolerances and nested references before polling. Caller mutations cannot redirect target or alter match conditions; no node writes/replay added.
 - Preserve declaration visibility on every extracted signature, including private/protected constructors and accessors; discovery remains descriptive and does not grant invocation permission.
 - Snapshot validated audio wait predicates/session/clip guards and nested node identity before polling. Caller edits during awaits cannot redirect later observations or alter match criteria; no playback mutation or retry added.
