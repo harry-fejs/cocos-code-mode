@@ -332,6 +332,7 @@ function constraints(node, context, checker) {
     if (expressionGuard || ts.isConditionalExpression(current) || ts.isForStatement(current) || shortCircuit) {
       const expression = shortCircuit ? current.left : expressionGuard ? current.expression : current.condition;
       const usesConstant = part => {
+        if (ts.isFunctionLike(part) || ts.isClassExpression(part)) return false;
         if (ts.isIdentifier(part) && (checker ? constantSymbols.has(checker.getSymbolAtLocation(part)) : constants.includes(part.text))) return true;
         if (ts.isPropertyAccessExpression(part) || ts.isElementAccessExpression(part)) {
           const target = part.expression;
