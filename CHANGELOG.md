@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve intrinsic string-mapping operands and unresolved string-mapping diagnostics for generic Uppercase/Lowercase/Capitalize/Uncapitalize types; compiler-reduced string literals remain resolved.
+- Compose explicit local/world position predicates in scenario nodeWait using the existing read-only polling adapter. Whole-input preflight copies nested position data and refuses invalid later predicates before dispatch; no movement/tween completion inference.
 - Diagnose symbol-keyed DTO properties as semantic-adapter-required even when their values are JSON primitives; computed string keys remain unaffected and no key coercion is attempted.
 - Extend runtimeNodeWaitForState with explicit local/world xyz and inclusive per-axis tolerance0..1000000, composed with activation predicates. Finite inputs/metrics required; no movement writes, collision or effect-completion inference.
 - Mark bigint/bigint-literal and symbol/unique-symbol metadata as semantic-adapter-required, including nested DTO values; ordinary string/number/boolean DTOs remain unchanged.
