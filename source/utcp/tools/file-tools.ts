@@ -12,6 +12,7 @@ const MAX_SEARCH_PATTERN_LENGTH = 256;
 const MAX_SEARCH_RESULTS = 100;
 const DEFAULT_DIRECTORY_ENTRIES = 200;
 const MAX_DIRECTORY_ENTRIES = 1000;
+const MAX_SEARCH_ENTRIES = 100000;
 
 function boundedPositive(value: unknown, fallback: number, maximum: number): number {
     return typeof value === 'number' && Number.isInteger(value) && value > 0
@@ -137,26 +138,37 @@ export class FileTools {
             .replace(/<<<GLOBSTAR>>>/g, '.*');
         const regex = new RegExp(`^${regexText}$`, 'i');
         const files: string[] = [];
-        const readEntries = (directory: string): fs.Dirent[] => {
-            let entries: fs.Dirent[];
-            try { entries = fs.readdirSync(directory, { withFileTypes: true }); }
+        const stack: Array<{ directory: string; handle: fs.Dir }> = [];
+        let visitedEntries = 0;
+        const openDirectory = async (directory: string) => {
+            try { return await fs.opendir(directory); }
             catch {
                 throw new ToolError({ code: 'PROJECT_SEARCH_FAILED', status: 503, message: 'A project directory could not be read; search results are incomplete.', recovery: 'Check directory availability and permissions before retrying the read-only search.' });
             }
-            return entries;
         };
-        const stack = [{ directory: scope, entries: readEntries(scope), index: 0 }];
-        while (stack.length && files.length < limit) {
-            const frame = stack[stack.length - 1];
-            if (frame.index >= frame.entries.length) { stack.pop(); continue; }
-            const entry = frame.entries[frame.index++];
-            if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'library' || entry.name === 'temp') continue;
-            const fullPath = path.join(frame.directory, entry.name);
-            const relative = path.relative(root, fullPath).replace(/\\/g, '/');
-            if (entry.isDirectory()) stack.push({ directory: fullPath, entries: readEntries(fullPath), index: 0 });
-            else if (regex.test(relative) || (args.directory && regex.test(path.relative(scope, fullPath).replace(/\\/g, '/')))) files.push(relative);
+        try {
+            stack.push({ directory: scope, handle: await openDirectory(scope) });
+            while (stack.length && files.length < limit) {
+                const frame = stack[stack.length - 1];
+                let entry: fs.Dirent | null;
+                try { entry = await frame.handle.read(); }
+                catch {
+                    throw new ToolError({ code: 'PROJECT_SEARCH_FAILED', status: 503, message: 'A project directory could not be read; search results are incomplete.' });
+                }
+                if (!entry) { await frame.handle.close(); stack.pop(); continue; }
+                if (++visitedEntries > MAX_SEARCH_ENTRIES) {
+                    throw new ToolError({ code: 'PROJECT_SEARCH_LIMIT', status: 413, message: 'Project search exceeded the 100000-entry traversal limit.', recovery: 'Select a narrower directory before searching again.' });
+                }
+                if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'library' || entry.name === 'temp') continue;
+                const fullPath = path.join(frame.directory, entry.name);
+                const relative = path.relative(root, fullPath).replace(/\\/g, '/');
+                if (entry.isDirectory()) stack.push({ directory: fullPath, handle: await openDirectory(fullPath) });
+                else if (regex.test(relative) || (args.directory && regex.test(path.relative(scope, fullPath).replace(/\\/g, '/')))) files.push(relative);
+            }
+            return { files, total: files.length, truncated: files.length >= limit };
+        } finally {
+            await Promise.all(stack.map(async ({ handle }) => { try { await handle.close(); } catch { /* Preserve the search result/error while releasing remaining handles. */ } }));
         }
-        return { files, total: files.length, truncated: files.length >= limit };
     }
 
     @utcpTool('projectReplaceInFile', 'Atomically replace bounded literal text in a project file and verify read-back.', {
