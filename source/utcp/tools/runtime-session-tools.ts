@@ -565,7 +565,8 @@ export class RuntimeSessionTools {
         for (let index = 0; index < steps.length; index++) {
             const step = steps[index];
             if (Date.now() >= scenarioDeadline) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: `Runtime scenario deadline elapsed before step ${index}.`, details: { sessionId: args.sessionId, failedStep: index, outcomes } });
-            const remaining = Math.max(100, Math.min(10000, scenarioDeadline - Date.now()));
+            const remaining = Math.min(10000, scenarioDeadline - Date.now());
+            if (step.operation !== 'assert' && remaining < 100) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Scenario has insufficient remaining time for a bounded primitive; no next step dispatched.', details: { sessionId: args.sessionId, failedStep: index, outcomes } });
             try {
                 const pending = step.operation === 'wait'
                     ? this.runtimeWaitForState({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount, timeoutMs: Math.min(step.timeoutMs ?? 10000, remaining) })
