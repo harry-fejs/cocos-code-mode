@@ -22,7 +22,11 @@ describe('final asset/import authoring wave', () => {
     fs.writeFileSync(path.join(root, 'script.ts'), 'one\ntwo\nthree\nfour\nfive\n');
     try {
       const result = await new FileTools().projectFileSnippet({ filePath: 'script.ts', line: 3, radius: 1 });
-      assert.deepEqual(result, { snippet: 'two\nthree\nfour', startLine: 2, endLine: 4 });
+      assert.equal(result.snippet, 'two\nthree\nfour');
+      assert.equal(result.startLine, 2);
+      assert.equal(result.endLine, 4);
+      await new FileTools().projectReplaceInFile({ filePath: 'script.ts', search: 'three', replace: 'changed', expectedSha256: result.sha256 });
+      await assert.rejects(new FileTools().projectReplaceInFile({ filePath: 'script.ts', search: 'changed', replace: 'stale', expectedSha256: result.sha256 }), (error) => error.code === 'FILE_CONTENT_CHANGED');
       await assert.rejects(() => new FileTools().projectFileSnippet({ filePath: '../outside.ts', line: 1 }), (error) => error.code === 'INVALID_ARGUMENT');
     } finally {
       restoreEditor(previous);

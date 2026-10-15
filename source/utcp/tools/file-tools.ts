@@ -257,8 +257,8 @@ export class FileTools {
 
     @utcpTool('projectFileSnippet', 'Read a bounded line snippet from a project file.', {
         type: 'object', properties: { filePath: { type: 'string' }, line: { type: 'integer', minimum: 1 }, radius: { type: 'integer', minimum: 0, maximum: 50 } }, required: ['filePath', 'line'],
-    }, { type: 'object', properties: { snippet: { type: 'string' }, startLine: { type: 'integer' }, endLine: { type: 'integer' } }, required: ['snippet', 'startLine', 'endLine'] }, 'GET', ['file', 'snippet', 'project'])
-    async projectFileSnippet(args: { filePath: string, line: number, radius?: number }): Promise<{ snippet: string, startLine: number, endLine: number }> {
+    }, { type: 'object', properties: { snippet: { type: 'string' }, startLine: { type: 'integer' }, endLine: { type: 'integer' }, sha256: { type: 'string', pattern: '^[a-f0-9]{64}$' } }, required: ['snippet', 'startLine', 'endLine', 'sha256'] }, 'GET', ['file', 'snippet', 'project'])
+    async projectFileSnippet(args: { filePath: string, line: number, radius?: number }): Promise<{ snippet: string, startLine: number, endLine: number, sha256: string }> {
         const root = projectRoot();
         const radius = args.radius === undefined ? 5 : args.radius;
         if (!Number.isInteger(args.line) || args.line < 1 || !Number.isInteger(radius) || radius < 0 || radius > 50) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'line must be positive and radius must be an integer from 0 to 50.' });
@@ -269,7 +269,7 @@ export class FileTools {
         if (args.line > lines.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Requested line exceeds the source line count (${lines.length}).` });
         const startLine = Math.max(1, args.line - radius);
         const endLine = Math.min(lines.length, args.line + radius);
-        return { snippet: lines.slice(startLine - 1, endLine).join('\n'), startLine, endLine };
+        return { snippet: lines.slice(startLine - 1, endLine).join('\n'), startLine, endLine, sha256: createHash('sha256').update(content, 'utf8').digest('hex') };
     }
 
     @utcpTool('projectFileExists', 'Check bounded project-relative file or directory existence.', { type: 'object', properties: { filePath: { type: 'string' } }, required: ['filePath'] }, { type: 'object', properties: { exists: { type: 'boolean' }, isDirectory: { type: 'boolean' } }, required: ['exists', 'isDirectory'] }, 'GET', ['file', 'exists', 'project'])

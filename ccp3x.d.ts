@@ -1202,8 +1202,8 @@ declare namespace ccp3x {
 
     /** Reads complete UTF-8 decoded content within normal/verbose cap using a bounded file handle. sha256 hashes returned decoded text for replacement expectedSha256, not raw file bytes. Observed replacement/growth throws FILE_CHANGED_DURING_READ; oversized sources refuse. Not an atomic filesystem transaction. */
     function projectReadFile(args: { filePath: string; verbose?: boolean }): { content: string; bytes: number; sha256: string };
-    /** Reads a line window (radius 0–50) through the same bounded stable reader. Beyond-EOF line requests throw INVALID_ARGUMENT; no truncation field is exposed. */
-    function projectFileSnippet(args: { filePath: string; line: number; radius?: number }): { snippet: string; startLine: number; endLine: number };
+    /** Reads a line window (radius0–50). sha256 hashes the entire decoded source text, preserving original line endings, for guarded writes/replacements; not the normalized snippet. Beyond-EOF requests throw INVALID_ARGUMENT. Not atomic compare-and-set. */
+    function projectFileSnippet(args: { filePath: string; line: number; radius?: number }): { snippet: string; startLine: number; endLine: number; sha256: string };
 
     /** Case-insensitive glob-like regular-file search: * stays within a segment, ** crosses separators; all other characters (including ?) are literal. Symlink/special entries omitted; links not traversed. limit integer1..500 (verbose1000). total counts returned matches; truncated means cap reached. Beyond100000 entries throws PROJECT_SEARCH_LIMIT; read failures throw PROJECT_SEARCH_FAILED. Excluded directories and concurrent replacement remain outside coverage. */
     function projectSearchFiles(args: { pattern: string; directory?: string; limit?: number; verbose?: boolean }): { files: string[]; total: number; truncated: boolean };
