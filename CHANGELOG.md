@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Match exact decorator callee names for editModeDeclared metadata rather than text substrings, excluding unrelated decorators/string arguments while retaining direct and qualified syntax; no runtime identity/qualification inferred.
 - Reject sparse animation clipboard reference lists and invalid paste booleans before native dispatch; reject sparse/blank copy/paste response identities without replay. Preserve dense valid node order and native snapshot flow.
 - Exclude whole-clause and per-specifier type-only imports from execution constant/guard provenance, including namespace imports; mixed imports retain real value bindings only.
 - Preflight all animationBatchControl node references and typed playback options before any IPC; snapshot IDs/options so caller changes during asynchronous dispatch cannot redirect later actions. Native per-node failures remain isolated; no replay or atomic batch claim.

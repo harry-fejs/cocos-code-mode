@@ -353,8 +353,12 @@ function constraints(node, context, checker) {
   };
   scan(node);
   const overrides = (context.config?.moduleOverrides || []).filter(item => Object.keys(item.overrides || {}).some(file => file === context.path)).map(item => ({ test: item.test, replacement: item.overrides[context.path] }));
+  const editModeDeclared = (ts.canHaveDecorators(node) ? ts.getDecorators(node) || [] : []).some(decorator => {
+    const expression = ts.isCallExpression(decorator.expression) ? decorator.expression.expression : decorator.expression;
+    return ts.isIdentifier(expression) ? expression.text === 'executeInEditMode' : ts.isPropertyAccessExpression(expression) && expression.name.text === 'executeInEditMode';
+  });
   return { execution: context.namespace === 'engine-runtime' ? ['game-runtime'] : ['edit-scene'], targetAvailable: 'unknown',
     features: context.features || [], importedConstants: constants.sort(compare), guards: [...new Set(guards)].sort(compare), moduleOverrides: overrides,
-    editModeDeclared: metadata(node).decorators.some(value => /executeInEditMode/.test(value)), jsonTransfer: 'named-reference-or-value-dto-required' };
+    editModeDeclared, jsonTransfer: 'named-reference-or-value-dto-required' };
 }
 module.exports = { compact, typeInfo, signatureInfo, signatures, metadata, constraints };
