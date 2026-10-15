@@ -992,6 +992,7 @@ export class SceneTools {
         if (!componentId) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'sceneScriptComponentInspect requires componentReference.id.' });
         const dump = await Editor.Message.request('scene', 'query-component', componentId) as any;
         if (!dump || typeof dump !== 'object') throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Script component ${componentId} was not found.` });
+        if (Array.isArray(dump) || componentUuid(dump) !== componentId) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Creator returned mismatched or missing script component identity.' });
         const classId = componentClassId(dump);
         if (!classId || classId.startsWith('cc.')) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: `Component ${componentId} is not a custom script component.` });
         return { componentReference: { id: componentId, type: classId }, classId, dump };
