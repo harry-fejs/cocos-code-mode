@@ -139,6 +139,7 @@ export class AudioPlaybackTools {
             || [args.minDuration, args.maxDuration].some(value => value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 86400)) || args.minDuration !== undefined && args.maxDuration !== undefined && args.minDuration > args.maxDuration
             || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000
             || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide a bounded audio state condition, deadline and poll interval.' });
+        args = { ...args, nodeReference: { id: args.nodeReference.id } };
         const deadline = Date.now() + timeoutMs;
         let targetId: string | undefined;
         let sourceIdentity: string | undefined;

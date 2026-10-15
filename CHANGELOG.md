@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Snapshot validated audio wait predicates/session/clip guards and nested node identity before polling. Caller edits during awaits cannot redirect later observations or alter match criteria; no playback mutation or retry added.
 - Snapshot validated graph wait identity/type/exact or nested range condition before polling, preventing caller changes during asynchronous reads from redirecting predicates or earning unintended matches. Deadline/poll bounds remain fixed; no native writes or replay.
 - Exclude delete identifier operands from direct constant value reads, including transparent wrappers; computed-key/base reads remain inspected and no invalid imported deletion is executed or authorized.
 - Compose variableRange numeric inclusive intervals in scenario graphWait/graphAssert, exclusive with exact variableValue. Whole-input preflight rejects graphSet ranges, boolean/malformed intervals and fractional integer bounds; copies nested range before dispatch, no graph writes added.
