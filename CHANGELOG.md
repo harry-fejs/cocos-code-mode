@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve constructor signature kind for callable/constructable hybrid API types; overload positions and parameter/result dependencies remain unchanged.
 - Add finite scenario delay steps (durationMs0..5000) for wall-clock cue spacing with full-input preflight, deadline refusal and cooperative cancellation. Independent of game pause/time-scale; delay never proves animation/audio/VFX completion.
 - Traverse dictionary DTO index-signature key/value types in offline API metadata, retaining named dependencies, unknown values and recursive-cycle diagnostics under the existing expansion budget. No catalog regeneration or runtime permission change.
 - Add Prefab/Material/JsonAsset serialized component references and initially empty reference arrays for project resource binding. Native class decorators, null/empty-only defaults and create-only ownership; no loading, spawning or automatic assignment.

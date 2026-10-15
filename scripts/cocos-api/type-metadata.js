@@ -115,7 +115,7 @@ function signatures(checker, symbol, declaration) {
   const constructs = checker.getSignaturesOfType(type, ts.SignatureKind.Construct);
   if (calls.length || constructs.length) return [...calls, ...constructs].map((sig, i) => {
     const row = signatureInfo(checker, sig, sig.getDeclaration() || declaration, i);
-    if (!calls.length) row.kind = 'construct';
+    if (i >= calls.length) row.kind = 'construct';
     return row;
   });
   const accessors = (symbol.declarations || []).filter(d => ts.isGetAccessorDeclaration(d) || ts.isSetAccessorDeclaration(d));
