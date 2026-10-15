@@ -49,6 +49,7 @@ function resolveSafePath(projectPath: string, relPath: string): string {
         throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Project path must be a non-empty bounded string.' });
     }
     if (path.isAbsolute(relPath) || /^[A-Za-z]:/.test(relPath)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Project paths must be relative, without drive-qualified or absolute paths.' });
+    if (path.sep === '\\' && relPath.includes(':')) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Windows project paths must not address alternate data streams.' });
     const root = path.resolve(projectPath);
     const resolved = assertInside(root, path.resolve(root, relPath), relPath);
     let probe = resolved;
