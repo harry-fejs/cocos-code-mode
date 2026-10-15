@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Combine internal/deprecated metadata across merged symbol declarations so a later restrictive tag is not hidden by the representative declaration; internal merged exports are not labeled publicExport.
 - Resolve audio runtime node identities through a complete bounded10000-node/256-depth traversal before component lookup/playback; duplicate UUIDs, repeated/malformed topology and admission overflow refuse with typed errors rather than first-match success. No mutation replay.
 - Decode computed literal declaration keys for internal double-underscore metadata; dynamic identifier expressions are not mistaken for their value and remain unevaluated.
 - Classify quoted/escaped declaration names by decoded semantic text for internal double-underscore metadata, matching equivalent identifier spelling without changing runtime permission.

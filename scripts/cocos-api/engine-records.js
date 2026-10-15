@@ -18,6 +18,12 @@ function collectExports(input, version, roots, label = 'engine') {
   const { checker, root } = input;
   function record(symbol, declaration, context, className, member, inheritedFrom = null) {
     const info = metadata(declaration);
+    for (const part of symbol.declarations || []) {
+      if (part === declaration) continue;
+      const merged = metadata(part);
+      info.internal = info.internal || merged.internal;
+      info.deprecated = info.deprecated || merged.deprecated;
+    }
     const ownerMetadata = member ? metadata(declaration.parent) : info;
     info.internal = info.internal || ownerMetadata.internal || !context.publicExport;
     info.deprecated = info.deprecated || ownerMetadata.deprecated;
