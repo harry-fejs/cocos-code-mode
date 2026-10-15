@@ -6,8 +6,8 @@ import { ToolError } from './utcp/tool-error';
 export const COMPONENT_PROPERTY_TYPES = ['enum', 'integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Quat', 'Color', 'Node', 'Label', 'Sprite', 'Button', 'EditBox', 'ScrollView', 'Slider', 'Toggle', 'ProgressBar', 'AudioSource', 'Animation', 'SkeletalAnimation', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
 export type ComponentPropertyDescriptor = { tooltip?: string; displayName?: string; group?: string } & (
-    | { name: string; type: 'number'; array?: false; default?: number; range?: { min: number; max: number; step?: number } }
-    | { name: string; type: 'integer'; array?: false; default?: number; range?: { min: number; max: number; step?: number } }
+    | { name: string; type: 'number'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
+    | { name: string; type: 'integer'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
     | { name: string; type: 'enum'; array?: false; entries: Array<{ name: string; value: number }>; default: number }
     | { name: string; type: 'string'; array?: false; default?: string }
     | { name: string; type: 'boolean'; array?: false; default?: boolean }
@@ -64,13 +64,14 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         let numericOptions = '';
         if (row.range !== undefined) {
             if (row.array === true || type !== 'number' && type !== 'integer') invalid('range is supported only on scalar number/integer fields.');
-            assertComponentScriptInput(row.range, ['min', 'max', 'step']);
-            const { min, max, step } = row.range;
+            assertComponentScriptInput(row.range, ['min', 'max', 'step', 'slider']);
+            const { min, max, step, slider } = row.range;
             if (typeof min !== 'number' || !Number.isFinite(min) || typeof max !== 'number' || !Number.isFinite(max) || min > max || step !== undefined && (typeof step !== 'number' || !Number.isFinite(step) || step <= 0)) invalid('range requires finite min <= max and an optional positive finite step.');
             if (type === 'integer' && (!Number.isSafeInteger(min) || !Number.isSafeInteger(max) || step !== undefined && !Number.isSafeInteger(step))) invalid('Integer ranges require safe integer bounds and step.');
+            if (slider !== undefined && typeof slider !== 'boolean' || slider === true && min === max) invalid('slider must be a boolean; enabled sliders require min < max.');
             const initialValue = hasDefault ? row.default : 0;
             if (typeof initialValue !== 'number' || !Number.isFinite(initialValue) || initialValue < min || initialValue > max) invalid('Numeric default must lie within the declared range.');
-            numericOptions = `, min: ${literal(min)}, max: ${literal(max)}` + (step === undefined ? '' : `, step: ${literal(step as number)}`);
+            numericOptions = `, min: ${literal(min)}, max: ${literal(max)}` + (step === undefined ? '' : `, step: ${literal(step as number)}`) + (slider === undefined ? '' : `, slide: ${literal(slider as boolean)}`);
         }
         if (type === 'enum') {
             if (row.array === true || !Array.isArray(row.entries) || row.entries.length < 1 || row.entries.length > 64) invalid('Scalar enum requires 1..64 explicit entries.');
