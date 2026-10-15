@@ -118,6 +118,7 @@
 - Declare project text write and literal replacement APIs with verified-filesystem versus best-effort asset-refresh semantics.
 - Reject oversized literal replacement output before joining result fragments, accounting for UTF-8 surrogate pairs formed across fragment boundaries.
 - Declare script diagnostics and source-context APIs with typed batch invocation failures separate from compiler errors.
+- Declare package profile and Creator preference APIs, distinguishing write acknowledgment from immediate read-back equality and persistence proof.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

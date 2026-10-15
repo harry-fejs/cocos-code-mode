@@ -1168,6 +1168,16 @@ declare namespace ccp3x {
     /** Separates invocation failures from compiler diagnostics; succeeded counts returned invocations, not clean projects. */
     function scriptDiagnosticContextBatch(args: { tsconfigPaths: string[]; contextLines?: number; limit?: number; verbose?: boolean }): ScriptDiagnosticsBatchResult<ScriptDiagnosticContextResult>;
 
+    /** Reads CCP's package profile. Missing values are normalized to null; no key returns the known-key inventory only. */
+    function getEditorPreference(args: { key?: string }):
+        { key: string; value: unknown; all?: never } | { all: Record<string, unknown>; key?: never; value?: never };
+    /** success acknowledges setConfig completion; value is the requested value, not persistence/read-back proof. */
+    function setEditorPreference(args: { key: string; value: unknown }): { success: true; key: string; value: unknown };
+    /** Queries Creator preferences with bounded package/key identifiers; absent values are normalized to null. */
+    function queryPreferencesConfig(args: { packageName: string; key: string }): { value: unknown };
+    /** updated compares immediate read-back using JSON serialization; false is not rollback or proof that nothing changed. */
+    function setPreferencesConfig(args: { packageName: string; key: string; value: unknown }): { updated: boolean; value: unknown };
+
     /** Tracks only this module's main-process broadcastObserve listeners; excludes panel/arbitrary Creator listeners. No callbacks or event payloads are exposed. */
     function editorListenersInspect(): { supported: true; listeners: Array<{ topic: string; state: 'registered' | 'removal-failed' }>; limitation: string };
 
