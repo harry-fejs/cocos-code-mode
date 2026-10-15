@@ -1653,7 +1653,7 @@ declare namespace ccp3x {
     /** Exact attached Game View node read; local position/scale and world position only. No mutation or edit-scene substitution. */
     function runtimeNodeObserve(args: { sessionId: string; nodeReference: { id: string }; timeoutMs?: number }): { sessionId: string; targetId: string; nodeUuid: string; active: boolean; activeInHierarchy: boolean; position: { x: number; y: number; z: number }; worldPosition: { x: number; y: number; z: number }; scale: { x: number; y: number; z: number }; writes: false };
     /** Observe-only activation predicates; missing/destroyed nodes are errors, never inactive matches. In-flight reads may settle after deadline. */
-    function runtimeNodeWaitForState(args: { sessionId: string; nodeReference: { id: string }; active?: boolean; activeInHierarchy?: boolean; timeoutMs?: number; pollMs?: number }): { matched: true; observations: number; observation: ReturnType<typeof runtimeNodeObserve> };
+    function runtimeNodeWaitForState(args: { sessionId: string; nodeReference: { id: string }; active?: boolean; activeInHierarchy?: boolean; position?: { space: 'local' | 'world'; x: number; y: number; z: number; tolerance: number }; timeoutMs?: number; pollMs?: number }): { matched: true; observations: number; observation: ReturnType<typeof runtimeNodeObserve> };
     /** reset releases a local handle only. It does not stop the preview. */
     function runtimeSessionLifecycle(args: {
         operation: "start" | "attach" | "inspect" | "stop" | "reset" | "list";

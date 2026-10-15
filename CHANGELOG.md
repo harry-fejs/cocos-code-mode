@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Extend runtimeNodeWaitForState with explicit local/world xyz and inclusive per-axis tolerance0..1000000, composed with activation predicates. Finite inputs/metrics required; no movement writes, collision or effect-completion inference.
 - Mark bigint/bigint-literal and symbol/unique-symbol metadata as semantic-adapter-required, including nested DTO values; ordinary string/number/boolean DTOs remain unchanged.
 - Compose nodeObserve/nodeAssert/nodeWait activation checkpoints with runtime presentation scenarios via existing read-only adapters. Whole-input validation, retained mismatch evidence and deadline/cancellation ownership; missing nodes never satisfy inactive predicates.
 - Mark class-instance metadata as semantic-adapter-required while retaining named class identity; no private-field expansion, automatic construction or invocation permission inferred.
