@@ -119,7 +119,7 @@ function typeInfo(checker, type, node) {
           const value = checker.getConstantValue(member);
           const resolved = value !== undefined && (typeof value !== 'number' || Number.isFinite(value));
           if (!resolved) unresolved.push({ kind: 'enum-value', reference: `${symbol.name}.${member.name.getText()}` });
-          enumValues.push({ name: member.name.getText(), value: resolved ? value : compact(member.initializer) });
+          enumValues.push({ name: member.name.getText(), value: resolved ? value : compact(member.initializer), constant: resolved });
         }
       }
       references.set(symbol.name, { name: symbol.name, resolution: symbol.declarations?.length ? 'resolved' : 'unknown',
