@@ -709,6 +709,7 @@ export class RuntimeSessionTools {
                 || step.timeoutMs !== undefined && (!Number.isInteger(step.timeoutMs) || step.timeoutMs < 100 || step.timeoutMs > 10000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Invalid runtime scenario step ${index}.` });
             return { ...step, ...(step.nodeReference ? { nodeReference: { id: step.nodeReference.id } } : {}) };
         });
+        args = { ...args, steps };
         if (activeScenarios.has(args.sessionId)) throw new ToolError({ code: 'RUNTIME_SCENARIO_BUSY', status: 409, message: 'A scenario or its timed-out request still owns this session; no steps dispatched.' });
         const scenario = { cancelled: false, runId: args.runId ?? randomUUID(), stepIndex: null as number | null, operation: null as string | null, completedSteps: 0, requestPending: false, callerFinished: false };
         activeScenarios.set(args.sessionId, scenario);
