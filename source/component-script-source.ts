@@ -15,6 +15,8 @@ export type ComponentPropertyDescriptor =
     | { name: string; type: 'number'; array: true; default?: number[] }
     | { name: string; type: 'string'; array: true; default?: string[] }
     | { name: string; type: 'boolean'; array: true; default?: boolean[] }
+    | { name: string; type: 'Vec2'; array: true; default?: { x: number; y: number }[] }
+    | { name: string; type: 'Vec3'; array: true; default?: { x: number; y: number; z: number }[] }
     | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame'; array: true; default?: [] };
 export interface ComponentScriptDescriptor { className: string; properties?: ComponentPropertyDescriptor[] }
 export interface ComponentScriptSource { source: string; sha256: string; bytes: number; className: string }
@@ -49,18 +51,28 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         const hasDefault = Object.prototype.hasOwnProperty.call(row, 'default');
         if (row.array !== undefined && typeof row.array !== 'boolean') invalid('array must be a boolean when provided.');
         if (row.array === true) {
-            if (type === 'Vec2' || type === 'Vec3') invalid('Vector arrays are not supported by this descriptor contract.');
             const values = hasDefault ? row.default : [];
             if (!Array.isArray(values) || values.length > 256) invalid('Array defaults must contain at most 256 entries.');
             const primitive = type === 'number' || type === 'string' || type === 'boolean';
-            if (!primitive && values.length !== 0) invalid('Reference arrays must start empty; bind actual references separately in the Inspector.');
+            const vector = type === 'Vec2' || type === 'Vec3';
+            if (!primitive && !vector && values.length !== 0) invalid('Reference arrays must start empty; bind actual references separately in the Inspector.');
+            const initializers: string[] = [];
             for (let index = 0; index < values.length; index++) {
                 const value = values[index];
-                if (!Object.prototype.hasOwnProperty.call(values, index) || typeof value !== type || type === 'number' && !Number.isFinite(value) || type === 'string' && value.length > 4096) invalid('Array defaults must be dense, type-matched and bounded; numbers must be finite.');
+                if (!Object.prototype.hasOwnProperty.call(values, index)) invalid('Array defaults must be dense.');
+                if (vector) {
+                    const axes = type === 'Vec2' ? ['x', 'y'] : ['x', 'y', 'z'];
+                    assertComponentScriptInput(value, axes);
+                    if (axes.some(axis => typeof value[axis] !== 'number' || !Number.isFinite(value[axis]))) invalid('Vector defaults require exactly the finite numeric coordinates of their declared type.');
+                    initializers.push(`new ${type}(${axes.map(axis => literal(value[axis] as number)).join(', ')})`);
+                } else {
+                    if (typeof value !== type || type === 'number' && !Number.isFinite(value) || type === 'string' && value.length > 4096) invalid('Array defaults must be type-matched and bounded; numbers must be finite.');
+                    initializers.push(literal(value));
+                }
             }
             names.add(row.name);
             imports.add(PROPERTY_IMPORTS[type]);
-            fields.push(`    @property([${PROPERTY_IMPORTS[type]}])`, `    ${row.name}: ${type}[] = [${values.map(value => literal(value)).join(', ')}];`, '');
+            fields.push(`    @property([${PROPERTY_IMPORTS[type]}])`, `    ${row.name}: ${type}[] = [${initializers.join(', ')}];`, '');
             continue;
         }
         let initial: string | number | boolean | null;

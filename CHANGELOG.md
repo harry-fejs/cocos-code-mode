@@ -160,6 +160,7 @@
 - Require matching node UUID and a bounded explicit component inventory at each component-add observation before granting success.
 - Validate all UUID/type identities and reject duplicates in component-add baseline and postcondition inventories before candidate selection.
 - Snapshot the scene after component removal absence read-back; snapshot rejection propagates rather than returning success.
+- Support bounded dense Vec2/Vec3 array defaults in scriptComponentCreate with exact finite coordinates and per-instance vector construction; update discovery schema and public descriptors.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
