@@ -350,6 +350,7 @@ function constraints(node, context, checker) {
         if (ts.isDeleteExpression(part)) {
           let target = part.expression;
           while (ts.isParenthesizedExpression(target) || ts.isAsExpression(target) || ts.isTypeAssertionExpression(target) || ts.isNonNullExpression(target) || ts.isSatisfiesExpression(target)) target = target.expression;
+          if (ts.isIdentifier(target)) return false;
           if (ts.isPropertyAccessExpression(target)) return usesConstant(target.expression);
           if (ts.isElementAccessExpression(target)) return usesConstant(target.expression) || usesConstant(target.argumentExpression);
         }
