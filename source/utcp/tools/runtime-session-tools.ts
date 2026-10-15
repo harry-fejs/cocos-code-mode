@@ -36,7 +36,7 @@ const store = new RuntimeSessionStore();
 const RUNTIME_STATE_TIMEOUT_MS = 60_000;
 let previewMutationPending = false;
 let unconfirmedPreviewMutation: { expected: PreviewState['state'], targetId?: string, minFrameCount?: number, requestSettled: boolean } | undefined;
-const activeScenarios = new Map<string, { cancelled: boolean; runId: string; stepIndex: number | null; operation: string | null; completedSteps: number; requestPending: boolean; callerFinished: boolean }>();
+const activeScenarios = new Map<string, { cancelled: boolean; cancel: () => void; runId: string; stepIndex: number | null; operation: string | null; completedSteps: number; requestPending: boolean; callerFinished: boolean }>();
 
 async function withRuntimeStateTimeout<T>(promise: Promise<T>, deadline = Date.now() + RUNTIME_STATE_TIMEOUT_MS): Promise<T> {
     let timer: NodeJS.Timeout | undefined;
@@ -712,7 +712,9 @@ export class RuntimeSessionTools {
         });
         args = { ...args, steps };
         if (activeScenarios.has(args.sessionId)) throw new ToolError({ code: 'RUNTIME_SCENARIO_BUSY', status: 409, message: 'A scenario or its timed-out request still owns this session; no steps dispatched.' });
-        const scenario = { cancelled: false, runId: args.runId ?? randomUUID(), stepIndex: null as number | null, operation: null as string | null, completedSteps: 0, requestPending: false, callerFinished: false };
+        let cancel!: () => void;
+        const cancellation = new Promise<void>(resolve => { cancel = resolve; });
+        const scenario = { cancelled: false, cancel, runId: args.runId ?? randomUUID(), stepIndex: null as number | null, operation: null as string | null, completedSteps: 0, requestPending: false, callerFinished: false };
         activeScenarios.set(args.sessionId, scenario);
         let inFlight: Promise<unknown> | undefined;
         try {
@@ -859,7 +861,7 @@ export class RuntimeSessionTools {
                 inFlight = pending;
                 scenario.requestPending = true;
                 void pending.then(() => { scenario.requestPending = false; }, () => { scenario.requestPending = false; });
-                const result: Record<string, unknown> = await withRuntimeStateTimeout<Record<string, unknown>>(pending as Promise<Record<string, unknown>>, stepDeadline);
+                const result: Record<string, unknown> = await withRuntimeStateTimeout<Record<string, unknown>>(Promise.race([pending as Promise<Record<string, unknown>>, cancellation.then(() => { throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario caller cancelled; pending primitive retains session ownership until settlement.', details: { nativeWorkCancelled: false, retrySafe: false, pendingMayComplete: scenario.requestPending } }); })]), stepDeadline);
                 inFlight = undefined;
                 if (Date.now() >= stepDeadline) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Scenario step completed after its deadline; inspect before retrying any action.' });
                 outcomes.push({ index, operation: step.operation, result });
@@ -907,7 +909,7 @@ export class RuntimeSessionTools {
         if (typeof args.runId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(args.runId)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'An exact bounded runId is required.' });
         const scenario = activeScenarios.get(args.sessionId);
         if (scenario && scenario.runId !== args.runId) throw new ToolError({ code: 'RUNTIME_SCENARIO_IDENTITY_MISMATCH', status: 409, message: 'Cancellation does not match the active run; no cancellation requested.' });
-        if (scenario) scenario.cancelled = true;
+        if (scenario) { scenario.cancelled = true; scenario.cancel(); }
         return { sessionId: args.sessionId, active: !!scenario, cancellationRequested: !!scenario, nativeWorkCancelled: false };
     }
     @utcpTool(

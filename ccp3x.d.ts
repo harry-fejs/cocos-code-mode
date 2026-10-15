@@ -1617,7 +1617,7 @@ declare namespace ccp3x {
     /** Read-only inclusive frame window0..1e9, AND-composed with paused; unavailable frame metrics refuse. */
     function runtimeWaitForState(args: { sessionId: string; paused?: boolean; minFrameCount?: number; maxFrameCount?: number; timeoutMs?: number }): { success: true; sessionId: string; state: NonNullable<RuntimePreviewResult['state']>; elapsedMs: number };
     function runtimeScenarioAssert(args: { sessionId: string; paused?: boolean; minFrameCount?: number; maxFrameCount?: number }): { success: true; sessionId: string; passed: boolean; state: NonNullable<RuntimePreviewResult['state']>; issues: string[] };
-    /** Exact session/run cancellation only. Never cancels native work or releases pending ownership; inactive requests are no-ops. Use a fresh runId for each invocation. */
+    /** Exact session/run cancellation promptly ends the caller wait. Never cancels native work or releases pending ownership; inactive requests are no-ops. Use a fresh runId for each invocation. */
     function runtimeScenarioCancel(args: { sessionId: string; runId: string }): { sessionId: string; active: boolean; cancellationRequested: boolean; nativeWorkCancelled: false };
     /** Current local ownership only; inactive is not success/native completion. No historical results or native query. */
     function runtimeScenarioInspect(args: { sessionId: string; runId: string }): { sessionId: string; runId: string; active: boolean; progress: { stepIndex: number | null; operation: string | null; completedSteps: number; requestPending: boolean; callerFinished: boolean; cancellationRequested: boolean } | null };
