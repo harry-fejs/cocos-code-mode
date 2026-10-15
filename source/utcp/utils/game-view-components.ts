@@ -1,6 +1,7 @@
 import { ToolError } from '../tool-error';
 import { executeGameViewOperation } from './game-view-transport';
 import { RuntimeSessionTools } from '../tools/runtime-session-tools';
+import { randomUUID } from 'crypto';
 
 export interface ComponentTarget { sessionId: string; nodeReference: { id: string }; componentId?: string }
 export interface ComponentOperation extends ComponentTarget {
@@ -8,6 +9,7 @@ export interface ComponentOperation extends ComponentTarget {
     timeoutMs?: number; maxEvents?: number; variable?: { name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean; expectedValue?: number | boolean };
     expectedGraphUuid?: string;
     maxClips?: number; clipOffset?: number;
+    captureToken?: string;
 }
 interface RuntimeClip { name: string; uuid: string }
 interface RuntimeState { clip: RuntimeClip; isPlaying: boolean; isPaused: boolean; time?: unknown; duration?: unknown; speed?: unknown }
@@ -195,17 +197,21 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
             let timer: ReturnType<typeof setTimeout> | undefined; let poll: ReturnType<typeof setInterval> | undefined; const clock = globalThis.performance;
             if (!clock || typeof clock.now !== 'function') fail('UNSUPPORTED_RUNTIME_METRIC', 'Monotonic animation event clock is unavailable.');
             const start = clock.now(); let reason = 'deadline';
+            const captures = (globalThis as unknown as { [key: symbol]: Map<string, boolean> })[Symbol.for('ccp3x.animationCaptures')];
+            const cancelled = () => args.captureToken !== undefined && captures?.get(args.captureToken) === true;
+            if (cancelled()) fail('RUNTIME_SCENARIO_CANCELLED', 'Animation capture cancelled before listener registration.');
             try {
                 await new Promise<void>((done, reject) => {
                     let settled = false;
                     const finish = () => { if (settled) return; settled = true; done(); };
                     const abort = (error: unknown) => { if (settled) return; settled = true; reject(error); };
-                    const capture = (type: string, eventState: unknown) => { if (settled) return; try { assertAnimation(); if (Date.now() >= args.expiresAt) { finish(); return; } if (eventState !== state) return; events.push({ sequence: events.length + 1, type, elapsedMs: clock.now() - start, clipName: clip.name, clipUuid: clip.uuid, state: snapshot() }); if (events.length >= (args.maxEvents ?? 20)) { reason = 'max-events'; finish(); } } catch (error) { abort(error); } };
+                    const checkCancellation = () => { if (cancelled()) { abort({ code: 'RUNTIME_SCENARIO_CANCELLED', message: 'Owned animation capture cancelled.' }); return true; } return false; };
+                    const capture = (type: string, eventState: unknown) => { if (settled || checkCancellation()) return; try { assertAnimation(); if (Date.now() >= args.expiresAt) { finish(); return; } if (eventState !== state) return; events.push({ sequence: events.length + 1, type, elapsedMs: clock.now() - start, clipName: clip.name, clipUuid: clip.uuid, state: snapshot() }); if (events.length >= (args.maxEvents ?? 20)) { reason = 'max-events'; finish(); } } catch (error) { abort(error); } };
                     for (const type of ['play', 'pause', 'resume', 'stop', 'lastframe', 'finished']) { const callback: RuntimeCallback = (_type: unknown, eventState: unknown) => capture(type, eventState); listeners.push({ type, callback }); c.on!.call(c, type, callback); }
-                    timer = setTimeout(finish, Math.max(0, args.expiresAt - Date.now())); poll = setInterval(() => { if (settled) return; try { assertAnimation(); } catch (error) { abort(error); } }, 25);
+                    timer = setTimeout(finish, Math.max(0, args.expiresAt - Date.now())); poll = setInterval(() => { if (settled || checkCancellation()) return; try { assertAnimation(); } catch (error) { abort(error); } }, 25);
                 });
                 assertAnimation(); return { ...animationIdentity, events, reason, elapsedMs: clock.now() - start, state: snapshot() };
-                } finally { clearTimeout(timer); clearInterval(poll); let cleanupFailed = false; for (const listener of listeners) { try { c.off!.call(c, listener.type, listener.callback); } catch { cleanupFailed = true; } } if (cleanupFailed) fail('RUNTIME_LISTENER_CLEANUP_FAILED', 'Animation listeners could not all be removed.'); }
+                } finally { clearTimeout(timer); clearInterval(poll); if (args.captureToken !== undefined) captures?.delete(args.captureToken); let cleanupFailed = false; for (const listener of listeners) { try { c.off!.call(c, listener.type, listener.callback); } catch { cleanupFailed = true; } } if (cleanupFailed) fail('RUNTIME_LISTENER_CLEANUP_FAILED', 'Animation listeners could not all be removed.'); }
         }
         if (args.kind !== 'graph' || !c.graph || typeof c.getVariables !== 'function' || typeof c.getValue !== 'function' || typeof c.getCurrentStateStatus !== 'function' || typeof c.getCurrentClipStatuses !== 'function' || typeof c.getCurrentTransition !== 'function') fail('UNSUPPORTED_RUNTIME_COMPONENT', 'AnimationController graph/runtime status APIs are unavailable.');
         const getVariables = c.getVariables!.bind(c); const getValue = c.getValue!.bind(c); const getCurrentStateStatus = c.getCurrentStateStatus!.bind(c); const getCurrentClipStatuses = c.getCurrentClipStatuses!.bind(c); const getCurrentTransition = c.getCurrentTransition!.bind(c);
@@ -241,16 +247,31 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
 
 export function createComponentOperationSource(args: ComponentOperation): string {
     const timeoutMs = args.timeoutMs ?? 1000;
-    const data = { kind: args.kind, operation: args.operation, nodeReference: { id: args.nodeReference.id }, componentId: args.componentId, clipName: args.clipName, clipUuid: args.clipUuid, maxEvents: args.maxEvents, maxClips: args.maxClips, clipOffset: args.clipOffset, expectedGraphUuid: args.expectedGraphUuid, variable: args.variable ? { name: args.variable.name, type: args.variable.type, value: args.variable.value, expectedValue: args.variable.expectedValue } : undefined, expiresAt: Date.now() + timeoutMs };
-    return `(() => { const requireDefined = ${requireDefined.toString()}; const finiteNumber = ${finiteNumber.toString()}; const objectValue = ${objectValue.toString()}; const resolveComponent = ${resolveComponent.toString()}; return (${componentOperation.toString()})(${JSON.stringify(data)}); })()`;
+    const data = { captureToken: args.captureToken, kind: args.kind, operation: args.operation, nodeReference: { id: args.nodeReference.id }, componentId: args.componentId, clipName: args.clipName, clipUuid: args.clipUuid, maxEvents: args.maxEvents, maxClips: args.maxClips, clipOffset: args.clipOffset, expectedGraphUuid: args.expectedGraphUuid, variable: args.variable ? { name: args.variable.name, type: args.variable.type, value: args.variable.value, expectedValue: args.variable.expectedValue } : undefined, expiresAt: Date.now() + timeoutMs };
+    return `(async () => { const token = ${JSON.stringify(args.captureToken ?? null)}; const key = Symbol.for('ccp3x.animationCaptures'); let captures; if (token !== null) { captures = globalThis[key] ?? (globalThis[key] = new Map()); if (!(captures instanceof Map) || captures.size >= 128 || captures.has(token)) return { code: 'RUNTIME_CAPTURE_LIMIT', message: 'Capture registry unavailable or full.' }; captures.set(token, false); } try { const requireDefined = ${requireDefined.toString()}; const finiteNumber = ${finiteNumber.toString()}; const objectValue = ${objectValue.toString()}; const resolveComponent = ${resolveComponent.toString()}; return await (${componentOperation.toString()})(${JSON.stringify(data)}); } finally { if (token !== null) captures.delete(token); } })()`;
 }
 
-export async function executeComponentOperation(args: ComponentOperation): Promise<Record<string, unknown>> {
+export async function executeComponentOperation(args: ComponentOperation, assertActive?: () => void): Promise<Record<string, unknown>> {
     validateComponentTarget(args, args.kind !== 'particle');
     args = { ...args, nodeReference: { id: args.nodeReference.id }, ...(args.variable === undefined ? {} : { variable: { ...args.variable } }) };
     const runtime = new RuntimeSessionTools(); const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId }); const session = inspected.session;
     if (!session || !('status' in session) || !('targetId' in session) || !('targetKind' in session) || session.sessionId !== args.sessionId || session.status !== 'attached' || session.targetKind !== 'game-view' || typeof session.targetId !== 'string' || !inspected.ready) { if (session && 'status' in session && session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: 'The runtime session is stopped.' }); throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'The exact attached Game View session is not ready.' }); }
-    const mutation = args.kind !== 'events' && !['inspect', 'observe'].includes(args.operation); const result = await executeGameViewOperation(session.targetId, createComponentOperationSource(args), (args.timeoutMs ?? 1000) + 2000, mutation) as Record<string, unknown> | null;
+    assertActive?.();
+    const mutation = args.kind !== 'events' && !['inspect', 'observe'].includes(args.operation);
+    const captureToken = args.kind === 'events' && assertActive ? randomUUID() : undefined;
+    let cancellationPoll: NodeJS.Timeout | undefined; let signalling = false; let signalAttempts = 0;
+    let result: Record<string, unknown> | null;
+    try {
+        const pending = executeGameViewOperation(session.targetId, createComponentOperationSource({ ...args, captureToken }), (args.timeoutMs ?? 1000) + 2000, mutation);
+        if (captureToken !== undefined) cancellationPoll = setInterval(() => {
+            if (signalling || signalAttempts >= 3) return;
+            try { assertActive?.(); return; } catch { /* Signal only this owned capture; never stop playback. */ }
+            signalling = true; signalAttempts++;
+            const source = `(() => { const captures = globalThis[Symbol.for('ccp3x.animationCaptures')]; const token = ${JSON.stringify(captureToken)}; if (captures instanceof Map && captures.has(token)) { captures.set(token, true); return true; } return false; })()`;
+            void executeGameViewOperation(session.targetId, source, 1000, false).then(ack => { if (ack === true) signalAttempts = 3; }, () => undefined).finally(() => { signalling = false; });
+        }, 25);
+        result = await pending as Record<string, unknown> | null;
+    } finally { clearInterval(cancellationPoll); }
     if (!result || typeof result !== 'object' || Array.isArray(result)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Component operation returned no typed runtime state.', details: { mutationDispatched: mutation, retrySafe: !mutation }, recovery: 'Inspect the exact component before further control; do not replay the prior mutation.' });
     if (typeof result.code === 'string') throw new ToolError({ code: result.code, status: /NOT_FOUND$/.test(result.code) ? 404 : result.code.startsWith('UNSUPPORTED') ? 422 : 409, message: typeof result.message === 'string' ? result.message : 'Component operation failed.', details: { mutationDispatched: !mutation ? false : typeof result.mutationDispatched === 'boolean' ? result.mutationDispatched : null, retrySafe: !mutation || result.mutationDispatched === false }, recovery: 'Reconcile the exact component outcome before further control; never replay an unknown mutation.' });
     if ('success' in result && result.success !== true) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Component response contains a failure or malformed success flag.', details: { mutationDispatched: mutation, retrySafe: !mutation }, recovery: 'Inspect the exact component outcome before further control; do not replay the prior mutation.' });

@@ -817,7 +817,7 @@ export class RuntimeSessionTools {
                                     const animation = new ComponentRuntimeTools();
                                     const target = { sessionId: args.sessionId, nodeReference: step.nodeReference!, componentId: step.componentId!, clipName: step.clipName!, clipUuid: step.clipUuid!, timeoutMs };
                                     if (step.operation === 'animationEvents') {
-                                        const capture = await animation.animationPlaybackEvents({ ...target, maxEvents: step.maxEvents });
+                                        const capture = await animation.animationPlaybackEvents({ ...target, maxEvents: step.maxEvents }, assertActive);
                                         if (step.expectedEvent === undefined && step.expectedEventSequence === undefined) return capture;
                                         if (!Array.isArray(capture.events) || capture.events.length > (step.maxEvents ?? 20) || capture.events.findIndex((event, index) => !event || typeof event !== 'object' || Array.isArray(event) || !['play', 'pause', 'resume', 'stop', 'lastframe', 'finished'].includes(event.type) || event.clipUuid !== step.clipUuid || event.clipName !== step.clipName || event.sequence !== index + 1) >= 0) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Animation event checkpoint requires bounded sequential events for the exact requested clip.' });
                                         let previousElapsedMs = 0;

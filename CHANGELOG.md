@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Cancel scenario animation event capture through a private per-capture renderer token, bounded registry and at most three exact-target signals. Capture cancellation disposes only owned listeners; failed signalling retains deadline cleanup and never stops playback or clears sibling captures.
 - Preserve explicit async declaration modifiers in shared catalog metadata without inferring async syntax from Promise return types or granting invocation/execution permission.
 - Measure animation event/envelope elapsedMs with renderer performance.now instead of wall-clock subtraction. System clock rollback cannot produce negative capture elapsed; missing monotonic clock refuses before listener registration. Absolute deadlines remain unchanged.
 - Treat parentheses around explicit decorator element keys transparently in both AST-only and compiler namespace paths; dynamic keys remain unrecognized and value/type-only export checks remain intact.

@@ -186,10 +186,10 @@ export class ComponentRuntimeTools {
     @utcpTool('animationPlaybackEvents', 'Observe bounded Animation/SkeletalAnimation lifecycle events for one exact Game View clip. Read-only playback observation with listener cleanup; no event history before registration or automatic playback dispatch.', {
         type: 'object', additionalProperties: false, properties: { ...targetProperties, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, maxEvents: { type: 'integer', minimum: 1, maximum: 100 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } }, required: ['sessionId', 'nodeReference', 'componentId', 'clipName', 'clipUuid'],
     }, componentOutputSchema, 'POST', ['animation', 'events', 'runtime', 'read-only'])
-    async animationPlaybackEvents(args: EventArgs): Promise<Record<string, unknown>> {
+    async animationPlaybackEvents(args: EventArgs, assertActive?: () => void): Promise<Record<string, unknown>> {
         const operation = validateSkeletal(args, 'observe');
         if (args.maxEvents !== undefined && (!Number.isInteger(args.maxEvents) || args.maxEvents < 1 || args.maxEvents > 100)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'maxEvents must be an integer from1 to100.' });
-        return executeComponentOperation({ ...operation, kind: 'events', maxEvents: args.maxEvents ?? 20 });
+        return executeComponentOperation({ ...operation, kind: 'events', maxEvents: args.maxEvents ?? 20 }, assertActive);
     }
 
     @utcpTool('animationGraphPreview', 'Inspect one exact cc.animation.AnimationController runtime graph, or set one typed FLOAT/INTEGER/BOOLEAN variable with read-back. No dynamic methods or invented graph component are used.', {
