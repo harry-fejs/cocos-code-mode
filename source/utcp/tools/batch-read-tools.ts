@@ -15,6 +15,7 @@ type SceneBatchEntry = {
 };
 
 type AssetBatchQuery = {
+    name?: string,
     pattern?: string,
     ccType?: string,
     importer?: string,
@@ -55,8 +56,8 @@ function validateAssetBatchQuery(query: unknown, index: number): void {
         throw new Error(`assetBatchQuery query ${index + 1} must be an object`);
     }
 
-    const candidate = query as { pattern?: unknown, ccType?: unknown, importer?: unknown, extname?: unknown, isBundle?: unknown, limit?: unknown };
-    const stringFilters = [candidate.pattern, candidate.ccType, candidate.importer, candidate.extname];
+    const candidate = query as { name?: unknown, pattern?: unknown, ccType?: unknown, importer?: unknown, extname?: unknown, isBundle?: unknown, limit?: unknown };
+    const stringFilters = [candidate.name, candidate.pattern, candidate.ccType, candidate.importer, candidate.extname];
     if (stringFilters.some((filter) => filter !== undefined && (typeof filter !== 'string' || filter.length === 0))) {
         throw new Error(`assetBatchQuery query ${index + 1} filters must be non-empty strings`);
     }
@@ -159,6 +160,7 @@ export class BatchReadTools {
                     items: {
                         type: 'object',
                         properties: {
+                            name: { type: 'string', minLength: 1 },
                             pattern: { type: 'string', minLength: 1 },
                             ccType: { type: 'string', minLength: 1 },
                             importer: { type: 'string', minLength: 1 },
@@ -167,6 +169,7 @@ export class BatchReadTools {
                             limit: { type: 'integer', minimum: 1, maximum: MAX_ASSET_QUERY_LIMIT, description: `Per-query result cap (maximum ${MAX_ASSET_QUERY_LIMIT})` },
                         },
                         anyOf: [
+                            { required: ['name'] },
                             { required: ['pattern'] },
                             { required: ['ccType'] },
                             { required: ['importer'] },

@@ -165,7 +165,7 @@ declare namespace ccp3x {
 
     /** Queries 1–100 filter sets in input order; explicit limits are capped at 200 per query. Any query failure rejects the batch, not a per-item outcome. Native scans are not an atomic snapshot. */
     function assetBatchQuery(args: { queries: Array<{
-        pattern?: string; ccType?: string; importer?: string; extname?: string; isBundle?: boolean; limit?: number;
+        name?: string; pattern?: string; ccType?: string; importer?: string; extname?: string; isBundle?: boolean; limit?: number;
     }> }): { results: Array<ReturnType<typeof assetQuery>> };
 
     /** Read bounded importer-specific settings, typed property descriptors, and explicit source identity for one asset. */
