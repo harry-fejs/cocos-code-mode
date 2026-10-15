@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add siblingIndex0..9999/null-root conditions to runtime node waits and scenario nodeWait/nodeAssert, composable with parent identity. Reject invalid indices/inconsistent observations, retain mismatch snapshot and stop later cues; no reorder/render-order inference.
 - Diagnose nonfinite compiler enum constants as unresolved and retain initializer provenance instead of serializing Infinity/NaN into misleading JSON null values.
 - Emit enum-value unresolved diagnostics for members without compiler constant values; retain initializer text only as provenance, never as proof of an evaluated enum value.
 - Add observed siblingIndex to runtime node snapshots (null for root), rechecking parent membership index after metric reads. This is hierarchy order only, not render order or reorder mutation; hierarchyRevision continues to cover parent/direct children, not sibling position.
