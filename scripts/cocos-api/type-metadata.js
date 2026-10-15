@@ -241,14 +241,27 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
     const parameter = symbol.valueDeclaration || symbol.declarations?.[0] || declaration.parameters?.[position];
     if (parameter?.dotDotDotToken) {
       const rawRestType = checker.getTypeOfSymbolAtLocation(symbol, parameter);
-      const restType = rawRestType.flags & ts.TypeFlags.TypeParameter ? checker.getBaseConstraintOfType(rawRestType) || rawRestType : rawRestType;
-      const alternatives = restType.isUnion?.() ? restType.types : [restType];
+      const alternatives = [rawRestType];
+      const visited = new Set();
       let requiredLength = Infinity;
-      for (const alternative of alternatives) {
-        const constrained = alternative.flags & ts.TypeFlags.TypeParameter ? checker.getBaseConstraintOfType(alternative) || alternative : alternative;
-        requiredLength = Math.min(requiredLength, checker.isTupleType(constrained) ? constrained.target.minLength : 0);
+      for (let index = 0; index < alternatives.length; index++) {
+        const alternative = alternatives[index];
+        if (visited.has(alternative)) continue;
+        if (visited.size >= 256) { requiredLength = 0; unresolved.push({ kind: 'arity-budget', reference: 'Rest arity expansion exceeds 256 types' }); break; }
+        visited.add(alternative);
+        if (alternative.flags & ts.TypeFlags.TypeParameter) {
+          const constraint = checker.getBaseConstraintOfType(alternative);
+          if (constraint && constraint !== alternative) { alternatives.push(constraint); continue; }
+        }
+        if (alternative.isUnion?.()) {
+          if (alternatives.length + alternative.types.length > 256) { requiredLength = 0; unresolved.push({ kind: 'arity-budget', reference: 'Rest arity expansion exceeds 256 types' }); break; }
+          for (const type of alternative.types) alternatives.push(type);
+          continue;
+        }
+        requiredLength = Math.min(requiredLength, checker.isTupleType(alternative) ? alternative.target.minLength : 0);
         if (requiredLength === 0) break;
       }
+      if (!Number.isFinite(requiredLength)) requiredLength = 0;
       if (requiredLength > 0) minArgumentCount = Math.max(minArgumentCount, position + requiredLength);
     }
     const info = typeInfo(checker, checker.getTypeOfSymbolAtLocation(symbol, parameter || declaration), parameter?.type);

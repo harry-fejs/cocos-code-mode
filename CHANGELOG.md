@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Expand nested generic constraints/rest unions iteratively under a256-type arity budget, preserving lower tuple bounds; budget exhaustion reports arity-budget and does not guess a positive minimum.
 - Add inclusive native keyframeFrameRange filtering to animationTimelineInspect with per-track matchedKeyframes and matching-key pagination. Original indices, whole-track ranges, full-dump diagnostics and filter-independent revisions remain; timing coverage is not runtime/binding validation.
 - Pin the first observed Game View target across regular and skeletal animation state waits. A replacement target cannot satisfy a pending checkpoint; missing identity fails closed without playback dispatch.
 - Preserve lower arity bounds from constrained generic alternatives inside rest unions, retaining generic unresolved diagnostics rather than treating constraints as complete selected schemas.
