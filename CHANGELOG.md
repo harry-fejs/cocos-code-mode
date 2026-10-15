@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preflight all animationBatchControl node references and typed playback options before any IPC; snapshot IDs/options so caller changes during asynchronous dispatch cannot redirect later actions. Native per-node failures remain isolated; no replay or atomic batch claim.
 - Retain evaluated computed keys of object-literal methods/getters/setters in guard read provenance while continuing to exclude their deferred bodies and parameters.
 - Validate keyframe/auxiliary move offsets as integer scalars or dense 1..200 integer arrays before native selection. Preserve omitted zero, signed values and input order; copy array offsets before async dispatch, with no native replay.
 - Separate object/property-access names from evaluated value reads in guard provenance, avoiding AST-only false positives for {EDITOR:true}/object.EDITOR while retaining shorthand, computed keys and initializer reads.

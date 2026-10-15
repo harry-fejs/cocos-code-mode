@@ -1601,22 +1601,30 @@ export class AnimationTools {
         if (!allowed.includes(operation ?? '')) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `operation must be one of: ${allowed.join(', ')}.` });
         if (operation === 'play' && !args.clipName) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'play requires clipName.' });
         if (operation === 'set_cache_mode' && !args.cacheMode) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'set_cache_mode requires cacheMode.' });
+        if (args.clipName !== undefined && (typeof args.clipName !== 'string' || args.clipName.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'clipName must be a string of at most 256 characters.' });
+        if (args.loop !== undefined && typeof args.loop !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'loop must be a boolean.' });
+        if (args.cacheMode !== undefined && !['REALTIME', 'SHARED_CACHE', 'PRIVATE_CACHE'].includes(args.cacheMode)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'cacheMode must be REALTIME, SHARED_CACHE, or PRIVATE_CACHE.' });
+        const nodeIds: string[] = [];
+        for (let index = 0; index < args.nodeReferences.length; index++) {
+            if (!Object.prototype.hasOwnProperty.call(args.nodeReferences, index)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'nodeReferences must be dense.' });
+            nodeIds.push(requireRef(args.nodeReferences[index], `nodeReferences[${index}]`));
+        }
+        const { clipName, loop, cacheMode } = args;
         const results: unknown[] = [];
         const failures: unknown[] = [];
-        for (const reference of args.nodeReferences) {
-            const nodeUuid = requireRef(reference, 'nodeReferences[]');
+        for (const nodeUuid of nodeIds) {
             try {
                 const result = await Editor.Message.request('scene', 'execute-scene-script', {
                     name: 'ccp3x',
                     method: 'animationRuntimeControl',
-                    args: [{ nodeUuid, operation, clipName: args.clipName, loop: args.loop, cacheMode: args.cacheMode }],
+                    args: [{ nodeUuid, operation, clipName, loop, cacheMode }],
                 });
                 results.push({ nodeReference: { id: nodeUuid, type: 'cc.Node' }, result });
             } catch (error) {
                 failures.push({ nodeReference: { id: nodeUuid, type: 'cc.Node' }, error: error instanceof Error ? error.message : String(error) });
             }
         }
-        return { operation, results, failures, total: args.nodeReferences.length };
+        return { operation, results, failures, total: nodeIds.length };
     }
 
     @utcpTool(
