@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Snapshot validated graph wait identity/type/exact or nested range condition before polling, preventing caller changes during asynchronous reads from redirecting predicates or earning unintended matches. Deadline/poll bounds remain fixed; no native writes or replay.
+- Exclude delete identifier operands from direct constant value reads, including transparent wrappers; computed-key/base reads remain inspected and no invalid imported deletion is executed or authorized.
 - Compose variableRange numeric inclusive intervals in scenario graphWait/graphAssert, exclusive with exact variableValue. Whole-input preflight rejects graphSet ranges, boolean/malformed intervals and fractional integer bounds; copies nested range before dispatch, no graph writes added.
 - Unwrap transparent parentheses/erased TypeScript wrappers iteratively during guard-read inspection, avoiding wrapper-depth recursion while excluding type-only annotations and retaining underlying value semantics.
 - Add inclusive numeric range conditions to animationGraphWaitForVariable, exclusive with exact value. Reject boolean ranges and noninteger integer bounds before observation; preserve exact-value compatibility, graph identity/type/deadline guards and writes:false. No transition/playability inference.

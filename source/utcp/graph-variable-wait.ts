@@ -10,6 +10,7 @@ export async function waitForGraphVariable(condition: GraphVariableWaitCondition
             ? condition.type === 'boolean' ? typeof condition.value !== 'boolean' : typeof condition.value !== 'number' || !Number.isFinite(condition.value) || condition.type === 'integer' && !Number.isInteger(condition.value)
             : condition.value !== undefined || condition.type === 'boolean' || !condition.range || typeof condition.range !== 'object' || Array.isArray(condition.range) || Object.keys(condition.range).some(key => key !== 'min' && key !== 'max') || typeof condition.range.min !== 'number' || !Number.isFinite(condition.range.min) || typeof condition.range.max !== 'number' || !Number.isFinite(condition.range.max) || condition.range.min > condition.range.max || condition.type === 'integer' && (!Number.isInteger(condition.range.min) || !Number.isInteger(condition.range.max)))
         || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000 || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide exact graph UUID, typed variable condition and bounded timeout/poll interval.' });
+    condition = { graphUuid: condition.graphUuid, name: condition.name, type: condition.type, value: condition.value, ...(condition.range === undefined ? {} : { range: { min: condition.range.min, max: condition.range.max } }) };
     const deadline = Date.now() + timeoutMs; let observations = 0;
     for (;;) {
         const remaining = deadline - Date.now();
