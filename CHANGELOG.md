@@ -122,6 +122,7 @@
 - Declare button click simulation, binding, and read-only binding inspection with nullable serialized identities and explicit persistence limits.
 - Route instruction writes through the shared bounded atomic project writer with filesystem read-back and real-path containment checks.
 - Reuse bounded real-path-checked project reads for instruction text, preserve missing-file responses, and declare both instruction APIs.
+- Declare scene snapshots and independent batch reads with recursive hierarchy, truncation reasons, unknown native fields, and per-entry errors.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

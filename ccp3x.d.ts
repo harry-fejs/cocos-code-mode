@@ -1194,6 +1194,23 @@ declare namespace ccp3x {
     /** Uses the shared bounded atomic writer and filesystem read-back; asset refresh is best-effort. Inspect ambiguous failures before retry. */
     function writeProjectInstruction(args: { filePath: string; content: string }): { success: true; filePath: string; bytesWritten: number };
 
+    interface SceneSnapshotNode {
+        reference: InstanceReference; children: SceneSnapshotNode[];
+        components?: Array<{ reference: InstanceReference }>;
+        childrenOmitted?: number; childrenCount?: number; truncated?: 'nodeLimit' | 'maxDepth';
+        [field: string]: unknown;
+    }
+    /** Bounded formatted hierarchy, not an atomic scene transaction. Extra native fields remain unknown; field selection can omit them. */
+    function sceneSnapshot(args: { reference?: InstanceReference; maxDepth?: number; maxNodes?: number; fields?: string[] }): {
+        tree: SceneSnapshotNode; nodeCount: number; truncated?: 'nodeLimit' | 'maxDepth';
+    };
+    /** Reads 1–100 entries independently. Per-entry errors do not reject successful siblings; dumps retain native unwrapped values. */
+    function sceneBatchGet(args: { entries: Array<{
+        reference?: InstanceReference; target?: 'instance' | 'CurrentSceneGlobals' | 'ProjectSettings'; fields?: string[];
+    }>; fields?: string[] }): { results: Array<
+        { reference: InstanceReference; dump: unknown } | { reference: InstanceReference; error: string }
+    > };
+
     /** Tracks only this module's main-process broadcastObserve listeners; excludes panel/arbitrary Creator listeners. No callbacks or event payloads are exposed. */
     function editorListenersInspect(): { supported: true; listeners: Array<{ topic: string; state: 'registered' | 'removal-failed' }>; limitation: string };
 
