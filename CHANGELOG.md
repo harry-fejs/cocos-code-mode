@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add inclusive eventFrameRange(min/max native frames) to animationTimelineInspect, AND-composed with exact callback selection. Preserve matching-event paging/native indices and whole-dump diagnostics/revision; no runtime timing conversion or callback execution inferred.
 - Require explicit property/literal element names for namespace-import guard provenance; dynamic flags[key] access no longer claims a fixed engine-constant guard, while nested real constant reads remain detectable.
 - Add exact case-sensitive eventCallback filtering to animationTimelineInspect. Matching-event pagination preserves native indices/source totals; all retrieved events still validate and affect revision. Callback existence, binding and execution remain unverified.
 - Add exact trackBinding(nodePath/property) selection to animationTimelineInspect, with root-path support, matching-track offsets/counts and original native indices. Whole retrieved dump validation/revision and source counts remain intact; selected-query completeness is not scene binding or playable validation.

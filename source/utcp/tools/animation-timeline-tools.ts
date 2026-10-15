@@ -18,6 +18,7 @@ export class AnimationTimelineTools {
             nodeReference: InstanceReferenceSchema, clipReference: InstanceReferenceSchema,
             trackBinding: { type: 'object', additionalProperties: false, properties: { nodePath: { type: 'string', maxLength: 1024 }, property: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['nodePath', 'property'], description: 'Exact retrieved binding filter. Empty nodePath selects root. Track offsets address matching tracks; original native indices and whole-dump diagnostics remain. Not scene binding validation.' },
             eventCallback: { type: 'string', minLength: 1, maxLength: 256, description: 'Exact callback metadata filter; event offsets address matching events, native indices retained. No callback lookup/execution or runtime event history.' },
+            eventFrameRange: { type: 'object', additionalProperties: false, properties: { min: { type: 'number', minimum: 0 }, max: { type: 'number', minimum: 0 } }, required: ['min', 'max'], description: 'Inclusive native frame interval, AND-composed with eventCallback. No seconds/runtime timing inference. Off-window events still validate and affect revision.' },
             expectedRevision: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'Guard retrieved timeline metadata across pages, not opaque keyframe values or runtime state.' },
             trackOffset: { type: 'integer', minimum: 0, maximum: 1000000, default: 0 },
             trackLimit: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
@@ -38,6 +39,7 @@ export class AnimationTimelineTools {
             totalTracks: { type: ['integer', 'null'] }, retrievedTracks: { type: ['integer', 'null'] }, totalEvents: { type: ['integer', 'null'] }, inspectedKeyframes: { type: 'integer' },
             matchedTracks: { type: ['integer', 'null'] }, trackBinding: { type: ['object', 'null'], properties: { nodePath: { type: 'string' }, property: { type: 'string' } }, required: ['nodePath', 'property'] },
             matchedEvents: { type: ['integer', 'null'] }, eventCallback: { type: ['string', 'null'] },
+            eventFrameRange: { type: ['object', 'null'], properties: { min: { type: 'number' }, max: { type: 'number' } }, required: ['min', 'max'] },
             trackOffset: { type: 'integer' }, trackLimit: { type: 'integer' }, eventOffset: { type: 'integer' }, eventLimit: { type: 'integer' },
             nextTrackOffset: { type: ['integer', 'null'] }, nextEventOffset: { type: ['integer', 'null'] },
             tracks: { type: 'array', maxItems: 200, items: { type: 'object', properties: {
@@ -55,7 +57,7 @@ export class AnimationTimelineTools {
             diagnostics: { type: 'array', maxItems: 64, items: { type: 'object', properties: { code: { type: 'string' }, location: { type: 'string' } }, required: ['code', 'location'] } },
             diagnosticCount: { type: 'integer' }, diagnosticsTruncated: { type: 'boolean' },
             runtimeVerified: { type: 'boolean', const: false }, sceneSaved: { type: 'boolean', const: false }, callbackExistenceVerified: { type: 'boolean', const: false },
-        }, required: ['matchedEvents', 'eventCallback', 'matchedTracks', 'trackBinding', 'revision', 'revisionScope', 'nodeReference', 'clipReference', 'identity', 'clip', 'sourceScope', 'timingUnit', 'validityScope', 'valid', 'sourceComplete', 'complete', 'truncated', 'totalTracks', 'retrievedTracks', 'totalEvents', 'inspectedKeyframes', 'trackOffset', 'trackLimit', 'eventOffset', 'eventLimit', 'nextTrackOffset', 'nextEventOffset', 'tracks', 'events', 'diagnostics', 'diagnosticCount', 'diagnosticsTruncated', 'runtimeVerified', 'sceneSaved', 'callbackExistenceVerified'],
+        }, required: ['eventFrameRange', 'matchedEvents', 'eventCallback', 'matchedTracks', 'trackBinding', 'revision', 'revisionScope', 'nodeReference', 'clipReference', 'identity', 'clip', 'sourceScope', 'timingUnit', 'validityScope', 'valid', 'sourceComplete', 'complete', 'truncated', 'totalTracks', 'retrievedTracks', 'totalEvents', 'inspectedKeyframes', 'trackOffset', 'trackLimit', 'eventOffset', 'eventLimit', 'nextTrackOffset', 'nextEventOffset', 'tracks', 'events', 'diagnostics', 'diagnosticCount', 'diagnosticsTruncated', 'runtimeVerified', 'sceneSaved', 'callbackExistenceVerified'],
     }, 'GET', ['animation', 'timeline', 'inspect', 'read-only'])
     async animationTimelineInspect(args: TimelineInspectOptions) {
         const nodeReference = exactReference(args?.nodeReference, 'nodeReference');

@@ -8,6 +8,7 @@ export interface TimelineInspectOptions {
     clipReference: IInstanceReference;
     trackBinding?: { nodePath: string; property: string };
     eventCallback?: string;
+    eventFrameRange?: { min: number; max: number };
     trackOffset?: number;
     trackLimit?: number;
     eventOffset?: number;
@@ -33,6 +34,8 @@ export function timelineInspectBounds(options: TimelineInspectOptions) {
     const binding = options.trackBinding;
     if (binding !== undefined && (!timelineRecord(binding) || Object.keys(binding).some(key => !['nodePath', 'property'].includes(key)) || typeof binding.nodePath !== 'string' || binding.nodePath.length > 1024 || typeof binding.property !== 'string' || !binding.property || binding.property.length > 256)) fail('INVALID_ARGUMENT', 'trackBinding requires exact nodePath (empty root allowed) and nonempty property.');
     if (options.eventCallback !== undefined && (typeof options.eventCallback !== 'string' || !options.eventCallback || options.eventCallback.length > 256)) fail('INVALID_ARGUMENT', 'eventCallback must be an exact nonempty callback name of at most 256 characters.');
+    const range = options.eventFrameRange;
+    if (range !== undefined && (!timelineRecord(range) || Object.keys(range).some(key => !['min', 'max'].includes(key)) || typeof range.min !== 'number' || !Number.isFinite(range.min) || range.min < 0 || typeof range.max !== 'number' || !Number.isFinite(range.max) || range.max < range.min)) fail('INVALID_ARGUMENT', 'eventFrameRange requires finite nonnegative inclusive min <= max native frames.');
     return {
         trackOffset: integer(options.trackOffset, 0, 0, 1000000, 'trackOffset'),
         trackLimit: integer(options.trackLimit, 50, 1, 200, 'trackLimit'),
@@ -154,7 +157,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     const revision = hash.digest('hex');
     if (options.expectedRevision !== undefined && options.expectedRevision !== revision) throw new ToolError({ code: 'TIMELINE_REVISION_CHANGED', status: 409, message: 'Retrieved timeline metadata changed; restart paging. No mutation was dispatched.' });
     const selectedTracks = options.trackBinding ? tracks.filter(track => track.identity.nodePath === options.trackBinding!.nodePath && track.identity.property === options.trackBinding!.property) : tracks;
-    const selectedEvents = options.eventCallback === undefined ? eventRows : eventRows.filter(event => event.callback === options.eventCallback);
+    const selectedEvents = options.eventCallback === undefined && options.eventFrameRange === undefined ? eventRows : eventRows.filter(event => (options.eventCallback === undefined || event.callback === options.eventCallback) && (options.eventFrameRange === undefined || event.frame !== null && event.frame >= options.eventFrameRange.min && event.frame <= options.eventFrameRange.max));
     const result = {
         nodeReference: options.nodeReference, clipReference: options.clipReference,
         revision, revisionScope: 'Retrieved timeline projection including all retrieved keyframe indices/times, clip metadata, track bindings/counts/ranges, events and diagnostics. Excludes opaque keyframe values, unretrieved native tracks, callback binding and runtime state. Not an atomic scene snapshot.',
@@ -167,6 +170,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         totalTracks, retrievedTracks: curves?.length ?? null, totalEvents: events?.length ?? null, inspectedKeyframes: keyframeCount,
         matchedTracks: curves ? selectedTracks.length : null, trackBinding: options.trackBinding ? { ...options.trackBinding } : null,
         matchedEvents: events ? selectedEvents.length : null, eventCallback: options.eventCallback ?? null,
+        eventFrameRange: options.eventFrameRange ? { ...options.eventFrameRange } : null,
         trackOffset: bounds.trackOffset, trackLimit: bounds.trackLimit, eventOffset: bounds.eventOffset, eventLimit: bounds.eventLimit,
         nextTrackOffset: null as number | null, nextEventOffset: null as number | null,
         tracks: selectedTracks.slice(bounds.trackOffset, bounds.trackOffset + bounds.trackLimit), events: selectedEvents.slice(bounds.eventOffset, bounds.eventOffset + bounds.eventLimit),
