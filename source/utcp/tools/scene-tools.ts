@@ -431,8 +431,13 @@ export class SceneTools {
         let componentIndex = -1;
         for (const row of cameraSceneNodes(nodeTree)) {
             const components = cameraComponentsFromNode(row);
-            const index = components.findIndex((component) => isCameraComponent(component) && componentUuid(component) === args.reference.id);
-            if (index >= 0) { foundNode = row; foundComponent = components[index]; componentIndex = index; break; }
+            for (let index = 0; index < components.length; index++) {
+                if (componentUuid(components[index]) !== args.reference.id) continue;
+                if (foundNode || !isCameraComponent(components[index])) throw new ToolError({ code: 'CAMERA_TARGET_AMBIGUOUS', status: 409, message: 'Camera UUID is ambiguous in the scene hierarchy.' });
+                foundNode = row;
+                foundComponent = components[index];
+                componentIndex = index;
+            }
         }
         const nodeId = foundNode && typeof foundNode.uuid === 'string' ? foundNode.uuid : undefined;
         if (!nodeId || !foundComponent || componentIndex < 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Camera ${args.reference.id} was not found in the open scene.` });
