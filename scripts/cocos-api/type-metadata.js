@@ -14,13 +14,18 @@ function canonicalType(value) {
 function typeInfo(checker, type, node) {
   const unresolved = [];
   const seen = new Set();
+  const active = new Set();
   const seenSymbols = new Set();
   const references = new Map();
   let count = 0;
   const visit = current => {
-    if (!current || seen.has(current)) return;
+    if (!current) return;
+    if (active.has(current)) { unresolved.push({ kind: 'cycle', reference: current.aliasSymbol?.name || current.symbol?.name || 'recursive-type' }); return; }
+    if (seen.has(current)) return;
     seen.add(current);
     if (++count > 256) { unresolved.push({ kind: 'type-budget', reference: 'Type expansion exceeds 256 nodes' }); return; }
+    active.add(current);
+    try {
     if (current.flags & ts.TypeFlags.Any) unresolved.push({ kind: 'any', reference: current.aliasSymbol?.name || current.intrinsicName || 'any' });
     if (current.flags & ts.TypeFlags.Unknown) unresolved.push({ kind: 'unknown', reference: 'unknown' });
     if (current.isUnionOrIntersection?.()) current.types.forEach(visit);
@@ -36,7 +41,7 @@ function typeInfo(checker, type, node) {
     }
     if (symbol && declaration && !seenSymbols.has(symbol)) {
       seenSymbols.add(symbol);
-      if (ts.isTypeAliasDeclaration(declaration)) visit(checker.getTypeFromTypeNode(declaration.type));
+      if (ts.isTypeAliasDeclaration(declaration)) { const underlying = checker.getTypeFromTypeNode(declaration.type); if (underlying !== current) visit(underlying); }
       if (ts.isInterfaceDeclaration(declaration)) for (const member of declaration.members) {
         const memberType = member.type ? checker.getTypeFromTypeNode(member.type) : member.name ? checker.getTypeAtLocation(member) : null;
         if (memberType) visit(memberType);
@@ -52,6 +57,7 @@ function typeInfo(checker, type, node) {
         visit(checker.getReturnTypeOfSignature(signature));
       }
     }
+    } finally { active.delete(current); }
   };
   visit(type);
   if (node) {

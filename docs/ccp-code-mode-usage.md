@@ -125,6 +125,7 @@ The runtime external catalog loader reads config/index/lookup/shards through bou
 
 get_related_types preserves declarationEvidence signature/return/parameter references and unresolved metadata under separate declaration.* relation labels, alongside source signature relations. These are dependency metadata, not resolved callable schemas; declaration/source disagreement, unknowns and existing response/page/deadline bounds remain in force.
 Dependency relation metadata includes zero-based signatureIndex and parameterIndex where applicable. Identical dependencies in distinct overloads/parameters remain distinct; deduplication is local to the same relation and location. Indices refer to the selected record's source or declaration signature array, not inferred cross-version overload matching.
+Offline type metadata generation emits unresolved kind=cycle when expansion re-enters an active type path; shared acyclic references and alias identity are not cycles. The256-node expansion budget remains separate. Existing adopted catalogs retain their original bytes/hashes until explicitly regenerated and adopted; source-generator improvements do not rewrite installed evidence.
 
 Use `editorQuery({category:'engine_api',operation:'compare_version',targetVersion:'3.7.3',recordId,compareVersion:'3.8.8',compareRecordId})` to compare two exact records sharing a semanticKey. Results compare signature/metadata/resolution hashes and retain catalog identities; missing records do not imply removals. Comparison grants no execution permission.
 
