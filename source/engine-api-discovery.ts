@@ -40,8 +40,11 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     if (operation === 'lookup_editor_message') {
         if (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024
             || args.reference !== undefined || args.className !== undefined || args.category === 'component_schema'
+            || args.cursor !== undefined || args.domain !== undefined || args.filter !== undefined || args.compareVersion !== undefined || args.compareRecordId !== undefined
             || args.namespace !== undefined && args.namespace !== 'editor-ipc') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Editor message lookup requires an exact recordId in editor-ipc without live targets.' });
-        const result = await discoverEngineApi({ targetVersion: version, operation: 'records', recordId: args.recordId, namespace: 'editor-ipc', maxEntries: 1, maxBytes: Math.min(args.maxBytes ?? 32768, 131072) });
+        limit(args.maxEntries, 50, 200);
+        const maxBytes = limit(args.maxBytes, 32768, 131072);
+        const result = await discoverEngineApi({ targetVersion: version, operation: 'records', recordId: args.recordId, namespace: 'editor-ipc', maxEntries: 1, maxBytes });
         const output = { ...result, operation };
         if (Buffer.byteLength(JSON.stringify(output)) > limit(args.maxBytes, 32768, 131072)) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'Editor message lookup exceeds maxBytes.' });
         return output;
