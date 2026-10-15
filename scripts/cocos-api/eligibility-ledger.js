@@ -20,6 +20,17 @@ function generateLedger(catalogRoot, output) {
     if (hash(lookupBytes) !== indexed.lookupSha256) throw new Error('Generated lookup identity changed.');
     const lookup = JSON.parse(lookupBytes.toString('utf8'));
     const root = fs.realpathSync(catalogRoot);
+    const routeFile = path.join(root, 'bridge-routes.json');
+    let routes = null;
+    let routeEvidence = null;
+    if (fs.existsSync(routeFile)) {
+      const routeBytes = fs.readFileSync(routeFile);
+      if (routeBytes.length > 8 * 1024 * 1024) throw new Error('Bridge route artifact exceeds ledger bound.');
+      const routeDocument = JSON.parse(routeBytes.toString('utf8'));
+      if (!Array.isArray(routeDocument.routes) || routeDocument.version !== lookup.version || routeDocument.catalogHash !== lookup.catalogHash) throw new Error('Bridge route artifact identity is inconsistent with the catalog.');
+      routes = routeDocument.routes;
+      routeEvidence = { file: 'bridge-routes.json', sha256: hash(routeBytes), count: routes.length, qualification: routeDocument.qualification ?? null };
+    }
     const rows = [];
     const keys = new Set();
     const counts = {};
@@ -54,13 +65,14 @@ function generateLedger(catalogRoot, output) {
         keys.add(key);
         const [disposition, reason] = classify(record);
         counts[disposition] = (counts[disposition] || 0) + 1;
+        const operationValues = Array.isArray(record.operations) ? record.operations.map(operation => operation?.value).filter(value => typeof value === 'string') : [];
+        const routeMatches = routes === null ? null : routes.filter(route => route && typeof route === 'object' && route.tool === record.member && (operationValues.length === 0 || operationValues.includes(route.operation)));
         rows.push({ key, recordId: record.id, semanticKey: record.semanticKey, version: record.version, domain: record.domain ?? null,
           workflowId: record.namespace === 'bridge' && record.kind === 'tool' ? `bridge:${record.member}` : null, desiredOutcome: null, intendedContext: record.contextConstraints?.execution ?? null,
-          sourceEvidence: { catalogHash: lookup.catalogHash, shard: shard.file, shardSha256: shard.sha256, source: record.source ?? null },
+          sourceEvidence: { catalogHash: lookup.catalogHash, shard: shard.file, shardSha256: shard.sha256, routeArtifact: routeEvidence, source: record.source ?? null },
           existingBridgeTool: record.namespace === 'bridge' && record.kind === 'tool' ? record.member : null,
           operation: record.namespace === 'bridge' && Array.isArray(record.operations) ? record.operations : null,
-          classification: disposition, chosenRoute: null, preflight: null, parametersDTO: null, resultDTO: null, limits: null, mutationScope: null, sourceHashGuard: null, historyContract: null, persistenceContract: null,
-          rollbackContract: null, fixture: null, positiveID: null, negativeID: null, disposition, ownerDecision: null, reason,
+          classification: disposition, chosenRoute: routeMatches && routeMatches.length ? 'static-composed-route' : null, routeEvidence: routeMatches && routeMatches.length ? routeMatches : null, preflight: null, parametersDTO: null, resultDTO: null, limits: null, mutationScope: null, sourceHashGuard: null, historyContract: null, persistenceContract: null, rollbackContract: null, fixture: null, positiveID: null, negativeID: null, disposition, ownerDecision: null, reason,
           qualified: false, mutationAuthorized: false });
       }
     }
