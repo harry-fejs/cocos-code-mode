@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve unknown native write error dispatch state as mutationDispatched:null instead of coercing absent/invalid flags to false. Confirmed booleans remain; retrySafe is true only for read-only operations or explicit native no-mutation evidence, with no automatic retry.
 - Preserve private/protected callable/constructable property owner visibility on extracted signatures instead of inheriting public visibility from nested function/constructor type declarations; adapter requirements remain.
 - Preserve mutationDispatched/retrySafe and no-replay recovery on malformed or wrong-component runtime responses. Invalid write outcomes remain uncertain rather than looking like pre-dispatch validation failures; read-only response errors remain distinguishable.
 - Preserve compiler Abstract signature flags for abstract-new constructor types in addition to owner abstract metadata; concrete constructor types remain false and no construction permission is inferred.
