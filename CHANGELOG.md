@@ -138,6 +138,7 @@
 - Independently query failed camera creation cleanup; report ROLLBACK_FAILED when owned-node absence cannot be confirmed.
 - Scan the complete bounded camera hierarchy before property writes and reject camera UUID collisions across nodes or component types.
 - Validate camera property batch size and identifier names before IPC; refuse nested-path keys before any partial write.
+- Reject invalid camera inventory limits before scene IPC instead of silently accepting non-finite, fractional or out-of-schema caps.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

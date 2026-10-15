@@ -383,6 +383,9 @@ export class SceneTools {
         'GET', ['scene', 'camera', 'list', 'query']
     )
     async cameraList(args: { maxResults?: number } = {}): Promise<{ cameras: Array<Record<string, unknown>>, total: number, truncated: boolean }> {
+        if (args.maxResults !== undefined && (!Number.isInteger(args.maxResults) || args.maxResults < 1 || args.maxResults > MAX_LIST_LIMIT)) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `maxResults must be an integer from 1 to ${MAX_LIST_LIMIT}.` });
+        }
         const tree = await Editor.Message.request('scene', 'query-node-tree');
         if (!tree) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'No open scene hierarchy.' });
         const limit = boundedListLimit(args.maxResults);
