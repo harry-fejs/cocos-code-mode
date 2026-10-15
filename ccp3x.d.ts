@@ -857,10 +857,10 @@ declare namespace ccp3x {
         )>;
         succeeded: number; failed: number; truncated: boolean; partial: boolean;
     };
-    /** Summarizes a bounded usage inventory. When countsComplete=false, class count/totalClasses are lower bounds, not full-scene counts; totalUsages is the inspect traversal's observed count. */
+    /** Counts all usages in the returned bounded hierarchy, without the inspection prefix cap. countsComplete=true does not imply an atomic scene snapshot. truncated describes omitted classes/node details. Traversal/class budget overflow refuses rather than returning partial counts. */
     function sceneScriptUsageSummary(args?: { maxClasses?: number; maxNodesPerClass?: number }): {
         classes: Array<{ classId: string; count: number; nodes: Array<{ nodeReference: SceneScriptUsage['nodeReference']; nodePath: unknown; componentReference: InstanceReference | null }>; truncated: boolean }>;
-        totalClasses: number; totalUsages: number; countsComplete: boolean; truncated: boolean;
+        totalClasses: number; totalUsages: number; countsComplete: true; truncated: boolean;
     };
     /** Replace one invalid script component with an existing registered class or script asset. */
     function sceneScriptRepair(args: {

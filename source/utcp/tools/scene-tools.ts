@@ -920,6 +920,10 @@ export class SceneTools {
 
     @utcpTool('sceneScriptUsageInspect', 'Inspect bounded script component usage across the open scene with optional class filtering.', { type: 'object', additionalProperties: false, properties: { classId: { type: 'string', maxLength: 256 }, limit: { type: 'integer', minimum: 1, maximum: MAX_LIST_LIMIT, default: DEFAULT_LIST_LIMIT } }, required: [] }, { type: 'object', additionalProperties: false, properties: { usages: { type: 'array' }, total: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['usages', 'total', 'truncated'] }, 'GET', ['scene', 'script', 'usage', 'inspect'])
     async sceneScriptUsageInspect(args: { classId?: string, limit?: number } = {}): Promise<Record<string, unknown>> {
+        return this.collectScriptUsage(args);
+    }
+
+    private async collectScriptUsage(args: { classId?: string, limit?: number }, visit?: (row: Record<string, unknown>) => void): Promise<{ usages: Array<Record<string, unknown>>, total: number, truncated: boolean }> {
         if (args.classId !== undefined && (typeof args.classId !== 'string' || !args.classId || args.classId.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'classId must be a bounded non-empty string.' });
         if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > MAX_LIST_LIMIT)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `limit must be an integer from 1 to ${MAX_LIST_LIMIT}.` });
         const limit = boundedListLimit(args.limit);
@@ -944,7 +948,9 @@ export class SceneTools {
                 if (!classId || classId.startsWith('cc.') || (args.classId && classId !== args.classId)) continue;
                 const nodeId = nodeUuidFromSceneUsage(node, 'script usage hierarchy');
                 total++;
-                if (usages.length < limit) usages.push({ nodeReference: { id: nodeId, type: 'cc.Node' }, nodePath, componentReference: componentId ? { id: componentId, type: classId } : null, classId });
+                const row = { nodeReference: { id: nodeId, type: 'cc.Node' }, nodePath, componentReference: componentId ? { id: componentId, type: classId } : null, classId };
+                if (visit) visit(row);
+                else if (usages.length < limit) usages.push(row);
             }
             const children = node.children ?? [];
             if (!Array.isArray(children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script usage hierarchy children must be an array.' });
@@ -996,25 +1002,27 @@ export class SceneTools {
     }
 
 
-    @utcpTool('sceneScriptUsageSummary', 'Summarize custom script usage from bounded inspection. countsComplete=false means per-class counts and totalClasses are lower bounds; node-detail truncation is separate.', { type: 'object', additionalProperties: false, properties: { maxClasses: { type: 'integer', minimum: 1, maximum: 256, default: 64 }, maxNodesPerClass: { type: 'integer', minimum: 1, maximum: 256, default: 32 } }, required: [] }, { type: 'object', additionalProperties: false, properties: { classes: { type: 'array' }, totalClasses: { type: 'integer' }, totalUsages: { type: 'integer' }, countsComplete: { type: 'boolean' }, truncated: { type: 'boolean' } }, required: ['classes', 'totalClasses', 'totalUsages', 'countsComplete', 'truncated'] }, 'GET', ['scene', 'script', 'usage', 'summary'])
+    @utcpTool('sceneScriptUsageSummary', 'Count custom script classes across the complete bounded hierarchy, independently of returned node-detail limits. Refuses traversal/class budget overflow; counts describe observed hierarchy, not an atomic scene snapshot.', { type: 'object', additionalProperties: false, properties: { maxClasses: { type: 'integer', minimum: 1, maximum: 256, default: 64 }, maxNodesPerClass: { type: 'integer', minimum: 1, maximum: 256, default: 32 } }, required: [] }, { type: 'object', additionalProperties: false, properties: { classes: { type: 'array' }, totalClasses: { type: 'integer' }, totalUsages: { type: 'integer' }, countsComplete: { type: 'boolean', const: true }, truncated: { type: 'boolean' } }, required: ['classes', 'totalClasses', 'totalUsages', 'countsComplete', 'truncated'] }, 'GET', ['scene', 'script', 'usage', 'summary'])
     async sceneScriptUsageSummary(args: { maxClasses?: number, maxNodesPerClass?: number } = {}): Promise<Record<string, unknown>> {
         const maxClasses = args.maxClasses ?? 64;
         const maxNodesPerClass = args.maxNodesPerClass ?? 32;
         if (!Number.isInteger(maxClasses) || maxClasses < 1 || maxClasses > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'maxClasses must be an integer from 1 to 256.' });
         if (!Number.isInteger(maxNodesPerClass) || maxNodesPerClass < 1 || maxNodesPerClass > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'maxNodesPerClass must be an integer from 1 to 256.' });
-        const usage = await this.sceneScriptUsageInspect({ limit: MAX_LIST_LIMIT });
-        const groups = new Map<string, Array<Record<string, unknown>>>();
-        for (const row of usage.usages as Array<Record<string, unknown>>) {
-            const classId = row.classId;
-            if (typeof classId !== 'string') continue;
-            const group = groups.get(classId) ?? [];
-            group.push(row);
-            groups.set(classId, group);
-        }
+        const groups = new Map<string, { count: number; nodes: Array<Record<string, unknown>> }>();
+        const usage = await this.collectScriptUsage({}, row => {
+            const classId = row.classId as string;
+            let group = groups.get(classId);
+            if (!group) {
+                if (groups.size >= 4096) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Script summary exceeds the 4096-class aggregation budget.' });
+                group = { count: 0, nodes: [] };
+                groups.set(classId, group);
+            }
+            group.count++;
+            if (group.nodes.length < maxNodesPerClass) group.nodes.push({ nodeReference: row.nodeReference, nodePath: row.nodePath, componentReference: row.componentReference });
+        });
         const all = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
-        const countsComplete = usage.truncated === false;
-        const classes = all.slice(0, maxClasses).map(([classId, rows]) => ({ classId, count: rows.length, nodes: rows.slice(0, maxNodesPerClass).map((row) => ({ nodeReference: row.nodeReference, nodePath: row.nodePath, componentReference: row.componentReference })), truncated: !countsComplete || rows.length > maxNodesPerClass }));
-        return { classes, totalClasses: all.length, totalUsages: usage.total, countsComplete, truncated: !countsComplete || all.length > classes.length || classes.some((entry) => entry.truncated) };
+        const classes = all.slice(0, maxClasses).map(([classId, group]) => ({ classId, count: group.count, nodes: group.nodes, truncated: group.count > group.nodes.length }));
+        return { classes, totalClasses: all.length, totalUsages: usage.total, countsComplete: true, truncated: all.length > classes.length || classes.some(entry => entry.truncated) };
     }
 
     @utcpTool('sceneScriptComponentInspect', 'Inspect one custom scene script component with class identity and authoritative serialized dump.', { type: 'object', additionalProperties: false, properties: { componentReference: InstanceReferenceSchema }, required: ['componentReference'] }, { type: 'object', additionalProperties: false, properties: { componentReference: InstanceReferenceSchema, classId: { type: 'string' }, dump: { type: 'object' } }, required: ['componentReference', 'classId', 'dump'] }, 'GET', ['scene', 'script', 'component', 'inspect'])
