@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add menu and signed-int32 executionOrder class metadata to scriptComponentCreate using escaped native decorators, composable with dependencies/multiplicity. Source declarations only; no lifecycle invocation, edit-mode execution or automatic attachment.
 - Recognize compiler-resolved value import aliases of executeInEditMode in decorator declaration metadata; no native module identity, execution or qualification inferred from the resolved target name.
 - Add disallowMultiple class metadata to scriptComponentCreate with explicit true/false/omitted behavior through the native decorator. Compose with requiredComponents; source declaration only, not immediate scene attachment/removal or a global singleton guarantee.
 - Add requiredComponents to scriptComponentCreate: up to8 unique allowlisted native UI/audio/animation dependencies emitted through @requireComponent. Source declaration only; no construction/attachment by this tool, dependency behavior applies when Creator later attaches the script.
