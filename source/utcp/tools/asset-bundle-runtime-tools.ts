@@ -69,10 +69,11 @@ export class AssetBundleRuntimeTools {
         type: 'object', additionalProperties: false,
         properties: {
             success: { type: 'boolean', enum: [true] }, sessionId: { type: 'string' }, targetId: { type: 'string' }, bundlePath: { type: 'string' }, bundleName: { type: 'string' },
+            artifactRevision: { type: 'string', pattern: '^[a-f0-9]{64}$' },
             loaded: { type: 'boolean', enum: [true] }, identityVerified: { type: 'boolean', enum: [true] },
             resource: { anyOf: [resourceSchema, { type: 'null' }] },
             released: { type: 'boolean', enum: [true] }, removed: { type: 'boolean', enum: [true] }, absent: { type: 'boolean', enum: [true] }, unrelatedPreserved: { type: 'boolean', enum: [true] },
-        }, required: ['success', 'sessionId', 'targetId', 'bundlePath', 'bundleName', 'loaded', 'identityVerified', 'resource', 'released', 'removed', 'absent', 'unrelatedPreserved'],
+        }, required: ['success', 'sessionId', 'targetId', 'bundlePath', 'bundleName', 'artifactRevision', 'loaded', 'identityVerified', 'resource', 'released', 'removed', 'absent', 'unrelatedPreserved'],
     }, 'POST', ['asset', 'bundle', 'runtime', 'load', 'release', 'validate'])
     async assetBundleRuntimeValidate(args: AssetBundleRuntimeValidateArgs): Promise<Record<string, unknown>> {
         const invalid = (message: string): never => { throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message }); };
@@ -85,7 +86,8 @@ export class AssetBundleRuntimeTools {
         const project = typeof Editor.Project?.path === 'string' ? Editor.Project.path : '';
         if (!project) throw new ToolError({ code: 'PROJECT_UNAVAILABLE', status: 503, message: 'An active Creator project is required.' });
         const artifact = resolveBundleArtifact(project, args.bundlePath, args.bundleName);
-        if (args.expectedRevision !== undefined && args.expectedRevision !== bundleArtifactIdentity(project, artifact).revision) throw new ToolError({ code: 'BUNDLE_ARTIFACT_CHANGED', status: 409, message: 'Bundle config/index revision differs from the inspected precondition; no serving or runtime dispatch.' });
+        const artifactRevision = bundleArtifactIdentity(project, artifact).revision;
+        if (args.expectedRevision !== undefined && args.expectedRevision !== artifactRevision) throw new ToolError({ code: 'BUNDLE_ARTIFACT_CHANGED', status: 409, message: 'Bundle config/index revision differs from the inspected precondition; no serving or runtime dispatch.' });
         const runtime = new RuntimeSessionTools();
         const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, timeoutMs });
         const session = inspected.session;
@@ -106,7 +108,7 @@ export class AssetBundleRuntimeTools {
             const after = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, timeoutMs });
             const afterSession = after.session;
             if (!after.ready || !afterSession || !('status' in afterSession) || !('targetId' in afterSession) || afterSession.status !== 'attached' || afterSession.sessionId !== session.sessionId || afterSession.targetId !== session.targetId || afterSession.targetKind !== session.targetKind) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'The attached Game View identity changed during bundle validation.' });
-            return { success: true, sessionId: session.sessionId, targetId: session.targetId, bundlePath: args.bundlePath, ...result };
+            return { ...result, success: true, sessionId: session.sessionId, targetId: session.targetId, bundlePath: args.bundlePath, artifactRevision };
         } finally { await served.close(); }
     }
 }
