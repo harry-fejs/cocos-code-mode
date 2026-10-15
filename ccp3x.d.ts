@@ -197,12 +197,12 @@ declare namespace ccp3x {
     function cameraCreate(args: { name?: string; is2D?: boolean; parentReference?: InstanceReference }): {
         nodeReference: InstanceReference; cameraReference: InstanceReference;
     };
-    /** Capped camera results; hierarchy traversal refuses repeated objects or more than 10000 scheduled entries. Native property values remain unknown; total counts observed camera components. */
+    /** Capped camera results; hierarchy traversal refuses repeated objects or more than 10000 scheduled entries/components. Serialized inventory also refuses more than 10000 aggregate components before filtering. Raw IPC allocations are not bounded. Native values remain unknown; total counts observed camera components. */
     function cameraList(args?: { maxResults?: number }): {
         cameras: Array<{ nodeReference: InstanceReference; cameraReference: InstanceReference; name: unknown; priority: unknown; visibility: unknown; projection: unknown }>;
         total: number; truncated: boolean;
     };
-    /** Updates 1–32 identifier-named camera properties with identity/read-back checks and guarded partial rollback. Unknown dispatched outcomes throw CAMERA_MUTATION_OUTCOME_UNKNOWN with retrySafe:false and restored:null; external value changes refuse restoration. */
+    /** Updates 1–32 identifier-named camera properties with identity/read-back checks and guarded partial rollback. Hierarchy components and each serialized node inspection are bounded to 10000. Unknown dispatched outcomes throw CAMERA_MUTATION_OUTCOME_UNKNOWN with retrySafe:false and restored:null; external value changes refuse restoration. */
     function cameraSetProperties(args: { reference: InstanceReference; properties: Record<string, unknown> }): { updated: true; reference: InstanceReference };
 
     /** Read bounded importer-specific settings, typed property descriptors, and explicit source identity for one asset. */

@@ -92,12 +92,15 @@ function* cameraSceneNodes(root: unknown): Generator<Record<string, unknown>> {
     const stack: unknown[] = [root];
     const seen = new Set<object>();
     let scheduled = 1;
+    let componentCount = 0;
     while (stack.length) {
         const node = stack.pop();
         if (!node || typeof node !== 'object') continue;
         if (seen.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Camera hierarchy contains a repeated node object.' });
         seen.add(node);
         const row = node as Record<string, unknown>;
+        componentCount += cameraComponentsFromNode(row).length;
+        if (componentCount > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Camera hierarchy exceeds the component traversal budget.' });
         if (Array.isArray(row.children)) {
             scheduled += row.children.length;
             if (scheduled > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Camera hierarchy exceeds the scene traversal budget.' });
@@ -403,11 +406,16 @@ export class SceneTools {
         const limit = boundedListLimit(args.maxResults);
         const cameras: Array<Record<string, unknown>> = [];
         let total = 0;
+        let inspectedComponents = 0;
         for (const row of cameraSceneNodes(tree)) {
             const nodeId = typeof row.uuid === 'string' ? row.uuid : undefined;
             if (nodeId) {
                 const dump = await Editor.Message.request('scene', 'query-node', nodeId);
-                for (const component of cameraComponentsFromNode(dump).filter(isCameraComponent)) {
+                const components = cameraComponentsFromNode(dump);
+                inspectedComponents += components.length;
+                if (inspectedComponents > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Camera inventory exceeds the component inspection budget.' });
+                for (const component of components) {
+                    if (!isCameraComponent(component)) continue;
                     total += 1;
                     if (cameras.length >= limit) continue;
                     cameras.push({
@@ -463,6 +471,7 @@ export class SceneTools {
         const serializedNode = await Editor.Message.request('scene', 'query-node', nodeId);
         const serializedComponents = cameraComponentsFromNode(serializedNode);
         const requireUniqueCamera = (components: unknown[]) => {
+            if (components.length > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Camera node exceeds the component inspection budget.' });
             let index = -1;
             for (let candidate = 0; candidate < components.length; candidate++) {
                 if (componentUuid(components[candidate]) !== args.reference.id) continue;
