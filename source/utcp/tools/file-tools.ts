@@ -174,13 +174,32 @@ export class FileTools {
         const replaceAll = args.replaceAll !== false;
         let next = content;
         let replacements = 0;
-        if (replaceAll) {
-            const parts = content.split(args.search);
-            replacements = parts.length - 1;
-            next = parts.join(args.replace);
-        } else {
+        const parts = replaceAll ? content.split(args.search) : [];
+        if (replaceAll) replacements = parts.length - 1;
+        else {
             const index = content.indexOf(args.search);
-            if (index >= 0) { replacements = 1; next = content.slice(0, index) + args.replace + content.slice(index + args.search.length); }
+            if (index >= 0) {
+                replacements = 1;
+                parts.push(content.slice(0, index), content.slice(index + args.search.length));
+            }
+        }
+        if (replacements) {
+            let bytes = 0;
+            let lastCode = 0;
+            const replacementBytes = Buffer.byteLength(args.replace, 'utf8');
+            const countBytes = (text: string, textBytes = Buffer.byteLength(text, 'utf8')) => {
+                if (!text.length) return;
+                bytes += textBytes;
+                const firstCode = text.charCodeAt(0);
+                if (lastCode >= 0xd800 && lastCode <= 0xdbff && firstCode >= 0xdc00 && firstCode <= 0xdfff) bytes -= 2;
+                lastCode = text.charCodeAt(text.length - 1);
+            };
+            for (let index = 0; index < parts.length; index++) {
+                if (index) countBytes(args.replace, replacementBytes);
+                countBytes(parts[index]);
+            }
+            if (bytes > MAX_WRITE_BYTES) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: `Replacement output exceeds the ${MAX_WRITE_BYTES} byte cap.` });
+            next = parts.join(args.replace);
         }
         if (!replacements) return { success: false, replacements: 0 };
         atomicWriteVerified(filePath, next);
