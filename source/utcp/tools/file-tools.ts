@@ -50,6 +50,7 @@ function resolveSafePath(projectPath: string, relPath: string): string {
     }
     if (path.isAbsolute(relPath) || /^[A-Za-z]:/.test(relPath)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Project paths must be relative, without drive-qualified or absolute paths.' });
     if (path.sep === '\\' && relPath.includes(':')) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Windows project paths must not address alternate data streams.' });
+    if (path.sep === '\\' && relPath.split(/[\\/]/).some(segment => /^(?:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|$)/i.test(segment.replace(/[ .]+$/, '')))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Windows project paths must not address reserved device names.' });
     const root = path.resolve(projectPath);
     const resolved = assertInside(root, path.resolve(root, relPath), relPath);
     let probe = resolved;
