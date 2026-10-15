@@ -440,6 +440,14 @@ function constraints(node, context, checker) {
       while (ts.isParenthesizedExpression(base) || ts.isAsExpression(base) || ts.isTypeAssertionExpression(base) || ts.isNonNullExpression(base) || ts.isSatisfiesExpression(base)) base = base.expression;
       const symbol = ts.isIdentifier(base) ? checker.getSymbolAtLocation(base) : undefined;
       if (symbol && symbol.flags & ts.SymbolFlags.Alias && checker.getTypeOnlyAliasDeclaration(symbol)) return false;
+      if (symbol && symbol.flags & ts.SymbolFlags.Alias) {
+        const key = ts.isPropertyAccessExpression(expression) ? expression.name : expression.argumentExpression;
+        const name = key && (ts.isIdentifier(key) && ts.isPropertyAccessExpression(expression) || ts.isStringLiteral(key) || ts.isNoSubstitutionTemplateLiteral(key)) ? key.text : null;
+        if (!name) return false;
+        const member = checker.getPropertyOfType(checker.getTypeAtLocation(base), name);
+        const target = member && member.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(member) : member;
+        return !!target?.declarations?.length && !!(target.flags & ts.SymbolFlags.Value) && target.name === 'executeInEditMode';
+      }
     }
     if (ts.isElementAccessExpression(expression)) {
       const key = expression.argumentExpression;
