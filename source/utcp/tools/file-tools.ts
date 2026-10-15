@@ -199,6 +199,7 @@ export class FileTools {
             token === '**' ? '.*' : token === '*' ? '[^/]*' : `\\${token}`);
         const regex = new RegExp(`^${regexText}$`, 'i');
         const files: string[] = [];
+        let truncated = false;
         const stack: Array<{ directory: string; handle: fs.Dir }> = [];
         let visitedEntries = 0;
         const realRoot = fs.realpathSync(root);
@@ -215,7 +216,7 @@ export class FileTools {
         };
         try {
             stack.push({ directory: scope, handle: await openDirectory(scope) });
-            while (stack.length && files.length < limit) {
+            while (stack.length) {
                 const frame = stack[stack.length - 1];
                 let entry: fs.Dirent | null;
                 try { entry = await frame.handle.read(); }
@@ -233,9 +234,12 @@ export class FileTools {
                     if (stack.length >= 128) throw new ToolError({ code: 'PROJECT_SEARCH_LIMIT', status: 413, message: 'Project search exceeded the 128-directory nesting limit.', recovery: 'Select a narrower directory before searching again.' });
                     stack.push({ directory: fullPath, handle: await openDirectory(fullPath) });
                 }
-                else if (entry.isFile() && (regex.test(relative) || (args.directory && regex.test(path.relative(scope, fullPath).replace(/\\/g, '/'))))) files.push(relative);
+                else if (entry.isFile() && (regex.test(relative) || (args.directory && regex.test(path.relative(scope, fullPath).replace(/\\/g, '/'))))) {
+                    if (files.length === limit) { truncated = true; break; }
+                    files.push(relative);
+                }
             }
-            return { files, total: files.length, truncated: files.length >= limit };
+            return { files, total: files.length, truncated };
         } finally {
             await Promise.all(stack.map(async ({ handle }) => { try { await handle.close(); } catch { /* Preserve the search result/error while releasing remaining handles. */ } }));
         }
