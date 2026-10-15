@@ -142,8 +142,11 @@ export class AudioPlaybackTools {
             targetId = observation.targetId;
             const state = observation.state;
             if (!state || typeof state.playing !== 'boolean' || typeof state.loaded !== 'boolean'
-                || args.playbackState !== undefined && !['init', 'playing', 'paused', 'stopped', 'interrupted'].includes(state.playbackState)
-                || args.minTime !== undefined && (typeof state.currentTime !== 'number' || !Number.isFinite(state.currentTime) || state.currentTime < 0)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Audio wait received invalid state metrics.' });
+                || !['init', 'playing', 'paused', 'stopped', 'interrupted'].includes(state.playbackState)
+                || typeof state.currentTime !== 'number' || !Number.isFinite(state.currentTime) || state.currentTime < 0
+                || typeof state.duration !== 'number' || !Number.isFinite(state.duration) || state.duration < 0
+                || !['active', 'inactive', 'unknown'].includes(state.userActivation)
+                || state.activationRequirement !== 'unknown') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Audio wait received invalid state metrics.' });
             observations++;
             if ((args.playing === undefined || state.playing === args.playing) && (args.loaded === undefined || state.loaded === args.loaded)
                 && (args.playbackState === undefined || state.playbackState === args.playbackState)
