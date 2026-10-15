@@ -874,6 +874,7 @@ export class SceneTools {
             const components = node.components ?? node.__comps__ ?? [];
             if (!Array.isArray(components)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health components must be an array.' });
             for (const component of components) {
+                if (!component || typeof component !== 'object' || Array.isArray(component)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health contains an invalid component entry.' });
                 const classId = componentClassId(component);
                 const uuid = componentUuid(component);
                 if (classId !== undefined && typeof classId !== 'string') throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health class identity must be a string.' });
@@ -927,6 +928,7 @@ export class SceneTools {
                     const components = node.components ?? node.__comps__ ?? [];
                     if (!Array.isArray(components)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health component inventory must be an array.' });
                     for (const component of components) {
+                        if (!component || typeof component !== 'object' || Array.isArray(component)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health contains an invalid component entry.' });
                         const classId = componentClassId(component);
                         if (classId !== undefined && typeof classId !== 'string') throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health class identity must be a string.' });
                         if (!classId || classId.startsWith('cc.') || registered.has(classId)) continue;

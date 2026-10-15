@@ -11,13 +11,27 @@ function source() {
 const { requireDist } = require('../helpers/require-dist');
 const { SceneTools } = requireDist('utcp/tools/scene-tools.js');
 describe('scene script health tools', () => {
-  it('exposes a bounded read-only scan using scene tree and registered classes', () => {
-    const src = source();
-    assert.match(src, /'sceneScriptHealthScan'/);
-    assert.match(src, /Editor\.Message\.request\('scene', 'query-node-tree'/);
-    assert.match(src, /Editor\.Message\.request\('scene', 'query-components'/);
-    assert.match(src, /truncated: findings\.length > limit/);
-    assert.match(src, /repair: 'Provide scriptReference or replacementClassId/);
+  it('refuses malformed component entries instead of reporting a healthy scene', async () => {
+    const previous = global.Editor;
+    let components = [];
+    global.Editor = { Message: { request: async (_module, message) => {
+      if (message === 'query-node-tree') return { uuid: 'root', components };
+      if (message === 'query-components') return [];
+      if (message === 'query-current-scene') return 'root';
+      throw new Error(`unexpected ${message}`);
+    } } };
+    try {
+      for (components of [[null], [7], [[]], new Array(1)]) {
+        await assert.rejects(new SceneTools().sceneScriptHealthScan(), error => error.code === 'INVALID_RESPONSE');
+        const batch = await new SceneTools().sceneScriptHealthBatchScan({ nodeReferences: [{ id: 'root' }] });
+        assert.equal(batch.failed, 1);
+        assert.equal(batch.items[0].error.code, 'INVALID_RESPONSE');
+      }
+      components = [];
+      const healthy = await new SceneTools().sceneScriptHealthScan();
+      assert.equal(healthy.total, 0);
+      assert.equal(healthy.truncated, false);
+    } finally { if (previous === undefined) delete global.Editor; else global.Editor = previous; }
   });
 
   it('does not remove components or claim restoration after lost attachment response', async () => {
