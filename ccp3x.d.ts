@@ -1033,6 +1033,8 @@ declare namespace ccp3x {
         identity: { nodePath: string | null; property: string | null };
         component: string | null; parentProperty: string | null; displayName: string | null;
         keyframeCount: number | null; keyframeOffset: number; nextKeyframeOffset: number | null;
+        /** Timing-page coverage only, not keyframe-value/binding/runtime validity. Missing native keys cannot prove complete. */
+        keyframeLimit: number; keyframesComplete: boolean; keyframesTruncated: boolean;
         keyframes: AnimationTimelineKeyframe[];
         frameRange: { first: number; last: number } | null;
         frameOverSampleRange: { first: number; last: number } | null;

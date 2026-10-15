@@ -124,6 +124,8 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         for (const field of ['comp', 'parentPropKey', 'displayName']) if (curve && field in curve && typeof curve[field] !== 'string') issue('UNSUPPORTED_TRACK_METADATA', `${location}.${field}`, true);
         const row = { index, identity: { nodePath: text(curve?.nodePath), property: text(curve?.key) }, component: text(curve?.comp), parentProperty: text(curve?.parentPropKey), displayName: text(curve?.displayName), keyframeCount: keys?.length ?? null,
             keyframes, keyframeOffset: bounds.keyframeOffset, nextKeyframeOffset: keys && bounds.keyframeOffset + keyframes.length < keys.length ? bounds.keyframeOffset + keyframes.length : null,
+            keyframeLimit: bounds.keyframeLimit, keyframesComplete: keys !== null && bounds.keyframeOffset === 0 && keyframes.length === keys.length,
+            keyframesTruncated: keys === null || bounds.keyframeOffset > 0 || keyframes.length < keys.length,
             frameRange: first === null ? null : { first, last }, frameOverSampleRange: first === null || last === null || sample === null || !finite(first / sample) || !finite(last / sample) ? null : { first: first / sample, last: last / sample }, dataValid: diagnosticCount === startIssues };
         return row;
     });
@@ -138,7 +140,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     const hash = createHash('sha256');
     hash.update(JSON.stringify([options.nodeReference.id, options.clipReference.id, text(dump?.name), sample, duration, dump?.speed, dump?.wrapMode, totalTracks, sourceComplete]));
     hash.update(timingHash.digest('hex'));
-    for (const { keyframes, keyframeOffset, nextKeyframeOffset, ...row } of tracks) hash.update(JSON.stringify(row));
+    for (const { keyframes, keyframeOffset, nextKeyframeOffset, keyframeLimit, keyframesComplete, keyframesTruncated, ...row } of tracks) hash.update(JSON.stringify(row));
     for (const row of eventRows) hash.update(JSON.stringify(row));
     hash.update(JSON.stringify([diagnostics, diagnosticCount, supported]));
     const revision = hash.digest('hex');
