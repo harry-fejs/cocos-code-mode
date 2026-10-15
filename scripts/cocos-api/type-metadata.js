@@ -343,7 +343,11 @@ function constraints(node, context, checker) {
           let target = part.expression;
           while (ts.isParenthesizedExpression(target) || ts.isAsExpression(target) || ts.isTypeAssertionExpression(target) || ts.isNonNullExpression(target) || ts.isSatisfiesExpression(target)) target = target.expression;
           const explicitMember = ts.isPropertyAccessExpression(part) || part.argumentExpression && (ts.isStringLiteral(part.argumentExpression) || ts.isNoSubstitutionTemplateLiteral(part.argumentExpression));
-          if (explicitMember && ts.isIdentifier(target) && (checker ? namespaceSymbols.has(checker.getSymbolAtLocation(target)) : namespaceNames.has(target.text))) return true;
+          if (explicitMember && ts.isIdentifier(target) && (checker ? namespaceSymbols.has(checker.getSymbolAtLocation(target)) : namespaceNames.has(target.text))) {
+            const name = ts.isPropertyAccessExpression(part) ? part.name.text : part.argumentExpression.text;
+            const member = checker?.getPropertyOfType(checker.getTypeAtLocation(target), name);
+            if (!checker || member && member.flags & ts.SymbolFlags.Value) return true;
+          }
           if (ts.isPropertyAccessExpression(part)) return usesConstant(target);
         }
         return ts.forEachChild(part, usesConstant);
