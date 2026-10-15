@@ -254,6 +254,9 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
     return { name: symbol.name, type: info.type, declaredType: info.declaredType, references: info.references, optional: !!(symbol.flags & ts.SymbolFlags.Optional) || !!parameter?.questionToken || !!parameter?.initializer && position >= signature.minArgumentCount,
       rest: !!parameter?.dotDotDotToken, defaultExpression: compact(parameter?.initializer), unresolved: info.unresolved };
   });
+  for (let position = 0; position < parameters.length; position++) {
+    if (position < minArgumentCount && parameters[position].defaultExpression !== null) parameters[position].optional = false;
+  }
   const result = typeInfo(checker, returnType || checker.getReturnTypeOfSignature(signature), declaration.type);
   unresolved.push(...result.unresolved);
   const nativePredicate = checker.getTypePredicateOfSignature(signature);

@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Align default-prefix parameter optionality with effective minimum arity including required rest tuples; required positional slots no longer contradict signature minArgumentCount while optional-only tails remain omittable.
 - Reuse bounded dense/unique graph variable inventory validation in scenario graphAssert and graph waits. Malformed unrelated entries cannot grant assertion success; selected variable type/value checks and read-only semantics remain unchanged.
 - Compute union-rest minimum arity with an allocation-free loop/zero early exit instead of mapped-array argument spread, avoiding JavaScript call-argument overflow on very wide alternatives.
 - Validate graph wait snapshots as bounded64 dense variable records with typed names/types and unique names before matching. Malformed unrelated entries and duplicate declarations cannot be ignored to grant checkpoint success; no graph writes/playability inference.
