@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add scalar number/integer range(min/max/optional positive step) metadata to scriptComponentCreate. Reject nonfinite/reversed ranges and defaults outside inclusive bounds; integer bounds/steps must be safe integers. Inspector constraint only, no runtime clamp or step-grid claim.
+- Preserve namespace constant guard identity through erased as/type-assertion/non-null/satisfies wrappers as well as parentheses, without interpreting annotations as runtime reads or bypassing lexical shadow checks.
 - Add displayName<=256 characters to generated component field metadata, composable with tooltip across scalar/array/enum/reference types. Escaped Inspector labels leave code/serialized property identifiers and defaults unchanged.
 - Unwrap transparent parentheses on namespace constant guard targets before compiler-symbol matching; preserve exact-member and lexical-shadowing boundaries without evaluating expressions.
 - Add bounded tooltip metadata to scriptComponentCreate serialized fields across scalar/array/enum/reference types. Emit escaped native Inspector property options, preserving defaults/type identity; no source expression execution or gameplay behavior added.

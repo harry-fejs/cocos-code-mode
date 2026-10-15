@@ -6,8 +6,8 @@ import { ToolError } from './utcp/tool-error';
 export const COMPONENT_PROPERTY_TYPES = ['enum', 'integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Quat', 'Color', 'Node', 'Label', 'Sprite', 'Button', 'EditBox', 'ScrollView', 'Slider', 'Toggle', 'ProgressBar', 'AudioSource', 'Animation', 'SkeletalAnimation', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
 export type ComponentPropertyDescriptor = { tooltip?: string; displayName?: string } & (
-    | { name: string; type: 'number'; array?: false; default?: number }
-    | { name: string; type: 'integer'; array?: false; default?: number }
+    | { name: string; type: 'number'; array?: false; default?: number; range?: { min: number; max: number; step?: number } }
+    | { name: string; type: 'integer'; array?: false; default?: number; range?: { min: number; max: number; step?: number } }
     | { name: string; type: 'enum'; array?: false; entries: Array<{ name: string; value: number }>; default: number }
     | { name: string; type: 'string'; array?: false; default?: string }
     | { name: string; type: 'boolean'; array?: false; default?: boolean }
@@ -51,7 +51,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
     const names = new Set<string>();
     const fields: string[] = [];
     for (const row of rows) {
-        assertComponentScriptInput(row, ['name', 'type', 'array', 'default', 'entries', 'tooltip', 'displayName']);
+        assertComponentScriptInput(row, ['name', 'type', 'array', 'default', 'entries', 'tooltip', 'displayName', 'range']);
         if (!identifier(row.name) || COMPONENT_MEMBERS[row.name] === true || names.has(row.name)) invalid('Property names must be unique safe identifiers and must not shadow Component members or lifecycle methods.');
         if (typeof row.type !== 'string' || !COMPONENT_PROPERTY_TYPES.includes(row.type as ComponentPropertyType)) invalid('Unsupported property type.');
         const type = row.type as ComponentPropertyType;
@@ -60,6 +60,17 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         if (row.tooltip !== undefined && (typeof row.tooltip !== 'string' || row.tooltip.length > 1024)) invalid('tooltip must be a string of at most 1024 characters.');
         if (row.displayName !== undefined && (typeof row.displayName !== 'string' || row.displayName.length > 256)) invalid('displayName must be a string of at most 256 characters.');
         const tooltip = (row.tooltip === undefined ? '' : `, tooltip: ${literal(row.tooltip as string)}`) + (row.displayName === undefined ? '' : `, displayName: ${literal(row.displayName as string)}`);
+        let numericOptions = '';
+        if (row.range !== undefined) {
+            if (row.array === true || type !== 'number' && type !== 'integer') invalid('range is supported only on scalar number/integer fields.');
+            assertComponentScriptInput(row.range, ['min', 'max', 'step']);
+            const { min, max, step } = row.range;
+            if (typeof min !== 'number' || !Number.isFinite(min) || typeof max !== 'number' || !Number.isFinite(max) || min > max || step !== undefined && (typeof step !== 'number' || !Number.isFinite(step) || step <= 0)) invalid('range requires finite min <= max and an optional positive finite step.');
+            if (type === 'integer' && (!Number.isSafeInteger(min) || !Number.isSafeInteger(max) || step !== undefined && !Number.isSafeInteger(step))) invalid('Integer ranges require safe integer bounds and step.');
+            const initialValue = hasDefault ? row.default : 0;
+            if (typeof initialValue !== 'number' || !Number.isFinite(initialValue) || initialValue < min || initialValue > max) invalid('Numeric default must lie within the declared range.');
+            numericOptions = `, min: ${literal(min)}, max: ${literal(max)}` + (step === undefined ? '' : `, step: ${literal(step as number)}`);
+        }
         if (type === 'enum') {
             if (row.array === true || !Array.isArray(row.entries) || row.entries.length < 1 || row.entries.length > 64) invalid('Scalar enum requires 1..64 explicit entries.');
             const labels = new Set<string>(), values = new Set<number>(), entries: string[] = [];
@@ -137,7 +148,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         }
         names.add(row.name);
         imports.add(PROPERTY_IMPORTS[type]);
-        fields.push(tooltip ? `    @property({ type: ${PROPERTY_IMPORTS[type]}${tooltip} })` : `    @property(${PROPERTY_IMPORTS[type]})`, `    ${row.name}: ${initial === null ? `${type} | null` : type === 'integer' ? 'number' : type} = ${literal(initial)};`, '');
+        fields.push(tooltip || numericOptions ? `    @property({ type: ${PROPERTY_IMPORTS[type]}${tooltip}${numericOptions} })` : `    @property(${PROPERTY_IMPORTS[type]})`, `    ${row.name}: ${initial === null ? `${type} | null` : type === 'integer' ? 'number' : type} = ${literal(initial)};`, '');
     }
     if (imports.has(input.className)) invalid('className must not shadow a generated cc import.');
     const source = [
