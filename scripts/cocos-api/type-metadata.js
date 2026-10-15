@@ -65,6 +65,9 @@ function typeInfo(checker, type, node) {
         if (propertyDeclaration) visit(checker.getTypeOfSymbolAtLocation(property, propertyDeclaration));
       }
       for (const signature of [...callSignatures, ...constructSignatures]) {
+        const receiver = signature.thisParameter;
+        const receiverDeclaration = receiver?.valueDeclaration || receiver?.declarations?.[0];
+        if (receiverDeclaration) visit(checker.getTypeOfSymbolAtLocation(receiver, receiverDeclaration));
         signature.parameters.forEach(parameter => { const parameterDeclaration = parameter.valueDeclaration || parameter.declarations?.[0]; if (parameterDeclaration) visit(checker.getTypeOfSymbolAtLocation(parameter, parameterDeclaration)); });
         visit(checker.getReturnTypeOfSignature(signature));
       }
