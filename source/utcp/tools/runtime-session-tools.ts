@@ -716,6 +716,7 @@ export class RuntimeSessionTools {
         const cancellation = new Promise<void>(resolve => { cancel = resolve; });
         const scenario = { cancelled: false, cancel, runId: args.runId ?? randomUUID(), stepIndex: null as number | null, operation: null as string | null, completedSteps: 0, requestPending: false, callerFinished: false };
         activeScenarios.set(args.sessionId, scenario);
+        const assertActive = () => { if (scenario.cancelled) throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario cancelled; no further polling read dispatched.' }); };
         let inFlight: Promise<unknown> | undefined;
         try {
         const outcomes: Array<Record<string, unknown>> = [];
@@ -787,7 +788,7 @@ export class RuntimeSessionTools {
                                         if (variable.type !== nativeType || (step.variableType === 'boolean' ? typeof variable.value !== 'boolean' : typeof variable.value !== 'number' || !Number.isFinite(variable.value) || step.variableType === 'integer' && !Number.isInteger(variable.value))) throw new ToolError({ code: 'UNSUPPORTED_GRAPH_VARIABLE', status: 422, message: 'Observed graph variable type/metric differs from checkpoint.' });
                                         return { ...result, passed: step.variableRange === undefined ? variable.value === step.variableValue : (variable.value as number) >= step.variableRange.min && (variable.value as number) <= step.variableRange.max };
                                     }
-                                    return new ComponentRuntimeTools().animationGraphWaitForVariable({ sessionId: args.sessionId, nodeReference: step.nodeReference!, componentId: step.componentId!, graphUuid: step.graphUuid!, name: step.variableName!, type: step.variableType!, value: step.variableValue, range: step.variableRange, timeoutMs });
+                                    return new ComponentRuntimeTools().animationGraphWaitForVariable({ sessionId: args.sessionId, nodeReference: step.nodeReference!, componentId: step.componentId!, graphUuid: step.graphUuid!, name: step.variableName!, type: step.variableType!, value: step.variableValue, range: step.variableRange, timeoutMs }, assertActive);
                                 })
                             : step.operation === 'particleControl' || step.operation === 'particleObserve' || step.operation === 'particleAssert' || step.operation === 'particleWait'
                                 ? import('./p4-contract-tools').then(async ({ P4ContractTools }) => {
@@ -828,7 +829,7 @@ export class RuntimeSessionTools {
                                     }
                                     if (step.operation === 'animationControl') return animation.animationPlaybackControl({ ...target, operation: step.animationOperation! });
                                     if (step.operation === 'animationWait') {
-                                        const result = await animation.animationPlaybackWaitForState({ ...target, minDuration: step.minDuration, maxDuration: step.maxDuration, minSpeed: step.minSpeed, maxSpeed: step.maxSpeed, playing: step.playing, paused: step.paused, maxTime: step.maxTime, minTime: step.minTime });
+                                        const result = await animation.animationPlaybackWaitForState({ ...target, minDuration: step.minDuration, maxDuration: step.maxDuration, minSpeed: step.minSpeed, maxSpeed: step.maxSpeed, playing: step.playing, paused: step.paused, maxTime: step.maxTime, minTime: step.minTime }, assertActive);
                                         return { ...result, passed: result.matched === true };
                                     }
                                     const observation = await animation.animationPlaybackObserve(target);

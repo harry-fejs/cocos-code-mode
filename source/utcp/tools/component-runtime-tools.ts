@@ -128,11 +128,11 @@ export class ComponentRuntimeTools {
         properties: { ...targetProperties, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, minDuration: { type: 'number', minimum: 0, maximum: 86400 }, maxDuration: { type: 'number', minimum: 0, maximum: 86400 }, minSpeed: { type: 'number', minimum: -1000000, maximum: 1000000 }, maxSpeed: { type: 'number', minimum: -1000000, maximum: 1000000 }, playing: { type: 'boolean' }, paused: { type: 'boolean' }, maxTime: { type: 'number', minimum: 0, maximum: 3600 }, minTime: { type: 'number', minimum: 0, maximum: 3600 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000, default: 3000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000, default: 100 } },
         required: ['sessionId', 'nodeReference', 'componentId', 'clipName', 'clipUuid'],
     }, { type: 'object', properties: { matched: { type: 'boolean' }, timedOut: { type: 'boolean' }, observations: { type: 'integer' }, state: animationStateSchema }, required: ['matched', 'timedOut', 'observations', 'state'] }, 'POST', ['animation', 'playback', 'wait', 'read-only'])
-    async animationPlaybackWaitForState(args: SkeletalArgs & { minDuration?: number; maxDuration?: number; minSpeed?: number; maxSpeed?: number; playing?: boolean; paused?: boolean; maxTime?: number; minTime?: number; pollMs?: number }) {
-        return this.waitForAnimationState(args, 'animation');
+    async animationPlaybackWaitForState(args: SkeletalArgs & { minDuration?: number; maxDuration?: number; minSpeed?: number; maxSpeed?: number; playing?: boolean; paused?: boolean; maxTime?: number; minTime?: number; pollMs?: number }, assertActive?: () => void) {
+        return this.waitForAnimationState(args, 'animation', assertActive);
     }
 
-    private async waitForAnimationState(args: SkeletalArgs & { minDuration?: number; maxDuration?: number; minSpeed?: number; maxSpeed?: number; playing?: boolean; paused?: boolean; maxTime?: number; minTime?: number; pollMs?: number }, kind: 'animation' | 'skeletal') {
+    private async waitForAnimationState(args: SkeletalArgs & { minDuration?: number; maxDuration?: number; minSpeed?: number; maxSpeed?: number; playing?: boolean; paused?: boolean; maxTime?: number; minTime?: number; pollMs?: number }, kind: 'animation' | 'skeletal', assertActive?: () => void) {
         const timeoutMs = args?.timeoutMs ?? 3000; const pollMs = args?.pollMs ?? 100;
         if (!args || args.playing === undefined && args.paused === undefined && args.minTime === undefined && args.maxTime === undefined && args.minSpeed === undefined && args.maxSpeed === undefined && args.minDuration === undefined && args.maxDuration === undefined
             || args.playing !== undefined && typeof args.playing !== 'boolean' || args.paused !== undefined && typeof args.paused !== 'boolean'
@@ -146,12 +146,14 @@ export class ComponentRuntimeTools {
         const deadline = Date.now() + timeoutMs; let observations = 0;
         let targetId: string | undefined;
         for (;;) {
+            assertActive?.();
             const remaining = deadline - Date.now();
             if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state observation deadline expired.' });
             const operation: ComponentOperation = { ...validateSkeletal({ ...args, timeoutMs: Math.max(100, Math.min(remaining, 1000)) }, 'observe'), kind };
             let timer: NodeJS.Timeout | undefined; let result: Record<string, unknown>;
             try { result = await Promise.race([executeComponentOperation(operation), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read exceeded caller deadline; no playback mutation dispatched.' })), remaining); })]); }
             finally { clearTimeout(timer); }
+            assertActive?.();
             if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read completed after caller deadline; no playback mutation dispatched.' });
             if (typeof result.targetId !== 'string' || !result.targetId) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Animation observation target identity is unavailable.' });
             if (targetId !== undefined && result.targetId !== targetId) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Animation target changed during state wait.' });
@@ -216,13 +218,15 @@ export class ComponentRuntimeTools {
     @utcpTool('animationGraphWaitForVariable', 'Observe one exact runtime graph variable until a typed value matches. Exact graph UUID required; inspect-only, no setValue or runtime restart. Target drift/missing/type/deadline errors fail closed.', {
         type: 'object', additionalProperties: false, properties: { ...targetProperties, graphUuid: { type: 'string', minLength: 1, maxLength: 256 }, name: { type: 'string', minLength: 1, maxLength: 256 }, type: { type: 'string', enum: ['float', 'integer', 'boolean'] }, value: { type: ['number', 'boolean'] }, range: { type: 'object', additionalProperties: false, properties: { min: { type: 'number' }, max: { type: 'number' } }, required: ['min', 'max'], description: 'Inclusive finite numeric variable interval, exclusive with value. Boolean ranges refused; integer ranges require integer bounds. Not transition/playability proof.' }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000 } }, required: ['sessionId', 'nodeReference', 'componentId', 'graphUuid', 'name', 'type'], oneOf: [{ required: ['value'], not: { required: ['range'] } }, { required: ['range'], not: { required: ['value'] } }],
     }, { type: 'object', properties: { matched: { type: 'boolean', const: true }, observations: { type: 'integer' }, graphUuid: { type: 'string' }, variable: { type: 'object' }, writes: { type: 'boolean', const: false } }, required: ['matched', 'observations', 'graphUuid', 'variable', 'writes'] }, 'POST', ['animation', 'graph', 'wait', 'read-only'])
-    async animationGraphWaitForVariable(args: BaseArgs & GraphVariableWaitCondition) {
+    async animationGraphWaitForVariable(args: BaseArgs & GraphVariableWaitCondition, assertActive?: () => void) {
         validateComponentTarget({ sessionId: args?.sessionId ?? '', nodeReference: { id: args?.nodeReference?.id ?? '' }, componentId: args?.componentId }, true);
         const { sessionId, componentId, graphUuid } = args;
         const nodeId = args.nodeReference!.id!;
         let targetId: string | undefined;
         return waitForGraphVariable(args, async timeoutMs => {
+            assertActive?.();
             const result = await executeComponentOperation({ kind: 'graph', operation: 'inspect', sessionId: sessionId!, nodeReference: { id: nodeId }, componentId: componentId!, expectedGraphUuid: graphUuid, timeoutMs });
+            assertActive?.();
             if (typeof result.targetId !== 'string' || !result.targetId) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Graph observation target identity is unavailable.' });
             if (targetId !== undefined && result.targetId !== targetId) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Graph target changed during variable wait.' });
             targetId = result.targetId;
