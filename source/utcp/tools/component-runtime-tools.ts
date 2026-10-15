@@ -96,26 +96,27 @@ export class ComponentRuntimeTools {
     }
 
     @utcpTool('skeletalAnimationWaitForState', 'Poll one exact SkeletalAnimation clip state without changing playback. Missing metrics/invalidated targets fail closed; caller deadline bounds each observation.', {
-        type: 'object', additionalProperties: false, properties: { ...targetProperties, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, playing: { type: 'boolean' }, paused: { type: 'boolean' }, minTime: { type: 'number', minimum: 0, maximum: 3600 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000, default: 3000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000, default: 100 } }, required: ['sessionId', 'nodeReference', 'componentId', 'clipName', 'clipUuid'],
+        type: 'object', additionalProperties: false, properties: { ...targetProperties, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, playing: { type: 'boolean' }, paused: { type: 'boolean' }, maxTime: { type: 'number', minimum: 0, maximum: 3600 }, minTime: { type: 'number', minimum: 0, maximum: 3600 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000, default: 3000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000, default: 100 } }, required: ['sessionId', 'nodeReference', 'componentId', 'clipName', 'clipUuid'],
     }, { type: 'object', properties: { matched: { type: 'boolean' }, timedOut: { type: 'boolean' }, observations: { type: 'integer' }, state: animationStateSchema }, required: ['matched', 'timedOut', 'observations', 'state'] }, 'POST', ['skeletal', 'animation', 'wait', 'read-only'])
-    async skeletalAnimationWaitForState(args: SkeletalArgs & { playing?: boolean; paused?: boolean; minTime?: number; pollMs?: number }) {
+    async skeletalAnimationWaitForState(args: SkeletalArgs & { playing?: boolean; paused?: boolean; maxTime?: number; minTime?: number; pollMs?: number }) {
         return this.waitForAnimationState(args, 'skeletal');
     }
 
     @utcpTool('animationPlaybackWaitForState', 'Wait for one exact Animation/SkeletalAnimation clip state in attached Game View. Read-only polling with a caller deadline; no playback dispatch, listeners or edit-scene fallback.', {
         type: 'object', additionalProperties: false,
-        properties: { ...targetProperties, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, playing: { type: 'boolean' }, paused: { type: 'boolean' }, minTime: { type: 'number', minimum: 0, maximum: 3600 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000, default: 3000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000, default: 100 } },
+        properties: { ...targetProperties, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, playing: { type: 'boolean' }, paused: { type: 'boolean' }, maxTime: { type: 'number', minimum: 0, maximum: 3600 }, minTime: { type: 'number', minimum: 0, maximum: 3600 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000, default: 3000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000, default: 100 } },
         required: ['sessionId', 'nodeReference', 'componentId', 'clipName', 'clipUuid'],
     }, { type: 'object', properties: { matched: { type: 'boolean' }, timedOut: { type: 'boolean' }, observations: { type: 'integer' }, state: animationStateSchema }, required: ['matched', 'timedOut', 'observations', 'state'] }, 'POST', ['animation', 'playback', 'wait', 'read-only'])
-    async animationPlaybackWaitForState(args: SkeletalArgs & { playing?: boolean; paused?: boolean; minTime?: number; pollMs?: number }) {
+    async animationPlaybackWaitForState(args: SkeletalArgs & { playing?: boolean; paused?: boolean; maxTime?: number; minTime?: number; pollMs?: number }) {
         return this.waitForAnimationState(args, 'animation');
     }
 
-    private async waitForAnimationState(args: SkeletalArgs & { playing?: boolean; paused?: boolean; minTime?: number; pollMs?: number }, kind: 'animation' | 'skeletal') {
+    private async waitForAnimationState(args: SkeletalArgs & { playing?: boolean; paused?: boolean; maxTime?: number; minTime?: number; pollMs?: number }, kind: 'animation' | 'skeletal') {
         const timeoutMs = args?.timeoutMs ?? 3000; const pollMs = args?.pollMs ?? 100;
-        if (!args || args.playing === undefined && args.paused === undefined && args.minTime === undefined
+        if (!args || args.playing === undefined && args.paused === undefined && args.minTime === undefined && args.maxTime === undefined
             || args.playing !== undefined && typeof args.playing !== 'boolean' || args.paused !== undefined && typeof args.paused !== 'boolean'
             || args.minTime !== undefined && (typeof args.minTime !== 'number' || !Number.isFinite(args.minTime) || args.minTime < 0 || args.minTime > 3600)
+            || args.maxTime !== undefined && (typeof args.maxTime !== 'number' || !Number.isFinite(args.maxTime) || args.maxTime < 0 || args.maxTime > 3600 || args.minTime !== undefined && args.minTime > args.maxTime)
             || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000 || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide bounded state conditions, timeout and poll interval.' });
         const deadline = Date.now() + timeoutMs; let observations = 0;
         for (;;) {
@@ -128,9 +129,9 @@ export class ComponentRuntimeTools {
             if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read completed after caller deadline; no playback mutation dispatched.' });
             const state = result.state as { playing?: unknown; paused?: unknown; time?: unknown } | undefined;
             if (!state || typeof state.playing !== 'boolean' || typeof state.paused !== 'boolean') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Invalid skeletal state observation.' });
-            if (args.minTime !== undefined && (typeof state.time !== 'number' || !Number.isFinite(state.time))) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Skeletal clip time is unavailable.' });
+            if ((args.minTime !== undefined || args.maxTime !== undefined) && (typeof state.time !== 'number' || !Number.isFinite(state.time))) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Skeletal clip time is unavailable.' });
             observations++;
-            const matched = (args.playing === undefined || args.playing === state.playing) && (args.paused === undefined || args.paused === state.paused) && (args.minTime === undefined || (state.time as number) >= args.minTime);
+            const matched = (args.playing === undefined || args.playing === state.playing) && (args.paused === undefined || args.paused === state.paused) && (args.minTime === undefined || (state.time as number) >= args.minTime) && (args.maxTime === undefined || (state.time as number) <= args.maxTime);
             if (matched || Date.now() >= deadline) return { matched, timedOut: !matched, observations, state };
             await new Promise(resolve => setTimeout(resolve, Math.min(pollMs, Math.max(0, deadline - Date.now()))));
         }

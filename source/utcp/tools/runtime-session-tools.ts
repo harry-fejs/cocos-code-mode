@@ -555,7 +555,7 @@ export class RuntimeSessionTools {
                             playing: { type: 'boolean' },
                             loaded: { type: 'boolean' },
                             minTime: { type: 'number', minimum: 0, maximum: 3600 },
-                            maxTime: { type: 'number', minimum: 0, maximum: 3600, description: 'audioAssert/audioWait inclusive upper playback-time bound only.' },
+                            maxTime: { type: 'number', minimum: 0, maximum: 3600, description: 'animationAssert/animationWait/audioAssert/audioWait inclusive upper playback-time bound only.' },
                             playbackState: { type: 'string', enum: ['init', 'playing', 'paused', 'stopped', 'interrupted'] },
                             audioOperation: { type: 'string', enum: ['play', 'pause', 'stop', 'seek'] },
                             expectedComponentUuid: { type: 'string', minLength: 1, maxLength: 256 }, expectedClipUuid: { type: 'string', minLength: 1, maxLength: 256 },
@@ -632,14 +632,15 @@ export class RuntimeSessionTools {
                 return { ...step, nodeReference: { id: step.nodeReference!.id } };
             }
             if (step && ['animationControl', 'animationObserve', 'animationAssert', 'animationWait'].includes(step.operation)) {
-                const invalid = Object.keys(step).some(key => !['operation', 'nodeReference', 'animationOperation', 'componentId', 'clipName', 'clipUuid', 'playing', 'paused', 'minTime', 'timeoutMs'].includes(key))
+                const invalid = Object.keys(step).some(key => !['operation', 'nodeReference', 'animationOperation', 'componentId', 'clipName', 'clipUuid', 'playing', 'paused', 'maxTime', 'minTime', 'timeoutMs'].includes(key))
                     || !step.nodeReference || typeof step.nodeReference !== 'object' || Array.isArray(step.nodeReference) || Object.keys(step.nodeReference).some(key => key !== 'id')
                     || [step.nodeReference?.id, step.componentId, step.clipName, step.clipUuid].some(value => typeof value !== 'string' || !value.trim() || value.length > 256)
                     || step.playing !== undefined && typeof step.playing !== 'boolean' || step.paused !== undefined && typeof step.paused !== 'boolean'
                     || step.minTime !== undefined && (typeof step.minTime !== 'number' || !Number.isFinite(step.minTime) || step.minTime < 0 || step.minTime > 3600)
+                    || step.maxTime !== undefined && (typeof step.maxTime !== 'number' || !Number.isFinite(step.maxTime) || step.maxTime < 0 || step.maxTime > 3600 || step.minTime !== undefined && step.minTime > step.maxTime)
                     || step.timeoutMs !== undefined && (!Number.isInteger(step.timeoutMs) || step.timeoutMs < 100 || step.timeoutMs > (step.operation === 'animationWait' ? 10000 : 3000))
                     || (step.operation === 'animationControl' ? !['play', 'pause', 'resume', 'stop'].includes(step.animationOperation ?? '') : step.animationOperation !== undefined)
-                    || ((step.operation === 'animationObserve' || step.operation === 'animationControl') ? step.playing !== undefined || step.paused !== undefined || step.minTime !== undefined : step.playing === undefined && step.paused === undefined && step.minTime === undefined);
+                    || ((step.operation === 'animationObserve' || step.operation === 'animationControl') ? step.playing !== undefined || step.paused !== undefined || step.minTime !== undefined || step.maxTime !== undefined : step.playing === undefined && step.paused === undefined && step.minTime === undefined && step.maxTime === undefined);
                 if (invalid) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Invalid animation scenario step ${index}.` });
                 return { ...step, nodeReference: { id: step.nodeReference!.id } };
             }
@@ -768,14 +769,14 @@ export class RuntimeSessionTools {
                                     const target = { sessionId: args.sessionId, nodeReference: step.nodeReference!, componentId: step.componentId!, clipName: step.clipName!, clipUuid: step.clipUuid!, timeoutMs };
                                     if (step.operation === 'animationControl') return animation.animationPlaybackControl({ ...target, operation: step.animationOperation! });
                                     if (step.operation === 'animationWait') {
-                                        const result = await animation.animationPlaybackWaitForState({ ...target, playing: step.playing, paused: step.paused, minTime: step.minTime });
+                                        const result = await animation.animationPlaybackWaitForState({ ...target, playing: step.playing, paused: step.paused, maxTime: step.maxTime, minTime: step.minTime });
                                         return { ...result, passed: result.matched === true };
                                     }
                                     const observation = await animation.animationPlaybackObserve(target);
                                     if (step.operation === 'animationObserve') return observation;
                                     const state = observation.state as { playing?: unknown; paused?: unknown; time?: unknown } | undefined;
-                                    if (!state || typeof state.playing !== 'boolean' || typeof state.paused !== 'boolean' || step.minTime !== undefined && (typeof state.time !== 'number' || !Number.isFinite(state.time))) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Animation assertion requires available typed state metrics.' });
-                                    return { ...observation, passed: (step.playing === undefined || state.playing === step.playing) && (step.paused === undefined || state.paused === step.paused) && (step.minTime === undefined || (state.time as number) >= step.minTime) };
+                                    if (!state || typeof state.playing !== 'boolean' || typeof state.paused !== 'boolean' || (step.minTime !== undefined || step.maxTime !== undefined) && (typeof state.time !== 'number' || !Number.isFinite(state.time))) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Animation assertion requires available typed state metrics.' });
+                                    return { ...observation, passed: (step.playing === undefined || state.playing === step.playing) && (step.paused === undefined || state.paused === step.paused) && (step.minTime === undefined || (state.time as number) >= step.minTime) && (step.maxTime === undefined || (state.time as number) <= step.maxTime) };
                                 })
                             : step.operation === 'audioObserve' || step.operation === 'audioAssert' || step.operation === 'audioControl' || step.operation === 'audioWait'
                                 ? import('./audio-playback-tools').then(async ({ AudioPlaybackTools }) => {
