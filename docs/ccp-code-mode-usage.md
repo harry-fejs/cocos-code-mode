@@ -105,6 +105,8 @@ Use `editorQuery({category:'engine_api',operation:'records',recordId})` for one 
 
 `operation:'lookup_editor_message'` requires an exact editor-ipc catalog `recordId`. It returns declared message metadata through the bounded discovery envelope, never sends the described IPC, and refuses live references or a conflicting namespace. Pilot-only catalogs may not contain editor records; missing metadata is not proof that a native IPC is unavailable.
 
+`kind` is an exact catalog-record filter (for example `method`, `property`, `accessor`), applied before external shard hydration and bound into pagination cursors. It can narrow records/member/namespace/class summaries; domain navigation, editor-message lookup and version comparison reject it. Missing index metadata is never inferred as a match. Module/visibility/context/evidence selectors are not yet supported by the current external lookup format.
+
 Use `editorQuery({category:'engine_api',operation:'compare_version',targetVersion:'3.7.3',recordId,compareVersion:'3.8.8',compareRecordId})` to compare two exact records sharing a semanticKey. Results compare signature/metadata/resolution hashes and retain catalog identities; missing records do not imply removals. Comparison grants no execution permission.
 
 `runtimeScenarioRun` accepts `totalTimeoutMs` (100–60000, default30000). All steps share that wall-clock deadline; expiry stops subsequent steps and retains failedStep/prior outcomes. An in-flight native request may still complete: timeout does not cancel, replay or restore an action. Inspect the bound session before another mutation.
