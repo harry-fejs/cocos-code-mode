@@ -1136,7 +1136,12 @@ export class AssetTools {
             : 524288;
         const dataBytes = Buffer.byteLength(serializedData, 'utf8');
         const dataTruncated = dataBytes > maxDataBytes;
-        const data = dataTruncated ? serializedData.slice(0, maxDataBytes) : rawData;
+        let data = rawData;
+        if (dataTruncated) {
+            const preview = Buffer.allocUnsafe(maxDataBytes);
+            const written = preview.write(serializedData, 'utf8');
+            data = preview.toString('utf8', 0, written);
+        }
         return {
             uuid: info.uuid,
             url: typeof info.url === 'string' ? info.url : '',

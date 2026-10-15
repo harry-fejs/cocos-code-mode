@@ -168,6 +168,12 @@ declare namespace ccp3x {
         name?: string; pattern?: string; ccType?: string; importer?: string; extname?: string; isBundle?: boolean; limit?: number;
     }> }): { results: Array<ReturnType<typeof assetQuery>> };
 
+    /** dataBytes is full serialized JSON size. Truncated data is a UTF-8-bounded text prefix, not necessarily valid JSON; meta is not byte-capped. Native query failures may appear as null data/meta. */
+    function assetInspect(args: { reference?: InstanceReference; assetPath?: string; maxDataBytes?: number }): {
+        uuid: string; url: string; type: string; file: string; isDirectory: boolean; importer: string;
+        meta: unknown; dataBytes: number;
+    } & ({ dataTruncated: true; data: string } | { dataTruncated: false; data: unknown });
+
     /** Read bounded importer-specific settings, typed property descriptors, and explicit source identity for one asset. */
     function assetImportSettingsGet(args: { reference: InstanceReference }): AssetImportSettingsResult;
 
