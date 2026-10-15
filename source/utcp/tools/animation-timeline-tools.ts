@@ -62,7 +62,15 @@ export class AnimationTimelineTools {
     async animationTimelineInspect(args: TimelineInspectOptions) {
         const nodeReference = exactReference(args?.nodeReference, 'nodeReference');
         const clipReference = exactReference(args?.clipReference, 'clipReference');
-        timelineInspectBounds(args);
+        const stableArgs: TimelineInspectOptions = {
+            ...args,
+            nodeReference,
+            clipReference,
+            ...(args.trackBinding ? { trackBinding: { ...args.trackBinding } } : {}),
+            ...(args.eventFrameRange ? { eventFrameRange: { ...args.eventFrameRange } } : {}),
+        };
+        timelineInspectBounds(stableArgs);
+        args = stableArgs;
         const [nodeValue, clipValue]: unknown[] = await Promise.all([
             Editor.Message.request('scene', 'query-node', nodeReference.id),
             Editor.Message.request('asset-db', 'query-asset-info', clipReference.id),
