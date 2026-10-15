@@ -3,6 +3,7 @@ import { ToolError } from '../tool-error';
 import { executeGameViewOperation, setGameViewTimeScale } from '../utils/game-view-transport';
 import { RuntimePreviewResult, RuntimeSessionTools } from './runtime-session-tools';
 import { observeRuntimeNode } from '../../runtime-node-observe';
+import { unitQuaternion, orientationMatches } from '../utils/node-orientation';
 
 const sessions = new RuntimeSessionTools();
 type PreviewArgs = Parameters<RuntimeSessionTools['previewControl']>[0];
@@ -46,16 +47,8 @@ export class RuntimeTools {
         const position = args.position;
         if (position !== undefined && (!position || typeof position !== 'object' || Array.isArray(position) || Object.keys(position).some(key => !['space', 'x', 'y', 'z', 'tolerance'].includes(key)) || !['local', 'world'].includes(position.space) || [position.x, position.y, position.z, position.tolerance].some(value => typeof value !== 'number' || !Number.isFinite(value)) || position.tolerance < 0 || position.tolerance > 1000000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Position requires explicit local/world space, finite xyz and tolerance0..1000000.' });
         const rotation = args.rotation;
-        const unit = (q: { x: number; y: number; z: number; w: number } | undefined, code: string): number[] => {
-            if (!q || [q.x, q.y, q.z, q.w].some(n => typeof n !== 'number' || !Number.isFinite(n))) throw new ToolError({ code, status: code === 'INVALID_ARGUMENT' ? 400 : 502, message: 'Finite nonzero quaternion required.' });
-            const max = Math.max(Math.abs(q.x), Math.abs(q.y), Math.abs(q.z), Math.abs(q.w));
-            if (max === 0) throw new ToolError({ code, status: code === 'INVALID_ARGUMENT' ? 400 : 502, message: 'Zero quaternion has no orientation.' });
-            const scaled = [q.x / max, q.y / max, q.z / max, q.w / max];
-            const norm = Math.hypot(...scaled);
-            return scaled.map(n => n / norm);
-        };
         if (rotation !== undefined && (!rotation || typeof rotation !== 'object' || Array.isArray(rotation) || Object.keys(rotation).some(key => !['space', 'x', 'y', 'z', 'w', 'toleranceDegrees'].includes(key)) || !['local', 'world'].includes(rotation.space) || typeof rotation.toleranceDegrees !== 'number' || !Number.isFinite(rotation.toleranceDegrees) || rotation.toleranceDegrees < 0 || rotation.toleranceDegrees > 180)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Rotation requires local/world quaternion and toleranceDegrees0..180.' });
-        const expectedRotation = rotation ? unit(rotation, 'INVALID_ARGUMENT') : undefined;
+        const expectedRotation = rotation ? unitQuaternion(rotation, 'INVALID_ARGUMENT') : undefined;
         const deadline = Date.now() + timeoutMs; let observations = 0; let targetId: string | undefined;
         for (;;) {
             const remaining = deadline - Date.now();
@@ -72,12 +65,7 @@ export class RuntimeTools {
             const actual = position?.space === 'world' ? observation.worldPosition : observation.position;
             if (position && (!actual || [actual.x, actual.y, actual.z].some(value => typeof value !== 'number' || !Number.isFinite(value)))) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Finite node position unavailable.' });
             const positionMatched = !position || Math.abs(actual.x - position.x) <= position.tolerance && Math.abs(actual.y - position.y) <= position.tolerance && Math.abs(actual.z - position.z) <= position.tolerance;
-            let rotationMatched = true;
-            if (rotation && expectedRotation) {
-                const observed = unit(rotation.space === 'world' ? observation.worldRotation : observation.rotation, 'INVALID_RUNTIME_RESPONSE');
-                const dot = Math.min(1, Math.abs(observed.reduce((sum, n, i) => sum + n * expectedRotation[i], 0)));
-                rotationMatched = rotation.toleranceDegrees === 180 || dot >= Math.cos(rotation.toleranceDegrees * Math.PI / 360);
-            }
+            const rotationMatched = !rotation || !expectedRotation || orientationMatches(rotation.space === 'world' ? observation.worldRotation : observation.rotation, expectedRotation, rotation.toleranceDegrees);
             if (rotationMatched && positionMatched && (args.active === undefined || observation.active === args.active) && (args.activeInHierarchy === undefined || observation.activeInHierarchy === args.activeInHierarchy)) return { matched: true as const, observations, observation };
             await new Promise<void>(resolve => setTimeout(resolve, Math.min(pollMs, Math.max(0, deadline - Date.now()))));
         }

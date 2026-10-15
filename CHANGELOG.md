@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add immediate nodeAssert orientation predicates using the same finite-nonzero/sign-invariant quaternion comparison as node waits. Mismatch retains raw snapshot and stops later cues; invalid observed rotations refuse. No rotation mutation or completion inference.
 - Traverse interface members through compiler-instantiated property/index/signature types rather than re-reading generic declaration members; concrete Box<string> no longer inherits an unresolved declaration T.
 - Compose quaternion orientation conditions in scenario nodeWait using the existing sign-invariant read-only wait. Full-input validation refuses zero/nonfinite/invalid angular predicates before any steps; nested rotation is copied, no rotation writes or completion inference.
 - Mark free/constrained generic type parameters unresolved until instantiated; constraint dependencies remain available but never count as a complete selected argument schema.
