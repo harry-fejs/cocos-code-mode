@@ -1056,17 +1056,26 @@ export class SceneTools {
         const available = await Editor.Message.request('scene', 'query-components');
         if (!Array.isArray(available) || !findComponentType(available, replacement)) throw new ToolError({ code: 'SCRIPT_NOT_REGISTERED', status: 422, message: `Replacement class '${replacement}' is not registered in Creator.` });
         let createdUuid: string | undefined;
+        let phase: 'remove-dispatch' | 'remove-readback' | 'create-dispatch' | 'create-readback' | 'snapshot' = 'remove-dispatch';
+        let removalConfirmed = false;
         try {
             await Editor.Message.request('scene', 'remove-component', { uuid: oldUuid });
+            phase = 'remove-readback';
+            const removed = await Editor.Message.request('scene', 'query-node', nodeUuid) as any;
+            if (!removed || !Array.isArray(removed.__comps__) || removed.__comps__.some((component: unknown) => componentUuid(component) === oldUuid)) throw new ToolError({ code: 'SCRIPT_REPAIR_UNCONFIRMED', status: 502, message: 'Original component removal was not confirmed; replacement was not dispatched.' });
+            removalConfirmed = true;
+            phase = 'create-dispatch';
             await Editor.Message.request('scene', 'create-component', { uuid: nodeUuid, component: replacement });
+            phase = 'create-readback';
             const after = await Editor.Message.request('scene', 'query-node', nodeUuid) as any;
             const created = (after?.__comps__ || []).find((component: unknown) => componentClassId(component) === replacement && componentUuid(component) !== oldUuid);
             createdUuid = componentUuid(created);
             if (!created || !createdUuid) throw new ToolError({ code: 'SCRIPT_REPAIR_UNCONFIRMED', status: 502, message: 'Replacement component was not confirmed after creation.' });
+            phase = 'snapshot';
             await Editor.Message.request('scene', 'snapshot');
             return { success: true, removedComponent: oldUuid, createdComponent: { id: createdUuid, type: replacement } };
         } catch (error) {
-            throw new ToolError({ code: createdUuid ? 'SCRIPT_REPAIR_PARTIAL' : 'SCRIPT_REPAIR_FAILED', status: 502, message: 'Script repair did not complete; inspect the node before retrying.', details: { nodeUuid, removedComponent: oldUuid, replacement, createdComponent: createdUuid ?? null, cause: error instanceof Error ? error.message : String(error) }, recovery: 'Inspect current components; do not blindly repeat remove/create after an ambiguous mutation.' });
+            throw new ToolError({ code: phase === 'remove-dispatch' || phase === 'create-dispatch' ? 'SCRIPT_REPAIR_OUTCOME_UNKNOWN' : 'SCRIPT_REPAIR_PARTIAL', status: 502, message: 'Script repair did not complete; inspect the node before retrying.', details: { nodeUuid, targetComponent: oldUuid, removedComponent: removalConfirmed ? oldUuid : null, removalConfirmed, phase, replacement, createdComponent: createdUuid ?? null, retrySafe: false, cause: error instanceof Error ? error.message : String(error) }, recovery: 'Inspect current components; do not blindly repeat remove/create after an ambiguous mutation.' });
         }
     }
     @utcpTool('sceneScriptRepairBatch', 'Repair bounded missing script components with per-item replacement verification.', { type: 'object', additionalProperties: false, properties: { items: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { nodeReference: InstanceReferenceSchema, componentReference: InstanceReferenceSchema, expectedClassId: { type: 'string', maxLength: 256 }, replacementClassId: { type: 'string', maxLength: 256 }, scriptReference: InstanceReferenceSchema }, required: ['nodeReference'] } } }, required: ['items'] }, { type: 'object', additionalProperties: false, properties: { outcomes: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, partial: { type: 'boolean' } }, required: ['outcomes', 'succeeded', 'failed', 'partial'] }, 'POST', ['scene', 'script', 'batch', 'repair'])
