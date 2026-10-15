@@ -4,7 +4,7 @@ const { fs, path, hash, stable, parseArgs } = require('./catalog-utils');
 const { indexCatalog } = require('./index-catalog');
 
 function classify(record) {
-  if (record.internal === true || ['private', 'protected'].includes(record.visibility)) return ['catalog-only-internal', 'Internal or non-public declaration; no invocation permission.'];
+  if (record.internal === true || ['private', 'protected', 'internal'].includes(record.visibility)) return ['catalog-only-internal', 'Internal or non-public declaration; no invocation permission.'];
   if (record.kind === 'event' || record.kind === 'broadcast') return ['event-only', 'Event metadata is not a request API.'];
   if (!Array.isArray(record.unresolved) || record.unresolved.length || !Array.isArray(record.signatures) || record.signatures.some(signature => !signature || typeof signature !== 'object' || !Array.isArray(signature.unresolved) || signature.unresolved.length)) return ['unresolved-type', 'Type completeness is unknown or unresolved; no callable DTO inferred.'];
   return ['declaration-only', 'Catalog evidence alone does not prove a reviewed adapter, context availability or qualification.'];

@@ -12,7 +12,7 @@ export interface EngineDiscoveryArgs {
     category?: string; className?: string; targetVersion?: string; domain?: string;
     operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'get_related_types' | 'lookup_editor_message' | 'explain_bridge_route' | 'compare_version';
     namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge';
-    kind?: string; module?: string; visibility?: 'public' | 'protected' | 'private';
+    kind?: string; module?: string; visibility?: 'public' | 'protected' | 'private' | 'internal';
     context?: string; evidenceState?: string;
     member?: string;
     timeoutMs?: number;
@@ -70,7 +70,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     if (args.kind !== undefined && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'kind is not accepted for this discovery operation.' });
     if (args.module !== undefined && (typeof args.module !== 'string' || !args.module || args.module.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'module must be a nonempty string of at most 256 characters.' });
     if (args.module !== undefined && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'module is not accepted for this discovery operation.' });
-    if (args.visibility !== undefined && !['public', 'protected', 'private'].includes(args.visibility)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'visibility must be public, protected or private.' });
+    if (args.visibility !== undefined && !['public', 'protected', 'private', 'internal'].includes(args.visibility)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'visibility must be public, protected, private or internal.' });
     if (args.visibility !== undefined && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'visibility is not accepted for this discovery operation.' });
     for (const value of [args.context, args.evidenceState]) if (value !== undefined && (typeof value !== 'string' || !value || value.length > 128)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'context/evidenceState must be nonempty strings of at most 128 characters.' });
     if ((args.context !== undefined || args.evidenceState !== undefined) && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Context/evidence selectors are not accepted for this discovery operation.' });

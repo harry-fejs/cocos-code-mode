@@ -78,7 +78,7 @@ function projectRecord(record, index, domain, shard, ids) {
       || !nullableText(record.className) || !isText(record.name) || !nullableText(record.member)
       || !isText(record.kind) || !isText(record.module)
       || (record.domain !== undefined && record.domain !== null && typeof record.domain !== 'string')) throw new Error(`Invalid record identity, version or metadata in ${domain.file}.`);
-  if (record.visibility != null && !['public', 'protected', 'private'].includes(record.visibility)) throw new Error(`Invalid visibility metadata in ${domain.file}.`);
+  if (record.visibility != null && !['public', 'protected', 'private', 'internal'].includes(record.visibility)) throw new Error(`Invalid visibility metadata in ${domain.file}.`);
   const contexts = record.contextConstraints?.execution ?? null;
   if (contexts !== null && (!Array.isArray(contexts) || contexts.length > 32 || contexts.some(value => !isText(value) || value.length > 128))) throw new Error(`Invalid execution context metadata in ${domain.file}.`);
   if (record.evidenceStatus != null && (!isText(record.evidenceStatus) || record.evidenceStatus.length > 128)) throw new Error(`Invalid evidence metadata in ${domain.file}.`);
