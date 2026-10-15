@@ -245,6 +245,7 @@ export function createComponentOperationSource(args: ComponentOperation): string
 
 export async function executeComponentOperation(args: ComponentOperation): Promise<Record<string, unknown>> {
     validateComponentTarget(args, args.kind !== 'particle');
+    args = { ...args, nodeReference: { id: args.nodeReference.id }, ...(args.variable === undefined ? {} : { variable: { ...args.variable } }) };
     const runtime = new RuntimeSessionTools(); const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId }); const session = inspected.session;
     if (!session || !('status' in session) || !('targetId' in session) || !('targetKind' in session) || session.sessionId !== args.sessionId || session.status !== 'attached' || session.targetKind !== 'game-view' || typeof session.targetId !== 'string' || !inspected.ready) { if (session && 'status' in session && session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: 'The runtime session is stopped.' }); throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'The exact attached Game View session is not ready.' }); }
     const mutation = args.kind !== 'events' && !['inspect', 'observe'].includes(args.operation); const result = await executeGameViewOperation(session.targetId, createComponentOperationSource(args), (args.timeoutMs ?? 1000) + 2000, mutation) as Record<string, unknown> | null;
