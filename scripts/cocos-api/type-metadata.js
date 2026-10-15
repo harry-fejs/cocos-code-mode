@@ -241,7 +241,7 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
     const parameter = symbol.valueDeclaration || symbol.declarations?.[0] || declaration.parameters?.[position];
     if (parameter?.dotDotDotToken) {
       const restType = checker.getTypeOfSymbolAtLocation(symbol, parameter);
-      if (checker.isTupleType(restType)) minArgumentCount = Math.max(minArgumentCount, position + restType.target.minLength);
+      if (checker.isTupleType(restType) && restType.target.minLength > 0) minArgumentCount = Math.max(minArgumentCount, position + restType.target.minLength);
     }
     const info = typeInfo(checker, checker.getTypeOfSymbolAtLocation(symbol, parameter || declaration), parameter?.type);
     unresolved.push(...info.unresolved);
