@@ -1157,7 +1157,7 @@ export class SceneTools {
         if (!target || !componentId || !classId) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Script component was not found on node ${nodeId}.` });
         await Editor.Message.request('scene', 'remove-component', { uuid: componentId });
         const after = await Editor.Message.request('scene', 'query-node', nodeId) as any;
-        if ((after?.__comps__ || []).some((component: unknown) => componentUuid(component) === componentId)) throw new ToolError({ code: 'SCRIPT_DETACH_UNCONFIRMED', status: 502, message: `Creator did not remove script component ${componentId}.` });
+        if (!after || !Array.isArray(after.__comps__) || after.__comps__.some((component: unknown) => componentUuid(component) === componentId)) throw new ToolError({ code: 'SCRIPT_DETACH_UNCONFIRMED', status: 502, message: `Creator did not confirm removal of script component ${componentId}.`, details: { nodeId, componentId, retrySafe: false }, recovery: 'Inspect the node before another removal; missing or malformed node data is not component absence proof.' });
         await Editor.Message.request('scene', 'snapshot');
         return { success: true, nodeReference: { id: nodeId, type: args.nodeReference.type ?? 'cc.Node' }, removedComponent: { id: componentId, type: classId } };
     }
