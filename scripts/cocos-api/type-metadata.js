@@ -297,7 +297,8 @@ function metadata(node) {
   const nameNode = node.name && ts.isComputedPropertyName(node.name) ? node.name.expression : node.name;
   const declaredName = nameNode && (ts.isIdentifier(nameNode) && nameNode === node.name || ts.isStringLiteral(nameNode) || ts.isNumericLiteral(nameNode) || ts.isNoSubstitutionTemplateLiteral(nameNode)) ? nameNode.text : node.name?.getText();
   const documentation = node.jsDoc?.length ? node.jsDoc : ts.isVariableDeclaration(node) && ts.isVariableStatement(node.parent?.parent) ? node.parent.parent.jsDoc || [] : [];
-  return { decorators, visibility, static: modifiers.includes('static'), readonly: modifiers.includes('readonly') || ts.isGetAccessorDeclaration(node) && !node.symbol?.declarations?.some(ts.isSetAccessorDeclaration),
+  const constantBinding = ts.isVariableDeclaration(node) && ts.isVariableDeclarationList(node.parent) && !!(node.parent.flags & ts.NodeFlags.Const);
+  return { decorators, visibility, static: modifiers.includes('static'), readonly: constantBinding || modifiers.includes('readonly') || ts.isGetAccessorDeclaration(node) && !node.symbol?.declarations?.some(ts.isSetAccessorDeclaration),
     internal: tags.includes('internal') || tags.includes('engineInternal') || tags.includes('private') || !!declaredName?.startsWith('__'), deprecated: tags.includes('deprecated'),
     abstract: modifiers.includes('abstract'), jsdoc: documentation.map(doc => doc.getText()).join('\n') || null };
 }
