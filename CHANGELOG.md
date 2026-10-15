@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Separate object/property-access names from evaluated value reads in guard provenance, avoiding AST-only false positives for {EDITOR:true}/object.EDITOR while retaining shorthand, computed keys and initializer reads.
 - Reject sparse frame selections in the shared animation event/keyframe/auxiliary edit validator before clip selection. Dense frame order and bounded native indices remain unchanged; no mutation replay added.
 - Resolve shorthand-property value symbols in execution-guard provenance, retaining imported constant reads passed through object literals while excluding same-name shadowed locals.
 - Enforce animationEventEdit(move) published integer offset bounds -1000000..1000000 before native clip selection; signed boundary and zero offsets remain supported. No native mutation replay.

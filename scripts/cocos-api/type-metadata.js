@@ -333,12 +333,14 @@ function constraints(node, context, checker) {
       const expression = shortCircuit ? current.left : expressionGuard ? current.expression : current.condition;
       const usesConstant = part => {
         if (ts.isTypeNode(part) || ts.isFunctionLike(part) || ts.isClassExpression(part)) return false;
+        if (ts.isPropertyAssignment(part)) return (ts.isComputedPropertyName(part.name) && usesConstant(part.name.expression)) || usesConstant(part.initializer);
         if (checker && ts.isShorthandPropertyAssignment(part) && constantSymbols.has(checker.getShorthandAssignmentValueSymbol(part))) return true;
         if (ts.isIdentifier(part) && (checker ? constantSymbols.has(checker.getSymbolAtLocation(part)) : constants.includes(part.text))) return true;
         if (ts.isPropertyAccessExpression(part) || ts.isElementAccessExpression(part)) {
           const target = part.expression;
           const explicitMember = ts.isPropertyAccessExpression(part) || part.argumentExpression && (ts.isStringLiteral(part.argumentExpression) || ts.isNoSubstitutionTemplateLiteral(part.argumentExpression));
           if (explicitMember && ts.isIdentifier(target) && (checker ? namespaceSymbols.has(checker.getSymbolAtLocation(target)) : namespaceNames.has(target.text))) return true;
+          if (ts.isPropertyAccessExpression(part)) return usesConstant(target);
         }
         return ts.forEachChild(part, usesConstant);
       };
