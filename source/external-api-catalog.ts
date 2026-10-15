@@ -20,13 +20,25 @@ function readBounded(root: string, basename: string, maximum: number, expected?:
     const file = fs.realpathSync(path.join(root, basename));
     const relative = path.relative(root, file);
     if (!relative || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Catalog file escapes its approved root.' });
-    const before = fs.statSync(file);
-    if (!before.isFile() || before.size > maximum) throw new ToolError({ code: 'CATALOG_LIMIT_EXCEEDED', status: 422, message: 'Catalog file exceeds its read bound.' });
-    const data = fs.readFileSync(file);
-    const after = fs.statSync(file);
-    if (data.length > maximum || before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.ino !== after.ino) throw new ToolError({ code: 'CATALOG_CHANGED', status: 409, message: 'Catalog input changed while reading.' });
-    if (expected && crypto.createHash('sha256').update(data).digest('hex') !== expected) throw new ToolError({ code: 'CATALOG_HASH_MISMATCH', status: 409, message: 'Catalog bytes do not match the approved identity.' });
-    return data;
+    const fd = fs.openSync(file, 'r');
+    try {
+        const before = fs.fstatSync(fd, { bigint: true });
+        if (!before.isFile() || before.size > BigInt(maximum)) throw new ToolError({ code: 'CATALOG_LIMIT_EXCEEDED', status: 422, message: 'Catalog file exceeds its read bound.' });
+        const data = Buffer.allocUnsafe(Number(before.size) + 1);
+        let offset = 0;
+        while (offset < data.length) {
+            const count = fs.readSync(fd, data, offset, data.length - offset, null);
+            if (!count) break;
+            offset += count;
+        }
+        const after = fs.fstatSync(fd, { bigint: true });
+        const current = fs.statSync(file, { bigint: true });
+        const unchanged = (stat: typeof before) => stat.dev === before.dev && stat.ino === before.ino && stat.size === before.size && stat.mtimeNs === before.mtimeNs && stat.ctimeNs === before.ctimeNs;
+        if (BigInt(offset) !== before.size || !unchanged(after) || !unchanged(current) || fs.realpathSync(path.join(root, basename)) !== file) throw new ToolError({ code: 'CATALOG_CHANGED', status: 409, message: 'Catalog input changed while reading.' });
+        const bytes = data.subarray(0, offset);
+        if (expected && crypto.createHash('sha256').update(bytes).digest('hex') !== expected) throw new ToolError({ code: 'CATALOG_HASH_MISMATCH', status: 409, message: 'Catalog bytes do not match the approved identity.' });
+        return bytes;
+    } finally { fs.closeSync(fd); }
 }
 
 export interface ExternalApiCatalog {

@@ -121,6 +121,8 @@ Ledger `routeEvidence` retains all matching static candidates for bridge tool re
 
 Offline ledger declarationGroupId groups only exact version/namespace/source file hash/span/semantic hash plus member/kind/static/visibility/context identity. All raw rows and dispositions remain intact; missing provenance stays ungrouped. This detects shared declaration views, not inherited behavioral equivalence, manual duplicate workflow selection or distinct-feature counts. declarationGrouping statistics are provenance counts only, never coverage/qualification.
 
+The runtime external catalog loader reads config/index/lookup/shards through bounded file descriptors: size is checked before allocation, growth/truncation and descriptor/path metadata changes refuse with CATALOG_CHANGED, and configured hashes are verified on captured bytes. This bounds each input buffer, not decoded heap, synchronous read latency or all concurrent process memory; it does not claim race-proof filesystem snapshots.
+
 Use `editorQuery({category:'engine_api',operation:'compare_version',targetVersion:'3.7.3',recordId,compareVersion:'3.8.8',compareRecordId})` to compare two exact records sharing a semanticKey. Results compare signature/metadata/resolution hashes and retain catalog identities; missing records do not imply removals. Comparison grants no execution permission.
 
 `runtimeScenarioRun` accepts `totalTimeoutMs` (100–60000, default30000). All steps share that wall-clock deadline; expiry stops subsequent steps and retains failedStep/prior outcomes. An in-flight native request may still complete: timeout does not cancel, replay or restore an action. Inspect the bound session before another mutation.
