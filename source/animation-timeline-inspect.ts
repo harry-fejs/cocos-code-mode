@@ -12,6 +12,8 @@ export interface TimelineInspectOptions {
     eventLimit?: number;
     maxBytes?: number;
     expectedRevision?: string;
+    keyframeOffset?: number;
+    keyframeLimit?: number;
 }
 export function timelineRecord(value: unknown): Row | null {
     return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Row : null;
@@ -31,6 +33,8 @@ export function timelineInspectBounds(options: TimelineInspectOptions) {
         trackLimit: integer(options.trackLimit, 50, 1, 200, 'trackLimit'),
         eventOffset: integer(options.eventOffset, 0, 0, 1000000, 'eventOffset'),
         eventLimit: integer(options.eventLimit, 50, 1, 200, 'eventLimit'),
+        keyframeOffset: integer(options.keyframeOffset, 0, 0, 100000, 'keyframeOffset'),
+        keyframeLimit: integer(options.keyframeLimit, 20, 1, 200, 'keyframeLimit'),
         maxBytes: integer(options.maxBytes, 65536, 1024, 262144, 'maxBytes'),
     };
 }
@@ -97,6 +101,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         return true;
     };
     const frameValid = (frame: unknown): frame is number => finite(frame) && frame >= 0;
+    const timingHash = createHash('sha256');
     const tracks = (curves ?? []).map((raw: unknown, index: number) => {
         const curve = timelineRecord(raw), location = `curves[${index}]`;
         const startIssues = diagnosticCount;
@@ -106,14 +111,19 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         keyframeCount += keys?.length ?? 0;
         if (keyframeCount > 100000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native dump exceeds 100000 keyframes.');
         let first: number | null = null, last: number | null = null;
+        const keyframes: Array<{ index: number; frame: number | null; frameOverSample: number | null }> = [];
         for (const [keyIndex, rawKey] of (keys ?? []).entries()) {
             const key = timelineRecord(rawKey), keyLocation = `${location}.keyframes[${keyIndex}]`;
+            const frame = key && frameValid(key.frame) ? key.frame : null;
+            timingHash.update(JSON.stringify([index, keyIndex, frame]));
+            if (keyIndex >= bounds.keyframeOffset && keyIndex < bounds.keyframeOffset + bounds.keyframeLimit) keyframes.push({ index: keyIndex, frame, frameOverSample: frame !== null && sample !== null && finite(frame / sample) ? frame / sample : null });
             if (!key || !frameValid(key.frame)) issue('INVALID_KEYFRAME_TIME', keyLocation);
             if (!key || !('dump' in key) || !finiteTree(key)) issue('INVALID_KEYFRAME_DATA', keyLocation);
             if (key && finite(key.frame) && key.frame >= 0) { first = first === null ? key.frame : Math.min(first, key.frame); last = last === null ? key.frame : Math.max(last, key.frame); }
         }
         for (const field of ['comp', 'parentPropKey', 'displayName']) if (curve && field in curve && typeof curve[field] !== 'string') issue('UNSUPPORTED_TRACK_METADATA', `${location}.${field}`, true);
         const row = { index, identity: { nodePath: text(curve?.nodePath), property: text(curve?.key) }, component: text(curve?.comp), parentProperty: text(curve?.parentPropKey), displayName: text(curve?.displayName), keyframeCount: keys?.length ?? null,
+            keyframes, keyframeOffset: bounds.keyframeOffset, nextKeyframeOffset: keys && bounds.keyframeOffset + keyframes.length < keys.length ? bounds.keyframeOffset + keyframes.length : null,
             frameRange: first === null ? null : { first, last }, frameOverSampleRange: first === null || last === null || sample === null || !finite(first / sample) || !finite(last / sample) ? null : { first: first / sample, last: last / sample }, dataValid: diagnosticCount === startIssues };
         return row;
     });
@@ -127,14 +137,15 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     // Revision covers the complete retrieved projection, not opaque keyframe values or unreturned native tracks.
     const hash = createHash('sha256');
     hash.update(JSON.stringify([options.nodeReference.id, options.clipReference.id, text(dump?.name), sample, duration, dump?.speed, dump?.wrapMode, totalTracks, sourceComplete]));
-    for (const row of tracks) hash.update(JSON.stringify(row));
+    hash.update(timingHash.digest('hex'));
+    for (const { keyframes, keyframeOffset, nextKeyframeOffset, ...row } of tracks) hash.update(JSON.stringify(row));
     for (const row of eventRows) hash.update(JSON.stringify(row));
     hash.update(JSON.stringify([diagnostics, diagnosticCount, supported]));
     const revision = hash.digest('hex');
     if (options.expectedRevision !== undefined && options.expectedRevision !== revision) throw new ToolError({ code: 'TIMELINE_REVISION_CHANGED', status: 409, message: 'Retrieved timeline metadata changed; restart paging. No mutation was dispatched.' });
     const result = {
         nodeReference: options.nodeReference, clipReference: options.clipReference,
-        revision, revisionScope: 'Retrieved timeline projection: clip metadata, track bindings/counts/ranges, event frames/callbacks/params and diagnostics. Excludes opaque keyframe values, intermediate frame positions, unretrieved native tracks, callback binding and runtime state. Not an atomic scene snapshot.',
+        revision, revisionScope: 'Retrieved timeline projection including all retrieved keyframe indices/times, clip metadata, track bindings/counts/ranges, events and diagnostics. Excludes opaque keyframe values, unretrieved native tracks, callback binding and runtime state. Not an atomic scene snapshot.',
         identity: { node: readback?.nodeUuid === options.nodeReference.id ? 'query-node-verified' : 'requested-reference', clip: readback?.clipUuid === options.clipReference.id ? 'asset-db-verified' : 'requested-reference', dumpClipUuidExposed: !!dump && ('uuid' in dump || 'clipUuid' in dump), dumpNodeUuidExposed: !!dump && 'nodeUuid' in dump },
         clip: { name: text(dump?.name), sample, duration, speed: finite(dump?.speed) ? dump.speed : null, wrapMode: finite(dump?.wrapMode) ? dump.wrapMode : null },
         sourceScope: 'Creator scene query-animation-clip editor dump via animationQuery(includeCurves:true,maxCurves:1000). Node/clip readbacks establish identity only, not dump binding. Property curves/events only; auxiliary curves, embedded players, binding resolution and callback existence are outside scope.',
@@ -155,8 +166,8 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         const trackEnd = bounds.trackOffset + result.tracks.length, eventEnd = bounds.eventOffset + result.events.length;
         result.nextTrackOffset = trackEnd < tracks.length ? trackEnd : null;
         result.nextEventOffset = eventEnd < eventRows.length ? eventEnd : null;
-        result.complete = result.sourceComplete && bounds.trackOffset === 0 && bounds.eventOffset === 0 && result.nextTrackOffset === null && result.nextEventOffset === null && !result.diagnosticsTruncated;
-        result.truncated = !sourceComplete || bounds.trackOffset > 0 || bounds.eventOffset > 0 || result.nextTrackOffset !== null || result.nextEventOffset !== null || result.diagnosticsTruncated;
+        result.complete = result.sourceComplete && bounds.trackOffset === 0 && bounds.eventOffset === 0 && bounds.keyframeOffset === 0 && tracks.every(track => track.nextKeyframeOffset === null) && result.nextTrackOffset === null && result.nextEventOffset === null && !result.diagnosticsTruncated;
+        result.truncated = !sourceComplete || bounds.trackOffset > 0 || bounds.eventOffset > 0 || bounds.keyframeOffset > 0 || tracks.some(track => track.nextKeyframeOffset !== null) || result.nextTrackOffset !== null || result.nextEventOffset !== null || result.diagnosticsTruncated;
     };
     pagination();
     while (byteLength(result) > bounds.maxBytes) {

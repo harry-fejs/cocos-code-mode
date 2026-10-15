@@ -2,7 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
-- Add timeline paging revision/expectedRevision for retrieved clip metadata, track binding/count/range and event projection. Refuse changed projections across pages; opaque keyframe values, intermediate frames, unretrieved tracks and runtime binding remain outside revision scope.
+- Add timeline revision/expectedRevision guarding retrieved metadata, all keyframe indices/times, track binding/count/range and event projection. Per-track keyframeOffset/keyframeLimit exposes bounded timing pages; opaque values, unretrieved tracks and runtime binding remain outside revision scope.
 - Compose exact node/component/clip animation observe/assert/wait checkpoints in runtime scenarios with whole-input preflight, finite deadlines, cancellation and retained pending ownership. Reuses existing runtime adapters; no playback replay or new live qualification.
 - Compose exact-clip animation play/pause/resume/stop actions with scenario waits/assertions using the existing finite adapter. Whole-input preflight rejects invalid later actions; unknown dispatched outcomes stop without replay or rollback.
 - Extend sound scenario assert/wait checkpoints with explicit init/playing/paused/stopped/interrupted state and minimum playback time. Predicates compose against one observation; stopped is not natural completion, invalid metrics refuse and actions are never replayed.

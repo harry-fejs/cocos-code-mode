@@ -21,6 +21,8 @@ export class AnimationTimelineTools {
             trackLimit: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
             eventOffset: { type: 'integer', minimum: 0, maximum: 1000000, default: 0 },
             eventLimit: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
+            keyframeOffset: { type: 'integer', minimum: 0, maximum: 100000, default: 0, description: 'Applied independently to each returned track.' },
+            keyframeLimit: { type: 'integer', minimum: 1, maximum: 200, default: 20 },
             maxBytes: { type: 'integer', minimum: 1024, maximum: 262144, default: 65536, description: 'Exact UTF-8 JSON byte ceiling for the entire successful result. Oversized records/envelopes fail with typed bound errors.' },
         }, required: ['nodeReference', 'clipReference'],
     }, {
@@ -37,9 +39,11 @@ export class AnimationTimelineTools {
             tracks: { type: 'array', maxItems: 200, items: { type: 'object', properties: {
                 index: { type: 'integer' }, identity: { type: 'object', properties: { nodePath: { type: ['string', 'null'] }, property: { type: ['string', 'null'] } }, required: ['nodePath', 'property'] },
                 component: { type: ['string', 'null'] }, parentProperty: { type: ['string', 'null'] }, displayName: { type: ['string', 'null'] }, keyframeCount: { type: ['integer', 'null'] },
+                keyframeOffset: { type: 'integer' }, nextKeyframeOffset: { type: ['integer', 'null'] },
+                keyframes: { type: 'array', maxItems: 200, items: { type: 'object', properties: { index: { type: 'integer' }, frame: { type: ['number', 'null'] }, frameOverSample: { type: ['number', 'null'] } }, required: ['index', 'frame', 'frameOverSample'] } },
                 frameRange: { type: ['object', 'null'], properties: { first: { type: 'number' }, last: { type: 'number' } }, required: ['first', 'last'] },
                 frameOverSampleRange: { type: ['object', 'null'], properties: { first: { type: 'number' }, last: { type: 'number' } }, required: ['first', 'last'] }, dataValid: { type: 'boolean' },
-            }, required: ['index', 'identity', 'component', 'parentProperty', 'displayName', 'keyframeCount', 'frameRange', 'frameOverSampleRange', 'dataValid'] } },
+            }, required: ['index', 'identity', 'component', 'parentProperty', 'displayName', 'keyframeCount', 'keyframeOffset', 'nextKeyframeOffset', 'keyframes', 'frameRange', 'frameOverSampleRange', 'dataValid'] } },
             events: { type: 'array', maxItems: 200, items: { type: 'object', properties: {
                 index: { type: 'integer' }, frame: { type: ['number', 'null'] }, frameOverSample: { type: ['number', 'null'] }, callback: { type: ['string', 'null'] }, params: { type: ['array', 'null'], items: { type: 'string' } }, dataValid: { type: 'boolean' },
             }, required: ['index', 'frame', 'frameOverSample', 'callback', 'params', 'dataValid'] } },
