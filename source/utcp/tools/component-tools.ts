@@ -1,6 +1,7 @@
 import packageJSON from '../../../package.json';
 import { utcpTool } from '../decorators';
 import { SuccessIndicatorSchema, ISuccessIndicator, InstanceReferenceSchema, IInstanceReference } from '../schemas';
+import { VERBOSE_TREE_NODES } from '../utils/verbose';
 
 function field(value: unknown, key: string): unknown {
     return value && typeof value === 'object' && key in value
@@ -69,9 +70,13 @@ export class ComponentTools {
         if (!args.reference?.id) throw new Error('nodeComponentsGet requires reference.id');
         const node = await Editor.Message.request('scene', 'query-node', args.reference.id);
         if (!node) throw new Error(`Node ${args.reference.id} not found`);
+        const nodeUuid = field(node, 'uuid');
+        if ((typeof nodeUuid === 'string' ? nodeUuid : field(nodeUuid, 'value')) !== args.reference.id) throw new Error('nodeComponentsGet: node UUID read-back does not match the requested target');
 
         if (!Array.isArray(node.__comps__)) throw new Error(`nodeComponentsGet: node ${args.reference.id} lacks a serialized component array — dump shape drift`);
         const components = node.__comps__;
+        if (components.length > VERBOSE_TREE_NODES) throw new Error('nodeComponentsGet: serialized component inventory exceeds the inspection budget');
+        const identities = new Set<string>();
         const foundComponents: IInstanceReference[] = [];
         for (const comp of components) {
             const value = field(comp, 'value');
@@ -87,6 +92,8 @@ export class ComponentTools {
             if (typeof compUuid !== 'string' || !compUuid.trim() || !declaredType?.trim()) {
                 throw new Error(`nodeComponentsGet: component on ${args.reference.id} lacks authoritative uuid/type — dump shape drift`);
             }
+            if (identities.has(compUuid)) throw new Error('nodeComponentsGet: duplicate component UUID in serialized inventory');
+            identities.add(compUuid);
 
             if (!args.componentType || (declaredType && (
                 declaredType === args.componentType

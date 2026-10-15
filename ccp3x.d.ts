@@ -804,7 +804,7 @@ declare namespace ccp3x {
     function nodeGetAvailableComponentTypes(args?: { includeInternal?: boolean; filter?: string; limit?: number }): {
         componentTypes: string[]; total: number; truncated: boolean;
     };
-    /** Reads authoritative component UUID/type references from one serialized node; malformed component metadata throws instead of returning partial matches. */
+    /** Reads up to 10000 serialized components bound to the requested node UUID; malformed/duplicate component identities throw before filtering rather than returning partial matches. Raw IPC allocation is not capped. */
     function nodeComponentsGet(args: { reference: InstanceReference; componentType?: string }): { references: InstanceReference[] };
     /** Lists classes known to the editor, optionally filtered by base class; filtering applies to returned class names. */
     function listComponentClasses(args: { extends?: string; excludeSelf?: boolean; filter?: string }): { classes: string[] };
