@@ -435,6 +435,12 @@ function constraints(node, context, checker) {
         return !checker.getTypeOnlyAliasDeclaration(symbol) && !!target?.declarations?.length && target.name === 'executeInEditMode';
       }
     }
+    if (checker && (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))) {
+      let base = expression.expression;
+      while (ts.isParenthesizedExpression(base)) base = base.expression;
+      const symbol = ts.isIdentifier(base) ? checker.getSymbolAtLocation(base) : undefined;
+      if (symbol && symbol.flags & ts.SymbolFlags.Alias && checker.getTypeOnlyAliasDeclaration(symbol)) return false;
+    }
     if (ts.isElementAccessExpression(expression)) {
       const key = expression.argumentExpression;
       return key && (ts.isStringLiteral(key) || ts.isNoSubstitutionTemplateLiteral(key)) && key.text === 'executeInEditMode';

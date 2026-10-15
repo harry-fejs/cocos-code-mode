@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Exclude decorator property/element access rooted at compiler-tracked type-only namespace aliases from edit-mode declaration credit; syntax fallback no longer revives erased runtime bindings.
 - Support Font/TTFFont/BitmapFont/SpriteAtlas/SceneAsset scalar and array references in scriptComponentCreate using native Inspector types and null/empty defaults. No font importer writes, atlas loading or scene transition is performed.
 - Support native Texture2D scalar/array references in scriptComponentCreate descriptors and public types. Fields start null/empty without constructing textures, loading assets or changing render/material state.
 - Support native TextAsset scalar/array references in scriptComponentCreate data fields. Scalar defaults remain null and array defaults empty/instance-owned; no asset construction, content evaluation or automatic reference assignment.
