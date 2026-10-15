@@ -111,6 +111,8 @@ Use `editorQuery({category:'engine_api',operation:'records',recordId})` for one 
 
 `operation:'explain_bridge_route'` requires one exact bridge catalog recordId without live/filter selectors. Newly extracted bridge records retain `composedRoutes`, source/evidence, operation conditions and unresolved branches. The result returns that bounded static evidence with permitted:false; it never invokes the described IPC/engine method and does not claim current-runtime coverage. Older records lacking composedRoutes require regeneration and explicit catalog/lookup hash adoption; no automatic artifact/config change occurs.
 
+Discovery accepts `timeoutMs` (integer1–30000, default5000), shared across recursive exact lookup/comparison work. Cooperative checks during metadata/shard traversal and before successful return throw `CATALOG_QUERY_TIMEOUT`; they do not interrupt synchronous disk reads/JSON parsing or cancel in-flight Inspector IPC. A timed-out query returns no complete result, and does not imply native availability or mutation safety.
+
 Use `editorQuery({category:'engine_api',operation:'compare_version',targetVersion:'3.7.3',recordId,compareVersion:'3.8.8',compareRecordId})` to compare two exact records sharing a semanticKey. Results compare signature/metadata/resolution hashes and retain catalog identities; missing records do not imply removals. Comparison grants no execution permission.
 
 `runtimeScenarioRun` accepts `totalTimeoutMs` (100–60000, default30000). All steps share that wall-clock deadline; expiry stops subsequent steps and retains failedStep/prior outcomes. An in-flight native request may still complete: timeout does not cancel, replay or restore an action. Inspect the bound session before another mutation.

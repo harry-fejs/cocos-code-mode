@@ -120,6 +120,7 @@ export class ConsolidatedTools {
                 targetVersion: { type: 'string', enum: ['3.7.3', '3.8.8'] },
                 maxEntries: { type: 'integer', minimum: 1, maximum: 200 },
                 maxBytes: { type: 'integer', minimum: 1, maximum: 131072 },
+                timeoutMs: { type: 'integer', minimum: 1, maximum: 30000, default: 5000 },
                 cursor: { type: 'string', maxLength: 2048 },
             },
             required: ['target'],
@@ -128,7 +129,7 @@ export class ConsolidatedTools {
         { type: 'object', properties: { definition: { type: 'string' }, sections: { type: 'array', items: { type: 'string' } }, totalSections: { type: 'number' }, version: { type: 'string' }, catalogHash: { type: 'string' }, records: { type: 'array' }, total: { type: 'integer' }, count: { type: 'integer' }, truncated: { type: 'boolean' }, nextCursor: { type: ['string', 'null'] }, live: { type: 'object' }, runtimeVerified: { type: 'boolean' }, qualified: { type: 'boolean' } } }, 'GET',
         ['code', 'typescript', 'definition', 'consolidated']
     )
-    async inspectorGetDefinition(args: { target: string, reference?: IInstanceReference, section?: string, className?: string, targetVersion?: string, maxEntries?: number, maxBytes?: number, cursor?: string }): Promise<unknown> {
+    async inspectorGetDefinition(args: { target: string, reference?: IInstanceReference, section?: string, className?: string, targetVersion?: string, maxEntries?: number, maxBytes?: number, cursor?: string, timeoutMs?: number }): Promise<unknown> {
         if (args.target === 'class') {
             return discoverEngineApi({ ...args, category: 'component_schema' });
         }
@@ -197,6 +198,7 @@ export class ConsolidatedTools {
                 // Comparison remains catalog-only; no live dispatch selectors are inferred.
                 maxEntries: { type: 'integer', minimum: 1, maximum: 200 },
                 maxBytes: { type: 'integer', minimum: 1, maximum: 131072 },
+                timeoutMs: { type: 'integer', minimum: 1, maximum: 30000, default: 5000 },
                 cursor: { type: 'string', maxLength: 2048 }
             },
             required: ['category'],
@@ -209,7 +211,7 @@ export class ConsolidatedTools {
         { type: 'object', properties: { sceneMode: { type: 'string' }, ready: { type: 'boolean' }, values: { type: 'array', items: { type: 'object' } }, types: { type: 'array', items: { type: 'string' } }, scriptName: { type: 'string' }, scriptCid: { type: 'string' }, hasScript: { type: 'boolean' }, operation: { type: 'string' }, coverage: { type: 'object' }, version: { type: 'string' }, compareVersion: { type: 'string' }, semanticKey: { type: 'string' }, before: { type: 'object' }, after: { type: 'object' }, comparison: { type: 'object' }, permitted: { type: 'boolean' }, mutationAuthorized: { type: 'boolean' }, catalogHash: { type: 'string' }, records: { type: 'array' }, total: { type: 'integer' }, count: { type: 'integer' }, truncated: { type: 'boolean' }, nextCursor: { type: ['string', 'null'] }, live: { type: 'object' }, runtimeVerified: { type: 'boolean' }, qualified: { type: 'boolean' } } }, 'GET',
         ['editor', 'introspect', 'query', 'consolidated', 'programming', 'plugin']
     )
-    async editorQuery(args: { category: string, operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'get_related_types' | 'lookup_editor_message' | 'explain_bridge_route' | 'compare_version', namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge', enumPath?: string, className?: string, reference?: IInstanceReference, targetVersion?: string, domain?: string, kind?: string, module?: string, visibility?: 'public' | 'protected' | 'private', context?: string, evidenceState?: string, member?: string, filter?: string, recordId?: string, compareVersion?: string, compareRecordId?: string, maxEntries?: number, maxBytes?: number, cursor?: string }): Promise<unknown> {
+    async editorQuery(args: { category: string, operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'get_related_types' | 'lookup_editor_message' | 'explain_bridge_route' | 'compare_version', namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge', enumPath?: string, className?: string, reference?: IInstanceReference, targetVersion?: string, domain?: string, kind?: string, module?: string, visibility?: 'public' | 'protected' | 'private', context?: string, evidenceState?: string, member?: string, filter?: string, recordId?: string, compareVersion?: string, compareRecordId?: string, maxEntries?: number, maxBytes?: number, cursor?: string, timeoutMs?: number }): Promise<unknown> {
         if (args.category === 'engine_api' || args.category === 'component_schema') {
             return discoverEngineApi(args);
         }
