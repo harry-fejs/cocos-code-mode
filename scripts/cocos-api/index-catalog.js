@@ -78,12 +78,13 @@ function projectRecord(record, index, domain, shard, ids) {
       || !nullableText(record.className) || !isText(record.name) || !nullableText(record.member)
       || !isText(record.kind) || !isText(record.module)
       || (record.domain !== undefined && record.domain !== null && typeof record.domain !== 'string')) throw new Error(`Invalid record identity, version or metadata in ${domain.file}.`);
+  if (record.visibility != null && !['public', 'protected', 'private'].includes(record.visibility)) throw new Error(`Invalid visibility metadata in ${domain.file}.`);
   const recordDomain = `${record.namespace}.${record.domain || record.module.replace(/[^\w-]/g, '-')}`;
   if (recordDomain !== domain.name) throw new Error(`Record ${record.id} disagrees with domain ${domain.name}.`);
   if (ids.has(record.id)) throw new Error(`Duplicate catalog record ID: ${record.id}`);
   ids.add(record.id);
   return { id: record.id, shard, namespace: record.namespace, className: record.className,
-    name: record.name, member: record.member, kind: record.kind, module: record.module, domain: domain.name };
+    name: record.name, member: record.member, kind: record.kind, module: record.module, visibility: record.visibility ?? null, domain: domain.name };
 }
 function requireAbsent(file) {
   try { fs.lstatSync(file); }
