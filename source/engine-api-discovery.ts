@@ -13,6 +13,7 @@ export interface EngineDiscoveryArgs {
     operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'get_related_types' | 'lookup_editor_message' | 'compare_version';
     namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge';
     kind?: string; module?: string; visibility?: 'public' | 'protected' | 'private';
+    context?: string; evidenceState?: string;
     filter?: string; recordId?: string; compareVersion?: string; compareRecordId?: string; reference?: IInstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string;
 }
 const ApiRecordSchema = z.object({ id: z.string().min(1), className: z.string().nullable().optional(), namespace: z.string(), member: z.string().nullable().optional(), name: z.string().optional(), kind: z.string().optional(), signatures: z.array(z.unknown()).optional() }).passthrough();
@@ -44,6 +45,8 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     if (args.module !== undefined && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'module is not accepted for this discovery operation.' });
     if (args.visibility !== undefined && !['public', 'protected', 'private'].includes(args.visibility)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'visibility must be public, protected or private.' });
     if (args.visibility !== undefined && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'visibility is not accepted for this discovery operation.' });
+    for (const value of [args.context, args.evidenceState]) if (value !== undefined && (typeof value !== 'string' || !value || value.length > 128)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'context/evidenceState must be nonempty strings of at most 128 characters.' });
+    if ((args.context !== undefined || args.evidenceState !== undefined) && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Context/evidence selectors are not accepted for this discovery operation.' });
     if (operation === 'lookup_editor_message') {
         if (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024
             || args.reference !== undefined || args.className !== undefined || args.category === 'component_schema'
@@ -89,6 +92,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     const external = openExternalApiCatalog(version);
     if (args.module !== undefined && external && external.entries.some(entry => entry.module === undefined)) throw new ToolError({ code: 'CATALOG_INDEX_UPGRADE_REQUIRED', status: 409, message: 'Regenerate the approved lookup with module metadata and explicitly update its configured hash before filtering by module.' });
     if (args.visibility !== undefined && external && external.entries.some(entry => entry.visibility === undefined)) throw new ToolError({ code: 'CATALOG_INDEX_UPGRADE_REQUIRED', status: 409, message: 'Regenerate the approved lookup with explicit visibility metadata and update its configured hash before filtering.' });
+    if (external && external.entries.some(entry => args.context !== undefined && entry.contexts === undefined || args.evidenceState !== undefined && entry.evidenceState === undefined)) throw new ToolError({ code: 'CATALOG_INDEX_UPGRADE_REQUIRED', status: 409, message: 'Regenerate lookup context/evidence metadata and explicitly update its configured hash before filtering.' });
     const indexPath = path.join(CATALOG_ROOT, version, 'index.json');
     if (!external && !fs.existsSync(indexPath)) throw new ToolError({ code: 'CATALOG_UNAVAILABLE', status: 422, message: `No installed catalog for ${version}.` });
     const index = external ?? CatalogIndexSchema.parse(jsonFile(indexPath));
@@ -96,7 +100,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     const provenancePath = path.join(CATALOG_ROOT, version, 'provenance.json');
     const provenance = !external && fs.existsSync(provenancePath) ? z.object({ scope: z.string().optional(), originalCatalogHash: z.string().nullable().optional() }).passthrough().parse(jsonFile(provenancePath)) : null;
     const coverage = { scope: external ? 'operator-configured-full-catalog' : provenance?.scope ?? 'installed-catalog-scope-unverified', fullCatalogLoaded: external !== null, originalCatalogHash: external?.catalogHash ?? provenance?.originalCatalogHash ?? null };
-    const selector = JSON.stringify({ version, operation, namespace: args.namespace ?? '', domain: args.domain ?? '', filter: args.filter ?? '', className: args.className ?? '', recordId: args.recordId ?? '', kind: args.kind ?? '', module: args.module ?? '', visibility: args.visibility ?? '' });
+    const selector = JSON.stringify({ version, operation, namespace: args.namespace ?? '', domain: args.domain ?? '', filter: args.filter ?? '', className: args.className ?? '', recordId: args.recordId ?? '', kind: args.kind ?? '', module: args.module ?? '', visibility: args.visibility ?? '', context: args.context ?? '', evidenceState: args.evidenceState ?? '' });
     const selectorHash = crypto.createHash('sha256').update(selector).digest('hex');
     let offset = 0;
     if (args.cursor) {
@@ -114,6 +118,8 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
             if (args.kind !== undefined && entry.kind !== args.kind) continue;
             if (args.module !== undefined && entry.module !== args.module) continue;
             if (args.visibility !== undefined && entry.visibility !== args.visibility) continue;
+            if (args.context !== undefined && !entry.contexts?.includes(args.context)) continue;
+            if (args.evidenceState !== undefined && entry.evidenceState !== args.evidenceState) continue;
             if (args.domain && entry.domain !== args.domain) continue;
             if (args.namespace && entry.namespace !== args.namespace) continue;
             if (args.category === 'component_schema' && entry.namespace !== 'engine-runtime') continue;
@@ -131,6 +137,9 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
             if (args.kind !== undefined && record.kind !== args.kind) continue;
             if (args.module !== undefined && record.module !== args.module) continue;
             if (args.visibility !== undefined && record.visibility !== args.visibility) continue;
+            const execution = record.contextConstraints && typeof record.contextConstraints === 'object' ? (record.contextConstraints as Record<string, unknown>).execution : undefined;
+            if (args.context !== undefined && (!Array.isArray(execution) || !execution.includes(args.context))) continue;
+            if (args.evidenceState !== undefined && record.evidenceStatus !== args.evidenceState) continue;
             if (args.namespace && record.namespace !== args.namespace) continue;
             if (args.category === 'component_schema' && record.namespace !== 'engine-runtime') continue;
             if (args.className && (record.className ?? '').replace(/^cc\./, '') !== args.className.replace(/^cc\./, '')) continue;
