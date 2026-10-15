@@ -922,21 +922,34 @@ export class SceneTools {
     async sceneScriptUsageInspect(args: { classId?: string, limit?: number } = {}): Promise<Record<string, unknown>> {
         const tree = await Editor.Message.request('scene', 'query-node-tree');
         if (!tree) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'No open scene or prefab hierarchy.' });
-        if (args.classId !== undefined && (!args.classId || args.classId.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'classId must be a bounded non-empty string.' });
+        if (args.classId !== undefined && (typeof args.classId !== 'string' || !args.classId || args.classId.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'classId must be a bounded non-empty string.' });
         const limit = boundedListLimit(args.limit);
         const usages: Array<Record<string, unknown>> = [];
         const stack: Array<{ node: any, path: string }> = [{ node: tree, path: typeof tree.name === 'string' ? tree.name : '' }];
+        const visited = new Set<object>();
+        let scheduled = 1;
+        let total = 0;
         while (stack.length) {
             const { node, path: nodePath } = stack.pop()!;
+            if (!node || typeof node !== 'object' || visited.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script usage hierarchy contains an invalid or repeated node.' });
+            visited.add(node);
             for (const component of node.components || node.__comps__ || []) {
                 const classId = componentClassId(component);
                 const componentId = componentUuid(component);
                 if (!classId || classId.startsWith('cc.') || (args.classId && classId !== args.classId)) continue;
-                usages.push({ nodeReference: { id: node.uuid, type: 'cc.Node' }, nodePath, componentReference: componentId ? { id: componentId, type: classId } : null, classId });
+                total++;
+                if (usages.length < limit) usages.push({ nodeReference: { id: node.uuid, type: 'cc.Node' }, nodePath, componentReference: componentId ? { id: componentId, type: classId } : null, classId });
             }
-            for (const child of [...(node.children || [])].reverse()) stack.push({ node: child, path: nodePath ? `${nodePath}/${child.name || ''}` : child.name || '' });
+            const children = node.children ?? [];
+            if (!Array.isArray(children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script usage hierarchy children must be an array.' });
+            scheduled += children.length;
+            if (scheduled > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Script usage hierarchy exceeds the 10000-node traversal budget.' });
+            for (let index = children.length - 1; index >= 0; index--) {
+                const child = children[index];
+                stack.push({ node: child, path: nodePath ? `${nodePath}/${child?.name || ''}` : child?.name || '' });
+            }
         }
-        return { usages: usages.slice(0, limit), total: usages.length, truncated: usages.length > limit };
+        return { usages, total, truncated: total > usages.length };
     }
 
     @utcpTool('scriptAssetSceneUsageInspect', 'Resolve an imported script class and inspect its bounded usage across the open scene.', { type: 'object', additionalProperties: false, properties: { scriptReference: InstanceReferenceSchema, limit: { type: 'integer', minimum: 1, maximum: MAX_LIST_LIMIT, default: DEFAULT_LIST_LIMIT } }, required: ['scriptReference'] }, { type: 'object', additionalProperties: false, properties: { scriptReference: InstanceReferenceSchema, classId: { type: 'string' }, usages: { type: 'array' }, total: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['scriptReference', 'classId', 'usages', 'total', 'truncated'] }, 'GET', ['scene', 'script', 'asset', 'usage', 'inspect'])
