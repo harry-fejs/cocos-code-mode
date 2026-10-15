@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Scan interface heritage clauses and base expressions under the annotation budget, retaining unresolved base-type names and nested generic argument provenance.
+- Add maxTime inclusive playback-time bounds to audio waits and scenario audioAssert/audioWait, composable with minTime and state predicates. Reject reversed/nonfinite/out-of-cap0..3600 intervals before dispatch; no audible-output/natural-ended inference.
 - Scan all merged interface annotation roots under one shared256-node admission budget, retaining invalid references in later declarations instead of false signatureResolved evidence.
 - Compose expectedComponentUuid/expectedClipUuid guards across audio scenario control/observe/assert/wait steps. Whole-input preflight rejects malformed/non-audio guards before any dispatch; identity mismatch propagates and stops later cues without replay.
 - Scan exported named interface declarations through bounded annotation reference analysis, retaining invalid computed-key provenance and preventing false signatureResolved catalog evidence.
