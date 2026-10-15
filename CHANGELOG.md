@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add optional expectedComponentUuid/expectedClipUuid guards to audio control/observe/wait, enforced before playback dispatch. Guarded calls refuse stale cached executors without replacing their pending/uncertain mutation ownership; explicit owned preview restart required to adopt the new contract.
 - Retain unknown/any computed DTO key provenance in bounded annotation scans even when the compiler omits the invalid property from semantic type members.
 - Prioritize getter/setter declarations over call signatures of returned callable values, preserving accessor contracts instead of misclassifying callable-valued properties as method calls.
 - Expose nullable native AudioSource/AudioClip UUIDs in playback observations/results and require stable nonnull UUID pairs during audio waits. Clip/source replacement refuses instead of mixing observations; unavailable identity stays null on observe and fails closed for waits.

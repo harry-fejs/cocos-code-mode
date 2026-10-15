@@ -6,6 +6,8 @@ export interface AudioPlaybackRequest {
     operation: AudioPlaybackOperation;
     time?: number;
     timeoutMs?: number;
+    expectedComponentUuid?: string;
+    expectedClipUuid?: string;
 }
 export interface AudioPlaybackState {
     currentTime: number;
@@ -99,6 +101,9 @@ export function createAudioPlaybackExecutor() {
             for (const key of ['sessionId', 'targetId', 'nodeUuid'] as const) {
                 requireCondition(typeof request[key] === 'string' && request[key].trim() && request[key].length <= 256, 'INVALID_ARGUMENT', `${key} is required.`, 400);
             }
+            for (const key of ['expectedComponentUuid', 'expectedClipUuid'] as const) {
+                requireCondition(request[key] === undefined || typeof request[key] === 'string' && request[key]!.trim() && request[key]!.length <= 256, 'INVALID_ARGUMENT', `${key} must be a bounded native UUID.`, 400);
+            }
             const timeoutMs = request.timeoutMs ?? 1000;
             requireCondition(Number.isInteger(timeoutMs) && timeoutMs >= 100 && timeoutMs <= 5000, 'INVALID_ARGUMENT', 'timeoutMs must be an integer from 100 to 5000.', 400);
             requireCondition(request.operation === 'seek' ? Number.isFinite(request.time) : request.time === undefined, 'INVALID_ARGUMENT', 'Only seek accepts a finite time in seconds.', 400);
@@ -128,6 +133,8 @@ export function createAudioPlaybackExecutor() {
             requireCondition(source.isValid !== false && clip && clip.isValid !== false, 'AUDIO_CLIP_MISSING', 'AudioSource requires a valid assigned clip.');
             const identity = (value: unknown): string | null => typeof value === 'string' && value.trim() && value.length <= 256 ? value : null;
             const componentUuid = identity(source.uuid), clipUuid = identity(clip!.uuid);
+            requireCondition(request.expectedComponentUuid === undefined || request.expectedComponentUuid === componentUuid, 'AUDIO_TARGET_CHANGED', 'AudioSource UUID differs from expected target; no playback dispatched.', 409);
+            requireCondition(request.expectedClipUuid === undefined || request.expectedClipUuid === clipUuid, 'AUDIO_TARGET_CHANGED', 'AudioClip UUID differs from expected target; no playback dispatched.', 409);
             const read = () => {
                 checkTarget();
                 checkNode();

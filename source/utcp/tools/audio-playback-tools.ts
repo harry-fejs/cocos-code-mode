@@ -5,7 +5,7 @@ import { ToolError } from '../tool-error';
 import { executeGameViewOperation } from '../utils/game-view-transport';
 import { RuntimeSessionTools } from './runtime-session-tools';
 
-export interface AudioPlaybackObserveArgs { sessionId: string; nodeReference: { id: string } }
+export interface AudioPlaybackObserveArgs { sessionId: string; nodeReference: { id: string }; expectedComponentUuid?: string; expectedClipUuid?: string }
 export interface AudioPlaybackControlArgs extends AudioPlaybackObserveArgs {
     operation: Exclude<AudioPlaybackOperation, 'observe'>;
     time?: number;
@@ -14,6 +14,8 @@ export interface AudioPlaybackControlArgs extends AudioPlaybackObserveArgs {
 const targetProperties: Record<string, JsonSchema> = {
     sessionId: { type: 'string', minLength: 1, maxLength: 64 },
     nodeReference: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['id'] },
+    expectedComponentUuid: { type: 'string', minLength: 1, maxLength: 256 },
+    expectedClipUuid: { type: 'string', minLength: 1, maxLength: 256 },
 };
 const stateSchema: JsonSchema = {
     type: 'object', additionalProperties: false,
@@ -37,6 +39,7 @@ function validate(args: AudioPlaybackObserveArgs, operation: AudioPlaybackOperat
     const invalid = (message: string): never => { throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message }); };
     if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) invalid('sessionId is required (1..64 characters).');
     if (!args.nodeReference || typeof args.nodeReference.id !== 'string' || !args.nodeReference.id.trim() || args.nodeReference.id.length > 256) invalid('nodeReference.id is required (1..256 characters).');
+    for (const key of ['expectedComponentUuid', 'expectedClipUuid'] as const) if (args[key] !== undefined && (typeof args[key] !== 'string' || !args[key]!.trim() || args[key]!.length > 256)) invalid(`${key} must be a bounded native UUID.`);
     if (!['play', 'pause', 'stop', 'seek', 'observe'].includes(operation)) invalid('Unknown audio operation.');
     if (operation === 'seek' ? !Number.isFinite(time) || time! < 0 : time !== undefined) invalid('Only seek accepts time, a finite nonnegative number of seconds.');
     if (timeoutMs !== undefined && (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 5000)) invalid('timeoutMs must be an integer from 100 to 5000.');
@@ -65,15 +68,16 @@ const findNodeSource = `(async function findRuntimeNode(id) {
 })`;
 const executorSource = createAudioPlaybackExecutor.toString();
 
-function operationSource(request: { sessionId: string; targetId: string; nodeUuid: string; operation: AudioPlaybackOperation; time?: number; timeoutMs?: number }): string {
+function operationSource(request: { sessionId: string; targetId: string; nodeUuid: string; operation: AudioPlaybackOperation; time?: number; timeoutMs?: number; expectedComponentUuid?: string; expectedClipUuid?: string }): string {
     const requestLiteral = JSON.stringify(request);
     return `(() => {
         const key = Symbol.for('ccp3x.audioPlaybackExecutor');
         let execute = globalThis[key];
         if (typeof execute !== 'function') {
-            execute = (${executorSource})();
+            execute = Object.assign((${executorSource})(), { identityContract: 2 });
             globalThis[key] = execute;
         }
+        if ((${requestLiteral}.expectedComponentUuid !== undefined || ${requestLiteral}.expectedClipUuid !== undefined) && execute.identityContract !== 2) return { success: false, error: { code: 'AUDIO_EXECUTOR_STALE', status: 409, message: 'Existing audio executor cannot enforce identity guards. Restart the owned preview explicitly; cached mutation ownership was not reset.' } };
         return execute(${requestLiteral}, globalThis.cc, ${findNodeSource});
     })()`;
 }
@@ -133,7 +137,7 @@ export class AudioPlaybackTools {
             let timer: NodeJS.Timeout | undefined;
             let observation: AudioPlaybackSuccess;
             try {
-                observation = await Promise.race([this.audioPlaybackObserve({ sessionId: args.sessionId, nodeReference: { id: args.nodeReference.id } }), new Promise<never>((_, reject) => {
+                observation = await Promise.race([this.audioPlaybackObserve({ sessionId: args.sessionId, nodeReference: { id: args.nodeReference.id }, expectedComponentUuid: args.expectedComponentUuid, expectedClipUuid: args.expectedClipUuid }), new Promise<never>((_, reject) => {
                     timer = setTimeout(() => reject(new ToolError({ code: 'AUDIO_STATE_TIMEOUT', status: 409, message: 'Audio read exceeded the caller deadline; in-flight observation may still settle.' })), remaining);
                 })]);
             } finally { clearTimeout(timer); }
@@ -169,7 +173,7 @@ export class AudioPlaybackTools {
             if (session && 'status' in session && session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: 'The runtime session is stopped.' });
             if (!inspected.success || !inspected.ready || !session || !('targetId' in session) || session.sessionId !== args.sessionId) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'The attached runtime session is not ready.' });
             if (session.targetKind !== 'game-view') throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: 'Audio supports the Creator Game View transport only.' });
-            const request = { sessionId: args.sessionId, targetId: session.targetId, nodeUuid: args.nodeReference.id, operation, ...(time === undefined ? {} : { time }), ...(timeoutMs === undefined ? {} : { timeoutMs }) };
+            const request = { sessionId: args.sessionId, targetId: session.targetId, nodeUuid: args.nodeReference.id, expectedComponentUuid: args.expectedComponentUuid, expectedClipUuid: args.expectedClipUuid, operation, ...(time === undefined ? {} : { time }), ...(timeoutMs === undefined ? {} : { timeoutMs }) };
             const transportTimeout = Math.min(10000, (timeoutMs ?? 1000) + 2000);
             const result = await executeGameViewOperation(session.targetId, operationSource(request), transportTimeout, operation !== 'observe');
             throwRuntimeResult(result);
