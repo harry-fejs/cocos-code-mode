@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Diagnose sparse/non-string native timeline event parameter arrays as unsupported and expose params:null instead of claiming valid strings that serialize to null. Empty/dense string params remain supported; off-page malformed events still invalidate source diagnostics.
 - Preserve and deduplicate inheritance clauses from all merged class/interface owner declarations in catalog records and member context, including unresolved base diagnostics from later declarations.
 - Recheck timeline node identity and AnimationClip Asset DB identity/type/location after native dump; observed deletion/path/type drift refuses instead of returning mixed target evidence. No source-byte/atomic/ABA or scene-binding validity guarantee.
 - Mark const variable bindings readonly in catalog metadata while leaving let/var writable; this does not imply deep immutability of referenced objects or runtime write authorization.

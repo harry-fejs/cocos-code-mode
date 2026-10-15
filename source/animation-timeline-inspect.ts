@@ -132,9 +132,12 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     const eventRows = (events ?? []).map((raw: unknown, index: number) => {
         const event = timelineRecord(raw), location = `events[${index}]`, startIssues = diagnosticCount;
         if (!event || !frameValid(event.frame)) issue('INVALID_EVENT_TIME', location);
-        if (!event || typeof event.func !== 'string' || !event.func || !Array.isArray(event.params) || !event.params.every((param: unknown) => typeof param === 'string')) issue('UNSUPPORTED_EVENT_DATA', location, true);
+        const params = event && Array.isArray(event.params) ? event.params : null;
+        let paramsValid = params !== null;
+        if (params) for (let i = 0; i < params.length; i++) if (!Object.prototype.hasOwnProperty.call(params, i) || typeof params[i] !== 'string') { paramsValid = false; break; }
+        if (!event || typeof event.func !== 'string' || !event.func || !paramsValid) issue('UNSUPPORTED_EVENT_DATA', location, true);
         return { index, frame: event && finite(event.frame) ? event.frame : null, frameOverSample: event && frameValid(event.frame) && sample !== null && finite(event.frame / sample) ? event.frame / sample : null,
-            callback: text(event?.func), params: event && Array.isArray(event.params) && event.params.every((param: unknown) => typeof param === 'string') ? event.params as string[] : null, dataValid: diagnosticCount === startIssues };
+            callback: text(event?.func), params: paramsValid ? params as string[] : null, dataValid: diagnosticCount === startIssues };
     });
     // Revision covers the complete retrieved projection, not opaque keyframe values or unreturned native tracks.
     const hash = createHash('sha256');
