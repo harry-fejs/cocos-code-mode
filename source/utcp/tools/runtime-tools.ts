@@ -36,15 +36,26 @@ export class RuntimeTools {
     }
 
     @utcpTool('runtimeNodeWaitForState', 'Read-only exact Game View node activation/position wait. Requires activation and/or explicit local/world position with per-axis inclusive tolerance; one caller deadline, no activation writes or absence-as-inactive inference.', {
-        type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string', minLength: 1, maxLength: 64 }, nodeReference: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['id'] }, active: { type: 'boolean' }, activeInHierarchy: { type: 'boolean' }, position: { type: 'object', additionalProperties: false, properties: { space: { type: 'string', enum: ['local', 'world'] }, x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' }, tolerance: { type: 'number', minimum: 0, maximum: 1000000 } }, required: ['space', 'x', 'y', 'z', 'tolerance'] }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000 } }, required: ['sessionId', 'nodeReference'],
+        type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string', minLength: 1, maxLength: 64 }, nodeReference: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['id'] }, active: { type: 'boolean' }, activeInHierarchy: { type: 'boolean' }, position: { type: 'object', additionalProperties: false, properties: { space: { type: 'string', enum: ['local', 'world'] }, x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' }, tolerance: { type: 'number', minimum: 0, maximum: 1000000 } }, required: ['space', 'x', 'y', 'z', 'tolerance'] }, rotation: { type: 'object', additionalProperties: false, properties: { space: { type: 'string', enum: ['local', 'world'] }, x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' }, w: { type: 'number' }, toleranceDegrees: { type: 'number', minimum: 0, maximum: 180 } }, required: ['space', 'x', 'y', 'z', 'w', 'toleranceDegrees'] }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000 } }, required: ['sessionId', 'nodeReference'],
     }, { type: 'object', properties: { matched: { type: 'boolean', const: true }, observations: { type: 'integer' }, observation: { type: 'object' } }, required: ['matched', 'observations', 'observation'] }, 'GET', ['node', 'runtime', 'wait', 'read-only'])
-    async runtimeNodeWaitForState(args: { sessionId: string; nodeReference: { id: string }; active?: boolean; activeInHierarchy?: boolean; position?: { space: 'local' | 'world'; x: number; y: number; z: number; tolerance: number }; timeoutMs?: number; pollMs?: number }) {
+    async runtimeNodeWaitForState(args: { sessionId: string; nodeReference: { id: string }; active?: boolean; activeInHierarchy?: boolean; position?: { space: 'local' | 'world'; x: number; y: number; z: number; tolerance: number }; rotation?: { space: 'local' | 'world'; x: number; y: number; z: number; w: number; toleranceDegrees: number }; timeoutMs?: number; pollMs?: number }) {
         const timeoutMs = args?.timeoutMs ?? 3000, pollMs = args?.pollMs ?? 100;
         if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64 || typeof args.nodeReference?.id !== 'string' || !args.nodeReference.id.trim() || args.nodeReference.id.length > 256
-            || args.active === undefined && args.activeInHierarchy === undefined && args.position === undefined || args.active !== undefined && typeof args.active !== 'boolean' || args.activeInHierarchy !== undefined && typeof args.activeInHierarchy !== 'boolean'
+            || args.active === undefined && args.activeInHierarchy === undefined && args.position === undefined && args.rotation === undefined || args.active !== undefined && typeof args.active !== 'boolean' || args.activeInHierarchy !== undefined && typeof args.activeInHierarchy !== 'boolean'
             || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000 || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide exact session/node, boolean activation condition and bounded deadline/poll interval.' });
         const position = args.position;
         if (position !== undefined && (!position || typeof position !== 'object' || Array.isArray(position) || Object.keys(position).some(key => !['space', 'x', 'y', 'z', 'tolerance'].includes(key)) || !['local', 'world'].includes(position.space) || [position.x, position.y, position.z, position.tolerance].some(value => typeof value !== 'number' || !Number.isFinite(value)) || position.tolerance < 0 || position.tolerance > 1000000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Position requires explicit local/world space, finite xyz and tolerance0..1000000.' });
+        const rotation = args.rotation;
+        const unit = (q: { x: number; y: number; z: number; w: number } | undefined, code: string): number[] => {
+            if (!q || [q.x, q.y, q.z, q.w].some(n => typeof n !== 'number' || !Number.isFinite(n))) throw new ToolError({ code, status: code === 'INVALID_ARGUMENT' ? 400 : 502, message: 'Finite nonzero quaternion required.' });
+            const max = Math.max(Math.abs(q.x), Math.abs(q.y), Math.abs(q.z), Math.abs(q.w));
+            if (max === 0) throw new ToolError({ code, status: code === 'INVALID_ARGUMENT' ? 400 : 502, message: 'Zero quaternion has no orientation.' });
+            const scaled = [q.x / max, q.y / max, q.z / max, q.w / max];
+            const norm = Math.hypot(...scaled);
+            return scaled.map(n => n / norm);
+        };
+        if (rotation !== undefined && (!rotation || typeof rotation !== 'object' || Array.isArray(rotation) || Object.keys(rotation).some(key => !['space', 'x', 'y', 'z', 'w', 'toleranceDegrees'].includes(key)) || !['local', 'world'].includes(rotation.space) || typeof rotation.toleranceDegrees !== 'number' || !Number.isFinite(rotation.toleranceDegrees) || rotation.toleranceDegrees < 0 || rotation.toleranceDegrees > 180)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Rotation requires local/world quaternion and toleranceDegrees0..180.' });
+        const expectedRotation = rotation ? unit(rotation, 'INVALID_ARGUMENT') : undefined;
         const deadline = Date.now() + timeoutMs; let observations = 0; let targetId: string | undefined;
         for (;;) {
             const remaining = deadline - Date.now();
@@ -61,7 +72,13 @@ export class RuntimeTools {
             const actual = position?.space === 'world' ? observation.worldPosition : observation.position;
             if (position && (!actual || [actual.x, actual.y, actual.z].some(value => typeof value !== 'number' || !Number.isFinite(value)))) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Finite node position unavailable.' });
             const positionMatched = !position || Math.abs(actual.x - position.x) <= position.tolerance && Math.abs(actual.y - position.y) <= position.tolerance && Math.abs(actual.z - position.z) <= position.tolerance;
-            if (positionMatched && (args.active === undefined || observation.active === args.active) && (args.activeInHierarchy === undefined || observation.activeInHierarchy === args.activeInHierarchy)) return { matched: true as const, observations, observation };
+            let rotationMatched = true;
+            if (rotation && expectedRotation) {
+                const observed = unit(rotation.space === 'world' ? observation.worldRotation : observation.rotation, 'INVALID_RUNTIME_RESPONSE');
+                const dot = Math.min(1, Math.abs(observed.reduce((sum, n, i) => sum + n * expectedRotation[i], 0)));
+                rotationMatched = rotation.toleranceDegrees === 180 || dot >= Math.cos(rotation.toleranceDegrees * Math.PI / 360);
+            }
+            if (rotationMatched && positionMatched && (args.active === undefined || observation.active === args.active) && (args.activeInHierarchy === undefined || observation.activeInHierarchy === args.activeInHierarchy)) return { matched: true as const, observations, observation };
             await new Promise<void>(resolve => setTimeout(resolve, Math.min(pollMs, Math.max(0, deadline - Date.now()))));
         }
     }
