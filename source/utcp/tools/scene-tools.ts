@@ -1098,22 +1098,28 @@ export class SceneTools {
         const available = await Editor.Message.request('scene', 'query-components');
         if (!Array.isArray(available) || !findComponentType(available, classId)) throw new ToolError({ code: 'SCRIPT_NOT_REGISTERED', status: 422, message: `Script class '${classId}' is not registered in Creator.` });
         if ((node.__comps__ || []).some((component: unknown) => componentClassId(component) === classId)) throw new ToolError({ code: 'SCRIPT_ALREADY_ATTACHED', status: 409, message: `Script class '${classId}' is already attached to node ${nodeUuid}.` });
+        const existingIds = new Set((node.__comps__ || []).map((component: unknown) => componentUuid(component)));
         let createdUuid: string | undefined;
         try {
             await Editor.Message.request('scene', 'create-component', { uuid: nodeUuid, component: classId });
             const after = await Editor.Message.request('scene', 'query-node', nodeUuid) as any;
-            const created = (after?.__comps__ || []).find((component: unknown) => componentClassId(component) === classId);
+            const candidates = (after?.__comps__ || []).filter((component: unknown) => componentClassId(component) === classId);
+            const created = candidates.length === 1 ? candidates[0] : undefined;
             createdUuid = componentUuid(created);
+            if (createdUuid && existingIds.has(createdUuid)) createdUuid = undefined;
             if (!created || !createdUuid) throw new ToolError({ code: 'SCRIPT_ATTACH_UNCONFIRMED', status: 502, message: `Creator did not return the attached script component for node ${nodeUuid}.` });
             await Editor.Message.request('scene', 'snapshot');
             return { success: true, nodeReference: { id: nodeUuid, type: args.nodeReference.type ?? 'cc.Node' }, scriptReference: { id: scriptUuid, type: args.scriptReference.type ?? 'cc.Script' }, componentReference: { id: createdUuid, type: classId } };
         } catch (error) {
+            if (!createdUuid) throw new ToolError({ code: 'SCRIPT_ATTACH_OUTCOME_UNKNOWN', status: 502, message: 'Script attachment was dispatched but its component identity was not confirmed; no cleanup was attempted.', details: { nodeUuid, scriptUuid, classId, retrySafe: false, restored: null }, recovery: 'Inspect current node components before another attachment; never replay the create blindly.' });
             let rollbackFailure: string | undefined;
             if (createdUuid) {
                 try {
+                    const current = await Editor.Message.request('scene', 'query-node', nodeUuid) as any;
+                    if (!current || !Array.isArray(current.__comps__) || current.__comps__.filter((component: unknown) => componentUuid(component) === createdUuid && componentClassId(component) === classId).length !== 1) throw new Error('Owned component identity changed before cleanup.');
                     await Editor.Message.request('scene', 'remove-component', { uuid: createdUuid });
                     const rollbackNode = await Editor.Message.request('scene', 'query-node', nodeUuid) as any;
-                    if ((rollbackNode?.__comps__ || []).some((component: unknown) => componentUuid(component) === createdUuid)) rollbackFailure = `Created component ${createdUuid} remains.`;
+                    if (!rollbackNode || !Array.isArray(rollbackNode.__comps__) || rollbackNode.__comps__.some((component: unknown) => componentUuid(component) === createdUuid)) rollbackFailure = `Created component ${createdUuid} absence was not confirmed.`;
                 } catch (rollbackError) { rollbackFailure = rollbackError instanceof Error ? rollbackError.message : String(rollbackError); }
             }
             throw new ToolError({ code: rollbackFailure ? 'ROLLBACK_FAILED' : (error instanceof ToolError ? error.code : 'SCRIPT_ATTACH_FAILED'), status: 502, message: rollbackFailure ? `Script attachment failed and cleanup could not be verified.` : `Script attachment failed; owned component cleanup was verified.`, details: { nodeUuid, scriptUuid, classId, createdUuid: createdUuid ?? null, rollbackFailure, cause: error instanceof Error ? error.message : String(error) }, recovery: rollbackFailure ? 'Inspect the node and remove the owned component manually before retrying.' : 'Rescan the node before retrying; no ambiguous component remains.' });

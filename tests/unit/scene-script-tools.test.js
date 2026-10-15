@@ -20,16 +20,21 @@ describe('scene script health tools', () => {
     assert.match(src, /repair: 'Provide scriptReference or replacementClassId/);
   });
 
-  it('guards repair, uses the narrow editor component APIs, and verifies creation', () => {
-    const src = source();
-    assert.match(src, /'sceneScriptRepair'/);
-    assert.match(src, /query-node/);
-    assert.match(src, /query-script-cid/);
-    assert.match(src, /Replacement class .*not registered/);
-    assert.match(src, /'scene', 'remove-component'/);
-    assert.match(src, /'scene', 'create-component'/);
-    assert.match(src, /'scene', 'snapshot'/);
-    assert.match(src, /Replacement component was not confirmed after creation/);
+  it('does not remove components or claim restoration after lost attachment response', async () => {
+    const previous = global.Editor;
+    const mutations = [];
+    global.Editor = { Message: { request: async (_module, message) => {
+      if (message === 'query-node') return { __comps__: [] };
+      if (message === 'query-script-cid') return 'Hero';
+      if (message === 'query-components') return [{ cid: 'Hero' }];
+      mutations.push(message);
+      if (message === 'create-component') throw new Error('response lost after dispatch');
+      throw new Error(`unexpected ${message}`);
+    } } };
+    try {
+      await assert.rejects(new SceneTools().sceneScriptAttach({ nodeReference: { id: 'node' }, scriptReference: { id: 'script' } }), error => error.code === 'SCRIPT_ATTACH_OUTCOME_UNKNOWN' && error.details.retrySafe === false && error.details.restored === null);
+      assert.deepEqual(mutations, ['create-component']);
+    } finally { if (previous === undefined) delete global.Editor; else global.Editor = previous; }
   });
   it('registers a bounded script attach route with script metadata preflight', () => {
     const src = source();
