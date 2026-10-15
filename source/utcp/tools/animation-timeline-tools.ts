@@ -62,6 +62,7 @@ export class AnimationTimelineTools {
     async animationTimelineInspect(args: TimelineInspectOptions) {
         const nodeReference = exactReference(args?.nodeReference, 'nodeReference');
         const clipReference = exactReference(args?.clipReference, 'clipReference');
+        timelineInspectBounds(args);
         const stableArgs: TimelineInspectOptions = {
             ...args,
             nodeReference,

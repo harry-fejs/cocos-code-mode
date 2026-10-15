@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Validate raw timeline filters before snapshot spreads, preventing array-shaped binding/frame-range inputs with named fields from being laundered into valid objects. Invalid shapes refuse before native queries; valid snapshots retain the second bounds check.
 - Preflight exact animation wait target/clip before nodeReference snapshot, preserving INVALID_ARGUMENT for missing targets instead of untyped TypeError. Regular/skeletal waits refuse before native observation; no playback changes.
 - Normalize catalog aggregate unresolved diagnostics after both signature and heritage collection, avoiding duplicate/sort drift introduced by later base-type diagnostics while retaining signature-local evidence.
 - Fix runtimeNodeWaitForState retaining pre-snapshot local position/rotation/scale aliases. Detach the validated locals actually used in comparisons so caller edits during awaited observations cannot relax coordinates, spaces or tolerances; supersedes the earlier incomplete nested-transform snapshot.
