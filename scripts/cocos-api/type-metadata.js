@@ -296,9 +296,10 @@ function metadata(node) {
   const visibility = node.name && ts.isPrivateIdentifier(node.name) || modifiers.includes('private') ? 'private' : modifiers.includes('protected') ? 'protected' : 'public';
   const nameNode = node.name && ts.isComputedPropertyName(node.name) ? node.name.expression : node.name;
   const declaredName = nameNode && (ts.isIdentifier(nameNode) && nameNode === node.name || ts.isStringLiteral(nameNode) || ts.isNumericLiteral(nameNode) || ts.isNoSubstitutionTemplateLiteral(nameNode)) ? nameNode.text : node.name?.getText();
-  const documentation = node.jsDoc?.length ? node.jsDoc : ts.isVariableDeclaration(node) && ts.isVariableStatement(node.parent?.parent) ? node.parent.parent.jsDoc || [] : [];
   let binding = node;
   while (ts.isBindingElement(binding) && (ts.isObjectBindingPattern(binding.parent) || ts.isArrayBindingPattern(binding.parent))) binding = binding.parent.parent;
+  if (binding !== node) tags.push(...ts.getJSDocTags(binding).map(tag => tag.tagName.text));
+  const documentation = node.jsDoc?.length ? node.jsDoc : binding.jsDoc?.length ? binding.jsDoc : ts.isVariableDeclaration(binding) && ts.isVariableStatement(binding.parent?.parent) ? binding.parent.parent.jsDoc || [] : [];
   const constantBinding = ts.isVariableDeclaration(binding) && ts.isVariableDeclarationList(binding.parent) && !!(binding.parent.flags & ts.NodeFlags.Const);
   return { decorators, visibility, static: modifiers.includes('static'), readonly: constantBinding || modifiers.includes('readonly') || ts.isGetAccessorDeclaration(node) && !node.symbol?.declarations?.some(ts.isSetAccessorDeclaration),
     internal: tags.includes('internal') || tags.includes('engineInternal') || tags.includes('private') || !!declaredName?.startsWith('__'), deprecated: tags.includes('deprecated'),
