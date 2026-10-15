@@ -387,7 +387,10 @@ function constraints(node, context, checker) {
   const editModeDeclared = (ts.canHaveDecorators(node) ? ts.getDecorators(node) || [] : []).some(decorator => {
     let expression = decorator.expression;
     while (ts.isParenthesizedExpression(expression)) expression = expression.expression;
-    if (ts.isCallExpression(expression)) expression = expression.expression;
+    if (ts.isCallExpression(expression)) {
+      if (expression.arguments.length === 1 && expression.arguments[0].kind === ts.SyntaxKind.FalseKeyword) return false;
+      expression = expression.expression;
+    }
     while (ts.isParenthesizedExpression(expression)) expression = expression.expression;
     if (checker && ts.isIdentifier(expression)) {
       const symbol = checker.getSymbolAtLocation(expression);

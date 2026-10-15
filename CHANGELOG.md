@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Do not report editModeDeclared for explicit executeInEditMode(false) decorator calls; retain bare/true declaration syntax and avoid runtime execution or qualification claims.
 - Validate raw timeline filters before snapshot spreads, preventing array-shaped binding/frame-range inputs with named fields from being laundered into valid objects. Invalid shapes refuse before native queries; valid snapshots retain the second bounds check.
 - Preflight exact animation wait target/clip before nodeReference snapshot, preserving INVALID_ARGUMENT for missing targets instead of untyped TypeError. Regular/skeletal waits refuse before native observation; no playback changes.
 - Normalize catalog aggregate unresolved diagnostics after both signature and heritage collection, avoiding duplicate/sort drift introduced by later base-type diagnostics while retaining signature-local evidence.
