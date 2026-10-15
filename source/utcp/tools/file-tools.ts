@@ -90,7 +90,19 @@ function readBoundedProjectText(filePath: string, cap: number): { content: strin
     } finally { fs.closeSync(handle); }
 }
 
+function requireUtf8RoundTrip(content: string): void {
+    for (let index = 0; index < content.length; index++) {
+        const code = content.charCodeAt(index);
+        if (code >= 0xd800 && code <= 0xdbff) {
+            const next = content.charCodeAt(++index);
+            if (next >= 0xdc00 && next <= 0xdfff) continue;
+        } else if (code < 0xdc00 || code > 0xdfff) continue;
+        throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'File text contains an unpaired surrogate and cannot round-trip UTF-8; no write dispatched.' });
+    }
+}
+
 function atomicWriteVerified(filePath: string, content: string): number {
+    requireUtf8RoundTrip(content);
     const bytes = Buffer.byteLength(content, 'utf8');
     if (bytes > MAX_WRITE_BYTES) {
         throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: `File content exceeds the ${MAX_WRITE_BYTES} byte cap.` });
@@ -133,6 +145,7 @@ export class FileTools {
         if (typeof args.content !== 'string') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'content must be a string.' });
         if (args.createDirs !== undefined && typeof args.createDirs !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'createDirs must be a boolean.' });
         if (Buffer.byteLength(args.content, 'utf8') > MAX_WRITE_BYTES) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: `File content exceeds the ${MAX_WRITE_BYTES} byte cap.` });
+        requireUtf8RoundTrip(args.content);
         if (args.expectedSha256 !== undefined && (typeof args.expectedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedSha256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedSha256 must be a lowercase SHA-256 of decoded UTF-8 text.' });
         const filePath = resolveSafePath(root, args.filePath);
         if (args.expectedSha256 !== undefined) {
