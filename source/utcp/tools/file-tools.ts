@@ -368,7 +368,10 @@ export class FileTools {
         let total = 0;
         try {
             let entry: fs.Dirent | null;
-            while ((entry = await handle.read()) !== null) {
+            for (;;) {
+                try { entry = await handle.read(); }
+                catch { throw new ToolError({ code: 'PROJECT_DIRECTORY_READ_FAILED', status: 503, message: 'Project directory enumeration failed; results are incomplete.' }); }
+                if (entry === null) break;
                 if (++total > MAX_SEARCH_ENTRIES) throw new ToolError({ code: 'PROJECT_DIRECTORY_LIMIT', status: 413, message: 'Directory listing exceeded the 100000-entry traversal limit.' });
                 if (entries.length >= limit) continue;
                 let stat: fs.Stats;
