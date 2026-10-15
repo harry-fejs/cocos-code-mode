@@ -91,6 +91,7 @@ function cameraReference(component: unknown): IInstanceReference {
 function* cameraSceneNodes(root: unknown): Generator<Record<string, unknown>> {
     const stack: unknown[] = [root];
     const seen = new Set<object>();
+    const nodeIds = new Set<string>();
     let scheduled = 1;
     let componentCount = 0;
     while (stack.length) {
@@ -99,6 +100,9 @@ function* cameraSceneNodes(root: unknown): Generator<Record<string, unknown>> {
         if (seen.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Camera hierarchy contains a repeated node object.' });
         seen.add(node);
         const row = node as Record<string, unknown>;
+        if (typeof row.uuid !== 'string' || !row.uuid) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Camera hierarchy node has no authoritative UUID.' });
+        if (nodeIds.has(row.uuid)) throw new ToolError({ code: 'CAMERA_TARGET_AMBIGUOUS', status: 409, message: 'Camera hierarchy repeats a node UUID.' });
+        nodeIds.add(row.uuid);
         if (row.children !== undefined && !Array.isArray(row.children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Camera hierarchy children must be an array when present.' });
         componentCount += cameraComponentsFromNode(row).length;
         if (componentCount > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Camera hierarchy exceeds the component traversal budget.' });
