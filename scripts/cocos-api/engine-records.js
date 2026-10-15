@@ -41,7 +41,7 @@ function collectExports(input, version, roots, label = 'engine') {
       const value = typeInfo(checker, checker.getDeclaredTypeOfSymbol(symbol), ts.isInterfaceDeclaration(declaration) ? declaration : declaration.type);
       sigs = [{ overload: 0, kind: 'value', type: value.type, declaredType: value.declaredType, references: value.references, unresolved: value.unresolved }];
     } else sigs = signatures(checker, symbol, declaration);
-    const unresolved = [...new Map(sigs.flatMap(signature => signature.unresolved).map(item => [json(item), item])).values()].sort((a, b) => compare(json(a), json(b)));
+    const diagnostics = sigs.flatMap(signature => signature.unresolved);
     const inheritedName = inheritedFrom?.name?.getText() || null;
     const owner = member ? memberOwner : ts.isVariableDeclaration(declaration) && declaration.initializer && ts.isClassExpression(declaration.initializer) ? declaration.initializer : declaration;
     const ownerSymbol = owner.name && checker.getSymbolAtLocation(owner.name);
@@ -51,8 +51,9 @@ function collectExports(input, version, roots, label = 'engine') {
     const heritage = [...new Map(clauses.flatMap(clause => clause.types.map(type => ({ relation: ts.tokenToString(clause.token), type: compact(type) }))).map(item => [json(item), item])).values()];
     for (const clause of clauses) for (const type of clause.types) {
       const resolved = typeInfo(checker, checker.getTypeAtLocation(type), type);
-      unresolved.push(...resolved.unresolved);
+      diagnostics.push(...resolved.unresolved);
     }
+    const unresolved = [...new Map(diagnostics.map(item => [json(item), item])).values()].sort((a, b) => compare(json(a), json(b)));
     const row = finalize({ version, namespace: context.namespace, module: context.module, className, member: member || null,
       name: member || className, kind: kind(declaration), signatures: sigs, ...info, inheritance: heritage, inheritedFrom: inheritedName,
       aliases: symbol.name !== className && !member ? [symbol.name, className] : [], declaredClassName: owner.name?.getText() || null,
