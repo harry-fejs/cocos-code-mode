@@ -150,6 +150,13 @@ export class ComponentTools {
             if ((typeof uuid === 'string' ? uuid : field(uuid, 'value')) !== args.reference.id || !Array.isArray(components) || components.length > VERBOSE_TREE_NODES) {
                 throw new ToolError({ code: 'COMPONENT_CREATE_POSTCONDITION_UNKNOWN', status: 502, message: 'Component add node identity or bounded inventory could not be confirmed.', details: { nodeId: args.reference.id, retrySafe: false }, recovery: 'Inspect the exact node inventory before another mutation.' });
             }
+            const identities = new Set<string>();
+            for (const component of components) {
+                const id = componentUuid(component);
+                const type = componentType(component);
+                if (!id?.trim() || !type?.trim() || identities.has(id)) throw new ToolError({ code: 'COMPONENT_CREATE_POSTCONDITION_UNKNOWN', status: 502, message: 'Component add inventory contains missing or duplicate identities.', details: { nodeId: args.reference.id, retrySafe: false }, recovery: 'Inspect the complete node inventory before another mutation.' });
+                identities.add(id);
+            }
             return components;
         };
 

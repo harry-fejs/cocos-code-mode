@@ -156,6 +156,7 @@
 - Report component creation dispatch/logging failures as typed unknown outcomes with retrySafe:false, preserving logging cleanup failure without replaying or deleting ambiguous components.
 - Require a unique new component candidate and exact UUID/type on final add read-back; refuse ambiguous creation rather than choosing the first match.
 - Require matching node UUID and a bounded explicit component inventory at each component-add observation before granting success.
+- Validate all UUID/type identities and reject duplicates in component-add baseline and postcondition inventories before candidate selection.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
