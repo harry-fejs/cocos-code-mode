@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add inclusive minChildCount/maxChildCount0..9999 intervals to runtime node waits and scenario nodeWait/nodeAssert. Use observed direct-child count independently of truncated UUID prefix; reversed/invalid ranges refuse before dispatch, no spawn/despawn writes.
 - Report ambiguous-reference when distinct compiler symbols share a short dependency name, preventing silently complete metadata for colliding namespace types; reference output shape remains unchanged.
 - Compose exact parentUuid predicates in scenario nodeWait/nodeAssert with null-root versus omitted semantics. Full-input preflight rejects invalid/self parents before dispatch; mismatch retains snapshot and stops later cues, no reparent writes.
 - Include nested call/construct/index signature annotation containers in bounded reference scans, preserving missing parameter/result/index-value names without changing semantic-adapter status.
