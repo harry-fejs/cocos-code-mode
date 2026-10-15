@@ -16,7 +16,7 @@ export class AnimationTimelineTools {
         type: 'object', additionalProperties: false,
         properties: {
             nodeReference: InstanceReferenceSchema, clipReference: InstanceReferenceSchema,
-            trackBinding: { type: 'object', additionalProperties: false, properties: { nodePath: { type: 'string', maxLength: 1024 }, property: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['nodePath', 'property'], description: 'Exact retrieved binding filter. Empty nodePath selects root. Track offsets address matching tracks; original native indices and whole-dump diagnostics remain. Not scene binding validation.' },
+            trackBinding: { type: 'object', additionalProperties: false, properties: { component: { type: 'string', minLength: 1, maxLength: 256 }, nodePath: { type: 'string', maxLength: 1024 }, property: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['nodePath', 'property'], description: 'Exact retrieved binding filter; optional component matches native comp metadata, omitted matches any component. Empty nodePath selects root. Track offsets address matching tracks; original native indices and whole-dump diagnostics remain. Not scene binding validation.' },
             eventCallback: { type: 'string', minLength: 1, maxLength: 256, description: 'Exact callback metadata filter; event offsets address matching events, native indices retained. No callback lookup/execution or runtime event history.' },
             eventFrameRange: { type: 'object', additionalProperties: false, properties: { min: { type: 'number', minimum: 0 }, max: { type: 'number', minimum: 0 } }, required: ['min', 'max'], description: 'Inclusive native frame interval, AND-composed with eventCallback. No seconds/runtime timing inference. Off-window events still validate and affect revision.' },
             expectedRevision: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'Guard retrieved timeline metadata across pages, not opaque keyframe values or runtime state.' },
@@ -37,7 +37,7 @@ export class AnimationTimelineTools {
             sourceScope: { type: 'string' }, timingUnit: { type: 'string' }, validityScope: { type: 'string' },
             valid: { type: 'boolean' }, sourceComplete: { type: 'boolean' }, complete: { type: 'boolean' }, truncated: { type: 'boolean' },
             totalTracks: { type: ['integer', 'null'] }, retrievedTracks: { type: ['integer', 'null'] }, totalEvents: { type: ['integer', 'null'] }, inspectedKeyframes: { type: 'integer' },
-            matchedTracks: { type: ['integer', 'null'] }, trackBinding: { type: ['object', 'null'], properties: { nodePath: { type: 'string' }, property: { type: 'string' } }, required: ['nodePath', 'property'] },
+            matchedTracks: { type: ['integer', 'null'] }, trackBinding: { type: ['object', 'null'], properties: { component: { type: 'string', minLength: 1, maxLength: 256 }, nodePath: { type: 'string' }, property: { type: 'string' } }, required: ['nodePath', 'property'] },
             matchedEvents: { type: ['integer', 'null'] }, eventCallback: { type: ['string', 'null'] },
             eventFrameRange: { type: ['object', 'null'], properties: { min: { type: 'number' }, max: { type: 'number' } }, required: ['min', 'max'] },
             trackOffset: { type: 'integer' }, trackLimit: { type: 'integer' }, eventOffset: { type: 'integer' }, eventLimit: { type: 'integer' },
