@@ -58,7 +58,7 @@ function collectExports(input, version, roots, label = 'engine') {
       enumValues: ts.isEnumDeclaration(declaration) ? sigs[0].references.find(reference => reference.name === symbol.name && reference.kind === 'enum')?.enumValues ?? null : null,
       backingFields: ['accessor', 'property'].includes(kind(declaration)) ? [...new Set((compact(declaration) || '').match(/this\s*\.\s*_[A-Za-z0-9_$]+/g) || [])].map(value => value.replace(/\s/g, '').slice(5)) : [],
       source: source(declaration, root, label), exportedFrom: [context.exportPath], domain: context.domain,
-      evidenceStatus: unresolved.length ? 'declared' : 'signatureResolved', contextConstraints: constraints(declaration, { ...context, config: input.config, path: slash(path.relative(root, declaration.getSourceFile().fileName)) }),
+      evidenceStatus: unresolved.length ? 'declared' : 'signatureResolved', contextConstraints: constraints(declaration, { ...context, config: input.config, path: slash(path.relative(root, declaration.getSourceFile().fileName)) }, checker),
       unresolved, discovered: true, permitted: false, publicExport: context.publicExport && info.visibility === 'public' && !info.internal,
       evidence: [{ kind: label === 'engine' ? 'source-export' : 'declaration', path: context.exportPath, alias: className }] });
     const key = row.semanticKey;

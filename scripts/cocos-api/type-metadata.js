@@ -305,19 +305,24 @@ function metadata(node) {
     internal: tags.includes('internal') || tags.includes('engineInternal') || tags.includes('private') || !!declaredName?.startsWith('__'), deprecated: tags.includes('deprecated'),
     abstract: modifiers.includes('abstract'), jsdoc: documentation.map(doc => doc.getText()).join('\n') || null };
 }
-function constraints(node, context) {
+function constraints(node, context, checker) {
   const sf = node.getSourceFile();
   const constants = [];
+  const constantSymbols = new Set();
   for (const statement of sf.statements) {
     if (ts.isImportDeclaration(statement) && statement.moduleSpecifier.text === 'internal:constants' && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings)) {
       constants.push(...statement.importClause.namedBindings.elements.map(item => item.name.text));
+      if (checker) for (const item of statement.importClause.namedBindings.elements) {
+        const symbol = checker.getSymbolAtLocation(item.name);
+        if (symbol) constantSymbols.add(symbol);
+      }
     }
   }
   const guards = [];
   const scan = current => {
     if (ts.isIfStatement(current) || ts.isConditionalExpression(current)) {
       const expression = ts.isIfStatement(current) ? current.expression : current.condition;
-      const usesConstant = part => ts.isIdentifier(part) && constants.includes(part.text) || ts.forEachChild(part, usesConstant);
+      const usesConstant = part => ts.isIdentifier(part) && (checker ? constantSymbols.has(checker.getSymbolAtLocation(part)) : constants.includes(part.text)) || ts.forEachChild(part, usesConstant);
       if (usesConstant(expression)) guards.push(compact(expression));
     }
     ts.forEachChild(current, scan);
