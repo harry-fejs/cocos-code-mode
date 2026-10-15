@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Traverse generic constraint/default types on nested callable/constructable DTO signatures under existing cycle/budget guards; preserve unresolved defaults and semantic-adapter requirements.
 - Traverse explicit receivers of nested callable/constructable DTO signatures, preserving receiver dependencies and unknown diagnostics while retaining semantic-adapter-required status.
 - Add integer component descriptors using native CCInteger for scalar/count arrays with safe-integer defaults, TypeScript number output, zero/empty omitted defaults and existing array/source caps; number remains finite float semantics.
 - Preserve explicit TypeScript this-receiver metadata, named dependencies and unresolved diagnostics independently from positional arguments; no receiver binding or invocation permission inferred.

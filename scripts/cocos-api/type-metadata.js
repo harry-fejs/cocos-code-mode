@@ -65,6 +65,11 @@ function typeInfo(checker, type, node) {
         if (propertyDeclaration) visit(checker.getTypeOfSymbolAtLocation(property, propertyDeclaration));
       }
       for (const signature of [...callSignatures, ...constructSignatures]) {
+        for (const parameter of signature.typeParameters || []) {
+          visit(checker.getBaseConstraintOfType(parameter));
+          const declared = parameter.symbol?.declarations?.[0];
+          if (declared?.default) visit(checker.getTypeFromTypeNode(declared.default));
+        }
         const receiver = signature.thisParameter;
         const receiverDeclaration = receiver?.valueDeclaration || receiver?.declarations?.[0];
         if (receiverDeclaration) visit(checker.getTypeOfSymbolAtLocation(receiver, receiverDeclaration));
