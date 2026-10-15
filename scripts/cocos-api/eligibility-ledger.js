@@ -67,19 +67,19 @@ function generateLedger(catalogRoot, output) {
         counts[disposition] = (counts[disposition] || 0) + 1;
         const operationValues = Array.isArray(record.operations) ? record.operations.map(operation => operation?.value).filter(value => typeof value === 'string') : [];
         const routeMatches = routes === null ? null : routes.filter(route => {
-          if (!route || typeof route !== 'object' || route.tool !== record.member || operationValues.length && !operationValues.includes(route.operation)) return false;
+          if (record.namespace !== 'bridge' || record.kind !== 'tool' || !route || typeof route !== 'object' || route.tool !== record.member || operationValues.length && !operationValues.includes(route.operation)) return false;
           const target = route.target;
           if (!target || typeof target !== 'object' || Array.isArray(target)) return false;
           const targetRecord = target;
           return typeof targetRecord.namespace === 'string' && targetRecord.namespace.length > 0;
         });
-        const attachedRoutes = routeMatches?.length === 1 ? routeMatches : null;
+        const attachedRoutes = routeMatches?.length ? routeMatches : null;
         rows.push({ key, recordId: record.id, semanticKey: record.semanticKey, version: record.version, domain: record.domain ?? null,
           workflowId: record.namespace === 'bridge' && record.kind === 'tool' ? `bridge:${record.member}` : null, desiredOutcome: null, intendedContext: record.contextConstraints?.execution ?? null,
           sourceEvidence: { catalogHash: lookup.catalogHash, shard: shard.file, shardSha256: shard.sha256, routeArtifact: routeEvidence, source: record.source ?? null },
           existingBridgeTool: record.namespace === 'bridge' && record.kind === 'tool' ? record.member : null,
           operation: record.namespace === 'bridge' && Array.isArray(record.operations) ? record.operations : null,
-          classification: disposition, chosenRoute: attachedRoutes ? 'static-composed-route' : null, routeEvidence: attachedRoutes, preflight: null, parametersDTO: null, resultDTO: null, limits: null, mutationScope: null, sourceHashGuard: null, historyContract: null, persistenceContract: null, rollbackContract: null, fixture: null, positiveID: null, negativeID: null, disposition, ownerDecision: null, reason,
+          classification: disposition, chosenRoute: null, routeEvidence: attachedRoutes, preflight: null, parametersDTO: null, resultDTO: null, limits: null, mutationScope: null, sourceHashGuard: null, historyContract: null, persistenceContract: null, rollbackContract: null, fixture: null, positiveID: null, negativeID: null, disposition, ownerDecision: null, reason,
           qualified: false, mutationAuthorized: false });
       }
     }
