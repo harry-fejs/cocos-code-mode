@@ -109,6 +109,8 @@ Use `editorQuery({category:'engine_api',operation:'records',recordId})` for one 
 
 `member` is an exact case-sensitive member-name filter, intersected with class/namespace/domain and bound into cursors. Unlike `filter` substring search it does not match similarly named members. Existing indexes already include member metadata; the selector never grants unique-target or callable permission, and overloads remain distinct source records.
 
+`operation:'explain_bridge_route'` requires one exact bridge catalog recordId without live/filter selectors. Newly extracted bridge records retain `composedRoutes`, source/evidence, operation conditions and unresolved branches. The result returns that bounded static evidence with permitted:false; it never invokes the described IPC/engine method and does not claim current-runtime coverage. Older records lacking composedRoutes require regeneration and explicit catalog/lookup hash adoption; no automatic artifact/config change occurs.
+
 Use `editorQuery({category:'engine_api',operation:'compare_version',targetVersion:'3.7.3',recordId,compareVersion:'3.8.8',compareRecordId})` to compare two exact records sharing a semanticKey. Results compare signature/metadata/resolution hashes and retain catalog identities; missing records do not imply removals. Comparison grants no execution permission.
 
 `runtimeScenarioRun` accepts `totalTimeoutMs` (100–60000, default30000). All steps share that wall-clock deadline; expiry stops subsequent steps and retains failedStep/prior outcomes. An in-flight native request may still complete: timeout does not cancel, replay or restore an action. Inspect the bound session before another mutation.

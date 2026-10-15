@@ -10,7 +10,7 @@ import { openExternalApiCatalog } from './external-api-catalog';
 
 export interface EngineDiscoveryArgs {
     category?: string; className?: string; targetVersion?: string; domain?: string;
-    operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'get_related_types' | 'lookup_editor_message' | 'compare_version';
+    operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'get_related_types' | 'lookup_editor_message' | 'explain_bridge_route' | 'compare_version';
     namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge';
     kind?: string; module?: string; visibility?: 'public' | 'protected' | 'private';
     context?: string; evidenceState?: string;
@@ -40,6 +40,21 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     if (!Object.prototype.hasOwnProperty.call(VERSIONS, version)) throw new ToolError({ code: 'UNSUPPORTED_VERSION', status: 422, message: 'Only catalogued versions 3.7.3 and 3.8.8 are available.' });
     if (args.category === 'component_schema' && !args.className) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'component_schema requires className.' });
     const operation = args.operation ?? 'records';
+    if (operation === 'explain_bridge_route') {
+        if (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024
+            || Object.keys(args).some(key => !['category', 'operation', 'targetVersion', 'recordId', 'maxEntries', 'maxBytes'].includes(key))
+            || args.category !== undefined && args.category !== 'engine_api') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Route explanation requires one exact bridge record ID without live targets or filters.' });
+        limit(args.maxEntries, 50, 200);
+        const maxBytes = limit(args.maxBytes, 32768, 131072);
+        const result = await discoverEngineApi({ targetVersion: version, operation: 'records', recordId: args.recordId, namespace: 'bridge', maxEntries: 1, maxBytes });
+        const record = (result.records as ApiRecord[])[0];
+        if (!Array.isArray(record.composedRoutes)) throw new ToolError({ code: 'CATALOG_INDEX_UPGRADE_REQUIRED', status: 409, message: 'Regenerate bridge records with composedRoutes and explicitly adopt their catalog/lookup hashes.' });
+        if (!Number.isInteger(record.composedRouteCount) || record.composedRouteCount !== record.composedRoutes.length
+            || record.composedRoutes.some(route => !route || typeof route !== 'object' || Array.isArray(route))) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Bridge route metadata is malformed or inconsistent.' });
+        const output = { ...result, operation };
+        if (Buffer.byteLength(JSON.stringify(output)) > maxBytes) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'Bridge route explanation exceeds maxBytes.' });
+        return output;
+    }
     if (args.kind !== undefined && (typeof args.kind !== 'string' || !args.kind || args.kind.length > 128)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'kind must be a nonempty string of at most 128 characters.' });
     if (args.kind !== undefined && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'kind is not accepted for this discovery operation.' });
     if (args.module !== undefined && (typeof args.module !== 'string' || !args.module || args.module.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'module must be a nonempty string of at most 256 characters.' });
