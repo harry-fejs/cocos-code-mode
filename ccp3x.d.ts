@@ -41,8 +41,8 @@ interface AssetImportSettingsResult {
     settings: { [key: string]: AssetImportSettingValue };
     source: AssetImportSettingsSource;
 }
-interface EngineApiDiscoveryArgs { operation?: 'records' | 'list_domains' | 'list_classes'; namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge'; className?: string; targetVersion?: '3.7.3' | '3.8.8'; domain?: string; filter?: string; recordId?: string; reference?: InstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string }
-interface EngineApiDiscoveryResult { version: string; operation: 'records' | 'list_domains' | 'list_classes'; coverage: { scope: string; fullCatalogLoaded: boolean; originalCatalogHash: string | null }; catalogHash: string; records: Array<Record<string, unknown>>; total: number; count: number; truncated: boolean; nextCursor: string | null; live: Record<string, unknown>; runtimeVerified: false; qualified: false }
+interface EngineApiDiscoveryArgs { operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces'; namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge'; className?: string; targetVersion?: '3.7.3' | '3.8.8'; domain?: string; filter?: string; recordId?: string; reference?: InstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string }
+interface EngineApiDiscoveryResult { version: string; operation: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces'; coverage: { scope: string; fullCatalogLoaded: boolean; originalCatalogHash: string | null }; catalogHash: string; records: Array<Record<string, unknown>>; total: number; count: number; truncated: boolean; nextCursor: string | null; live: Record<string, unknown>; runtimeVerified: false; qualified: false }
 interface ImportOutputEvidence { kind: 'source' | 'library'; extension: string; path: string; status: 'verified' | 'missing' | 'unreadable' | 'too_large' | 'changed' | 'empty'; bytes: number | null; sha256: string | null }
 interface UiReflowEvidence {
     success: boolean; operation: 'reflow'; sceneSaved: false; complete: boolean;
