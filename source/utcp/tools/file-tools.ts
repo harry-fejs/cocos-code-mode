@@ -275,17 +275,23 @@ export class FileTools {
         if (!fs.existsSync(directory) || !fs.statSync(directory).isDirectory()) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Directory not found: ${args.dirPath ?? '.'}` });
         const limit = boundedPositive(args.limit, DEFAULT_DIRECTORY_ENTRIES, MAX_DIRECTORY_ENTRIES);
         const entries: { name: string, type: 'file' | 'directory', size?: number }[] = [];
-        const handle = await fs.opendir(directory);
+        let handle: fs.Dir;
+        try { handle = await fs.opendir(directory); }
+        catch { throw new ToolError({ code: 'PROJECT_DIRECTORY_READ_FAILED', status: 503, message: 'A project directory could not be opened.', recovery: 'Check directory availability and permissions before retrying the read-only listing.' }); }
+        let closeError: unknown;
         let total = 0;
         try {
             let entry: fs.Dirent | null;
             while ((entry = await handle.read()) !== null) {
                 if (++total > MAX_SEARCH_ENTRIES) throw new ToolError({ code: 'PROJECT_DIRECTORY_LIMIT', status: 413, message: 'Directory listing exceeded the 100000-entry traversal limit.' });
                 if (entries.length >= limit) continue;
-                const stat = fs.statSync(path.join(directory, entry.name));
+                let stat: fs.Stats;
+                try { stat = fs.statSync(path.join(directory, entry.name)); }
+                catch { throw new ToolError({ code: 'PROJECT_DIRECTORY_ENTRY_FAILED', status: 503, message: `A directory entry could not be inspected: ${entry.name}.` }); }
                 entries.push({ name: entry.name, type: entry.isDirectory() ? 'directory' : 'file', size: entry.isFile() ? stat.size : undefined });
             }
-        } finally { await handle.close(); }
+        } finally { try { await handle.close(); } catch (error) { closeError = error; } }
+        if (closeError) throw new ToolError({ code: 'PROJECT_DIRECTORY_CLOSE_FAILED', status: 503, message: 'Project directory handle could not be closed.' });
         return { entries, total, truncated: total > entries.length };
     }
 }

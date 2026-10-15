@@ -1166,7 +1166,7 @@ declare namespace ccp3x {
 
     /** Project-relative existence metadata; does not read contents or imply importer availability. */
     function projectFileExists(args: { filePath: string }): { exists: boolean; isDirectory: boolean };
-    /** Streams directory entries and retains a bounded prefix. total is the observed directory entry count; traversal over100000 entries throws PROJECT_DIRECTORY_LIMIT. size is optional, not guaranteed for symlinks/special entries. Enumeration is not an atomic snapshot. */
+    /** Streams directory entries and retains a bounded prefix. total is the observed directory entry count; traversal over100000 entries throws PROJECT_DIRECTORY_LIMIT. Open/stat/close failures throw PROJECT_DIRECTORY_READ_FAILED, PROJECT_DIRECTORY_ENTRY_FAILED or PROJECT_DIRECTORY_CLOSE_FAILED. size is optional; enumeration is not an atomic snapshot. */
     function projectListDirectory(args: { dirPath?: string; limit?: number }): {
         entries: Array<{ name: string; type: 'file' | 'directory'; size?: number }>;
         total: number; truncated: boolean;
