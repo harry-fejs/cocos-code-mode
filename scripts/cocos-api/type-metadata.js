@@ -76,6 +76,9 @@ function typeInfo(checker, type, node) {
     if (callSignatures.length) unresolved.push({ kind: 'semantic-adapter-required', reference: 'callable-type' });
     if (constructSignatures.length) unresolved.push({ kind: 'semantic-adapter-required', reference: 'constructable-type' });
     const declaration = symbol?.declarations?.find(item => ts.isInterfaceDeclaration(item) || ts.isTypeAliasDeclaration(item));
+    if (declaration && ts.isInterfaceDeclaration(declaration)) {
+      for (const base of checker.getBaseTypes(current) || []) visit(base);
+    }
     if (symbol && !symbol.name.startsWith('__') && !references.has(symbol.name)) {
       const enumDeclaration = symbol.declarations?.find(ts.isEnumDeclaration);
       references.set(symbol.name, { name: symbol.name, resolution: symbol.declarations?.length ? 'resolved' : 'unknown',
