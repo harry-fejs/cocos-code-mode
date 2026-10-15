@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Compose finite local scale predicates in scenario nodeWait and immediate nodeAssert, with whole-input validation/copy, inclusive per-axis tolerance and retained mismatch evidence. Negative/zero scale supported; no transform mutation or tween-completion inference.
 - Enforce the256-type expansion admission budget before growing traversal sets and emit its diagnostic once; wide over-budget inputs no longer accumulate unvisited types in bookkeeping.
 - Add local scale xyz+tolerance conditions to read-only runtime node waits, AND-composed on one observation with activation/position/orientation. Negative and zero scale permitted; invalid input/metrics refuse and scale match never implies tween completion.
 - Keep instantiated generic setter write types explicitly unresolved instead of traversing raw declaration parameters as actual inputs; accessor adapter requirements remain and non-generic setter dependencies are unchanged.
