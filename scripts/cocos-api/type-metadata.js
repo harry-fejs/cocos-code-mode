@@ -337,7 +337,11 @@ function constraints(node, context, checker) {
       const usesConstant = part => {
         if ((ts.isMethodDeclaration(part) || ts.isGetAccessorDeclaration(part) || ts.isSetAccessorDeclaration(part)) && ts.isObjectLiteralExpression(part.parent)) return ts.isComputedPropertyName(part.name) && usesConstant(part.name.expression);
         if (ts.isTypeNode(part) || ts.isFunctionLike(part) || ts.isClassExpression(part)) return false;
-        if (ts.isBinaryExpression(part) && part.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(part.left)) return usesConstant(part.right);
+        if (ts.isBinaryExpression(part) && part.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+          if (ts.isIdentifier(part.left)) return usesConstant(part.right);
+          if (ts.isPropertyAccessExpression(part.left)) return usesConstant(part.left.expression) || usesConstant(part.right);
+          if (ts.isElementAccessExpression(part.left)) return usesConstant(part.left.expression) || usesConstant(part.left.argumentExpression) || usesConstant(part.right);
+        }
         if (ts.isPropertyAssignment(part)) return (ts.isComputedPropertyName(part.name) && usesConstant(part.name.expression)) || usesConstant(part.initializer);
         if (checker && ts.isShorthandPropertyAssignment(part) && constantSymbols.has(checker.getShorthandAssignmentValueSymbol(part))) return true;
         if (ts.isIdentifier(part) && (checker ? constantSymbols.has(checker.getSymbolAtLocation(part)) : constants.includes(part.text))) return true;
