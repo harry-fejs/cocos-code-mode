@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Support Font/TTFFont/BitmapFont/SpriteAtlas/SceneAsset scalar and array references in scriptComponentCreate using native Inspector types and null/empty defaults. No font importer writes, atlas loading or scene transition is performed.
 - Support native Texture2D scalar/array references in scriptComponentCreate descriptors and public types. Fields start null/empty without constructing textures, loading assets or changing render/material state.
 - Support native TextAsset scalar/array references in scriptComponentCreate data fields. Scalar defaults remain null and array defaults empty/instance-owned; no asset construction, content evaluation or automatic reference assignment.
 - Expand nested generic constraints/rest unions iteratively under a256-type arity budget, preserving lower tuple bounds; budget exhaustion reports arity-budget and does not guess a positive minimum.
