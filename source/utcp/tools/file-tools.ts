@@ -277,6 +277,7 @@ export class FileTools {
 
     @utcpTool('projectListDirectory', 'List bounded entries in a project-relative directory.', { type: 'object', properties: { dirPath: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: MAX_DIRECTORY_ENTRIES } } }, { type: 'object', properties: { entries: { type: 'array' }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['entries', 'total', 'truncated'] }, 'GET', ['file', 'list', 'directory', 'project'])
     async projectListDirectory(args: { dirPath?: string, limit?: number }): Promise<{ entries: { name: string, type: 'file' | 'directory', size?: number }[], total: number, truncated: boolean }> {
+        if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > MAX_DIRECTORY_ENTRIES)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Directory limit must be an integer from 1 to 1000.' });
         const directory = resolveSafePath(projectRoot(), args.dirPath ?? '.');
         if (!fs.existsSync(directory) || !fs.statSync(directory).isDirectory()) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Directory not found: ${args.dirPath ?? '.'}` });
         const limit = boundedPositive(args.limit, DEFAULT_DIRECTORY_ENTRIES, MAX_DIRECTORY_ENTRIES);
@@ -292,9 +293,10 @@ export class FileTools {
                 if (++total > MAX_SEARCH_ENTRIES) throw new ToolError({ code: 'PROJECT_DIRECTORY_LIMIT', status: 413, message: 'Directory listing exceeded the 100000-entry traversal limit.' });
                 if (entries.length >= limit) continue;
                 let stat: fs.Stats;
-                try { stat = fs.statSync(path.join(directory, entry.name)); }
+                try { stat = fs.lstatSync(path.join(directory, entry.name)); }
                 catch { throw new ToolError({ code: 'PROJECT_DIRECTORY_ENTRY_FAILED', status: 503, message: `A directory entry could not be inspected: ${entry.name}.` }); }
-                entries.push({ name: entry.name, type: entry.isDirectory() ? 'directory' : 'file', size: entry.isFile() ? stat.size : undefined });
+                if (!stat.isFile() && !stat.isDirectory()) throw new ToolError({ code: 'PROJECT_DIRECTORY_ENTRY_UNSUPPORTED', status: 422, message: `Directory entry is not a regular file or directory: ${entry.name}.` });
+                entries.push({ name: entry.name, type: stat.isDirectory() ? 'directory' : 'file', size: stat.isFile() ? stat.size : undefined });
             }
         } finally { try { await handle.close(); } catch (error) { closeError = error; } }
         if (closeError) throw new ToolError({ code: 'PROJECT_DIRECTORY_CLOSE_FAILED', status: 503, message: 'Project directory handle could not be closed.' });
