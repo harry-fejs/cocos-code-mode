@@ -189,6 +189,8 @@ export class AudioPlaybackTools {
             const transportTimeout = Math.min(10000, (timeoutMs ?? 1000) + 2000);
             const result = await executeGameViewOperation(session.targetId, operationSource(request), transportTimeout, operation !== 'observe');
             throwRuntimeResult(result);
+            if (result.sessionId !== args.sessionId || result.targetId !== session.targetId || result.nodeUuid !== args.nodeReference.id || result.operation !== operation
+                || args.expectedComponentUuid !== undefined && result.componentUuid !== args.expectedComponentUuid || args.expectedClipUuid !== undefined && result.clipUuid !== args.expectedClipUuid) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Audio response does not identify the dispatched session/node/operation and expected source/clip.', details: { mutationDispatched: operation !== 'observe', retrySafe: false, pendingMayComplete: operation !== 'observe' }, recovery: 'Inspect the exact audio target before any further control; do not replay this request blindly.' });
             return result;
         } catch (error) {
             if (error instanceof ToolError) throw error;
