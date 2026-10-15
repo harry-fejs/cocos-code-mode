@@ -441,7 +441,8 @@ function constraints(node, context, checker) {
       const symbol = ts.isIdentifier(base) ? checker.getSymbolAtLocation(base) : undefined;
       if (symbol && symbol.flags & ts.SymbolFlags.Alias && checker.getTypeOnlyAliasDeclaration(symbol)) return false;
       if (symbol && symbol.flags & ts.SymbolFlags.Alias) {
-        const key = ts.isPropertyAccessExpression(expression) ? expression.name : expression.argumentExpression;
+        let key = ts.isPropertyAccessExpression(expression) ? expression.name : expression.argumentExpression;
+        while (key && ts.isParenthesizedExpression(key)) key = key.expression;
         const name = key && (ts.isIdentifier(key) && ts.isPropertyAccessExpression(expression) || ts.isStringLiteral(key) || ts.isNoSubstitutionTemplateLiteral(key)) ? key.text : null;
         if (!name) return false;
         const member = checker.getPropertyOfType(checker.getTypeAtLocation(base), name);
@@ -450,7 +451,8 @@ function constraints(node, context, checker) {
       }
     }
     if (ts.isElementAccessExpression(expression)) {
-      const key = expression.argumentExpression;
+      let key = expression.argumentExpression;
+      while (key && ts.isParenthesizedExpression(key)) key = key.expression;
       return key && (ts.isStringLiteral(key) || ts.isNoSubstitutionTemplateLiteral(key)) && key.text === 'executeInEditMode';
     }
     return ts.isIdentifier(expression) ? expression.text === 'executeInEditMode' : ts.isPropertyAccessExpression(expression) && expression.name.text === 'executeInEditMode';
