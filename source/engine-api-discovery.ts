@@ -14,6 +14,7 @@ export interface EngineDiscoveryArgs {
     namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge';
     kind?: string; module?: string; visibility?: 'public' | 'protected' | 'private';
     context?: string; evidenceState?: string;
+    member?: string;
     filter?: string; recordId?: string; compareVersion?: string; compareRecordId?: string; reference?: IInstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string;
 }
 const ApiRecordSchema = z.object({ id: z.string().min(1), className: z.string().nullable().optional(), namespace: z.string(), member: z.string().nullable().optional(), name: z.string().optional(), kind: z.string().optional(), signatures: z.array(z.unknown()).optional() }).passthrough();
@@ -47,6 +48,8 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     if (args.visibility !== undefined && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'visibility is not accepted for this discovery operation.' });
     for (const value of [args.context, args.evidenceState]) if (value !== undefined && (typeof value !== 'string' || !value || value.length > 128)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'context/evidenceState must be nonempty strings of at most 128 characters.' });
     if ((args.context !== undefined || args.evidenceState !== undefined) && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Context/evidence selectors are not accepted for this discovery operation.' });
+    if (args.member !== undefined && (typeof args.member !== 'string' || !args.member || args.member.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'member must be a nonempty string of at most 256 characters.' });
+    if (args.member !== undefined && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'member is not accepted for this discovery operation.' });
     if (operation === 'lookup_editor_message') {
         if (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024
             || args.reference !== undefined || args.className !== undefined || args.category === 'component_schema'
@@ -100,7 +103,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     const provenancePath = path.join(CATALOG_ROOT, version, 'provenance.json');
     const provenance = !external && fs.existsSync(provenancePath) ? z.object({ scope: z.string().optional(), originalCatalogHash: z.string().nullable().optional() }).passthrough().parse(jsonFile(provenancePath)) : null;
     const coverage = { scope: external ? 'operator-configured-full-catalog' : provenance?.scope ?? 'installed-catalog-scope-unverified', fullCatalogLoaded: external !== null, originalCatalogHash: external?.catalogHash ?? provenance?.originalCatalogHash ?? null };
-    const selector = JSON.stringify({ version, operation, namespace: args.namespace ?? '', domain: args.domain ?? '', filter: args.filter ?? '', className: args.className ?? '', recordId: args.recordId ?? '', kind: args.kind ?? '', module: args.module ?? '', visibility: args.visibility ?? '', context: args.context ?? '', evidenceState: args.evidenceState ?? '' });
+    const selector = JSON.stringify({ version, operation, namespace: args.namespace ?? '', domain: args.domain ?? '', filter: args.filter ?? '', className: args.className ?? '', recordId: args.recordId ?? '', kind: args.kind ?? '', module: args.module ?? '', visibility: args.visibility ?? '', context: args.context ?? '', evidenceState: args.evidenceState ?? '', member: args.member ?? '' });
     const selectorHash = crypto.createHash('sha256').update(selector).digest('hex');
     let offset = 0;
     if (args.cursor) {
@@ -115,6 +118,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     if (external && operation !== 'list_domains') {
         for (const entry of external.entries) {
             if (args.recordId !== undefined && entry.id !== args.recordId) continue;
+            if (args.member !== undefined && entry.member !== args.member) continue;
             if (args.kind !== undefined && entry.kind !== args.kind) continue;
             if (args.module !== undefined && entry.module !== args.module) continue;
             if (args.visibility !== undefined && entry.visibility !== args.visibility) continue;
@@ -134,6 +138,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
         const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(jsonFile(path.join(CATALOG_ROOT, version, domain.file)));
         for (const record of shard.records) {
             if (args.recordId !== undefined && record.id !== args.recordId) continue;
+            if (args.member !== undefined && record.member !== args.member) continue;
             if (args.kind !== undefined && record.kind !== args.kind) continue;
             if (args.module !== undefined && record.module !== args.module) continue;
             if (args.visibility !== undefined && record.visibility !== args.visibility) continue;
