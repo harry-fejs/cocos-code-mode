@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve optional declaration markers on catalog metadata, distinguishing optional properties/methods from required members without inferring runtime presence or invocation permission.
 - Verify requested clip name/UUID and expected graph UUID at the shared host response boundary, in addition to node/component identity. Foreign or missing asset readbacks refuse with dispatch uncertainty; no playback/graph replay.
 - Preserve visibility on collector-created interface/type/enum value signatures, completing the same visibility contract used by data/call/accessor signatures without changing non-permitted discovery.
 - Reject explicit false/nonboolean native component success flags before host success-envelope construction. Prevent contradictory failure payloads from being promoted while preserving native no-flag/true compatibility and dispatch uncertainty.
