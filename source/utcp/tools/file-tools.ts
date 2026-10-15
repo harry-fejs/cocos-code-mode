@@ -187,9 +187,15 @@ export class FileTools {
         const files: string[] = [];
         const stack: Array<{ directory: string; handle: fs.Dir }> = [];
         let visitedEntries = 0;
+        const realRoot = fs.realpathSync(root);
         const openDirectory = async (directory: string) => {
-            try { return await fs.opendir(directory); }
-            catch {
+            try {
+                const realDirectory = fs.realpathSync(directory);
+                assertInside(realRoot, realDirectory, path.relative(root, directory));
+                return await fs.opendir(realDirectory);
+            }
+            catch (error) {
+                if (error instanceof ToolError) throw error;
                 throw new ToolError({ code: 'PROJECT_SEARCH_FAILED', status: 503, message: 'A project directory could not be read; search results are incomplete.', recovery: 'Check directory availability and permissions before retrying the read-only search.' });
             }
         };
