@@ -79,6 +79,7 @@ function collectExports(input, version, roots, label = 'engine') {
     if (exported !== symbol) for (const part of exported.declarations || []) {
       exportMetadata.push(metadata(part));
       if (ts.isExportSpecifier(part) && ts.isExportDeclaration(part.parent?.parent)) exportMetadata.push(metadata(part.parent.parent));
+      if (ts.isNamespaceExport(part) && ts.isExportDeclaration(part.parent)) exportMetadata.push(metadata(part.parent));
     }
     const internal = symbol.declarations.some(part => metadata(part).internal) || exportMetadata.some(item => item.internal);
     const deprecated = !!context.deprecated || symbol.declarations.some(part => metadata(part).deprecated) || exportMetadata.some(item => item.deprecated);

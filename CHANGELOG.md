@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve internal/deprecated parent export-declaration tags on namespace reexports (export * as Alias), propagating context to descendants without mutating target declarations.
 - Recheck attached session/scene/createdAt after successful audio execution; lifecycle drift or failed continuity inspection refuses with control uncertainty/retrySafe:false. No preview restart or playback replay.
 - Preserve internal/deprecated tags on export aliases and their export declaration before resolving target symbols; apply export-site context without mutating the original declaration metadata.
 - Merge deprecation across duplicate catalog export contexts independent of traversal order, preserving publicExport and non-permitted discovery semantics.
