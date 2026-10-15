@@ -311,6 +311,9 @@ export class MaterialTools {
         const originals: Array<{ update: { reference: IInstanceReference, path: string, value: unknown }, original: unknown }> = [];
         for (const [index, update] of args.updates.entries()) {
             if (!update?.reference?.id || typeof update.reference.id !== 'string' || typeof update.path !== 'string' || !/^[A-Za-z0-9_.]{1,256}$/.test(update.path)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `updates[${index}] has an invalid reference or property path.` });
+            if (originals.some(({ update: previous }) => previous.reference.id === update.reference.id && (
+                previous.path === update.path || previous.path.startsWith(`${update.path}.`) || update.path.startsWith(`${previous.path}.`)
+            ))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Render updates must not contain duplicate or overlapping paths on the same target.' });
             const node = await Editor.Message.request('scene', 'query-node', update.reference.id) as unknown as Record<string, unknown> | null;
             if (!node) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Render configuration target ${update.reference.id} was not found.` });
             originals.push({ update, original: cloneValue(propertyAtPath(node, update.path)) });
