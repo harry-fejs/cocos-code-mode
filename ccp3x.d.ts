@@ -193,6 +193,18 @@ declare namespace ccp3x {
         changed: string[]; readBack: Array<{ reference: InstanceReference; path: string; value: unknown }>; verified: true;
     };
 
+    /** Creates a node with cc.Camera and reads back component identity. Does not certify scene save/reopen; cleanup failures on error are not independently reported. */
+    function cameraCreate(args: { name?: string; is2D?: boolean; parentReference?: InstanceReference }): {
+        nodeReference: InstanceReference; cameraReference: InstanceReference;
+    };
+    /** Capped camera results, not capped scene traversal. Native property values remain unknown; total counts observed camera components. */
+    function cameraList(args?: { maxResults?: number }): {
+        cameras: Array<{ nodeReference: InstanceReference; cameraReference: InstanceReference; name: unknown; priority: unknown; visibility: unknown; projection: unknown }>;
+        total: number; truncated: boolean;
+    };
+    /** Updates scene camera properties and checks immediate read-back. Partial writes are not rolled back on failure; inspect before retry. */
+    function cameraSetProperties(args: { reference: InstanceReference; properties: Record<string, unknown> }): { updated: true; reference: InstanceReference };
+
     /** Read bounded importer-specific settings, typed property descriptors, and explicit source identity for one asset. */
     function assetImportSettingsGet(args: { reference: InstanceReference }): AssetImportSettingsResult;
 
