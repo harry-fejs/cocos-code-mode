@@ -341,7 +341,7 @@ function constraints(node, context, checker) {
         if (ts.isIdentifier(part) && (checker ? constantSymbols.has(checker.getSymbolAtLocation(part)) : constants.includes(part.text))) return true;
         if (ts.isPropertyAccessExpression(part) || ts.isElementAccessExpression(part)) {
           let target = part.expression;
-          while (ts.isParenthesizedExpression(target)) target = target.expression;
+          while (ts.isParenthesizedExpression(target) || ts.isAsExpression(target) || ts.isTypeAssertionExpression(target) || ts.isNonNullExpression(target) || ts.isSatisfiesExpression(target)) target = target.expression;
           const explicitMember = ts.isPropertyAccessExpression(part) || part.argumentExpression && (ts.isStringLiteral(part.argumentExpression) || ts.isNoSubstitutionTemplateLiteral(part.argumentExpression));
           if (explicitMember && ts.isIdentifier(target) && (checker ? namespaceSymbols.has(checker.getSymbolAtLocation(target)) : namespaceNames.has(target.text))) return true;
           if (ts.isPropertyAccessExpression(part)) return usesConstant(target);
