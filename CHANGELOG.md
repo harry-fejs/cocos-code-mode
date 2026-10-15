@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Expose signature minArgumentCount including required elements of concrete rest tuples, preserving zero-minimum array rest and existing parameter/default provenance; unresolved generic rest remains declaration metadata, not runtime argument rewriting.
 - Add Camera/MeshRenderer/SkinnedMeshRenderer/ParticleSystem scalar/array references and requiredComponents to scriptComponentCreate. Native types/null-empty defaults only; no camera/render/emitter construction, scene attachment or playback dispatch.
 - Pin animationClipInventory request identity and expectedRevision before native observation, preventing caller deletion/replacement of the stale-page guard while the read is pending. No clip/playback mutation or replay.
 - Use compiler minimum argument count when classifying default-initialized parameters as optional; defaults before later required positions retain required slots while trailing defaults remain optional and provenance is preserved.

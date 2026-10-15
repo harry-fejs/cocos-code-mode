@@ -236,8 +236,13 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
     unresolved.push(...receiver.unresolved);
     for (const reference of receiver.references) genericReferences.set(json(reference), reference);
   }
+  let minArgumentCount = signature.minArgumentCount;
   const parameters = signature.parameters.map((symbol, position) => {
     const parameter = symbol.valueDeclaration || symbol.declarations?.[0] || declaration.parameters?.[position];
+    if (parameter?.dotDotDotToken) {
+      const restType = checker.getTypeOfSymbolAtLocation(symbol, parameter);
+      if (checker.isTupleType(restType)) minArgumentCount = Math.max(minArgumentCount, position + restType.target.minLength);
+    }
     const info = typeInfo(checker, checker.getTypeOfSymbolAtLocation(symbol, parameter || declaration), parameter?.type);
     unresolved.push(...info.unresolved);
     return { name: symbol.name, type: info.type, declaredType: info.declaredType, references: info.references, optional: !!(symbol.flags & ts.SymbolFlags.Optional) || !!parameter?.questionToken || !!parameter?.initializer && position >= signature.minArgumentCount,
@@ -271,7 +276,7 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
     const variance = [modifiers.some(modifier => modifier.kind === ts.SyntaxKind.InKeyword) ? 'in' : '', modifiers.some(modifier => modifier.kind === ts.SyntaxKind.OutKeyword) ? 'out' : ''].filter(Boolean).join(' ') || null;
     return { name: parameter.symbol?.name || checker.typeToString(parameter), const: modifiers.some(modifier => modifier.kind === ts.SyntaxKind.ConstKeyword), variance, constraint: info?.type || null, default: compact(declared?.default) };
   });
-  return { overload: index, visibility, kind: ts.isSetAccessorDeclaration(declaration) ? 'set' : ts.isGetAccessorDeclaration(declaration) ? 'get' : 'call',
+  return { overload: index, visibility, minArgumentCount, kind: ts.isSetAccessorDeclaration(declaration) ? 'set' : ts.isGetAccessorDeclaration(declaration) ? 'get' : 'call',
     text: returnType && ts.isGetAccessorDeclaration(declaration) ? `(): ${result.type}` : checker.signatureToString(signature, declaration, ts.TypeFormatFlags.NoTruncation), typeParameters, parameters, receiver, predicate,
     returnType: result.type, declaredReturnType: result.declaredType, returnReferences: result.references,
     references: [...genericReferences.values()].sort((a, b) => compare(json(a), json(b))),
