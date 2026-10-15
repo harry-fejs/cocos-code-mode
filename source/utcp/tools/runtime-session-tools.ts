@@ -460,6 +460,8 @@ export class RuntimeSessionTools {
         ['runtime', 'state', 'wait', 'condition'],
     )
     async runtimeWaitForState(args: { sessionId: string, paused?: boolean, minFrameCount?: number, timeoutMs?: number }): Promise<{ success: true, sessionId: string, state: RuntimeState, elapsedMs: number }> {
+        if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64 || args.paused === undefined && args.minFrameCount === undefined
+            || args.paused !== undefined && typeof args.paused !== 'boolean' || args.minFrameCount !== undefined && (!Number.isSafeInteger(args.minFrameCount) || args.minFrameCount < 0 || args.minFrameCount > 1000000000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide exact session and typed paused/minFrameCount wait predicates.' });
         let session: RuntimeSession;
         try {
             session = store.inspect(args.sessionId);
@@ -469,7 +471,6 @@ export class RuntimeSessionTools {
         }
         if (session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: `Runtime session is stopped: ${session.sessionId}`, recovery: 'Attach a new game-view session before waiting for state.' });
         if (session.targetKind !== 'game-view') throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: `Runtime target ${session.targetKind} has no verified transport.` });
-        if (args.paused === undefined && args.minFrameCount === undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runtimeWaitForState requires paused or minFrameCount.' });
         const timeoutMs = args.timeoutMs ?? 10000;
         if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'timeoutMs must be an integer from 100 to 10000.' });
         const started = Date.now();
