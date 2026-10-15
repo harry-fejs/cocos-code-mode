@@ -418,7 +418,14 @@ export class SceneTools {
         }
         const nodeId = foundNode && typeof foundNode.uuid === 'string' ? foundNode.uuid : undefined;
         if (!nodeId || !foundComponent || componentIndex < 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Camera ${args.reference.id} was not found in the open scene.` });
+        const serializedNode = await Editor.Message.request('scene', 'query-node', nodeId);
+        const serializedComponents = cameraComponentsFromNode(serializedNode);
+        componentIndex = serializedComponents.findIndex((component) => isCameraComponent(component) && componentUuid(component) === args.reference.id);
+        if (componentIndex < 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Camera is absent from the serialized node.' });
         for (const [property, value] of Object.entries(args.properties)) {
+            const currentNode = await Editor.Message.request('scene', 'query-node', nodeId);
+            const current = cameraComponentsFromNode(currentNode)[componentIndex];
+            if (!isCameraComponent(current) || componentUuid(current) !== args.reference.id) throw new ToolError({ code: 'CAMERA_TARGET_CHANGED', status: 409, message: 'Camera serialized component index changed before property dispatch.' });
             const propertyValue = value as IPropertyValueType;
             const changed = await Editor.Message.request('scene', 'set-property', { uuid: nodeId, path: `__comps__.${componentIndex}.${property}`, dump: { value: propertyValue, type: typeof value === 'number' ? 'Number' : typeof value === 'boolean' ? 'Boolean' : 'String' } });
             if (changed === false) throw new ToolError({ code: 'CAMERA_PROPERTY_UPDATE_FAILED', status: 502, message: `Creator rejected camera property ${property}.` });

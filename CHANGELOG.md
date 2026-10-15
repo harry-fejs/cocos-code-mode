@@ -132,6 +132,7 @@
 - Reject duplicate and ancestor/descendant render-update paths on one target before mutation; preserve independent paths and targets.
 - Declare camera creation, inventory and property updates with native-value and persistence/partial-mutation limitations.
 - Verify requested camera projection on fresh post-create component read-back before returning creation success.
+- Resolve camera property write indices from fresh serialized components and reject index identity drift before each write.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
