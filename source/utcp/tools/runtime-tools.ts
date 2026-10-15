@@ -69,14 +69,17 @@ export class RuntimeTools {
         if (args.parentUuid !== undefined && args.parentUuid !== null && (typeof args.parentUuid !== 'string' || !args.parentUuid.trim() || args.parentUuid.length > 256 || args.parentUuid === args.nodeReference.id)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'parentUuid must be null or one bounded non-self UUID.' });
         if ([args.minChildCount, args.maxChildCount].some(n => n !== undefined && (!Number.isSafeInteger(n) || n < 0 || n > 9999)) || args.minChildCount !== undefined && args.maxChildCount !== undefined && args.minChildCount > args.maxChildCount) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Child count interval must contain integers0..9999 with min<=max.' });
         if (args.siblingIndex !== undefined && args.siblingIndex !== null && (!Number.isSafeInteger(args.siblingIndex) || args.siblingIndex < 0 || args.siblingIndex > 9999)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'siblingIndex must be null(root) or integer0..9999.' });
-        const position = args.position;
+        let position = args.position;
         if (position !== undefined && (!position || typeof position !== 'object' || Array.isArray(position) || Object.keys(position).some(key => !['space', 'x', 'y', 'z', 'tolerance'].includes(key)) || !['local', 'world'].includes(position.space) || [position.x, position.y, position.z, position.tolerance].some(value => typeof value !== 'number' || !Number.isFinite(value)) || position.tolerance < 0 || position.tolerance > 1000000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Position requires explicit local/world space, finite xyz and tolerance0..1000000.' });
-        const rotation = args.rotation;
+        let rotation = args.rotation;
         if (rotation !== undefined && (!rotation || typeof rotation !== 'object' || Array.isArray(rotation) || Object.keys(rotation).some(key => !['space', 'x', 'y', 'z', 'w', 'toleranceDegrees'].includes(key)) || !['local', 'world'].includes(rotation.space) || typeof rotation.toleranceDegrees !== 'number' || !Number.isFinite(rotation.toleranceDegrees) || rotation.toleranceDegrees < 0 || rotation.toleranceDegrees > 180)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Rotation requires local/world quaternion and toleranceDegrees0..180.' });
         const expectedRotation = rotation ? unitQuaternion(rotation, 'INVALID_ARGUMENT') : undefined;
-        const scale = args.scale;
+        let scale = args.scale;
         if (scale !== undefined && (!scale || typeof scale !== 'object' || Array.isArray(scale) || Object.keys(scale).some(key => !['x', 'y', 'z', 'tolerance'].includes(key)) || [scale.x, scale.y, scale.z, scale.tolerance].some(value => typeof value !== 'number' || !Number.isFinite(value)) || scale.tolerance < 0 || scale.tolerance > 1000000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Local scale requires finite xyz and tolerance0..1000000.' });
-        args = { ...args, nodeReference: { id: args.nodeReference.id }, ...(args.position ? { position: { ...args.position } } : {}), ...(args.rotation ? { rotation: { ...args.rotation } } : {}), ...(args.scale ? { scale: { ...args.scale } } : {}) };
+        position = position === undefined ? undefined : { ...position };
+        rotation = rotation === undefined ? undefined : { ...rotation };
+        scale = scale === undefined ? undefined : { ...scale };
+        args = { ...args, nodeReference: { id: args.nodeReference.id }, position, rotation, scale };
         const deadline = Date.now() + timeoutMs; let observations = 0; let targetId: string | undefined;
         for (;;) {
             const remaining = deadline - Date.now();
