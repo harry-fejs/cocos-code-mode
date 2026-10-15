@@ -1,7 +1,8 @@
 import { utcpTool } from '../decorators';
 import { ToolError } from '../tool-error';
-import { setGameViewTimeScale } from '../utils/game-view-transport';
+import { executeGameViewOperation, setGameViewTimeScale } from '../utils/game-view-transport';
 import { RuntimePreviewResult, RuntimeSessionTools } from './runtime-session-tools';
+import { observeRuntimeNode } from '../../runtime-node-observe';
 
 const sessions = new RuntimeSessionTools();
 type PreviewArgs = Parameters<RuntimeSessionTools['previewControl']>[0];
@@ -14,6 +15,25 @@ const playbackProperties = {
 
 // Public controls share the session lifecycle's Game View authority and postconditions.
 export class RuntimeTools {
+    @utcpTool('runtimeNodeObserve', 'Read exact Game View node activation/local position/world position/local scale without edit-scene fallback or mutation. Bounded10000-node/256-depth traversal; Creator3.7.x only.', {
+        type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string', minLength: 1, maxLength: 64 }, nodeReference: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['id'] }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } }, required: ['sessionId', 'nodeReference'],
+    }, { type: 'object', properties: { sessionId: { type: 'string' }, targetId: { type: 'string' }, nodeUuid: { type: 'string' }, active: { type: 'boolean' }, activeInHierarchy: { type: 'boolean' }, position: { type: 'object' }, worldPosition: { type: 'object' }, scale: { type: 'object' }, writes: { type: 'boolean', const: false } }, required: ['sessionId', 'targetId', 'nodeUuid', 'active', 'activeInHierarchy', 'position', 'worldPosition', 'scale', 'writes'] }, 'GET', ['node', 'runtime', 'observe', 'read-only'])
+    async runtimeNodeObserve(args: { sessionId: string; nodeReference: { id: string }; timeoutMs?: number }) {
+        const timeoutMs = args?.timeoutMs ?? 1000;
+        if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64 || typeof args.nodeReference?.id !== 'string' || !args.nodeReference.id.trim() || args.nodeReference.id.length > 256 || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 3000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Exact bounded session/node and timeout100..3000 required.' });
+        const inspected = await sessions.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, timeoutMs });
+        const session = inspected.session;
+        if (!inspected.ready || !session || !('status' in session) || session.status !== 'attached' || session.targetKind !== 'game-view' || session.sessionId !== args.sessionId) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Exact attached Game View session required.' });
+        const source = `(${observeRuntimeNode.toString()})(${JSON.stringify(args.nodeReference.id)}, ${Date.now() + timeoutMs})`;
+        const result = await executeGameViewOperation(session.targetId, source, timeoutMs + 2000, false) as ReturnType<typeof observeRuntimeNode>;
+        if (!result || typeof result !== 'object' || Array.isArray(result)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Runtime node observation unavailable.' });
+        if ('code' in result) throw new ToolError({ code: result.code, status: result.code === 'NODE_NOT_FOUND' ? 404 : 409, message: result.message });
+        if (result.nodeUuid !== args.nodeReference.id || typeof result.active !== 'boolean' || typeof result.activeInHierarchy !== 'boolean' || [result.position, result.worldPosition, result.scale].some(v => !v || [v.x, v.y, v.z].some(n => typeof n !== 'number' || !Number.isFinite(n)))) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Runtime node identity/metrics invalid.' });
+        const after = await sessions.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, timeoutMs });
+        if (!after.ready || !after.session || !('status' in after.session) || after.session.status !== 'attached' || after.session.sessionId !== session.sessionId || after.session.targetId !== session.targetId || after.session.createdAt !== session.createdAt) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Session changed during node observation.' });
+        return { sessionId: session.sessionId, targetId: session.targetId, ...result, writes: false as const };
+    }
+
     @utcpTool(
         'runtimePause',
         'Pause the actual Game View runtime and verify its paused state.',

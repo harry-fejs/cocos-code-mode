@@ -1650,6 +1650,8 @@ declare namespace ccp3x {
     function runtimeResume(args?: { sessionId?: string; targetId?: string; timeoutMs?: number }): { success: true };
     function runtimeSetTimeScale(args: { scale: number }): { success: true; scale: number };
     function runtimeGetState(): { paused: boolean; timeScale: number | null; frameCount: number | null };
+    /** Exact attached Game View node read; local position/scale and world position only. No mutation or edit-scene substitution. */
+    function runtimeNodeObserve(args: { sessionId: string; nodeReference: { id: string }; timeoutMs?: number }): { sessionId: string; targetId: string; nodeUuid: string; active: boolean; activeInHierarchy: boolean; position: { x: number; y: number; z: number }; worldPosition: { x: number; y: number; z: number }; scale: { x: number; y: number; z: number }; writes: false };
     /** reset releases a local handle only. It does not stop the preview. */
     function runtimeSessionLifecycle(args: {
         operation: "start" | "attach" | "inspect" | "stop" | "reset" | "list";
