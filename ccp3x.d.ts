@@ -1316,7 +1316,7 @@ declare namespace ccp3x {
     function uiCreateScrollView(args?: { name?: string; parentReference?: InstanceReference }): {
         reference: InstanceReference; viewport: InstanceReference; content: InstanceReference;
     };
-    /** Creates a separate static list window, not runtime virtualization. nextIndex is metadata, not a continuation handle; calling again creates another list. */
+    /** Creates a separate static list window with child-membership readback, not runtime virtualization. nextIndex is metadata, not continuation. UI_LIST_CREATE_PARTIAL retains acknowledged root/item IDs and pending index with retrySafe:false; inspect before another create, no automatic cleanup. */
     function uiVirtualListCreate(args: { name?: string; parentReference?: InstanceReference; itemCount: number; visibleItems: number; startIndex?: number }): {
         reference: InstanceReference; viewport: InstanceReference; content: InstanceReference; itemReferences: InstanceReference[];
         itemCount: number; instantiatedItems: number; startIndex: number; nextIndex: number | null; virtualized: false; runtimeRecyclingBound: false;

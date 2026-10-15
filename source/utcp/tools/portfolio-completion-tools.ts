@@ -54,13 +54,31 @@ export class PortfolioCompletionTools {
         const list = await ui.uiCreateScrollView({ name: args.name ?? 'VirtualList', parentReference: args.parentReference });
         const materialized = Math.min(args.itemCount - startIndex, args.visibleItems);
         const itemReferences: IInstanceReference[] = [];
-        for (let index = 0; index < materialized; index++) {
-            const itemIndex = startIndex + index;
-            const item = await ui.createLabel({ name: `Item-${itemIndex}`, text: String(itemIndex), parentReference: list.content });
-            itemReferences.push(item.reference);
+        let pendingItemIndex: number | null = null;
+        try {
+            for (let index = 0; index < materialized; index++) {
+                const itemIndex = startIndex + index;
+                pendingItemIndex = itemIndex;
+                const item = await ui.createLabel({ name: `Item-${itemIndex}`, text: String(itemIndex), parentReference: list.content });
+                if (!item?.reference || typeof item.reference.id !== 'string' || !item.reference.id
+                    || itemReferences.some(reference => reference.id === item.reference.id)) throw new Error('Label creation returned a missing or duplicate item identity.');
+                itemReferences.push(item.reference);
+                pendingItemIndex = null;
+            }
+            await Editor.Message.request('scene', 'snapshot');
+            const content = await Editor.Message.request('scene', 'query-node', list.content.id) as unknown;
+            if (!content || typeof content !== 'object' || !('children' in content) || !Array.isArray(content.children)) throw new Error('List content children were not confirmed.');
+            const children = content.children.map((child: unknown) => {
+                if (!child || typeof child !== 'object') return undefined;
+                if ('uuid' in child && typeof child.uuid === 'string') return child.uuid;
+                if ('value' in child && child.value && typeof child.value === 'object' && 'uuid' in child.value && typeof child.value.uuid === 'string') return child.value.uuid;
+                return undefined;
+            });
+            if (itemReferences.some(reference => children.filter(id => id === reference.id).length !== 1)) throw new Error('Created list items were not uniquely retained under the bound content.');
+            return { ...list, itemReferences, itemCount: args.itemCount, instantiatedItems: itemReferences.length, startIndex, nextIndex: startIndex + materialized < args.itemCount ? startIndex + materialized : null, virtualized: false, runtimeRecyclingBound: false };
+        } catch (error) {
+            throw new ToolError({ code: 'UI_LIST_CREATE_PARTIAL', status: 502, message: 'List window creation did not complete; inspect the returned root and acknowledged item identities before another create.', details: { reference: list.reference, content: list.content, itemReferences, pendingItemIndex, retrySafe: false, cleanupAttempted: false, cause: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512) }, recovery: 'Inspect the owned list hierarchy and any pending item; do not replay creation or delete unconfirmed nodes automatically.' });
         }
-        await Editor.Message.request('scene', 'snapshot');
-        return { ...list, itemReferences, itemCount: args.itemCount, instantiatedItems: materialized, startIndex, nextIndex: startIndex + materialized < args.itemCount ? startIndex + materialized : null, virtualized: false, runtimeRecyclingBound: false };
     }
 
     @utcpTool('uiFormValidationBind', 'Create a bounded input form and return explicit validation metadata.', {
