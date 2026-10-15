@@ -7,6 +7,7 @@ export interface TimelineInspectOptions {
     nodeReference: IInstanceReference;
     clipReference: IInstanceReference;
     trackBinding?: { nodePath: string; property: string };
+    eventCallback?: string;
     trackOffset?: number;
     trackLimit?: number;
     eventOffset?: number;
@@ -31,6 +32,7 @@ export function timelineInspectBounds(options: TimelineInspectOptions) {
     if (options.expectedRevision !== undefined && (typeof options.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(options.expectedRevision))) fail('INVALID_ARGUMENT', 'expectedRevision must be a lowercase SHA-256 revision.');
     const binding = options.trackBinding;
     if (binding !== undefined && (!timelineRecord(binding) || Object.keys(binding).some(key => !['nodePath', 'property'].includes(key)) || typeof binding.nodePath !== 'string' || binding.nodePath.length > 1024 || typeof binding.property !== 'string' || !binding.property || binding.property.length > 256)) fail('INVALID_ARGUMENT', 'trackBinding requires exact nodePath (empty root allowed) and nonempty property.');
+    if (options.eventCallback !== undefined && (typeof options.eventCallback !== 'string' || !options.eventCallback || options.eventCallback.length > 256)) fail('INVALID_ARGUMENT', 'eventCallback must be an exact nonempty callback name of at most 256 characters.');
     return {
         trackOffset: integer(options.trackOffset, 0, 0, 1000000, 'trackOffset'),
         trackLimit: integer(options.trackLimit, 50, 1, 200, 'trackLimit'),
@@ -152,6 +154,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     const revision = hash.digest('hex');
     if (options.expectedRevision !== undefined && options.expectedRevision !== revision) throw new ToolError({ code: 'TIMELINE_REVISION_CHANGED', status: 409, message: 'Retrieved timeline metadata changed; restart paging. No mutation was dispatched.' });
     const selectedTracks = options.trackBinding ? tracks.filter(track => track.identity.nodePath === options.trackBinding!.nodePath && track.identity.property === options.trackBinding!.property) : tracks;
+    const selectedEvents = options.eventCallback === undefined ? eventRows : eventRows.filter(event => event.callback === options.eventCallback);
     const result = {
         nodeReference: options.nodeReference, clipReference: options.clipReference,
         revision, revisionScope: 'Retrieved timeline projection including all retrieved keyframe indices/times, clip metadata, track bindings/counts/ranges, events and diagnostics. Excludes opaque keyframe values, unretrieved native tracks, callback binding and runtime state. Not an atomic scene snapshot.',
@@ -163,9 +166,10 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         sourceComplete: sourceComplete && supported, complete: false, truncated: false,
         totalTracks, retrievedTracks: curves?.length ?? null, totalEvents: events?.length ?? null, inspectedKeyframes: keyframeCount,
         matchedTracks: curves ? selectedTracks.length : null, trackBinding: options.trackBinding ? { ...options.trackBinding } : null,
+        matchedEvents: events ? selectedEvents.length : null, eventCallback: options.eventCallback ?? null,
         trackOffset: bounds.trackOffset, trackLimit: bounds.trackLimit, eventOffset: bounds.eventOffset, eventLimit: bounds.eventLimit,
         nextTrackOffset: null as number | null, nextEventOffset: null as number | null,
-        tracks: selectedTracks.slice(bounds.trackOffset, bounds.trackOffset + bounds.trackLimit), events: eventRows.slice(bounds.eventOffset, bounds.eventOffset + bounds.eventLimit),
+        tracks: selectedTracks.slice(bounds.trackOffset, bounds.trackOffset + bounds.trackLimit), events: selectedEvents.slice(bounds.eventOffset, bounds.eventOffset + bounds.eventLimit),
         diagnostics, diagnosticCount, diagnosticsTruncated: diagnosticCount > diagnostics.length,
         runtimeVerified: false as const, sceneSaved: false as const, callbackExistenceVerified: false as const,
     };
@@ -175,7 +179,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     const pagination = (): void => {
         const trackEnd = bounds.trackOffset + result.tracks.length, eventEnd = bounds.eventOffset + result.events.length;
         result.nextTrackOffset = trackEnd < selectedTracks.length ? trackEnd : null;
-        result.nextEventOffset = eventEnd < eventRows.length ? eventEnd : null;
+        result.nextEventOffset = eventEnd < selectedEvents.length ? eventEnd : null;
         result.complete = result.sourceComplete && bounds.trackOffset === 0 && bounds.eventOffset === 0 && bounds.keyframeOffset === 0 && selectedTracks.every(track => track.nextKeyframeOffset === null) && result.nextTrackOffset === null && result.nextEventOffset === null && !result.diagnosticsTruncated;
         result.truncated = !sourceComplete || bounds.trackOffset > 0 || bounds.eventOffset > 0 || bounds.keyframeOffset > 0 || selectedTracks.some(track => track.nextKeyframeOffset !== null) || result.nextTrackOffset !== null || result.nextEventOffset !== null || result.diagnosticsTruncated;
     };
@@ -186,6 +190,6 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         else result.tracks.pop();
         pagination();
     }
-    if ((selectedTracks.length > bounds.trackOffset && !result.tracks.length) || (eventRows.length > bounds.eventOffset && !result.events.length)) fail('TIMELINE_RECORD_TOO_LARGE', 'The next timeline record cannot fit with the response envelope; increase maxBytes.', { maxBytes: bounds.maxBytes });
+    if ((selectedTracks.length > bounds.trackOffset && !result.tracks.length) || (selectedEvents.length > bounds.eventOffset && !result.events.length)) fail('TIMELINE_RECORD_TOO_LARGE', 'The next timeline record cannot fit with the response envelope; increase maxBytes.', { maxBytes: bounds.maxBytes });
     return result;
 }
