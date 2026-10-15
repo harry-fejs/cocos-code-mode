@@ -526,13 +526,15 @@ export class RuntimeSessionTools {
                     items: {
                         type: 'object', additionalProperties: false,
                         properties: {
-                            operation: { type: 'string', enum: ['wait', 'assert', 'observe', 'audioObserve', 'audioAssert', 'pause', 'resume', 'step'] },
+                            operation: { type: 'string', enum: ['wait', 'assert', 'observe', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'] },
                             paused: { type: 'boolean' },
                             minFrameCount: { type: 'integer', minimum: 0, maximum: 1000000000 },
                             timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 },
                             nodeReference: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['id'] },
                             playing: { type: 'boolean' },
                             loaded: { type: 'boolean' },
+                            audioOperation: { type: 'string', enum: ['play', 'pause', 'stop', 'seek'] },
+                            time: { type: 'number', minimum: 0 },
                         },
                         required: ['operation'],
                     },
@@ -548,7 +550,7 @@ export class RuntimeSessionTools {
         'POST',
         ['runtime', 'scenario', 'run', 'steps'],
     )
-    async runtimeScenarioRun(args: { sessionId: string, steps: Array<{ operation: 'wait' | 'assert' | 'observe' | 'audioObserve' | 'audioAssert' | 'pause' | 'resume' | 'step', nodeReference?: { id: string }, playing?: boolean, loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, outcomes: Array<Record<string, unknown>> }> {
+    async runtimeScenarioRun(args: { sessionId: string, steps: Array<{ operation: 'wait' | 'assert' | 'observe' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', nodeReference?: { id: string }, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, outcomes: Array<Record<string, unknown>> }> {
         if (!Array.isArray(args.steps) || args.steps.length === 0 || args.steps.length > 16) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runtimeScenarioRun requires 1-16 typed steps.' });
         if (typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded runtime sessionId is required.' });
         const totalTimeoutMs = args.totalTimeoutMs ?? 30000;
@@ -556,14 +558,17 @@ export class RuntimeSessionTools {
         const scenarioDeadline = Date.now() + totalTimeoutMs;
         const steps = Array.from(args.steps, (step, index) => {
             if (!step || typeof step !== 'object' || Array.isArray(step)
-                || Object.keys(step).some(key => !['operation', 'nodeReference', 'playing', 'loaded', 'paused', 'minFrameCount', 'timeoutMs'].includes(key))
-                || !['wait', 'assert', 'observe', 'audioObserve', 'audioAssert', 'pause', 'resume', 'step'].includes(step.operation)
+                || Object.keys(step).some(key => !['operation', 'nodeReference', 'audioOperation', 'time', 'playing', 'loaded', 'paused', 'minFrameCount', 'timeoutMs'].includes(key))
+                || !['wait', 'assert', 'observe', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'].includes(step.operation)
                 || ['wait', 'assert'].includes(step.operation) && step.paused === undefined && step.minFrameCount === undefined
-                || ['observe', 'audioObserve', 'audioAssert', 'pause', 'resume', 'step'].includes(step.operation) && (step.paused !== undefined || step.minFrameCount !== undefined)
-                || (step.operation === 'audioAssert'
+                || ['observe', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'].includes(step.operation) && (step.paused !== undefined || step.minFrameCount !== undefined)
+                || (step.operation === 'audioControl'
+                    ? !step.audioOperation || !['play', 'pause', 'stop', 'seek'].includes(step.audioOperation) || (step.audioOperation === 'seek' ? !Number.isFinite(step.time) || step.time! < 0 : step.time !== undefined) || step.timeoutMs !== undefined && step.timeoutMs > 5000
+                    : step.audioOperation !== undefined || step.time !== undefined)
+                || (['audioAssert', 'audioWait'].includes(step.operation)
                     ? step.playing === undefined && step.loaded === undefined || step.playing !== undefined && typeof step.playing !== 'boolean' || step.loaded !== undefined && typeof step.loaded !== 'boolean'
                     : step.playing !== undefined || step.loaded !== undefined)
-                || (['audioObserve', 'audioAssert'].includes(step.operation)
+                || (['audioObserve', 'audioAssert', 'audioControl', 'audioWait'].includes(step.operation)
                     ? !step.nodeReference || typeof step.nodeReference !== 'object' || Array.isArray(step.nodeReference) || Object.keys(step.nodeReference).some(key => key !== 'id') || typeof step.nodeReference.id !== 'string' || !step.nodeReference.id.trim() || step.nodeReference.id.length > 256
                     : step.nodeReference !== undefined)
                 || step.paused !== undefined && typeof step.paused !== 'boolean'
@@ -589,9 +594,15 @@ export class RuntimeSessionTools {
                         ? this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount })
                         : step.operation === 'observe'
                             ? this.runtimeStateObserve({ sessionId: args.sessionId })
-                            : step.operation === 'audioObserve' || step.operation === 'audioAssert'
+                            : step.operation === 'audioObserve' || step.operation === 'audioAssert' || step.operation === 'audioControl' || step.operation === 'audioWait'
                                 ? import('./audio-playback-tools').then(async ({ AudioPlaybackTools }) => {
-                                    const observation = await new AudioPlaybackTools().audioPlaybackObserve({ sessionId: args.sessionId, nodeReference: step.nodeReference! });
+                                    const audio = new AudioPlaybackTools();
+                                    const target = { sessionId: args.sessionId, nodeReference: step.nodeReference! };
+                                    const timeoutMs = Math.min(step.timeoutMs ?? (step.operation === 'audioControl' ? 5000 : 10000), stepDeadline - Date.now());
+                                    if (Date.now() >= stepDeadline || (step.operation === 'audioControl' || step.operation === 'audioWait') && timeoutMs < 100) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Audio step deadline elapsed before dispatch; no audio operation sent.' });
+                                    if (step.operation === 'audioControl') return audio.audioPlaybackControl({ ...target, operation: step.audioOperation!, time: step.time, timeoutMs });
+                                    if (step.operation === 'audioWait') return audio.audioPlaybackWaitForState({ ...target, playing: step.playing, loaded: step.loaded, timeoutMs });
+                                    const observation = await audio.audioPlaybackObserve(target);
                                     if (step.operation !== 'audioAssert') return observation;
                                     return { ...observation, passed: (step.playing === undefined || observation.state.playing === step.playing) && (step.loaded === undefined || observation.state.loaded === step.loaded) };
                                 })
