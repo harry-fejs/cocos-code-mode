@@ -407,6 +407,7 @@ export class SceneTools {
         const cameras: Array<Record<string, unknown>> = [];
         let total = 0;
         let inspectedComponents = 0;
+        const cameraIds = new Set<string>();
         for (const row of cameraSceneNodes(tree)) {
             const nodeId = typeof row.uuid === 'string' ? row.uuid : undefined;
             if (nodeId) {
@@ -418,12 +419,15 @@ export class SceneTools {
                 if (inspectedComponents > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Camera inventory exceeds the component inspection budget.' });
                 for (const component of components) {
                     if (!isCameraComponent(component)) continue;
+                    const reference = cameraReference(component);
+                    if (cameraIds.has(reference.id)) throw new ToolError({ code: 'CAMERA_TARGET_AMBIGUOUS', status: 409, message: 'Camera inventory contains a repeated component UUID.' });
+                    cameraIds.add(reference.id);
                     total += 1;
                     if (cameras.length >= limit) continue;
                     cameras.push({
                         nodeReference: { id: nodeId, type: 'cc.Node' },
                         name: typeof row.name === 'string' ? row.name : unwrapSceneValue(row.name),
-                        cameraReference: cameraReference(component),
+                        cameraReference: reference,
                         priority: cameraComponentField(component, 'priority'),
                         visibility: cameraComponentField(component, 'visibility'),
                         projection: cameraComponentField(component, 'projection'),
