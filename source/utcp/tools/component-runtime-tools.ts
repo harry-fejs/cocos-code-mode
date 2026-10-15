@@ -144,6 +144,7 @@ export class ComponentRuntimeTools {
         validateSkeletal({ ...args, timeoutMs: 1000 }, 'observe');
         args = { ...args, nodeReference: { id: args.nodeReference!.id } };
         const deadline = Date.now() + timeoutMs; let observations = 0;
+        let targetId: string | undefined;
         for (;;) {
             const remaining = deadline - Date.now();
             if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state observation deadline expired.' });
@@ -152,6 +153,9 @@ export class ComponentRuntimeTools {
             try { result = await Promise.race([executeComponentOperation(operation), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read exceeded caller deadline; no playback mutation dispatched.' })), remaining); })]); }
             finally { clearTimeout(timer); }
             if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read completed after caller deadline; no playback mutation dispatched.' });
+            if (typeof result.targetId !== 'string' || !result.targetId) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Animation observation target identity is unavailable.' });
+            if (targetId !== undefined && result.targetId !== targetId) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Animation target changed during state wait.' });
+            targetId = result.targetId;
             const state = result.state as { playing?: unknown; paused?: unknown; speed?: unknown; duration?: unknown; time?: unknown } | undefined;
             if (!state || typeof state.playing !== 'boolean' || typeof state.paused !== 'boolean') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Invalid skeletal state observation.' });
             if ((args.minTime !== undefined || args.maxTime !== undefined) && (typeof state.time !== 'number' || !Number.isFinite(state.time))) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Skeletal clip time is unavailable.' });
