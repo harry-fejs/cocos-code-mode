@@ -3,6 +3,7 @@
 ## Unreleased — Creator 3.7 follow-through
 
 - Compose exact node/component/clip animation observe/assert/wait checkpoints in runtime scenarios with whole-input preflight, finite deadlines, cancellation and retained pending ownership. Reuses existing runtime adapters; no playback replay or new live qualification.
+- Compose exact-clip animation play/pause/resume/stop actions with scenario waits/assertions using the existing finite adapter. Whole-input preflight rejects invalid later actions; unknown dispatched outcomes stop without replay or rollback.
 - Add authoritative build preflight, redacted registered-toolchain inspection and guarded terminal native task options updates. Native task updates explicitly do not persist history or dispatch builds.
 - Add bounded project-code tween create/inspect/static validation with explicit new-source ownership and runtime-unavailable separation; no native tween asset or automatic target binding.
 - Reconcile duplicate workflow overrides, exact source routes and current hashes while preserving approved historical denominator identities separately from reproducible semantic hashes. Current coverage is not fresh live qualification.
