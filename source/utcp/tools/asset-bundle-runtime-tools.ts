@@ -117,8 +117,10 @@ export class AssetBundleRuntimeTools {
             if (args.resource?.expectedUuid !== undefined && resource?.uuid !== args.resource.expectedUuid) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Runtime resource UUID did not match the caller precondition.' });
             const after = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, timeoutMs });
             const afterSession = after.session;
-            if (!after.ready || !afterSession || !('status' in afterSession) || !('targetId' in afterSession) || afterSession.status !== 'attached' || afterSession.sessionId !== session.sessionId || afterSession.targetId !== session.targetId || afterSession.targetKind !== session.targetKind) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'The attached Game View identity changed during bundle validation.' });
-            return { ...result, success: true, sessionId: session.sessionId, targetId: session.targetId, bundlePath: args.bundlePath, artifactRevision };
+            if (after.success !== true || !after.ready || !afterSession || !('status' in afterSession) || !('targetId' in afterSession) || afterSession.status !== 'attached' || afterSession.sessionId !== session.sessionId || afterSession.targetId !== session.targetId || afterSession.targetKind !== session.targetKind) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'The attached Game View identity changed during bundle validation.' });
+            return { success: true, sessionId: session.sessionId, targetId: session.targetId, bundlePath: args.bundlePath, bundleName: artifact.name, artifactRevision,
+                loaded: true, identityVerified: true, resource: resource === null ? null : { path: resource.path, type: resource.type, uuid: resource.uuid, loaded: true },
+                released: true, removed: true, absent: true, unrelatedPreserved: true };
         } finally { await served.close(); }
     }
 }
