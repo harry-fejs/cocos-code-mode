@@ -94,7 +94,7 @@ function throwRuntimeResult(result: unknown): asserts result is AudioPlaybackSuc
     const code = typeof failure?.code === 'string' ? failure.code : 'AUDIO_OPERATION_FAILED';
     const status = typeof failure?.status === 'number' ? failure.status : 502;
     const message = typeof failure?.message === 'string' ? failure.message : 'Game View audio operation failed.';
-    const details = failure && typeof failure.state === 'object' && failure.state !== null ? { state: failure.state, ...(failure.pendingMayComplete === true ? { pendingMayComplete: true } : {}) } : undefined;
+    const details = failure ? { ...(typeof failure.state === 'object' && failure.state !== null ? { state: failure.state } : {}), ...(failure.pendingMayComplete === true ? { pendingMayComplete: true, mutationDispatched: true, retrySafe: false } : {}) } : undefined;
     throw new ToolError({ code, status, message, details, recovery: failure?.pendingMayComplete === true ? 'Observe the bound audio source before retrying; the prior operation may still complete.' : undefined });
 }
 
