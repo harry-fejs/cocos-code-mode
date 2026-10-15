@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve combined in out invariant annotations on generic signature/class constructor type parameters instead of collapsing them to in; individual in/out/null metadata remains compatible.
 - Snapshot validated runtimeScenarioAssert arguments before readiness observation so caller changes to paused/frame bounds cannot grant false passes. Original mismatch issues/state retained; no runtime mutation/replay.
 - Grant editModeDeclared only to bare decorators or exact single true arguments; dynamic/false/empty/invalid call arguments are not evaluated or promoted as proven enable declarations.
 - Snapshot validated runtimeWaitForState arguments before asynchronous observations so caller changes to paused/minFrameCount/maxFrameCount cannot relax the original wait condition. Shared deadline/session continuity checks remain; no mutation/replay.
