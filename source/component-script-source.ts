@@ -5,7 +5,7 @@ import { ToolError } from './utcp/tool-error';
 
 export const COMPONENT_PROPERTY_TYPES = ['enum', 'integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Quat', 'Color', 'Node', 'Label', 'Sprite', 'Button', 'EditBox', 'ScrollView', 'Slider', 'Toggle', 'ProgressBar', 'AudioSource', 'Animation', 'SkeletalAnimation', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
-export type ComponentPropertyDescriptor = { tooltip?: string; displayName?: string } & (
+export type ComponentPropertyDescriptor = { tooltip?: string; displayName?: string; group?: string } & (
     | { name: string; type: 'number'; array?: false; default?: number; range?: { min: number; max: number; step?: number } }
     | { name: string; type: 'integer'; array?: false; default?: number; range?: { min: number; max: number; step?: number } }
     | { name: string; type: 'enum'; array?: false; entries: Array<{ name: string; value: number }>; default: number }
@@ -51,7 +51,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
     const names = new Set<string>();
     const fields: string[] = [];
     for (const row of rows) {
-        assertComponentScriptInput(row, ['name', 'type', 'array', 'default', 'entries', 'tooltip', 'displayName', 'range']);
+        assertComponentScriptInput(row, ['name', 'type', 'array', 'default', 'entries', 'tooltip', 'displayName', 'range', 'group']);
         if (!identifier(row.name) || COMPONENT_MEMBERS[row.name] === true || names.has(row.name)) invalid('Property names must be unique safe identifiers and must not shadow Component members or lifecycle methods.');
         if (typeof row.type !== 'string' || !COMPONENT_PROPERTY_TYPES.includes(row.type as ComponentPropertyType)) invalid('Unsupported property type.');
         const type = row.type as ComponentPropertyType;
@@ -59,7 +59,8 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         if (row.array !== undefined && typeof row.array !== 'boolean') invalid('array must be a boolean when provided.');
         if (row.tooltip !== undefined && (typeof row.tooltip !== 'string' || row.tooltip.length > 1024)) invalid('tooltip must be a string of at most 1024 characters.');
         if (row.displayName !== undefined && (typeof row.displayName !== 'string' || row.displayName.length > 256)) invalid('displayName must be a string of at most 256 characters.');
-        const tooltip = (row.tooltip === undefined ? '' : `, tooltip: ${literal(row.tooltip as string)}`) + (row.displayName === undefined ? '' : `, displayName: ${literal(row.displayName as string)}`);
+        if (row.group !== undefined && (typeof row.group !== 'string' || !row.group.trim() || row.group.length > 256)) invalid('group must be a nonblank string of at most 256 characters.');
+        const tooltip = (row.tooltip === undefined ? '' : `, tooltip: ${literal(row.tooltip as string)}`) + (row.displayName === undefined ? '' : `, displayName: ${literal(row.displayName as string)}`) + (row.group === undefined ? '' : `, group: ${literal(row.group as string)}`);
         let numericOptions = '';
         if (row.range !== undefined) {
             if (row.array === true || type !== 'number' && type !== 'integer') invalid('range is supported only on scalar number/integer fields.');
