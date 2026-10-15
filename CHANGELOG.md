@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Compose exact parentUuid predicates in scenario nodeWait/nodeAssert with null-root versus omitted semantics. Full-input preflight rejects invalid/self parents before dispatch; mismatch retains snapshot and stops later cues, no reparent writes.
 - Include nested call/construct/index signature annotation containers in bounded reference scans, preserving missing parameter/result/index-value names without changing semantic-adapter status.
 - Scan nested property/parameter/method/accessor/type-parameter annotation containers under the existing256-node budget, retaining unresolved reference provenance inside DTO and callback declarations.
 - Add exact parentUuid predicates to runtime node waits, including explicit null root versus omitted condition. Refuse self/invalid identities and unavailable parent metadata; no reparent writes or detached-node success inference.
