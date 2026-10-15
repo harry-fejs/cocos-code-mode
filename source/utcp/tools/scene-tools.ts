@@ -480,8 +480,15 @@ export class SceneTools {
         }
         const nodeId = foundNode && typeof foundNode.uuid === 'string' ? foundNode.uuid : undefined;
         if (!nodeId || !foundComponent || componentIndex < 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Camera ${args.reference.id} was not found in the open scene.` });
+        const checkedNodeComponents = (node: unknown): unknown[] => {
+            if (!node || typeof node !== 'object' || Array.isArray(node)
+                || unwrapSceneValue((node as Record<string, unknown>).uuid) !== nodeId) throw new ToolError({ code: 'CAMERA_TARGET_CHANGED', status: 409, message: 'Camera node read-back does not match the requested UUID.' });
+            const record = node as Record<string, unknown>;
+            if (!Array.isArray(record.__comps__) && !Array.isArray(record.components)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Camera node read-back requires a component array.' });
+            return cameraComponentsFromNode(node);
+        };
         const serializedNode = await Editor.Message.request('scene', 'query-node', nodeId);
-        const serializedComponents = cameraComponentsFromNode(serializedNode);
+        const serializedComponents = checkedNodeComponents(serializedNode);
         const requireUniqueCamera = (components: unknown[]) => {
             if (components.length > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Camera node exceeds the component inspection budget.' });
             let index = -1;
@@ -503,14 +510,14 @@ export class SceneTools {
                 const property = applied[index];
                 try {
                     const currentNode = await Editor.Message.request('scene', 'query-node', nodeId);
-                    const components = cameraComponentsFromNode(currentNode);
+                    const components = checkedNodeComponents(currentNode);
                     if (requireUniqueCamera(components) !== componentIndex) throw new Error('Camera identity/index changed before restoration.');
                     const observed = cameraComponentField(components[componentIndex], property);
                     if (JSON.stringify(observed) === JSON.stringify(previous.get(property))) continue;
                     if (JSON.stringify(observed) !== JSON.stringify(args.properties[property])) throw new Error('Camera value changed outside this update; restoration refused.');
                     await Editor.Message.request('scene', 'set-property', { uuid: nodeId, path: `__comps__.${componentIndex}.${property}`, dump: { value: previous.get(property) as IPropertyValueType, type: typeof previous.get(property) === 'number' ? 'Number' : typeof previous.get(property) === 'boolean' ? 'Boolean' : 'String' } });
                     const restoredNode = await Editor.Message.request('scene', 'query-node', nodeId);
-                    const restoredComponents = cameraComponentsFromNode(restoredNode);
+                    const restoredComponents = checkedNodeComponents(restoredNode);
                     const restoredIndex = requireUniqueCamera(restoredComponents);
                     if (restoredIndex !== componentIndex) throw new Error('Camera identity/index changed after restoration.');
                     if (JSON.stringify(cameraComponentField(restoredComponents[restoredIndex], property)) !== JSON.stringify(previous.get(property))) failures.push(property);
@@ -521,7 +528,7 @@ export class SceneTools {
         try {
             for (const [property, value] of Object.entries(args.properties)) {
                 const currentNode = await Editor.Message.request('scene', 'query-node', nodeId);
-                const currentComponents = cameraComponentsFromNode(currentNode);
+                const currentComponents = checkedNodeComponents(currentNode);
                 if (requireUniqueCamera(currentComponents) !== componentIndex) throw new ToolError({ code: 'CAMERA_TARGET_CHANGED', status: 409, message: 'Camera serialized component index changed before property dispatch.' });
                 previous.set(property, cameraComponentField(currentComponents[componentIndex], property));
                 const propertyValue = value as IPropertyValueType;
@@ -533,7 +540,7 @@ export class SceneTools {
             }
             await Editor.Message.request('scene', 'snapshot');
             const verifiedNode = await Editor.Message.request('scene', 'query-node', nodeId);
-            const verifiedComponents = cameraComponentsFromNode(verifiedNode);
+            const verifiedComponents = checkedNodeComponents(verifiedNode);
             const verified = verifiedComponents[requireUniqueCamera(verifiedComponents)];
             if (!verified || Object.entries(args.properties).some(([property, value]) => JSON.stringify(cameraComponentField(verified, property)) !== JSON.stringify(value))) throw new ToolError({ code: 'CAMERA_PROPERTY_UPDATE_UNCONFIRMED', status: 502, message: 'Camera property mutation was not confirmed by read-back.' });
             return { updated: true, reference: cameraReference(verified) };
