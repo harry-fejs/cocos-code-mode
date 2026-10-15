@@ -111,8 +111,9 @@ function typeInfo(checker, type, node) {
       const enumDeclarations = symbol.declarations?.filter(ts.isEnumDeclaration) || [];
       const enumValues = enumDeclarations.length ? enumDeclarations.flatMap(item => item.members.map(member => {
         const value = checker.getConstantValue(member);
-        if (value === undefined) unresolved.push({ kind: 'enum-value', reference: `${symbol.name}.${member.name.getText()}` });
-        return { name: member.name.getText(), value: value ?? compact(member.initializer) };
+        const resolved = value !== undefined && (typeof value !== 'number' || Number.isFinite(value));
+        if (!resolved) unresolved.push({ kind: 'enum-value', reference: `${symbol.name}.${member.name.getText()}` });
+        return { name: member.name.getText(), value: resolved ? value : compact(member.initializer) };
       })) : null;
       references.set(symbol.name, { name: symbol.name, resolution: symbol.declarations?.length ? 'resolved' : 'unknown',
         kind: enumDeclarations.length ? 'enum' : declaration ? ts.isInterfaceDeclaration(declaration) ? 'interface' : 'type-alias' : 'type-reference',

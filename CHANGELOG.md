@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Diagnose nonfinite compiler enum constants as unresolved and retain initializer provenance instead of serializing Infinity/NaN into misleading JSON null values.
 - Emit enum-value unresolved diagnostics for members without compiler constant values; retain initializer text only as provenance, never as proof of an evaluated enum value.
 - Add observed siblingIndex to runtime node snapshots (null for root), rechecking parent membership index after metric reads. This is hierarchy order only, not render order or reorder mutation; hierarchyRevision continues to cover parent/direct children, not sibling position.
 - Preserve members from every compiler-merged enum declaration rather than only the first declaration, retaining compiler constant values and declaration order.
