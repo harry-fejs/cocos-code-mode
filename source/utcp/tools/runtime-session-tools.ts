@@ -33,6 +33,7 @@ const store = new RuntimeSessionStore();
 const RUNTIME_STATE_TIMEOUT_MS = 60_000;
 let previewMutationPending = false;
 let unconfirmedPreviewMutation: { expected: PreviewState['state'], targetId?: string, minFrameCount?: number, requestSettled: boolean } | undefined;
+const activeScenarios = new Set<string>();
 
 async function withRuntimeStateTimeout<T>(promise: Promise<T>, deadline = Date.now() + RUNTIME_STATE_TIMEOUT_MS): Promise<T> {
     let timer: NodeJS.Timeout | undefined;
@@ -561,6 +562,10 @@ export class RuntimeSessionTools {
                 || step.timeoutMs !== undefined && (!Number.isInteger(step.timeoutMs) || step.timeoutMs < 100 || step.timeoutMs > 10000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Invalid runtime scenario step ${index}.` });
             return { ...step };
         });
+        if (activeScenarios.has(args.sessionId)) throw new ToolError({ code: 'RUNTIME_SCENARIO_BUSY', status: 409, message: 'A scenario or its timed-out request still owns this session; no steps dispatched.' });
+        activeScenarios.add(args.sessionId);
+        let inFlight: Promise<unknown> | undefined;
+        try {
         const outcomes: Array<Record<string, unknown>> = [];
         for (let index = 0; index < steps.length; index++) {
             const step = steps[index];
@@ -576,7 +581,9 @@ export class RuntimeSessionTools {
                         : step.operation === 'observe'
                             ? this.runtimeStateObserve({ sessionId: args.sessionId })
                             : this.previewControl({ sessionId: args.sessionId, operation: step.operation, timeoutMs: Math.min(step.timeoutMs ?? 10000, remaining) });
+                inFlight = pending;
                 const result: Record<string, unknown> = await withRuntimeStateTimeout<Record<string, unknown>>(pending as Promise<Record<string, unknown>>, stepDeadline);
+                inFlight = undefined;
                 if (Date.now() >= stepDeadline) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Scenario step completed after its deadline; inspect before retrying any action.' });
                 outcomes.push({ index, operation: step.operation, result });
                 if ('passed' in result && result.passed !== true) throw new ToolError({ code: 'RUNTIME_SCENARIO_ASSERTION_FAILED', status: 409, message: `Runtime scenario assertion failed at step ${index}.` });
@@ -588,6 +595,14 @@ export class RuntimeSessionTools {
             }
         }
         return { success: true, sessionId: args.sessionId, outcomes };
+        } finally {
+            if (inFlight) {
+                // Timeout ends the caller wait, not ownership of the outstanding request.
+                void inFlight.then(() => activeScenarios.delete(args.sessionId), () => activeScenarios.delete(args.sessionId));
+            } else {
+                activeScenarios.delete(args.sessionId);
+            }
+        }
     }
     @utcpTool(
         'runtimeScenarioAssert',
