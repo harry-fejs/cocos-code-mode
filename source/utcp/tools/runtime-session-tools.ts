@@ -447,6 +447,7 @@ export class RuntimeSessionTools {
                 sessionId: { type: 'string', minLength: 1, maxLength: 64 },
                 paused: { type: 'boolean' },
                 minFrameCount: { type: 'integer', minimum: 0, maximum: 1000000000 },
+                maxFrameCount: { type: 'integer', minimum: 0, maximum: 1000000000 },
                 timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 },
             },
             required: ['sessionId'],
@@ -459,8 +460,9 @@ export class RuntimeSessionTools {
         'POST',
         ['runtime', 'state', 'wait', 'condition'],
     )
-    async runtimeWaitForState(args: { sessionId: string, paused?: boolean, minFrameCount?: number, timeoutMs?: number }): Promise<{ success: true, sessionId: string, state: RuntimeState, elapsedMs: number }> {
-        if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64 || args.paused === undefined && args.minFrameCount === undefined
+    async runtimeWaitForState(args: { sessionId: string, paused?: boolean, maxFrameCount?: number; minFrameCount?: number, timeoutMs?: number }): Promise<{ success: true, sessionId: string, state: RuntimeState, elapsedMs: number }> {
+        if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64 || args.paused === undefined && args.minFrameCount === undefined && args.maxFrameCount === undefined
+            || args.maxFrameCount !== undefined && (!Number.isSafeInteger(args.maxFrameCount) || args.maxFrameCount < 0 || args.maxFrameCount > 1000000000 || args.minFrameCount !== undefined && args.minFrameCount > args.maxFrameCount)
             || args.paused !== undefined && typeof args.paused !== 'boolean' || args.minFrameCount !== undefined && (!Number.isSafeInteger(args.minFrameCount) || args.minFrameCount < 0 || args.minFrameCount > 1000000000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide exact session and typed paused/minFrameCount wait predicates.' });
         let session: RuntimeSession;
         try {
@@ -484,8 +486,8 @@ export class RuntimeSessionTools {
             return observed.state;
         };
         let state = await observe();
-        while ((args.paused !== undefined && state.paused !== args.paused) || (args.minFrameCount !== undefined && (state.frameCount === null || state.frameCount < args.minFrameCount))) {
-            if (args.minFrameCount !== undefined && state.frameCount === null) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Game-view frame count is unavailable.' });
+        while ((args.paused !== undefined && state.paused !== args.paused) || (args.minFrameCount !== undefined && (state.frameCount === null || state.frameCount < args.minFrameCount)) || (args.maxFrameCount !== undefined && (state.frameCount === null || state.frameCount > args.maxFrameCount))) {
+            if ((args.minFrameCount !== undefined || args.maxFrameCount !== undefined) && state.frameCount === null) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Game-view frame count is unavailable.' });
             if (Date.now() - started >= timeoutMs) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Runtime state did not match the requested condition before timeout.', recovery: 'Start a verified game-view preview or increase timeoutMs within the bound.', details: { state, elapsedMs: Date.now() - started } });
             await withRuntimeStateTimeout(new Promise<void>((resolve) => setTimeout(resolve, 50)), deadline);
             state = await observe();
@@ -557,6 +559,7 @@ export class RuntimeSessionTools {
                             rotation: { type: 'object', additionalProperties: false, properties: { space: { type: 'string', enum: ['local', 'world'] }, x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' }, w: { type: 'number' }, toleranceDegrees: { type: 'number', minimum: 0, maximum: 180 } }, required: ['space', 'x', 'y', 'z', 'w', 'toleranceDegrees'], description: 'nodeAssert/nodeWait only; finite nonzero quaternion, sign-invariant angular comparison.' },
                             scale: { type: 'object', additionalProperties: false, properties: { x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' }, tolerance: { type: 'number', minimum: 0, maximum: 1000000 } }, required: ['x', 'y', 'z', 'tolerance'], description: 'nodeAssert/nodeWait local scale only; inclusive per-axis tolerance.' },
                             minFrameCount: { type: 'integer', minimum: 0, maximum: 1000000000 },
+                maxFrameCount: { type: 'integer', minimum: 0, maximum: 1000000000 },
                             timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 },
                             durationMs: { type: 'integer', minimum: 0, maximum: 5000, description: 'Wall-clock cue spacing only; independent of game pause/time-scale, never completion evidence.' },
                             nodeReference: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['id'] },
@@ -595,7 +598,7 @@ export class RuntimeSessionTools {
         'POST',
         ['runtime', 'scenario', 'run', 'steps'],
     )
-    async runtimeScenarioRun(args: { sessionId: string, runId?: string, steps: Array<{ operation: 'nodeObserve' | 'nodeAssert' | 'nodeWait' | 'graphObserve' | 'graphAssert' | 'graphSet' | 'graphWait' | 'delay' | 'wait' | 'assert' | 'observe' | 'particleControl' | 'particleObserve' | 'particleAssert' | 'particleWait' | 'animationControl' | 'animationObserve' | 'animationAssert' | 'animationWait' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', expectedComponentUuid?: string; expectedClipUuid?: string; siblingIndex?: number | null; minChildCount?: number; maxChildCount?: number; parentUuid?: string | null; scale?: { x: number; y: number; z: number; tolerance: number }; rotation?: { space: 'local' | 'world'; x: number; y: number; z: number; w: number; toleranceDegrees: number }; position?: { space: 'local' | 'world', x: number; y: number; z: number; tolerance: number }; active?: boolean, activeInHierarchy?: boolean, graphUuid?: string, variableName?: string, variableType?: 'float' | 'integer' | 'boolean', expectedValue?: number | boolean, variableValue?: number | boolean, durationMs?: number, nodeReference?: { id: string }, animationOperation?: 'play' | 'pause' | 'resume' | 'stop', particleOperation?: 'play' | 'stop' | 'clear', minParticleCount?: number, maxParticleCount?: number, componentId?: string, clipName?: string, clipUuid?: string, playbackState?: 'init' | 'playing' | 'paused' | 'stopped' | 'interrupted', maxTime?: number; minTime?: number, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, minVolume?: number; maxVolume?: number; loop?: boolean; loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, runId: string, outcomes: Array<Record<string, unknown>> }> {
+    async runtimeScenarioRun(args: { sessionId: string, runId?: string, steps: Array<{ operation: 'nodeObserve' | 'nodeAssert' | 'nodeWait' | 'graphObserve' | 'graphAssert' | 'graphSet' | 'graphWait' | 'delay' | 'wait' | 'assert' | 'observe' | 'particleControl' | 'particleObserve' | 'particleAssert' | 'particleWait' | 'animationControl' | 'animationObserve' | 'animationAssert' | 'animationWait' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', expectedComponentUuid?: string; expectedClipUuid?: string; siblingIndex?: number | null; minChildCount?: number; maxChildCount?: number; parentUuid?: string | null; scale?: { x: number; y: number; z: number; tolerance: number }; rotation?: { space: 'local' | 'world'; x: number; y: number; z: number; w: number; toleranceDegrees: number }; position?: { space: 'local' | 'world', x: number; y: number; z: number; tolerance: number }; active?: boolean, activeInHierarchy?: boolean, graphUuid?: string, variableName?: string, variableType?: 'float' | 'integer' | 'boolean', expectedValue?: number | boolean, variableValue?: number | boolean, durationMs?: number, nodeReference?: { id: string }, animationOperation?: 'play' | 'pause' | 'resume' | 'stop', particleOperation?: 'play' | 'stop' | 'clear', minParticleCount?: number, maxParticleCount?: number, componentId?: string, clipName?: string, clipUuid?: string, playbackState?: 'init' | 'playing' | 'paused' | 'stopped' | 'interrupted', maxTime?: number; minTime?: number, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, minVolume?: number; maxVolume?: number; loop?: boolean; loaded?: boolean, paused?: boolean, maxFrameCount?: number; minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, runId: string, outcomes: Array<Record<string, unknown>> }> {
         if (!Array.isArray(args.steps) || args.steps.length === 0 || args.steps.length > 16) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runtimeScenarioRun requires 1-16 typed steps.' });
         if (typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded runtime sessionId is required.' });
         if (args.runId !== undefined && (typeof args.runId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(args.runId))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runId must be a fresh bounded alphanumeric/hyphen/underscore identity.' });
@@ -665,10 +668,10 @@ export class RuntimeSessionTools {
                 return { ...step, nodeReference: { id: step.nodeReference!.id } };
             }
             if (!step || typeof step !== 'object' || Array.isArray(step)
-                || Object.keys(step).some(key => !['operation', 'nodeReference', 'expectedComponentUuid', 'expectedClipUuid', 'audioOperation', 'time', 'playing', 'minVolume', 'maxVolume', 'loop', 'loaded', 'playbackState', 'maxTime', 'minTime', 'paused', 'minFrameCount', 'timeoutMs'].includes(key))
+                || Object.keys(step).some(key => !['operation', 'nodeReference', 'expectedComponentUuid', 'expectedClipUuid', 'audioOperation', 'time', 'playing', 'minVolume', 'maxVolume', 'loop', 'loaded', 'playbackState', 'maxTime', 'minTime', 'paused', 'maxFrameCount', 'minFrameCount', 'timeoutMs'].includes(key))
                 || !['wait', 'assert', 'observe', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'].includes(step.operation)
-                || ['wait', 'assert'].includes(step.operation) && step.paused === undefined && step.minFrameCount === undefined
-                || ['observe', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'].includes(step.operation) && (step.paused !== undefined || step.minFrameCount !== undefined)
+                || ['wait', 'assert'].includes(step.operation) && step.paused === undefined && step.minFrameCount === undefined && step.maxFrameCount === undefined
+                || ['observe', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'].includes(step.operation) && (step.paused !== undefined || step.minFrameCount !== undefined || step.maxFrameCount !== undefined)
                 || (step.operation === 'audioControl'
                     ? !step.audioOperation || !['play', 'pause', 'stop', 'seek'].includes(step.audioOperation) || (step.audioOperation === 'seek' ? !Number.isFinite(step.time) || step.time! < 0 : step.time !== undefined) || step.timeoutMs !== undefined && step.timeoutMs > 5000
                     : step.audioOperation !== undefined || step.time !== undefined)
@@ -685,6 +688,7 @@ export class RuntimeSessionTools {
                 || [step.expectedComponentUuid, step.expectedClipUuid].some(value => value !== undefined && (!['audioObserve', 'audioAssert', 'audioControl', 'audioWait'].includes(step.operation) || typeof value !== 'string' || !value.trim() || value.length > 256))
                 || step.paused !== undefined && typeof step.paused !== 'boolean'
                 || step.minFrameCount !== undefined && (!Number.isInteger(step.minFrameCount) || step.minFrameCount < 0 || step.minFrameCount > 1000000000)
+                || step.maxFrameCount !== undefined && (!Number.isSafeInteger(step.maxFrameCount) || step.maxFrameCount < 0 || step.maxFrameCount > 1000000000 || step.minFrameCount !== undefined && step.minFrameCount > step.maxFrameCount)
                 || step.timeoutMs !== undefined && (!Number.isInteger(step.timeoutMs) || step.timeoutMs < 100 || step.timeoutMs > 10000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Invalid runtime scenario step ${index}.` });
             return { ...step, ...(step.nodeReference ? { nodeReference: { id: step.nodeReference.id } } : {}) };
         });
@@ -714,9 +718,9 @@ export class RuntimeSessionTools {
                     return { durationMs: step.durationMs, elapsedMs: Date.now() - start, timingScope: 'wall-clock', runtimeVerified: false };
                 };
                 const pending = step.operation === 'delay' ? delay() : step.operation === 'wait'
-                    ? this.runtimeWaitForState({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount, timeoutMs: Math.min(step.timeoutMs ?? 10000, remaining) })
+                    ? this.runtimeWaitForState({ sessionId: args.sessionId, paused: step.paused, maxFrameCount: step.maxFrameCount, minFrameCount: step.minFrameCount, timeoutMs: Math.min(step.timeoutMs ?? 10000, remaining) })
                     : step.operation === 'assert'
-                        ? this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount })
+                        ? this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, maxFrameCount: step.maxFrameCount, minFrameCount: step.minFrameCount })
                         : step.operation === 'observe'
                             ? this.runtimeStateObserve({ sessionId: args.sessionId })
                             : step.operation === 'nodeObserve' || step.operation === 'nodeAssert' || step.operation === 'nodeWait'
@@ -880,6 +884,7 @@ export class RuntimeSessionTools {
                 sessionId: { type: 'string', minLength: 1, maxLength: 64 },
                 paused: { type: 'boolean' },
                 minFrameCount: { type: 'integer', minimum: 0, maximum: 1000000000 },
+                maxFrameCount: { type: 'integer', minimum: 0, maximum: 1000000000 },
             },
             required: ['sessionId'],
         },
@@ -891,8 +896,9 @@ export class RuntimeSessionTools {
         'POST',
         ['runtime', 'scenario', 'assert', 'state'],
     )
-    async runtimeScenarioAssert(args: { sessionId: string, paused?: boolean, minFrameCount?: number }): Promise<{ success: true, sessionId: string, passed: boolean, state: RuntimeState, issues: string[] }> {
-        if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64 || args.paused === undefined && args.minFrameCount === undefined
+    async runtimeScenarioAssert(args: { sessionId: string, paused?: boolean, maxFrameCount?: number; minFrameCount?: number }): Promise<{ success: true, sessionId: string, passed: boolean, state: RuntimeState, issues: string[] }> {
+        if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64 || args.paused === undefined && args.minFrameCount === undefined && args.maxFrameCount === undefined
+            || args.maxFrameCount !== undefined && (!Number.isSafeInteger(args.maxFrameCount) || args.maxFrameCount < 0 || args.maxFrameCount > 1000000000 || args.minFrameCount !== undefined && args.minFrameCount > args.maxFrameCount)
             || args.paused !== undefined && typeof args.paused !== 'boolean' || args.minFrameCount !== undefined && (!Number.isSafeInteger(args.minFrameCount) || args.minFrameCount < 0 || args.minFrameCount > 1000000000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide exact session and typed paused/minFrameCount assertion predicates.' });
         let session: RuntimeSession;
         try {
@@ -908,8 +914,9 @@ export class RuntimeSessionTools {
         const state = observed.state;
         const issues: string[] = [];
         if (args.paused !== undefined && state.paused !== args.paused) issues.push(`paused expected ${args.paused} but was ${state.paused}`);
-        if (args.minFrameCount !== undefined && state.frameCount === null) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Game-view frame count is unavailable.' });
+        if ((args.minFrameCount !== undefined || args.maxFrameCount !== undefined) && state.frameCount === null) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Game-view frame count is unavailable.' });
         if (args.minFrameCount !== undefined && state.frameCount !== null && state.frameCount < args.minFrameCount) issues.push(`frameCount expected at least ${args.minFrameCount} but was ${state.frameCount}`);
+        if (args.maxFrameCount !== undefined && state.frameCount !== null && state.frameCount > args.maxFrameCount) issues.push(`frameCount expected at most ${args.maxFrameCount} but was ${state.frameCount}`);
         return { success: true, sessionId: session.sessionId, passed: issues.length === 0, state, issues };
     }
 }

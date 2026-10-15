@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Bind execution-guard identifiers to imported compiler symbols in catalog extraction so local shadowing does not masquerade as an internal:constants guard; AST-only callers retain name-based provenance fallback.
+- Add inclusive maxFrameCount0..1e9 windows to runtime waits/assertions and scenario wait/assert steps. Compose with minFrameCount/paused, reject reversed/invalid intervals before reads and refuse unavailable metrics for upper-only checks; no stepping or pause mutation.
 - Detect internal:constants guard aliases through AST identifiers rather than regex word boundaries, supporting dollar-containing aliases and avoiding string-literal text matches; metadata remains declaration provenance only.
 - Validate runtimeWaitForState exact session and paused/minFrameCount predicates before readiness IPC; reject wrong types, nonfinite/fractional/negative/over-cap counts and missing conditions without polling. Existing valid combined wait semantics unchanged.
 - Render getter signature text from its compiler-instantiated read type, keeping declaredReturnType as original annotation provenance instead of contradicting concrete returnType with raw generic T.
