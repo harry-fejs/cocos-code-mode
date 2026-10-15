@@ -105,6 +105,10 @@ function typeInfo(checker, type, node) {
       }
       for (const property of checker.getPropertiesOfType(current)) {
         const propertyDeclaration = property.valueDeclaration || property.declarations?.[0];
+        const key = propertyDeclaration?.name;
+        if (key && ts.isComputedPropertyName(key) && checker.getTypeAtLocation(key.expression).flags & ts.TypeFlags.ESSymbolLike) {
+          unresolved.push({ kind: 'semantic-adapter-required', reference: 'symbol-keyed-property' });
+        }
         if (propertyDeclaration) visit(checker.getTypeOfSymbolAtLocation(property, propertyDeclaration));
       }
       for (const signature of [...callSignatures, ...constructSignatures]) {
