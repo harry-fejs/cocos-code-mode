@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Compose exact graph-UUID typed variable waits inside runtime scenarios before later animation/audio/VFX cues. Full-input preflight, existing read-only polling/deadline and cancellation ownership; matching a variable never proves graph transition or playable validity.
 - Traverse generic constraint/default types on nested callable/constructable DTO signatures under existing cycle/budget guards; preserve unresolved defaults and semantic-adapter requirements.
 - Traverse explicit receivers of nested callable/constructable DTO signatures, preserving receiver dependencies and unknown diagnostics while retaining semantic-adapter-required status.
 - Add integer component descriptors using native CCInteger for scalar/count arrays with safe-integer defaults, TypeScript number output, zero/empty omitted defaults and existing array/source caps; number remains finite float semantics.
