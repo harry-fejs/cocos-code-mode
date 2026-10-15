@@ -93,6 +93,8 @@ Full metadata can remain external. Build an immutable lookup with `node scripts/
 
 External queries accept `namespace:'engine-runtime'|'engine-authoring'|'editor-ipc'|'bridge'`. Lookup rows filter without loading record shards; selected record pages read only indexed shards and verify SHA-256 against immutable configuration/index. Parsed shard cache is capped at8 shards/32MiB raw-byte budget; shard hash is rechecked even on cache hits. `coverage.fullCatalogLoaded:true` means full selected version inventory is accessible, not qualified/callable.3.8 comparison still cannot map onto a3.7 instance.
 
+Use `editorQuery({category:'engine_api',operation:'records',recordId})` for one exact catalog identity obtained from discovery. Version/namespace/domain/class/filter still intersect with the ID; absence returns `TARGET_NOT_FOUND`, not a broader fallback. Record ID is cursor-bound and is not accepted for navigation summaries. Exact lookup remains declaration-only and grants no dispatch permission.
+
 Follow `nextCursor` only when more records are needed; preserve the same version/class/filter. Cursors are catalog-bound. `qualified:false`, `runtimeVerified:false`, and `live.mutationAuthorized:false` are intentional: declaration presence and live class availability do not prove mutation/history/persistence. Supplying a component `reference` refreshes Inspector path evidence on every request instead of retaining stale script mappings.
 
 `listComponentMethods({reference:nodeReference})` returns attached component UUIDs, not class names as handles. `methods` is discovery; only `permittedMethods` is accepted by the existing finite `callComponentMethod` policy. Do not invoke lifecycle callbacks merely to prove discovery works.

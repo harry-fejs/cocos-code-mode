@@ -12,7 +12,7 @@ export interface EngineDiscoveryArgs {
     category?: string; className?: string; targetVersion?: string; domain?: string;
     operation?: 'records' | 'list_domains' | 'list_classes';
     namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge';
-    filter?: string; reference?: IInstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string;
+    filter?: string; recordId?: string; reference?: IInstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string;
 }
 const ApiRecordSchema = z.object({ id: z.string().min(1), className: z.string().nullable().optional(), namespace: z.string(), member: z.string().nullable().optional(), name: z.string().optional(), kind: z.string().optional(), signatures: z.array(z.unknown()).optional() }).passthrough();
 type ApiRecord = InferSchema<typeof ApiRecordSchema>;
@@ -39,6 +39,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     const operation = args.operation ?? 'records';
     if (!['records', 'list_domains', 'list_classes'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Unknown catalog discovery operation.' });
     if (operation !== 'records' && (args.reference || args.className || args.category === 'component_schema')) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Catalog navigation does not accept an instance or class schema target.' });
+    if (args.recordId !== undefined && (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024 || operation !== 'records')) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'recordId requires records operation and a bounded nonempty identity.' });
     const maxEntries = limit(args.maxEntries, 50, 200), maxBytes = limit(args.maxBytes, 32768, 131072);
     const external = openExternalApiCatalog(version);
     const indexPath = path.join(CATALOG_ROOT, version, 'index.json');
@@ -48,7 +49,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     const provenancePath = path.join(CATALOG_ROOT, version, 'provenance.json');
     const provenance = !external && fs.existsSync(provenancePath) ? z.object({ scope: z.string().optional(), originalCatalogHash: z.string().nullable().optional() }).passthrough().parse(jsonFile(provenancePath)) : null;
     const coverage = { scope: external ? 'operator-configured-full-catalog' : provenance?.scope ?? 'installed-catalog-scope-unverified', fullCatalogLoaded: external !== null, originalCatalogHash: external?.catalogHash ?? provenance?.originalCatalogHash ?? null };
-    const selector = JSON.stringify({ version, operation, namespace: args.namespace ?? '', domain: args.domain ?? '', filter: args.filter ?? '', className: args.className ?? '' });
+    const selector = JSON.stringify({ version, operation, namespace: args.namespace ?? '', domain: args.domain ?? '', filter: args.filter ?? '', className: args.className ?? '', recordId: args.recordId ?? '' });
     const selectorHash = crypto.createHash('sha256').update(selector).digest('hex');
     let offset = 0;
     if (args.cursor) {
@@ -62,6 +63,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     const records: ApiRecord[] = [];
     if (external && operation !== 'list_domains') {
         for (const entry of external.entries) {
+            if (args.recordId !== undefined && entry.id !== args.recordId) continue;
             if (args.domain && entry.domain !== args.domain) continue;
             if (args.namespace && entry.namespace !== args.namespace) continue;
             if (args.category === 'component_schema' && entry.namespace !== 'engine-runtime') continue;
@@ -75,6 +77,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
         if (path.basename(domain.file) !== domain.file) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Unsafe catalog shard path.' });
         const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(jsonFile(path.join(CATALOG_ROOT, version, domain.file)));
         for (const record of shard.records) {
+            if (args.recordId !== undefined && record.id !== args.recordId) continue;
             if (args.namespace && record.namespace !== args.namespace) continue;
             if (args.category === 'component_schema' && record.namespace !== 'engine-runtime') continue;
             if (args.className && (record.className ?? '').replace(/^cc\./, '') !== args.className.replace(/^cc\./, '')) continue;
@@ -105,6 +108,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     }
     if (offset > records.length) throw new ToolError({ code: 'STALE_CURSOR', status: 409, message: 'Catalog cursor offset exceeds this result set.' });
     if (args.className && records.length === 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Class ${args.className} is absent from the ${version} catalog.` });
+    if (args.recordId !== undefined && records.length === 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record is absent from the selected catalog scope/version/filters.' });
     let live: Record<string, unknown> = { checked: false, context: 'edit-scene', available: null, writablePaths: [], mutationAuthorized: false };
     if (args.className && version === '3.7.3' && !args.reference) {
         try {
