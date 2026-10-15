@@ -225,7 +225,7 @@ function typeInfo(checker, type, node) {
   return { type: canonicalType(rendered), declaredType: node ? compact(node) : null, references: [...references.values()].sort((a, b) => compare(a.name, b.name)),
     unresolved: [...new Map(unresolved.map(item => [json(item), item])).values()].sort((a, b) => compare(json(a), json(b))) };
 }
-function signatureInfo(checker, signature, declaration, index) {
+function signatureInfo(checker, signature, declaration, index, returnType) {
   const unresolved = [];
   const genericReferences = new Map();
   const receiverSymbol = signature.thisParameter;
@@ -242,7 +242,7 @@ function signatureInfo(checker, signature, declaration, index) {
     return { name: symbol.name, type: info.type, declaredType: info.declaredType, references: info.references, optional: !!(symbol.flags & ts.SymbolFlags.Optional) || !!parameter?.questionToken || !!parameter?.initializer,
       rest: !!parameter?.dotDotDotToken, defaultExpression: compact(parameter?.initializer), unresolved: info.unresolved };
   });
-  const result = typeInfo(checker, checker.getReturnTypeOfSignature(signature), declaration.type);
+  const result = typeInfo(checker, returnType || checker.getReturnTypeOfSignature(signature), declaration.type);
   unresolved.push(...result.unresolved);
   const nativePredicate = checker.getTypePredicateOfSignature(signature);
   const predicateInfo = nativePredicate?.type ? typeInfo(checker, nativePredicate.type, declaration.type?.type) : null;
@@ -275,7 +275,7 @@ function signatureInfo(checker, signature, declaration, index) {
 }
 function signatures(checker, symbol, declaration) {
   const accessors = (symbol.declarations || []).filter(d => ts.isGetAccessorDeclaration(d) || ts.isSetAccessorDeclaration(d));
-  if (accessors.length) return accessors.map((decl, i) => signatureInfo(checker, checker.getSignatureFromDeclaration(decl), decl, i));
+  if (accessors.length) return accessors.map((decl, i) => signatureInfo(checker, checker.getSignatureFromDeclaration(decl), decl, i, ts.isGetAccessorDeclaration(decl) ? checker.getTypeOfSymbolAtLocation(symbol, declaration) : undefined));
   const type = checker.getTypeOfSymbolAtLocation(symbol, declaration);
   const calls = checker.getSignaturesOfType(type, ts.SignatureKind.Call);
   const constructs = checker.getSignaturesOfType(type, ts.SignatureKind.Construct);

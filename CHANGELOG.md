@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Use compiler-instantiated property read type for getter return metadata, preserving concrete generic inheritance rather than raw declaration T; accessor kind and declared annotation provenance remain unchanged.
 - Recheck current runtime session status/identity after asynchronous readiness reads; reset or lifecycle drift refuses stale ready:true snapshots with RUNTIME_TARGET_CHANGED. No stop/restart/mutation retry added.
 - Treat members from any merged owner declaration as own members, not inheritedFrom self; actual base-owned members retain their original inheritance provenance.
 - Visit missing slots in sparse native timeline track/event collections and emit existing unsupported-data diagnostics instead of throwing untyped projection/hash errors. Off-page holes remain visible to source validation; empty collections remain valid.
