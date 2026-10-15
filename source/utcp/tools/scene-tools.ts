@@ -414,7 +414,7 @@ export class SceneTools {
         'Set bounded cc.Camera properties through scene IPC and verify each requested value by fresh component read-back.',
         {
             type: 'object',
-            properties: { reference: InstanceReferenceSchema, properties: { type: 'object', minProperties: 1 } },
+            properties: { reference: InstanceReferenceSchema, properties: { type: 'object', minProperties: 1, maxProperties: 32, propertyNames: { pattern: '^[A-Za-z_][A-Za-z0-9_]{0,127}$' } } },
             required: ['reference', 'properties'],
         },
         { type: 'object', properties: { updated: { type: 'boolean', const: true }, reference: InstanceReferenceSchema }, required: ['updated', 'reference'] },
@@ -423,6 +423,10 @@ export class SceneTools {
     async cameraSetProperties(args: { reference: IInstanceReference, properties: Record<string, unknown> }): Promise<{ updated: true, reference: IInstanceReference }> {
         if (!args.reference?.id || !args.properties || typeof args.properties !== 'object' || Array.isArray(args.properties) || Object.keys(args.properties).length === 0) {
             throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'cameraSetProperties requires a camera reference and non-empty properties.' });
+        }
+        const propertyNames = Object.keys(args.properties);
+        if (propertyNames.length > 32 || propertyNames.some((property) => !/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(property))) {
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Camera properties require 1 to 32 bounded identifier names, not nested paths.' });
         }
         const nodeTree = await Editor.Message.request('scene', 'query-node-tree');
         if (!nodeTree) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'No open scene hierarchy.' });

@@ -137,6 +137,7 @@
 - Bound camera list/set hierarchy walks to 10,000 scheduled entries and refuse repeated node objects without returning partial inventory success.
 - Independently query failed camera creation cleanup; report ROLLBACK_FAILED when owned-node absence cannot be confirmed.
 - Scan the complete bounded camera hierarchy before property writes and reject camera UUID collisions across nodes or component types.
+- Validate camera property batch size and identifier names before IPC; refuse nested-path keys before any partial write.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
