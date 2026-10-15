@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Require string expectedRevision before animationClipInventory hash regex validation, rejecting coercible arrays/objects before native observation. Valid revision paging semantics unchanged.
 - Align default-prefix parameter optionality with effective minimum arity including required rest tuples; required positional slots no longer contradict signature minArgumentCount while optional-only tails remain omittable.
 - Reuse bounded dense/unique graph variable inventory validation in scenario graphAssert and graph waits. Malformed unrelated entries cannot grant assertion success; selected variable type/value checks and read-only semantics remain unchanged.
 - Compute union-rest minimum arity with an allocation-free loop/zero early exit instead of mapped-array argument spread, avoiding JavaScript call-argument overflow on very wide alternatives.

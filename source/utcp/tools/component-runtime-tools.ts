@@ -57,7 +57,7 @@ export class ComponentRuntimeTools {
         if (!Number.isInteger(maxClips) || maxClips < 1 || maxClips > 128) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'maxClips must be1..128.' });
         const clipOffset = args.clipOffset ?? 0;
         if (!Number.isInteger(clipOffset) || clipOffset < 0 || clipOffset > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'clipOffset must be0..256.' });
-        if (args.expectedRevision !== undefined && !/^[a-f0-9]{64}$/.test(args.expectedRevision)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedRevision must be a lowercase SHA-256 revision.' });
+        if (args.expectedRevision !== undefined && (typeof args.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedRevision))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedRevision must be a lowercase SHA-256 revision.' });
         args = { ...args, nodeReference: { id: args.nodeReference!.id } };
         const result = await executeComponentOperation({ kind: 'animation', operation: 'inspect', sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, maxClips, clipOffset, timeoutMs: validateTimeout(args.timeoutMs) });
         if (typeof result.inventorySnapshot !== 'string') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Clip identity snapshot unavailable.' });
