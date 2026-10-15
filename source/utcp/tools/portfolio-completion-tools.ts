@@ -45,7 +45,8 @@ export class PortfolioCompletionTools {
         required: ['reference', 'viewport', 'content', 'itemReferences', 'itemCount', 'instantiatedItems', 'virtualized'],
     }, 'POST', ['ui', 'virtual', 'list', 'create'])
     async uiVirtualListCreate(args: { name?: string, parentReference?: IInstanceReference, itemCount: number, visibleItems: number }): Promise<Record<string, unknown>> {
-        if (args.visibleItems > MAX_VISIBLE_ITEMS) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `visibleItems must not exceed ${MAX_VISIBLE_ITEMS}.` });
+        if (!args || !Number.isInteger(args.itemCount) || args.itemCount < 0 || args.itemCount > 100000
+            || !Number.isInteger(args.visibleItems) || args.visibleItems < 1 || args.visibleItems > MAX_VISIBLE_ITEMS) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `itemCount must be an integer from 0 to 100000 and visibleItems from 1 to ${MAX_VISIBLE_ITEMS}.` });
         const ui = new UiTools();
         const list = await ui.uiCreateScrollView({ name: args.name ?? 'VirtualList', parentReference: args.parentReference });
         const materialized = Math.min(args.itemCount, args.visibleItems);
