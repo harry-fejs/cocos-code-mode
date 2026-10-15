@@ -21,6 +21,8 @@ export interface AudioPlaybackSuccess {
     sessionId: string;
     targetId: string;
     nodeUuid: string;
+    componentUuid: string | null;
+    clipUuid: string | null;
     operation: AudioPlaybackOperation;
     state: AudioPlaybackState;
     started: boolean;
@@ -32,8 +34,9 @@ export type AudioPlaybackResult = AudioPlaybackSuccess | {
 };
 
 interface AudioSourceHandle {
+    uuid?: string;
     currentTime: number; duration: number; playing: boolean; state: number; isValid?: boolean;
-    clip: { isValid?: boolean } | null; _lastSetClip?: object | null; _isLoaded?: boolean; _player?: object;
+    clip: { uuid?: string; isValid?: boolean } | null; _lastSetClip?: object | null; _isLoaded?: boolean; _player?: object;
     play(): void; pause(): void; stop(): void;
 }
 interface AudioSourceClass {
@@ -123,6 +126,8 @@ export function createAudioPlaybackExecutor() {
             const clip = source.clip;
             const player = source._player;
             requireCondition(source.isValid !== false && clip && clip.isValid !== false, 'AUDIO_CLIP_MISSING', 'AudioSource requires a valid assigned clip.');
+            const identity = (value: unknown): string | null => typeof value === 'string' && value.trim() && value.length <= 256 ? value : null;
+            const componentUuid = identity(source.uuid), clipUuid = identity(clip!.uuid);
             const read = () => {
                 checkTarget();
                 checkNode();
@@ -134,7 +139,7 @@ export function createAudioPlaybackExecutor() {
             };
             let state = read();
             const success = (): AudioPlaybackSuccess => ({ success: true, sessionId: request.sessionId, targetId: request.targetId,
-                nodeUuid: request.nodeUuid, operation: request.operation, state, started, ended });
+                nodeUuid: request.nodeUuid, componentUuid, clipUuid, operation: request.operation, state, started, ended });
             if (request.operation === 'observe') return success();
             requireCondition(!busy.has(source), 'AUDIO_CONTROL_BUSY', 'Another control is awaiting this source.', 409);
             requireCondition(!uncertain.has(source), 'AUDIO_CONTROL_UNCERTAIN', 'A prior operation timed out and may still complete; recreate the source or restart the preview before further control.', 409);

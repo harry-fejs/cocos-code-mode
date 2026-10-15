@@ -1567,6 +1567,8 @@ declare namespace ccp3x {
         sessionId: string;
         targetId: string;
         nodeUuid: string;
+        componentUuid: string | null;
+        clipUuid: string | null;
         operation: "play" | "pause" | "stop" | "seek" | "observe";
         state: {
             currentTime: number;

@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Prioritize getter/setter declarations over call signatures of returned callable values, preserving accessor contracts instead of misclassifying callable-valued properties as method calls.
+- Expose nullable native AudioSource/AudioClip UUIDs in playback observations/results and require stable nonnull UUID pairs during audio waits. Clip/source replacement refuses instead of mixing observations; unavailable identity stays null on observe and fails closed for waits.
 - Reuse bounded compiler enum dependency projection for top-level catalog records, preserving merged members/constant provenance and avoiding a divergent unbounded first-declaration-only path.
 - Correct zero-degree orientation comparisons using sign-aligned quaternion chord/sum atan2 distance instead of a rounded unit dot threshold. Identical/nontrivial q and -q match without widening tolerance; tiny distinct rotations still refuse at zero.
 - Label enum value entries with constant=true/false so compiler string constants remain distinguishable from identical-looking unevaluated initializer provenance; existing unresolved diagnostics remain authoritative.

@@ -27,9 +27,10 @@ const outputSchema: JsonSchema = {
     type: 'object', additionalProperties: false,
     properties: {
         success: { type: 'boolean', enum: [true] }, sessionId: { type: 'string' }, targetId: { type: 'string' }, nodeUuid: { type: 'string' },
+        componentUuid: { type: ['string', 'null'] }, clipUuid: { type: ['string', 'null'] },
         operation: { type: 'string', enum: ['play', 'pause', 'stop', 'seek', 'observe'] }, state: stateSchema,
         started: { type: 'boolean' }, ended: { type: 'boolean' },
-    }, required: ['success', 'sessionId', 'targetId', 'nodeUuid', 'operation', 'state', 'started', 'ended'],
+    }, required: ['success', 'sessionId', 'targetId', 'nodeUuid', 'componentUuid', 'clipUuid', 'operation', 'state', 'started', 'ended'],
 };
 
 function validate(args: AudioPlaybackObserveArgs, operation: AudioPlaybackOperation, time?: number, timeoutMs?: number): void {
@@ -124,6 +125,7 @@ export class AudioPlaybackTools {
             || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide a bounded audio state condition, deadline and poll interval.' });
         const deadline = Date.now() + timeoutMs;
         let targetId: string | undefined;
+        let sourceIdentity: string | undefined;
         let observations = 0;
         for (;;) {
             const remaining = deadline - Date.now();
@@ -140,6 +142,10 @@ export class AudioPlaybackTools {
                 || typeof observation.targetId !== 'string' || !observation.targetId) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Audio observation identity is invalid.' });
             if (targetId !== undefined && observation.targetId !== targetId) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Audio target changed during state wait.' });
             targetId = observation.targetId;
+            if (typeof observation.componentUuid !== 'string' || !observation.componentUuid.trim() || observation.componentUuid.length > 256 || typeof observation.clipUuid !== 'string' || !observation.clipUuid.trim() || observation.clipUuid.length > 256) throw new ToolError({ code: 'AUDIO_IDENTITY_UNAVAILABLE', status: 422, message: 'Audio wait requires native source and clip UUIDs; unavailable identity cannot prove a stable target.' });
+            const identity = JSON.stringify([observation.componentUuid, observation.clipUuid]);
+            if (sourceIdentity !== undefined && sourceIdentity !== identity) throw new ToolError({ code: 'AUDIO_TARGET_CHANGED', status: 409, message: 'AudioSource or assigned clip identity changed during wait.' });
+            sourceIdentity = identity;
             const state = observation.state;
             if (!state || typeof state.playing !== 'boolean' || typeof state.loaded !== 'boolean'
                 || !['init', 'playing', 'paused', 'stopped', 'interrupted'].includes(state.playbackState)
