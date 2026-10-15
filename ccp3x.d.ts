@@ -1178,6 +1178,15 @@ declare namespace ccp3x {
     /** updated compares immediate read-back using JSON serialization; false is not rollback or proof that nothing changed. */
     function setPreferencesConfig(args: { packageName: string; key: string; value: unknown }): { updated: boolean; value: unknown };
 
+    /** Invokes button handlers through the scene script; not physical input or proof of application-side effects. */
+    function simulateButtonClick(args: { reference: InstanceReference }): { handlersFired: number; method: string };
+    /** Adds a scene button binding; handlerCount does not certify save/reopen persistence or runtime execution. */
+    function bindButtonClickEvent(args: { reference: InstanceReference; componentType: string; handlerName: string; customEventData?: string }): { handlerCount: number };
+    /** Reads serialized binding metadata without invoking handlers. Missing target/component/handler identities remain null. */
+    function listButtonClickEvents(args: { reference: InstanceReference }): Array<{
+        targetUuid: string | null; componentName: string | null; handler: string | null; customEventData: string;
+    }>;
+
     /** Tracks only this module's main-process broadcastObserve listeners; excludes panel/arbitrary Creator listeners. No callbacks or event payloads are exposed. */
     function editorListenersInspect(): { supported: true; listeners: Array<{ topic: string; state: 'registered' | 'removal-failed' }>; limitation: string };
 
