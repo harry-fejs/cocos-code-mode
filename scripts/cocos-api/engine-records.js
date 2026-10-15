@@ -105,7 +105,10 @@ function collectExports(input, version, roots, label = 'engine') {
       }
       for (const child of [...members.values()].sort((a, b) => compare(a.name, b.name))) {
         const decl = child.valueDeclaration || child.declarations?.[0];
-        if (decl) record(child, decl, local, name, child.name, !symbol.declarations.includes(decl.parent) ? decl.parent : null);
+        if (decl) {
+          const owner = ts.isParameter(decl) && ts.isConstructorDeclaration(decl.parent) ? decl.parent.parent : decl.parent;
+          record(child, decl, local, name, child.name, !symbol.declarations.includes(owner) ? owner : null);
+        }
       }
       if (symbol.valueDeclaration) {
         const constructor = checker.getTypeOfSymbolAtLocation(symbol, declaration);
