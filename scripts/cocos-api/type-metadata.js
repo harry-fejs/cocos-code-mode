@@ -227,6 +227,7 @@ function typeInfo(checker, type, node) {
 }
 function signatureInfo(checker, signature, declaration, index, returnType) {
   const unresolved = [];
+  const visibility = metadata(declaration).visibility;
   const genericReferences = new Map();
   const receiverSymbol = signature.thisParameter;
   const receiverDeclaration = receiverSymbol?.valueDeclaration || receiverSymbol?.declarations?.[0];
@@ -268,7 +269,7 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
     }
     return { name: parameter.symbol?.name || checker.typeToString(parameter), constraint: info?.type || null, default: compact(declared?.default) };
   });
-  return { overload: index, kind: ts.isSetAccessorDeclaration(declaration) ? 'set' : ts.isGetAccessorDeclaration(declaration) ? 'get' : 'call',
+  return { overload: index, visibility, kind: ts.isSetAccessorDeclaration(declaration) ? 'set' : ts.isGetAccessorDeclaration(declaration) ? 'get' : 'call',
     text: returnType && ts.isGetAccessorDeclaration(declaration) ? `(): ${result.type}` : checker.signatureToString(signature, declaration, ts.TypeFormatFlags.NoTruncation), typeParameters, parameters, receiver, predicate,
     returnType: result.type, declaredReturnType: result.declaredType, returnReferences: result.references,
     references: [...genericReferences.values()].sort((a, b) => compare(json(a), json(b))), unresolved };
