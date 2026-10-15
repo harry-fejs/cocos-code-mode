@@ -127,8 +127,8 @@ export class FileTools {
 
     @utcpTool('projectWriteFile', 'Atomically write bounded UTF-8 text within the project and verify read-back.', {
         type: 'object', properties: { filePath: { type: 'string' }, content: { type: 'string' }, createDirs: { type: 'boolean' }, expectedSha256: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'Optional decoded-text revision from projectReadFile; requires an existing matching file before mutation, not atomic compare-and-set.' } }, required: ['filePath', 'content'],
-    }, { type: 'object', properties: { success: { type: 'boolean' }, bytesWritten: { type: 'number' } }, required: ['success', 'bytesWritten'] }, 'POST', ['file', 'write', 'project', 'text'])
-    async projectWriteFile(args: { filePath: string, content: string, createDirs?: boolean, expectedSha256?: string }): Promise<{ success: boolean, bytesWritten: number }> {
+    }, { type: 'object', properties: { success: { type: 'boolean' }, bytesWritten: { type: 'number' }, sha256: { type: 'string' } }, required: ['success', 'bytesWritten', 'sha256'] }, 'POST', ['file', 'write', 'project', 'text'])
+    async projectWriteFile(args: { filePath: string, content: string, createDirs?: boolean, expectedSha256?: string }): Promise<{ success: boolean, bytesWritten: number, sha256: string }> {
         const root = projectRoot();
         if (typeof args.content !== 'string') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'content must be a string.' });
         if (args.createDirs !== undefined && typeof args.createDirs !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'createDirs must be a boolean.' });
@@ -147,7 +147,7 @@ export class FileTools {
             try { await Editor.Message.request('asset-db', 'refresh-asset', `db://${relative}`); } catch { /* write/read-back remain authoritative */ }
             invalidateAfterWrite();
         }
-        return { success: true, bytesWritten };
+        return { success: true, bytesWritten, sha256: createHash('sha256').update(args.content, 'utf8').digest('hex') };
     }
 
     @utcpTool('projectSearchFiles', 'Search bounded project files by glob-like pattern, optionally scoped to a project directory.', {
@@ -205,8 +205,8 @@ export class FileTools {
 
     @utcpTool('projectReplaceInFile', 'Atomically replace bounded literal text in a project file and verify read-back.', {
         type: 'object', properties: { filePath: { type: 'string' }, search: { type: 'string' }, replace: { type: 'string' }, replaceAll: { type: 'boolean' }, expectedSha256: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'SHA-256 of decoded UTF-8 text from projectReadFile; optimistic precondition, not atomic compare-and-set.' } }, required: ['filePath', 'search', 'replace'],
-    }, { type: 'object', properties: { success: { type: 'boolean' }, replacements: { type: 'number' } }, required: ['success', 'replacements'] }, 'POST', ['file', 'replace', 'edit', 'project'])
-    async projectReplaceInFile(args: { filePath: string, search: string, replace: string, replaceAll?: boolean, expectedSha256?: string }): Promise<{ success: boolean, replacements: number }> {
+    }, { type: 'object', properties: { success: { type: 'boolean' }, replacements: { type: 'number' }, sha256: { type: 'string' } }, required: ['success', 'replacements', 'sha256'] }, 'POST', ['file', 'replace', 'edit', 'project'])
+    async projectReplaceInFile(args: { filePath: string, search: string, replace: string, replaceAll?: boolean, expectedSha256?: string }): Promise<{ success: boolean, replacements: number, sha256: string }> {
         if (typeof args.search !== 'string' || typeof args.replace !== 'string' || args.search.length > MAX_SEARCH_PATTERN_LENGTH || args.replace.length > MAX_WRITE_BYTES) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'search and replace must be bounded strings.' });
         if (args.expectedSha256 !== undefined && (typeof args.expectedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedSha256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedSha256 must be a lowercase SHA-256 of decoded UTF-8 text.' });
         const root = projectRoot();
@@ -214,7 +214,7 @@ export class FileTools {
         if (!fs.existsSync(filePath)) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `File not found: ${args.filePath}` });
         const { content } = readBoundedProjectText(filePath, MAX_FILE_BYTES);
         if (args.expectedSha256 !== undefined && createHash('sha256').update(content, 'utf8').digest('hex') !== args.expectedSha256) throw new ToolError({ code: 'FILE_CONTENT_CHANGED', status: 409, message: 'Project file text differs from expectedSha256; no replacement dispatched.' });
-        if (!args.search) return { success: false, replacements: 0 };
+        if (!args.search) return { success: false, replacements: 0, sha256: createHash('sha256').update(content, 'utf8').digest('hex') };
         const replaceAll = args.replaceAll !== false;
         let next = content;
         let replacements = 0;
@@ -245,14 +245,14 @@ export class FileTools {
             if (bytes > MAX_WRITE_BYTES) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: `Replacement output exceeds the ${MAX_WRITE_BYTES} byte cap.` });
             next = parts.join(args.replace);
         }
-        if (!replacements) return { success: false, replacements: 0 };
+        if (!replacements) return { success: false, replacements: 0, sha256: createHash('sha256').update(content, 'utf8').digest('hex') };
         atomicWriteVerified(filePath, next);
         const relative = path.relative(root, filePath).replace(/\\/g, '/');
         if (relative.startsWith('assets/')) {
             try { await Editor.Message.request('asset-db', 'refresh-asset', `db://${relative}`); } catch { /* write/read-back remain authoritative */ }
             invalidateAfterWrite();
         }
-        return { success: true, replacements };
+        return { success: true, replacements, sha256: createHash('sha256').update(next, 'utf8').digest('hex') };
     }
 
     @utcpTool('projectFileSnippet', 'Read a bounded line snippet from a project file.', {

@@ -60,13 +60,14 @@ export class InstructionTools {
                 success: { type: 'boolean' },
                 filePath: { type: 'string' },
                 bytesWritten: { type: 'number' },
+                sha256: { type: 'string' },
             },
-            required: ['success', 'filePath'],
+            required: ['success', 'filePath', 'bytesWritten', 'sha256'],
         },
         'POST',
         ['instruction', 'project', 'write', 'save', 'agent', 'prompt', 'AGENTS', 'CLAUDE']
     )
-    async writeProjectInstruction(args: { filePath: string, content: string, expectedSha256?: string }): Promise<{ success: boolean, filePath: string, bytesWritten: number }> {
+    async writeProjectInstruction(args: { filePath: string, content: string, expectedSha256?: string }): Promise<{ success: boolean, filePath: string, bytesWritten: number, sha256: string }> {
         const result = await new FileTools().projectWriteFile(args);
         return { ...result, filePath: args.filePath };
     }

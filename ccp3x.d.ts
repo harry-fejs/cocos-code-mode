@@ -1209,10 +1209,10 @@ declare namespace ccp3x {
     function projectSearchFiles(args: { pattern: string; directory?: string; limit?: number; verbose?: boolean }): { files: string[]; total: number; truncated: boolean };
 
     /** Writes UTF-8 text and verifies read-back. Optional expectedSha256 from projectReadFile requires an existing matching decoded-text revision before mkdir/write; optimistic only, not atomic compare-and-set. Asset refresh is best-effort. Inspect ambiguous errors before retry. */
-    function projectWriteFile(args: { filePath: string; content: string; createDirs?: boolean; expectedSha256?: string }): { success: true; bytesWritten: number };
+    function projectWriteFile(args: { filePath: string; content: string; createDirs?: boolean; expectedSha256?: string }): { success: true; bytesWritten: number; sha256: string };
     /** Literal replacement, all matches by default. Optional expectedSha256 hashes decoded UTF-8 text (as returned by projectReadFile); mismatch throws FILE_CONTENT_CHANGED before writing. Optimistic only, not atomic compare-and-set. Empty search/no match returns success=false; read-back does not certify asset reimport. */
     function projectReplaceInFile(args: { filePath: string; search: string; replace: string; replaceAll?: boolean; expectedSha256?: string }):
-        { success: false; replacements: 0 } | { success: true; replacements: number };
+        { success: false; replacements: 0; sha256: string } | { success: true; replacements: number; sha256: string };
 
     interface ScriptDiagnostic {
         file: string; line: number; column: number; code: string; message: string;
@@ -1263,7 +1263,7 @@ declare namespace ccp3x {
         { exists: false; content: ''; bytes: 0; filePath: string; sha256: null } |
         { exists: true; content: string; bytes: number; filePath: string; sha256: string };
     /** Shared guarded writer; expectedSha256 is an optimistic decoded-text precondition, not atomic compare-and-set. Asset refresh is best-effort. Inspect ambiguous failures before retry. */
-    function writeProjectInstruction(args: { filePath: string; content: string; expectedSha256?: string }): { success: true; filePath: string; bytesWritten: number };
+    function writeProjectInstruction(args: { filePath: string; content: string; expectedSha256?: string }): { success: true; filePath: string; bytesWritten: number; sha256: string };
 
     interface SceneSnapshotNode {
         reference: InstanceReference; children: SceneSnapshotNode[];

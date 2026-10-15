@@ -39,12 +39,15 @@ describe('final asset/import authoring wave', () => {
     global.Editor = { Project: { path: root }, Message: { request: async () => true } };
     try {
       const tools = new FileTools();
-      assert.deepEqual(await tools.projectWriteFile({ filePath: 'src/a.ts', content: 'alpha\nbeta\n' }), { success: true, bytesWritten: 11 });
-      assert.deepEqual(await tools.projectReplaceInFile({ filePath: 'src/a.ts', search: 'beta', replace: 'gamma' }), { success: true, replacements: 1 });
+      const written = await tools.projectWriteFile({ filePath: 'src/a.ts', content: 'alpha\nbeta\n' });
+      assert.equal(written.success, true);
+      assert.equal(written.bytesWritten, 11);
+      const replaced = await tools.projectReplaceInFile({ filePath: 'src/a.ts', search: 'beta', replace: 'gamma', expectedSha256: written.sha256 });
+      assert.equal(replaced.replacements, 1);
       const read = await tools.projectReadFile({ filePath: 'src/a.ts' });
       assert.equal(read.content, 'alpha\ngamma\n');
       assert.equal(read.bytes, 12);
-      await tools.projectReplaceInFile({ filePath: 'src/a.ts', search: 'gamma', replace: 'delta', expectedSha256: read.sha256 });
+      await tools.projectReplaceInFile({ filePath: 'src/a.ts', search: 'gamma', replace: 'delta', expectedSha256: replaced.sha256 });
       await assert.rejects(tools.projectReplaceInFile({ filePath: 'src/a.ts', search: 'delta', replace: 'stale', expectedSha256: read.sha256 }), (error) => error.code === 'FILE_CONTENT_CHANGED');
       assert.deepEqual(await tools.projectSearchFiles({ pattern: '*.ts', directory: 'src' }), { files: ['src/a.ts'], total: 1, truncated: false });
       await assert.rejects(() => tools.projectWriteFile({ filePath: '../outside.ts', content: 'blocked' }), (error) => error.code === 'INVALID_ARGUMENT');
