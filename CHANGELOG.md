@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve TypeScript in/out variance modifiers on signature type parameters alongside const/constraint/default metadata; no runtime variance enforcement inferred.
 - Snapshot validated particle wait session/node/component identity and playing/count predicates before asynchronous polling. Caller mutations cannot redirect the target or alter count matching; no playback mutation/replay added.
 - Preserve TypeScript const-generic type-parameter modifiers in signature metadata alongside constraint/default/provenance fields; no inference of runtime generic behavior.
 - Snapshot validated node wait session/node identity, activation/hierarchy predicates, transform tolerances and nested references before polling. Caller mutations cannot redirect target or alter match conditions; no node writes/replay added.
