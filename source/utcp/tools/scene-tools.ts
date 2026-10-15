@@ -463,10 +463,18 @@ export class SceneTools {
         if (componentIndex < 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Camera is absent from the serialized node.' });
         const previous = new Map<string, unknown>();
         const applied: string[] = [];
+        let mutationPending = false;
         const restoreApplied = async (): Promise<string | null> => {
             const failures: string[] = [];
-            for (const property of applied.reverse()) {
+            for (let index = applied.length - 1; index >= 0; index--) {
+                const property = applied[index];
                 try {
+                    const currentNode = await Editor.Message.request('scene', 'query-node', nodeId);
+                    const components = cameraComponentsFromNode(currentNode);
+                    if (requireUniqueCamera(components) !== componentIndex) throw new Error('Camera identity/index changed before restoration.');
+                    const observed = cameraComponentField(components[componentIndex], property);
+                    if (JSON.stringify(observed) === JSON.stringify(previous.get(property))) continue;
+                    if (JSON.stringify(observed) !== JSON.stringify(args.properties[property])) throw new Error('Camera value changed outside this update; restoration refused.');
                     await Editor.Message.request('scene', 'set-property', { uuid: nodeId, path: `__comps__.${componentIndex}.${property}`, dump: { value: previous.get(property) as IPropertyValueType, type: typeof previous.get(property) === 'number' ? 'Number' : typeof previous.get(property) === 'boolean' ? 'Boolean' : 'String' } });
                     const restoredNode = await Editor.Message.request('scene', 'query-node', nodeId);
                     const restoredComponents = cameraComponentsFromNode(restoredNode);
@@ -483,7 +491,9 @@ export class SceneTools {
                 if (requireUniqueCamera(currentComponents) !== componentIndex) throw new ToolError({ code: 'CAMERA_TARGET_CHANGED', status: 409, message: 'Camera serialized component index changed before property dispatch.' });
                 previous.set(property, cameraComponentField(currentComponents[componentIndex], property));
                 const propertyValue = value as IPropertyValueType;
+                mutationPending = true;
                 const changed = await Editor.Message.request('scene', 'set-property', { uuid: nodeId, path: `__comps__.${componentIndex}.${property}`, dump: { value: propertyValue, type: typeof value === 'number' ? 'Number' : typeof value === 'boolean' ? 'Boolean' : 'String' } });
+                mutationPending = false;
                 applied.push(property);
                 if (changed === false) throw new ToolError({ code: 'CAMERA_PROPERTY_UPDATE_FAILED', status: 502, message: `Creator rejected camera property ${property}.` });
             }
@@ -494,6 +504,7 @@ export class SceneTools {
             if (!verified || Object.entries(args.properties).some(([property, value]) => JSON.stringify(cameraComponentField(verified, property)) !== JSON.stringify(value))) throw new ToolError({ code: 'CAMERA_PROPERTY_UPDATE_UNCONFIRMED', status: 502, message: 'Camera property mutation was not confirmed by read-back.' });
             return { updated: true, reference: cameraReference(verified) };
         } catch (error) {
+            if (mutationPending) throw new ToolError({ code: 'CAMERA_MUTATION_OUTCOME_UNKNOWN', status: 502, message: 'Camera property dispatch did not return a settled outcome; automatic restoration was not attempted.', details: { nodeId, componentId: args.reference.id, applied, retrySafe: false, restored: null }, recovery: 'Inspect the exact camera and reconcile the in-flight request before another mutation.' });
             const rollbackFailure = await restoreApplied();
             throw new ToolError({ code: rollbackFailure ? 'ROLLBACK_FAILED' : 'CAMERA_PROPERTY_UPDATE_FAILED', status: 502, message: rollbackFailure ? `Camera property update failed; rollback could not verify ${rollbackFailure}.` : 'Camera property update failed; owned camera values were restored.', details: { nodeId, componentId: args.reference.id, applied, rollbackFailure, cause: error instanceof Error ? error.message : String(error) }, recovery: rollbackFailure ? 'Inspect the camera before retrying; do not replay an ambiguous mutation.' : 'Retry only after fresh camera identity/read-back.' });
         }

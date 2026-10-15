@@ -280,7 +280,7 @@ describe('camera authoring adapters', () => {
       error => error.code === 'CAMERA_PROPERTY_UPDATE_FAILED' && error.details.rollbackFailure === null,
     );
     assert.equal(fov, 45);
-    assert.equal(writes, 4);
+    assert.equal(writes, 3);
   });
 
 describe('final scene adapters', () => {
@@ -472,6 +472,21 @@ describe('scene upgrade read-back contracts', () => {
     await assert.rejects(
       new SceneTools().cameraSetProperties({ reference: { id: 'camera-1' }, properties: { fov: 60 } }),
       error => error.code === 'CAMERA_PROPERTY_UPDATE_FAILED' && error.details.rollbackFailure === null,
+    );
+  });
+
+  it('refuses restoration after an external camera value change', async () => {
+    let fov = 45;
+    global.Editor = { Message: { request: async (_service, message, payload) => {
+      if (message === 'query-node-tree') return { uuid: 'root', children: [{ uuid: 'node-1', __comps__: [{ type: 'cc.Camera', value: { uuid: { value: 'camera-1' }, fov } }] }] };
+      if (message === 'query-node') return { uuid: 'node-1', __comps__: [{ type: 'cc.Camera', value: { uuid: { value: 'camera-1' }, fov } }] };
+      if (message === 'set-property') { fov = payload.dump.value === 60 ? 60 : payload.dump.value; return false; }
+      if (message === 'snapshot') return true;
+      throw new Error(`unexpected ${message}`);
+    } } };
+    await assert.rejects(
+      new SceneTools().cameraSetProperties({ reference: { id: 'camera-1' }, properties: { fov: 60 } }),
+      error => error.code === 'CAMERA_PROPERTY_UPDATE_FAILED',
     );
   });
 });

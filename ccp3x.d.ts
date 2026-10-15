@@ -202,7 +202,7 @@ declare namespace ccp3x {
         cameras: Array<{ nodeReference: InstanceReference; cameraReference: InstanceReference; name: unknown; priority: unknown; visibility: unknown; projection: unknown }>;
         total: number; truncated: boolean;
     };
-    /** Updates 1–32 identifier-named camera properties (max 128 characters each) and checks immediate read-back. Nested paths are refused before IPC. Partial writes are not rolled back on failure; inspect before retry. */
+    /** Updates 1–32 identifier-named camera properties with identity/read-back checks and guarded partial rollback. Unknown dispatched outcomes throw CAMERA_MUTATION_OUTCOME_UNKNOWN with retrySafe:false and restored:null; external value changes refuse restoration. */
     function cameraSetProperties(args: { reference: InstanceReference; properties: Record<string, unknown> }): { updated: true; reference: InstanceReference };
 
     /** Read bounded importer-specific settings, typed property descriptors, and explicit source identity for one asset. */
