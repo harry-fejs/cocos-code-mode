@@ -55,11 +55,11 @@ function generateLedger(catalogRoot, output) {
         const [disposition, reason] = classify(record);
         counts[disposition] = (counts[disposition] || 0) + 1;
         rows.push({ key, recordId: record.id, semanticKey: record.semanticKey, version: record.version, domain: record.domain ?? null,
-          workflowId: null, desiredOutcome: null, intendedContext: record.contextConstraints?.execution ?? null,
+          workflowId: record.namespace === 'bridge' && record.kind === 'tool' ? `bridge:${record.member}` : null, desiredOutcome: null, intendedContext: record.contextConstraints?.execution ?? null,
           sourceEvidence: { catalogHash: lookup.catalogHash, shard: shard.file, shardSha256: shard.sha256, source: record.source ?? null },
           existingBridgeTool: record.namespace === 'bridge' && record.kind === 'tool' ? record.member : null,
-          operation: null, classification: disposition, chosenRoute: null, preflight: null, parametersDTO: null, resultDTO: null,
-          limits: null, mutationScope: null, sourceHashGuard: null, historyContract: null, persistenceContract: null,
+          operation: record.namespace === 'bridge' && Array.isArray(record.operations) ? record.operations : null,
+          classification: disposition, chosenRoute: null, preflight: null, parametersDTO: null, resultDTO: null, limits: null, mutationScope: null, sourceHashGuard: null, historyContract: null, persistenceContract: null,
           rollbackContract: null, fixture: null, positiveID: null, negativeID: null, disposition, ownerDecision: null, reason,
           qualified: false, mutationAuthorized: false });
       }
