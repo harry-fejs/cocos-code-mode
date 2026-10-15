@@ -524,7 +524,7 @@ export class RuntimeSessionTools {
                     items: {
                         type: 'object', additionalProperties: false,
                         properties: {
-                            operation: { type: 'string', enum: ['wait', 'assert'] },
+                            operation: { type: 'string', enum: ['wait', 'assert', 'pause', 'resume', 'step'] },
                             paused: { type: 'boolean' },
                             minFrameCount: { type: 'integer', minimum: 0, maximum: 1000000000 },
                             timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 },
@@ -543,14 +543,15 @@ export class RuntimeSessionTools {
         'POST',
         ['runtime', 'scenario', 'run', 'steps'],
     )
-    async runtimeScenarioRun(args: { sessionId: string, steps: Array<{ operation: 'wait' | 'assert', paused?: boolean, minFrameCount?: number, timeoutMs?: number }> }): Promise<{ success: true, sessionId: string, outcomes: Array<Record<string, unknown>> }> {
+    async runtimeScenarioRun(args: { sessionId: string, steps: Array<{ operation: 'wait' | 'assert' | 'pause' | 'resume' | 'step', paused?: boolean, minFrameCount?: number, timeoutMs?: number }> }): Promise<{ success: true, sessionId: string, outcomes: Array<Record<string, unknown>> }> {
         if (!Array.isArray(args.steps) || args.steps.length === 0 || args.steps.length > 16) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runtimeScenarioRun requires 1-16 typed steps.' });
         if (typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded runtime sessionId is required.' });
         const steps = Array.from(args.steps, (step, index) => {
             if (!step || typeof step !== 'object' || Array.isArray(step)
                 || Object.keys(step).some(key => !['operation', 'paused', 'minFrameCount', 'timeoutMs'].includes(key))
-                || !['wait', 'assert'].includes(step.operation)
-                || step.paused === undefined && step.minFrameCount === undefined
+                || !['wait', 'assert', 'pause', 'resume', 'step'].includes(step.operation)
+                || ['wait', 'assert'].includes(step.operation) && step.paused === undefined && step.minFrameCount === undefined
+                || ['pause', 'resume', 'step'].includes(step.operation) && (step.paused !== undefined || step.minFrameCount !== undefined)
                 || step.paused !== undefined && typeof step.paused !== 'boolean'
                 || step.minFrameCount !== undefined && (!Number.isInteger(step.minFrameCount) || step.minFrameCount < 0 || step.minFrameCount > 1000000000)
                 || step.timeoutMs !== undefined && (!Number.isInteger(step.timeoutMs) || step.timeoutMs < 100 || step.timeoutMs > 10000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Invalid runtime scenario step ${index}.` });
@@ -562,7 +563,9 @@ export class RuntimeSessionTools {
             try {
                 const result = step.operation === 'wait'
                     ? await this.runtimeWaitForState({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount, timeoutMs: step.timeoutMs })
-                    : await this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount });
+                    : step.operation === 'assert'
+                        ? await this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount })
+                        : await this.previewControl({ sessionId: args.sessionId, operation: step.operation, timeoutMs: step.timeoutMs ?? 10000 });
                 outcomes.push({ index, operation: step.operation, result });
                 if ('passed' in result && result.passed !== true) throw new ToolError({ code: 'RUNTIME_SCENARIO_ASSERTION_FAILED', status: 409, message: `Runtime scenario assertion failed at step ${index}.` });
             } catch (error) {
