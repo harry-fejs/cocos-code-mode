@@ -835,9 +835,31 @@ declare namespace ccp3x {
         truncated: boolean
     };
 
+    interface SceneScriptUsage {
+        /** Node UUID is forwarded from native hierarchy metadata; inspect the node before mutation. */
+        nodeReference: { id: unknown; type: 'cc.Node' };
+        nodePath: unknown;
+        componentReference: InstanceReference | null;
+        classId: string;
+    }
+    /** Read-only custom-script usage, capped result prefix with observed total. Repeated nodes or traversal beyond 10000 scheduled nodes refuse; not an atomic scene snapshot. */
+    function sceneScriptUsageInspect(args?: { classId?: string; limit?: number }): { usages: SceneScriptUsage[]; total: number; truncated: boolean };
+    /** Verifies imported script identity and rechecks asset/class binding after scanning. Transport errors and observed drift throw rather than reporting missing usage. */
+    interface ScriptAssetSceneUsageResult {
+        scriptReference: InstanceReference; classId: string; usages: SceneScriptUsage[]; total: number; truncated: boolean;
+    }
+    function scriptAssetSceneUsageInspect(args: { scriptReference: InstanceReference; limit?: number }): ScriptAssetSceneUsageResult;
+    /** Inspects 1–32 scripts independently; errors do not imply complete or empty usage. No automatic child retry; each result retains its own truncation. */
+    function scriptAssetSceneUsageBatchInspect(args: { scriptReferences: InstanceReference[]; limitPerScript?: number }): {
+        items: Array<{ index: number; scriptReference: InstanceReference } & (
+            { ok: true; result: ScriptAssetSceneUsageResult } |
+            { ok: false; error: { code: string; message: string; recovery?: string } }
+        )>;
+        succeeded: number; failed: number; truncated: boolean; partial: boolean;
+    };
     /** Summarizes a bounded usage inventory. When countsComplete=false, class count/totalClasses are lower bounds, not full-scene counts; totalUsages is the inspect traversal's observed count. */
     function sceneScriptUsageSummary(args?: { maxClasses?: number; maxNodesPerClass?: number }): {
-        classes: Array<{ classId: string; count: number; nodes: Array<{ nodeReference: InstanceReference; nodePath: string; componentReference: InstanceReference | null }>; truncated: boolean }>;
+        classes: Array<{ classId: string; count: number; nodes: Array<{ nodeReference: SceneScriptUsage['nodeReference']; nodePath: unknown; componentReference: InstanceReference | null }>; truncated: boolean }>;
         totalClasses: number; totalUsages: number; countsComplete: boolean; truncated: boolean;
     };
     /** Replace one invalid script component with an existing registered class or script asset. */
