@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add observed userActivation(active/inactive/unknown) predicates to audioPlaybackWaitForState and scenario audioAssert/audioWait. Compose with existing sound conditions; activation is browser metadata, not autoplay permission or playback guarantee, and no gesture/playback is dispatched.
 - Preserve inheritedFrom for static base-owned members in derived catalog records, matching instance-member provenance while leaving own static members unmarked.
 - Require exact clip name/UUID and contiguous capture sequence before scenario expected-event counts can pass. Foreign or malformed lifecycle records refuse rather than earning checkpoint credit; native capture/playback semantics unchanged.
 - Attribute constructor parameter properties to their enclosing class for declaredClassName, owner tags and heritage while retaining property kind, readonly/source declaration and excluding ordinary parameters.
