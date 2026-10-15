@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Decode computed literal declaration keys for internal double-underscore metadata; dynamic identifier expressions are not mistaken for their value and remain unevaluated.
 - Classify quoted/escaped declaration names by decoded semantic text for internal double-underscore metadata, matching equivalent identifier spelling without changing runtime permission.
 - Add inclusive minVolume/maxVolume0..1 intervals to audio waits and scenario audioAssert/audioWait, composed with existing source/clip/state predicates. Invalid/reversed intervals refuse before dispatch; unavailable native volume never counts as muted, no writes/audibility claim.
 - Keep callable/constructable property signatures inspectable while marking property dispatch semantic-adapter-required; ordinary method signatures remain unchanged and no invocation permission is inferred.
