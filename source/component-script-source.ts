@@ -6,12 +6,16 @@ import { ToolError } from './utcp/tool-error';
 export const COMPONENT_PROPERTY_TYPES = ['number', 'string', 'boolean', 'Vec2', 'Vec3', 'Node', 'AudioClip', 'AnimationClip', 'SpriteFrame'] as const;
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
 export type ComponentPropertyDescriptor =
-    | { name: string; type: 'number'; default?: number }
-    | { name: string; type: 'string'; default?: string }
-    | { name: string; type: 'boolean'; default?: boolean }
-    | { name: string; type: 'Vec2'; default?: { x: number; y: number } }
-    | { name: string; type: 'Vec3'; default?: { x: number; y: number; z: number } }
-    | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame'; default?: null };
+    | { name: string; type: 'number'; array?: false; default?: number }
+    | { name: string; type: 'string'; array?: false; default?: string }
+    | { name: string; type: 'boolean'; array?: false; default?: boolean }
+    | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }
+    | { name: string; type: 'Vec3'; array?: false; default?: { x: number; y: number; z: number } }
+    | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame'; array?: false; default?: null }
+    | { name: string; type: 'number'; array: true; default?: number[] }
+    | { name: string; type: 'string'; array: true; default?: string[] }
+    | { name: string; type: 'boolean'; array: true; default?: boolean[] }
+    | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame'; array: true; default?: [] };
 export interface ComponentScriptDescriptor { className: string; properties?: ComponentPropertyDescriptor[] }
 export interface ComponentScriptSource { source: string; sha256: string; bytes: number; className: string }
 export interface ComponentScriptPath { assetUrl: string; file: string; parentUrl: string; parent: string }
@@ -38,11 +42,27 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
     const names = new Set<string>();
     const fields: string[] = [];
     for (const row of rows) {
-        assertComponentScriptInput(row, ['name', 'type', 'default']);
+        assertComponentScriptInput(row, ['name', 'type', 'array', 'default']);
         if (!identifier(row.name) || COMPONENT_MEMBERS[row.name] === true || names.has(row.name)) invalid('Property names must be unique safe identifiers and must not shadow Component members or lifecycle methods.');
         if (typeof row.type !== 'string' || !COMPONENT_PROPERTY_TYPES.includes(row.type as ComponentPropertyType)) invalid('Unsupported property type.');
         const type = row.type as ComponentPropertyType;
         const hasDefault = Object.prototype.hasOwnProperty.call(row, 'default');
+        if (row.array !== undefined && typeof row.array !== 'boolean') invalid('array must be a boolean when provided.');
+        if (row.array === true) {
+            if (type === 'Vec2' || type === 'Vec3') invalid('Vector arrays are not supported by this descriptor contract.');
+            const values = hasDefault ? row.default : [];
+            if (!Array.isArray(values) || values.length > 256) invalid('Array defaults must contain at most 256 entries.');
+            const primitive = type === 'number' || type === 'string' || type === 'boolean';
+            if (!primitive && values.length !== 0) invalid('Reference arrays must start empty; bind actual references separately in the Inspector.');
+            for (let index = 0; index < values.length; index++) {
+                const value = values[index];
+                if (!Object.prototype.hasOwnProperty.call(values, index) || typeof value !== type || type === 'number' && !Number.isFinite(value) || type === 'string' && value.length > 4096) invalid('Array defaults must be dense, type-matched and bounded; numbers must be finite.');
+            }
+            names.add(row.name);
+            imports.add(PROPERTY_IMPORTS[type]);
+            fields.push(`    @property([${PROPERTY_IMPORTS[type]}])`, `    ${row.name}: ${type}[] = [${values.map(value => literal(value)).join(', ')}];`, '');
+            continue;
+        }
         let initial: string | number | boolean | null;
         if (type === 'Vec2' || type === 'Vec3') {
             const axes = type === 'Vec2' ? ['x', 'y'] : ['x', 'y', 'z'];

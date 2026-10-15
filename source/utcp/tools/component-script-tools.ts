@@ -37,7 +37,8 @@ export class ComponentScriptTools {
                     properties: {
                         name: { type: 'string', minLength: 1, maxLength: 64, pattern: '^[A-Za-z][A-Za-z0-9_]*$' },
                         type: { type: 'string', enum: [...COMPONENT_PROPERTY_TYPES] },
-                        default: { anyOf: [{ type: 'number' }, { type: 'string', maxLength: 4096 }, { type: 'boolean' }, { type: 'null' }, { type: 'object', additionalProperties: false, properties: { x: { type: 'number' }, y: { type: 'number' } }, required: ['x', 'y'] }, { type: 'object', additionalProperties: false, properties: { x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' } }, required: ['x', 'y', 'z'] }], description: 'Must match the property type. Vec2/Vec3 require exact finite coordinates and default to zero vectors; references permit only null.' },
+                        array: { type: 'boolean', description: 'Serialize an array instead of a scalar; defaults to false.' },
+                        default: { anyOf: [{ type: 'number' }, { type: 'string', maxLength: 4096 }, { type: 'boolean' }, { type: 'null' }, { type: 'array', maxItems: 256, items: { anyOf: [{ type: 'number' }, { type: 'string', maxLength: 4096 }, { type: 'boolean' }] } }, { type: 'object', additionalProperties: false, properties: { x: { type: 'number' }, y: { type: 'number' } }, required: ['x', 'y'] }, { type: 'object', additionalProperties: false, properties: { x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' } }, required: ['x', 'y', 'z'] }], description: 'Must match the property type. Vec2/Vec3 require exact finite coordinates and default to zero vectors; references permit only null. array=true supports dense primitive defaults or empty reference arrays; no vector arrays.' },
                     }, required: ['name', 'type'],
                 },
             },
