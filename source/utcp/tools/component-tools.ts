@@ -134,6 +134,7 @@ export class ComponentTools {
                 const remainingUuid = field(remaining, 'uuid') ?? field(field(remaining, 'value'), 'uuid');
                 throw new Error(`Component ${args.reference.id} still exists after removal (read-back ${String(remainingUuid ?? 'unknown')})`);
             }
+            await Editor.Message.request('scene', 'snapshot');
             return { success: true };
         } catch (error: unknown) {
             throw new Error(`Failed to remove component ${args.reference.id}. Reason: ${error instanceof Error ? error.message : String(error)}`);
