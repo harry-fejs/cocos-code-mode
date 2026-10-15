@@ -274,7 +274,8 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
   return { overload: index, visibility, kind: ts.isSetAccessorDeclaration(declaration) ? 'set' : ts.isGetAccessorDeclaration(declaration) ? 'get' : 'call',
     text: returnType && ts.isGetAccessorDeclaration(declaration) ? `(): ${result.type}` : checker.signatureToString(signature, declaration, ts.TypeFormatFlags.NoTruncation), typeParameters, parameters, receiver, predicate,
     returnType: result.type, declaredReturnType: result.declaredType, returnReferences: result.references,
-    references: [...genericReferences.values()].sort((a, b) => compare(json(a), json(b))), unresolved };
+    references: [...genericReferences.values()].sort((a, b) => compare(json(a), json(b))),
+    unresolved: [...new Map(unresolved.map(item => [json(item), item])).values()].sort((a, b) => compare(json(a), json(b))) };
 }
 function signatures(checker, symbol, declaration) {
   const accessors = (symbol.declarations || []).filter(d => ts.isGetAccessorDeclaration(d) || ts.isSetAccessorDeclaration(d));

@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Deduplicate and deterministically sort aggregate signature unresolved diagnostics, retaining per-parameter diagnostics and using the same normalization as type-level metadata.
 - Add ParticleSystem2D scalar/array references and requiredComponents support to scriptComponentCreate, using native decorators with null/empty defaults. No emitter creation, node attachment or playback/control dispatch.
 - Snapshot validated animationTimelineInspect exact node/clip refs, binding/event filters, frame windows, revision and paging/byte options before multi-IPC dump/readback. Caller mutations cannot redirect target, filters or stale-revision semantics; no timeline mutation/replay added.
 - Snapshot validated animation wait session/node/component/clip identity and playing/paused/time/speed/duration predicates before asynchronous polling. Caller changes cannot redirect clip or match criteria; no playback mutation/replay added.
