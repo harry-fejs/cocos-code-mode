@@ -528,7 +528,7 @@ export class RuntimeSessionTools {
                     items: {
                         type: 'object', additionalProperties: false,
                         properties: {
-                            operation: { type: 'string', enum: ['graphWait', 'delay', 'wait', 'assert', 'observe', 'particleControl', 'particleObserve', 'particleAssert', 'particleWait', 'animationControl', 'animationObserve', 'animationAssert', 'animationWait', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'] },
+                            operation: { type: 'string', enum: ['graphSet', 'graphWait', 'delay', 'wait', 'assert', 'observe', 'particleControl', 'particleObserve', 'particleAssert', 'particleWait', 'animationControl', 'animationObserve', 'animationAssert', 'animationWait', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'] },
                             paused: { type: 'boolean' },
                             minFrameCount: { type: 'integer', minimum: 0, maximum: 1000000000 },
                             timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 },
@@ -537,6 +537,7 @@ export class RuntimeSessionTools {
                             componentId: { type: 'string', minLength: 1, maxLength: 256 },
                             graphUuid: { type: 'string', minLength: 1, maxLength: 256 }, variableName: { type: 'string', minLength: 1, maxLength: 256 },
                             variableType: { type: 'string', enum: ['float', 'integer', 'boolean'] }, variableValue: { type: ['number', 'boolean'] },
+                            expectedValue: { type: ['number', 'boolean'], description: 'Optional graphSet current-value conflict guard; not an atomic transaction.' },
                             clipName: { type: 'string', minLength: 1, maxLength: 256 },
                             clipUuid: { type: 'string', minLength: 1, maxLength: 256 },
                             animationOperation: { type: 'string', enum: ['play', 'pause', 'resume', 'stop'] },
@@ -564,7 +565,7 @@ export class RuntimeSessionTools {
         'POST',
         ['runtime', 'scenario', 'run', 'steps'],
     )
-    async runtimeScenarioRun(args: { sessionId: string, runId?: string, steps: Array<{ operation: 'graphWait' | 'delay' | 'wait' | 'assert' | 'observe' | 'particleControl' | 'particleObserve' | 'particleAssert' | 'particleWait' | 'animationControl' | 'animationObserve' | 'animationAssert' | 'animationWait' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', graphUuid?: string, variableName?: string, variableType?: 'float' | 'integer' | 'boolean', variableValue?: number | boolean, durationMs?: number, nodeReference?: { id: string }, animationOperation?: 'play' | 'pause' | 'resume' | 'stop', particleOperation?: 'play' | 'stop' | 'clear', minParticleCount?: number, maxParticleCount?: number, componentId?: string, clipName?: string, clipUuid?: string, playbackState?: 'init' | 'playing' | 'paused' | 'stopped' | 'interrupted', minTime?: number, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, runId: string, outcomes: Array<Record<string, unknown>> }> {
+    async runtimeScenarioRun(args: { sessionId: string, runId?: string, steps: Array<{ operation: 'graphSet' | 'graphWait' | 'delay' | 'wait' | 'assert' | 'observe' | 'particleControl' | 'particleObserve' | 'particleAssert' | 'particleWait' | 'animationControl' | 'animationObserve' | 'animationAssert' | 'animationWait' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', graphUuid?: string, variableName?: string, variableType?: 'float' | 'integer' | 'boolean', expectedValue?: number | boolean, variableValue?: number | boolean, durationMs?: number, nodeReference?: { id: string }, animationOperation?: 'play' | 'pause' | 'resume' | 'stop', particleOperation?: 'play' | 'stop' | 'clear', minParticleCount?: number, maxParticleCount?: number, componentId?: string, clipName?: string, clipUuid?: string, playbackState?: 'init' | 'playing' | 'paused' | 'stopped' | 'interrupted', minTime?: number, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, runId: string, outcomes: Array<Record<string, unknown>> }> {
         if (!Array.isArray(args.steps) || args.steps.length === 0 || args.steps.length > 16) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runtimeScenarioRun requires 1-16 typed steps.' });
         if (typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded runtime sessionId is required.' });
         if (args.runId !== undefined && (typeof args.runId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(args.runId))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runId must be a fresh bounded alphanumeric/hyphen/underscore identity.' });
@@ -572,13 +573,14 @@ export class RuntimeSessionTools {
         if (!Number.isInteger(totalTimeoutMs) || totalTimeoutMs < 100 || totalTimeoutMs > 60000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'totalTimeoutMs must be an integer from 100 to 60000.' });
         const scenarioDeadline = Date.now() + totalTimeoutMs;
         const steps = Array.from(args.steps, (step, index) => {
-            if (step?.operation === 'graphWait') {
-                if (Object.keys(step).some(key => !['operation', 'nodeReference', 'componentId', 'graphUuid', 'variableName', 'variableType', 'variableValue', 'timeoutMs'].includes(key))
+            if (step?.operation === 'graphWait' || step?.operation === 'graphSet') {
+                if (Object.keys(step).some(key => !['operation', 'nodeReference', 'componentId', 'graphUuid', 'variableName', 'variableType', 'variableValue', 'expectedValue', 'timeoutMs'].includes(key))
                     || !step.nodeReference || typeof step.nodeReference !== 'object' || Array.isArray(step.nodeReference) || Object.keys(step.nodeReference).some(key => key !== 'id')
                     || [step.nodeReference?.id, step.componentId, step.graphUuid, step.variableName].some(value => typeof value !== 'string' || !value.trim() || value.length > 256)
                     || !['float', 'integer', 'boolean'].includes(step.variableType ?? '')
                     || (step.variableType === 'boolean' ? typeof step.variableValue !== 'boolean' : typeof step.variableValue !== 'number' || !Number.isFinite(step.variableValue) || step.variableType === 'integer' && !Number.isInteger(step.variableValue))
-                    || step.timeoutMs !== undefined && (!Number.isInteger(step.timeoutMs) || step.timeoutMs < 100 || step.timeoutMs > 10000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Invalid graph variable wait step ${index}.` });
+                    || step.expectedValue !== undefined && (step.operation !== 'graphSet' || (step.variableType === 'boolean' ? typeof step.expectedValue !== 'boolean' : typeof step.expectedValue !== 'number' || !Number.isFinite(step.expectedValue) || step.variableType === 'integer' && !Number.isInteger(step.expectedValue)))
+                    || step.timeoutMs !== undefined && (!Number.isInteger(step.timeoutMs) || step.timeoutMs < 100 || step.timeoutMs > (step.operation === 'graphSet' ? 3000 : 10000))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Invalid graph variable wait step ${index}.` });
                 return { ...step, nodeReference: { id: step.nodeReference!.id } };
             }
             if (step?.operation === 'delay') {
@@ -663,11 +665,12 @@ export class RuntimeSessionTools {
                         ? this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount })
                         : step.operation === 'observe'
                             ? this.runtimeStateObserve({ sessionId: args.sessionId })
-                            : step.operation === 'graphWait'
+                            : step.operation === 'graphWait' || step.operation === 'graphSet'
                                 ? import('./component-runtime-tools').then(async ({ ComponentRuntimeTools }) => {
                                     if (scenario.cancelled) throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario cancelled before graph wait dispatch.' });
-                                    const timeoutMs = Math.min(step.timeoutMs ?? 10000, stepDeadline - Date.now());
+                                    const timeoutMs = Math.min(step.timeoutMs ?? (step.operation === 'graphSet' ? 3000 : 10000), stepDeadline - Date.now());
                                     if (timeoutMs < 100) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Graph wait deadline elapsed before dispatch.' });
+                                    if (step.operation === 'graphSet') return new ComponentRuntimeTools().animationGraphPreview({ sessionId: args.sessionId, nodeReference: step.nodeReference!, componentId: step.componentId!, operation: 'setVariable', expectedGraphUuid: step.graphUuid!, variable: { name: step.variableName!, type: step.variableType!, value: step.variableValue!, expectedValue: step.expectedValue }, timeoutMs });
                                     return new ComponentRuntimeTools().animationGraphWaitForVariable({ sessionId: args.sessionId, nodeReference: step.nodeReference!, componentId: step.componentId!, graphUuid: step.graphUuid!, name: step.variableName!, type: step.variableType!, value: step.variableValue!, timeoutMs });
                                 })
                             : step.operation === 'particleControl' || step.operation === 'particleObserve' || step.operation === 'particleAssert' || step.operation === 'particleWait'
