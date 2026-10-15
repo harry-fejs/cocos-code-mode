@@ -76,6 +76,25 @@ function cameraReference(component: unknown): IInstanceReference {
     return { id, type: 'cc.Camera' };
 }
 
+function* cameraSceneNodes(root: unknown): Generator<Record<string, unknown>> {
+    const stack: unknown[] = [root];
+    const seen = new Set<object>();
+    let scheduled = 1;
+    while (stack.length) {
+        const node = stack.pop();
+        if (!node || typeof node !== 'object') continue;
+        if (seen.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Camera hierarchy contains a repeated node object.' });
+        seen.add(node);
+        const row = node as Record<string, unknown>;
+        if (Array.isArray(row.children)) {
+            scheduled += row.children.length;
+            if (scheduled > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Camera hierarchy exceeds the scene traversal budget.' });
+            for (const child of row.children) stack.push(child);
+        }
+        yield row;
+    }
+}
+
 interface SceneTreeNode {
     uuid?: string;
     name?: string | { value?: string };
@@ -360,11 +379,7 @@ export class SceneTools {
         const limit = boundedListLimit(args.maxResults);
         const cameras: Array<Record<string, unknown>> = [];
         let total = 0;
-        const stack: unknown[] = [tree];
-        while (stack.length) {
-            const node = stack.pop();
-            if (!node || typeof node !== 'object') continue;
-            const row = node as Record<string, unknown>;
+        for (const row of cameraSceneNodes(tree)) {
             const nodeId = typeof row.uuid === 'string' ? row.uuid : undefined;
             if (nodeId) {
                 const dump = await Editor.Message.request('scene', 'query-node', nodeId);
@@ -381,7 +396,6 @@ export class SceneTools {
                     });
                 }
             }
-            if (Array.isArray(row.children)) stack.push(...row.children);
         }
         return { cameras, total, truncated: total > limit };
     }
@@ -403,18 +417,13 @@ export class SceneTools {
         }
         const nodeTree = await Editor.Message.request('scene', 'query-node-tree');
         if (!nodeTree) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'No open scene hierarchy.' });
-        const stack: unknown[] = [nodeTree];
         let foundNode: Record<string, unknown> | undefined;
         let foundComponent: unknown;
         let componentIndex = -1;
-        while (stack.length && !foundNode) {
-            const node = stack.pop();
-            if (!node || typeof node !== 'object') continue;
-            const row = node as Record<string, unknown>;
+        for (const row of cameraSceneNodes(nodeTree)) {
             const components = cameraComponentsFromNode(row);
             const index = components.findIndex((component) => isCameraComponent(component) && componentUuid(component) === args.reference.id);
             if (index >= 0) { foundNode = row; foundComponent = components[index]; componentIndex = index; break; }
-            if (Array.isArray(row.children)) stack.push(...row.children);
         }
         const nodeId = foundNode && typeof foundNode.uuid === 'string' ? foundNode.uuid : undefined;
         if (!nodeId || !foundComponent || componentIndex < 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Camera ${args.reference.id} was not found in the open scene.` });

@@ -197,7 +197,7 @@ declare namespace ccp3x {
     function cameraCreate(args: { name?: string; is2D?: boolean; parentReference?: InstanceReference }): {
         nodeReference: InstanceReference; cameraReference: InstanceReference;
     };
-    /** Capped camera results, not capped scene traversal. Native property values remain unknown; total counts observed camera components. */
+    /** Capped camera results; hierarchy traversal refuses repeated objects or more than 10000 scheduled entries. Native property values remain unknown; total counts observed camera components. */
     function cameraList(args?: { maxResults?: number }): {
         cameras: Array<{ nodeReference: InstanceReference; cameraReference: InstanceReference; name: unknown; priority: unknown; visibility: unknown; projection: unknown }>;
         total: number; truncated: boolean;
