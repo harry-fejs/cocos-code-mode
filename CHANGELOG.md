@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Compose quaternion orientation conditions in scenario nodeWait using the existing sign-invariant read-only wait. Full-input validation refuses zero/nonfinite/invalid angular predicates before any steps; nested rotation is copied, no rotation writes or completion inference.
 - Mark free/constrained generic type parameters unresolved until instantiated; constraint dependencies remain available but never count as a complete selected argument schema.
 - Add local/world quaternion orientation conditions to runtime node waits with normalized comparison, q/-q equivalence and inclusive angular tolerance0..180 degrees. Zero/nonfinite quaternions refuse; raw snapshots remain unchanged, no rotation writes.
 - Retain setter input dependencies separately from accessor read types, including asymmetric getter/setter DTO declarations; semantic-adapter requirements remain unchanged and accessors are never executed.
