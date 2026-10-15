@@ -265,6 +265,23 @@ describe('camera authoring adapters', () => {
     assert.deepEqual(await new SceneTools().cameraSetProperties({ reference: { id: 'camera-1' }, properties: { fov: 45 } }), { updated: true, reference: { id: 'camera-1', type: 'cc.Camera' } });
   });
 });
+  it('restores earlier camera properties when a later write fails', async () => {
+    let fov = 45;
+    let writes = 0;
+    global.Editor = { Message: { request: async (_module, message, payload) => {
+      if (message === 'query-node-tree') return { uuid: 'root', children: [{ uuid: 'node-1', __comps__: [{ type: 'cc.Camera', value: { uuid: { value: 'camera-1' }, fov: { value: fov }, priority: { value: 1 } } }] }] };
+      if (message === 'query-node') return { uuid: 'node-1', __comps__: [{ type: 'cc.Camera', value: { uuid: { value: 'camera-1' }, fov: { value: fov }, priority: { value: 1 } } }] };
+      if (message === 'set-property') { writes++; if (payload.path.endsWith('.fov')) { fov = payload.dump.value; return true; } return false; }
+      if (message === 'snapshot') return true;
+      throw new Error(`unexpected ${message}`);
+    } } };
+    await assert.rejects(
+      new SceneTools().cameraSetProperties({ reference: { id: 'camera-1' }, properties: { fov: 60, priority: 2 } }),
+      error => error.code === 'CAMERA_PROPERTY_UPDATE_FAILED' && error.details.rollbackFailure === null,
+    );
+    assert.equal(fov, 45);
+    assert.equal(writes, 4);
+  });
 
 describe('final scene adapters', () => {
   it('refuses a directory masquerading as a scene before returning a SceneAsset reference', async () => {
@@ -454,7 +471,7 @@ describe('scene upgrade read-back contracts', () => {
     } } };
     await assert.rejects(
       new SceneTools().cameraSetProperties({ reference: { id: 'camera-1' }, properties: { fov: 60 } }),
-      error => error.code === 'CAMERA_PROPERTY_UPDATE_UNCONFIRMED' && error.status === 502,
+      error => error.code === 'CAMERA_PROPERTY_UPDATE_FAILED' && error.details.rollbackFailure === null,
     );
   });
 });
