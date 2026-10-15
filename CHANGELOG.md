@@ -123,6 +123,7 @@
 - Route instruction writes through the shared bounded atomic project writer with filesystem read-back and real-path containment checks.
 - Reuse bounded real-path-checked project reads for instruction text, preserve missing-file responses, and declare both instruction APIs.
 - Declare scene snapshots and independent batch reads with recursive hierarchy, truncation reasons, unknown native fields, and per-entry errors.
+- Require exact Asset DB UUID/type/URL metadata before experimental preview start-scene profile writes; remove extension-substring type bypass.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

@@ -100,22 +100,12 @@ export class PreviewStartSceneTools {
     if (args.operation === 'set') {
       const uuid = args.sceneUuid?.trim();
       if (!uuid) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'set requires sceneUuid (scene asset UUID)' });
-      // validate scene asset exists and is a scene
-      let assetUrl = '';
-      try { assetUrl = String((await Editor.Message.request('asset-db', 'query-url', uuid)) ?? ''); } catch { /* Target-not-found below is the typed outcome. */ }
-      if (!assetUrl) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Scene asset not found for uuid', details: { sceneUuid: uuid } });
-      // scene .meta url ends with .scene; reject non-scene
-      if (!assetUrl.includes('.scene')) {
-        // verify via asset-db query-asset-info type if available
-        try {
-          const info = await Editor.Message.request('asset-db', 'query-asset-info', uuid) as { type?: string } | null | undefined;
-          if (info?.type && info.type !== 'cc.SceneAsset') {
-            throw new ToolError({ code: 'ASSET_TYPE_MISMATCH', status: 422, message: 'Target is not a scene asset', details: { sceneUuid: uuid, type: info.type, url: assetUrl } });
-          }
-        } catch (e) {
-          if ((e as { code?: string })?.code) throw e;
-        }
-      }
+      const info = await Editor.Message.request('asset-db', 'query-asset-info', uuid) as { uuid?: unknown, type?: unknown, url?: unknown } | null | undefined;
+      if (!info) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Scene asset not found for uuid', details: { sceneUuid: uuid } });
+      if (info.uuid !== uuid) throw new ToolError({ code: 'ASSET_IDENTITY_MISMATCH', status: 422, message: 'Asset DB returned a different scene identity.', details: { sceneUuid: uuid } });
+      if (info.type !== 'cc.SceneAsset') throw new ToolError({ code: 'ASSET_TYPE_MISMATCH', status: 422, message: 'Target is not an authoritative scene asset.', details: { sceneUuid: uuid } });
+      const assetUrl = info.url;
+      if (typeof assetUrl !== 'string' || !assetUrl.startsWith('db://')) throw new ToolError({ code: 'ASSET_IDENTITY_MISMATCH', status: 422, message: 'Scene asset URL is unavailable.', details: { sceneUuid: uuid } });
       const before = await readPreviewProfile().then(r => String(r.data.start_scene ?? r.data.startScene ?? '')).catch(() => '');
       const _experimental = 'filesystem-backed: writes profiles/v2/packages/preview.json directly (3.7 preview/set-config IPC not exposed; guarded with snapshot/rollback and read-back)';
       const updated = await writePreviewProfileStartScene(uuid);
