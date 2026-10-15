@@ -347,7 +347,8 @@ function constraints(node, context, checker) {
           if (explicitMember && ts.isIdentifier(target) && (checker ? namespaceSymbols.has(checker.getSymbolAtLocation(target)) : namespaceNames.has(target.text))) {
             const name = ts.isPropertyAccessExpression(part) ? part.name.text : part.argumentExpression.text;
             const member = checker?.getPropertyOfType(checker.getTypeAtLocation(target), name);
-            if (!checker || member && member.flags & ts.SymbolFlags.Value) return true;
+            const value = member && member.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(member) : member;
+            if (!checker || value?.declarations?.length && value.flags & ts.SymbolFlags.Value) return true;
           }
           if (ts.isPropertyAccessExpression(part)) return usesConstant(target);
         }
