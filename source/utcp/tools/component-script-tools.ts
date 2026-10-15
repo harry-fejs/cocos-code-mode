@@ -72,10 +72,11 @@ export class ComponentScriptTools {
     async scriptComponentCreate(args: ScriptComponentCreateInput): Promise<ScriptComponentCreateResult> {
         assertComponentScriptInput(args, ['assetUrl', 'className', 'menu', 'executionOrder', 'disallowMultiple', 'requiredComponents', 'properties', 'write']);
         if (typeof args.write !== 'boolean') throw new ToolError({ code: 'WRITE_CONTRACT_REQUIRED', status: 400, message: 'write must be an explicit boolean; only write=true permits creating a new source.' });
+        const write = args.write;
         const generated = generateComponentScriptSource({ className: args.className, ...(args.menu === undefined ? {} : { menu: args.menu }), ...(args.executionOrder === undefined ? {} : { executionOrder: args.executionOrder }), ...(args.disallowMultiple === undefined ? {} : { disallowMultiple: args.disallowMultiple }), ...(args.requiredComponents === undefined ? {} : { requiredComponents: args.requiredComponents }), ...(args.properties === undefined ? {} : { properties: args.properties }) });
         const source = await preflightComponentScriptPath(args.assetUrl);
         const result: ScriptComponentCreateResult = { assetUrl: source.assetUrl, ...generated, sourceCreated: false, uuid: null, classRegistration: 'unknown', attached: false, runtimeVerified: false, sceneSaved: false };
-        if (!args.write) return result;
+        if (!write) return result;
         let created: unknown;
         try { created = await Editor.Message.request('asset-db', 'create-asset', source.assetUrl, generated.source, { overwrite: false, rename: false }); }
         catch {
