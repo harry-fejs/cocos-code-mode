@@ -19,6 +19,7 @@ export class AnimationTimelineTools {
             trackBinding: { type: 'object', additionalProperties: false, properties: { component: { type: 'string', minLength: 1, maxLength: 256 }, nodePath: { type: 'string', maxLength: 1024 }, property: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['nodePath', 'property'], description: 'Exact retrieved binding filter; optional component matches native comp metadata, omitted matches any component. Empty nodePath selects root. Track offsets address matching tracks; original native indices and whole-dump diagnostics remain. Not scene binding validation.' },
             eventCallback: { type: 'string', minLength: 1, maxLength: 256, description: 'Exact callback metadata filter; event offsets address matching events, native indices retained. No callback lookup/execution or runtime event history.' },
             eventFrameRange: { type: 'object', additionalProperties: false, properties: { min: { type: 'number', minimum: 0 }, max: { type: 'number', minimum: 0 } }, required: ['min', 'max'], description: 'Inclusive native frame interval, AND-composed with eventCallback. No seconds/runtime timing inference. Off-window events still validate and affect revision.' },
+            keyframeFrameRange: { type: 'object', additionalProperties: false, properties: { min: { type: 'number', minimum: 0 }, max: { type: 'number', minimum: 0 } }, required: ['min', 'max'], description: 'Inclusive native keyframe interval per track. keyframeOffset addresses matching keys; original indices, whole-track ranges, diagnostics and revision retained. No runtime timing inference.' },
             expectedRevision: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'Guard retrieved timeline metadata across pages, not opaque keyframe values or runtime state.' },
             trackOffset: { type: 'integer', minimum: 0, maximum: 1000000, default: 0 },
             trackLimit: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
@@ -40,24 +41,26 @@ export class AnimationTimelineTools {
             matchedTracks: { type: ['integer', 'null'] }, trackBinding: { type: ['object', 'null'], properties: { component: { type: 'string', minLength: 1, maxLength: 256 }, nodePath: { type: 'string' }, property: { type: 'string' } }, required: ['nodePath', 'property'] },
             matchedEvents: { type: ['integer', 'null'] }, eventCallback: { type: ['string', 'null'] },
             eventFrameRange: { type: ['object', 'null'], properties: { min: { type: 'number' }, max: { type: 'number' } }, required: ['min', 'max'] },
+            keyframeFrameRange: { type: ['object', 'null'], properties: { min: { type: 'number' }, max: { type: 'number' } }, required: ['min', 'max'] },
             trackOffset: { type: 'integer' }, trackLimit: { type: 'integer' }, eventOffset: { type: 'integer' }, eventLimit: { type: 'integer' },
             nextTrackOffset: { type: ['integer', 'null'] }, nextEventOffset: { type: ['integer', 'null'] },
             tracks: { type: 'array', maxItems: 200, items: { type: 'object', properties: {
                 index: { type: 'integer' }, identity: { type: 'object', properties: { nodePath: { type: ['string', 'null'] }, property: { type: ['string', 'null'] } }, required: ['nodePath', 'property'] },
                 component: { type: ['string', 'null'] }, parentProperty: { type: ['string', 'null'] }, displayName: { type: ['string', 'null'] }, keyframeCount: { type: ['integer', 'null'] },
+                matchedKeyframes: { type: ['integer', 'null'] },
                 keyframeOffset: { type: 'integer' }, nextKeyframeOffset: { type: ['integer', 'null'] },
                 keyframeLimit: { type: 'integer' }, keyframesComplete: { type: 'boolean' }, keyframesTruncated: { type: 'boolean' },
                 keyframes: { type: 'array', maxItems: 200, items: { type: 'object', properties: { index: { type: 'integer' }, frame: { type: ['number', 'null'] }, frameOverSample: { type: ['number', 'null'] } }, required: ['index', 'frame', 'frameOverSample'] } },
                 frameRange: { type: ['object', 'null'], properties: { first: { type: 'number' }, last: { type: 'number' } }, required: ['first', 'last'] },
                 frameOverSampleRange: { type: ['object', 'null'], properties: { first: { type: 'number' }, last: { type: 'number' } }, required: ['first', 'last'] }, dataValid: { type: 'boolean' },
-            }, required: ['index', 'identity', 'component', 'parentProperty', 'displayName', 'keyframeCount', 'keyframeOffset', 'nextKeyframeOffset', 'keyframeLimit', 'keyframesComplete', 'keyframesTruncated', 'keyframes', 'frameRange', 'frameOverSampleRange', 'dataValid'] } },
+            }, required: ['matchedKeyframes', 'index', 'identity', 'component', 'parentProperty', 'displayName', 'keyframeCount', 'keyframeOffset', 'nextKeyframeOffset', 'keyframeLimit', 'keyframesComplete', 'keyframesTruncated', 'keyframes', 'frameRange', 'frameOverSampleRange', 'dataValid'] } },
             events: { type: 'array', maxItems: 200, items: { type: 'object', properties: {
                 index: { type: 'integer' }, frame: { type: ['number', 'null'] }, frameOverSample: { type: ['number', 'null'] }, callback: { type: ['string', 'null'] }, params: { type: ['array', 'null'], items: { type: 'string' } }, dataValid: { type: 'boolean' },
             }, required: ['index', 'frame', 'frameOverSample', 'callback', 'params', 'dataValid'] } },
             diagnostics: { type: 'array', maxItems: 64, items: { type: 'object', properties: { code: { type: 'string' }, location: { type: 'string' } }, required: ['code', 'location'] } },
             diagnosticCount: { type: 'integer' }, diagnosticsTruncated: { type: 'boolean' },
             runtimeVerified: { type: 'boolean', const: false }, sceneSaved: { type: 'boolean', const: false }, callbackExistenceVerified: { type: 'boolean', const: false },
-        }, required: ['eventFrameRange', 'matchedEvents', 'eventCallback', 'matchedTracks', 'trackBinding', 'revision', 'revisionScope', 'nodeReference', 'clipReference', 'identity', 'clip', 'sourceScope', 'timingUnit', 'validityScope', 'valid', 'sourceComplete', 'complete', 'truncated', 'totalTracks', 'retrievedTracks', 'totalEvents', 'inspectedKeyframes', 'trackOffset', 'trackLimit', 'eventOffset', 'eventLimit', 'nextTrackOffset', 'nextEventOffset', 'tracks', 'events', 'diagnostics', 'diagnosticCount', 'diagnosticsTruncated', 'runtimeVerified', 'sceneSaved', 'callbackExistenceVerified'],
+        }, required: ['keyframeFrameRange', 'eventFrameRange', 'matchedEvents', 'eventCallback', 'matchedTracks', 'trackBinding', 'revision', 'revisionScope', 'nodeReference', 'clipReference', 'identity', 'clip', 'sourceScope', 'timingUnit', 'validityScope', 'valid', 'sourceComplete', 'complete', 'truncated', 'totalTracks', 'retrievedTracks', 'totalEvents', 'inspectedKeyframes', 'trackOffset', 'trackLimit', 'eventOffset', 'eventLimit', 'nextTrackOffset', 'nextEventOffset', 'tracks', 'events', 'diagnostics', 'diagnosticCount', 'diagnosticsTruncated', 'runtimeVerified', 'sceneSaved', 'callbackExistenceVerified'],
     }, 'GET', ['animation', 'timeline', 'inspect', 'read-only'])
     async animationTimelineInspect(args: TimelineInspectOptions) {
         const nodeReference = exactReference(args?.nodeReference, 'nodeReference');
@@ -69,6 +72,7 @@ export class AnimationTimelineTools {
             clipReference,
             ...(args.trackBinding ? { trackBinding: { ...args.trackBinding } } : {}),
             ...(args.eventFrameRange ? { eventFrameRange: { ...args.eventFrameRange } } : {}),
+            ...(args.keyframeFrameRange ? { keyframeFrameRange: { ...args.keyframeFrameRange } } : {}),
         };
         timelineInspectBounds(stableArgs);
         args = stableArgs;

@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add inclusive native keyframeFrameRange filtering to animationTimelineInspect with per-track matchedKeyframes and matching-key pagination. Original indices, whole-track ranges, full-dump diagnostics and filter-independent revisions remain; timing coverage is not runtime/binding validation.
 - Pin the first observed Game View target across regular and skeletal animation state waits. A replacement target cannot satisfy a pending checkpoint; missing identity fails closed without playback dispatch.
 - Preserve lower arity bounds from constrained generic alternatives inside rest unions, retaining generic unresolved diagnostics rather than treating constraints as complete selected schemas.
 - Bind animationClipInventory pages to bounded parsed identity snapshots before issuing revisions, checking slot order, null slots and collection-wide name uniqueness. Stable pages share revisions; changes outside the requested page still invalidate expectedRevision.

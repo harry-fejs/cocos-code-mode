@@ -9,6 +9,7 @@ export interface TimelineInspectOptions {
     trackBinding?: { nodePath: string; component?: string; property: string };
     eventCallback?: string;
     eventFrameRange?: { min: number; max: number };
+    keyframeFrameRange?: { min: number; max: number };
     trackOffset?: number;
     trackLimit?: number;
     eventOffset?: number;
@@ -36,6 +37,8 @@ export function timelineInspectBounds(options: TimelineInspectOptions) {
     if (options.eventCallback !== undefined && (typeof options.eventCallback !== 'string' || !options.eventCallback || options.eventCallback.length > 256)) fail('INVALID_ARGUMENT', 'eventCallback must be an exact nonempty callback name of at most 256 characters.');
     const range = options.eventFrameRange;
     if (range !== undefined && (!timelineRecord(range) || Object.keys(range).some(key => !['min', 'max'].includes(key)) || typeof range.min !== 'number' || !Number.isFinite(range.min) || range.min < 0 || typeof range.max !== 'number' || !Number.isFinite(range.max) || range.max < range.min)) fail('INVALID_ARGUMENT', 'eventFrameRange requires finite nonnegative inclusive min <= max native frames.');
+    const keyframeRange = options.keyframeFrameRange;
+    if (keyframeRange !== undefined && (!timelineRecord(keyframeRange) || Object.keys(keyframeRange).some(key => !['min', 'max'].includes(key)) || typeof keyframeRange.min !== 'number' || !Number.isFinite(keyframeRange.min) || keyframeRange.min < 0 || typeof keyframeRange.max !== 'number' || !Number.isFinite(keyframeRange.max) || keyframeRange.max < keyframeRange.min)) fail('INVALID_ARGUMENT', 'keyframeFrameRange requires finite nonnegative inclusive min <= max native frames.');
     return {
         trackOffset: integer(options.trackOffset, 0, 0, 1000000, 'trackOffset'),
         trackLimit: integer(options.trackLimit, 50, 1, 200, 'trackLimit'),
@@ -119,21 +122,26 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         keyframeCount += keys?.length ?? 0;
         if (keyframeCount > 100000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native dump exceeds 100000 keyframes.');
         let first: number | null = null, last: number | null = null;
+        let matchedKeyframes = 0;
         const keyframes: Array<{ index: number; frame: number | null; frameOverSample: number | null }> = [];
         for (const [keyIndex, rawKey] of (keys ?? []).entries()) {
             const key = timelineRecord(rawKey), keyLocation = `${location}.keyframes[${keyIndex}]`;
             const frame = key && frameValid(key.frame) ? key.frame : null;
             timingHash.update(JSON.stringify([index, keyIndex, frame]));
-            if (keyIndex >= bounds.keyframeOffset && keyIndex < bounds.keyframeOffset + bounds.keyframeLimit) keyframes.push({ index: keyIndex, frame, frameOverSample: frame !== null && sample !== null && finite(frame / sample) ? frame / sample : null });
+            if (options.keyframeFrameRange === undefined || frame !== null && frame >= options.keyframeFrameRange.min && frame <= options.keyframeFrameRange.max) {
+                if (matchedKeyframes >= bounds.keyframeOffset && matchedKeyframes < bounds.keyframeOffset + bounds.keyframeLimit) keyframes.push({ index: keyIndex, frame, frameOverSample: frame !== null && sample !== null && finite(frame / sample) ? frame / sample : null });
+                matchedKeyframes++;
+            }
             if (!key || !frameValid(key.frame)) issue('INVALID_KEYFRAME_TIME', keyLocation);
             if (!key || !('dump' in key) || !finiteTree(key)) issue('INVALID_KEYFRAME_DATA', keyLocation);
             if (key && finite(key.frame) && key.frame >= 0) { first = first === null ? key.frame : Math.min(first, key.frame); last = last === null ? key.frame : Math.max(last, key.frame); }
         }
         for (const field of ['comp', 'parentPropKey', 'displayName']) if (curve && field in curve && typeof curve[field] !== 'string') issue('UNSUPPORTED_TRACK_METADATA', `${location}.${field}`, true);
         const row = { index, identity: { nodePath: text(curve?.nodePath), property: text(curve?.key) }, component: text(curve?.comp), parentProperty: text(curve?.parentPropKey), displayName: text(curve?.displayName), keyframeCount: keys?.length ?? null,
-            keyframes, keyframeOffset: bounds.keyframeOffset, nextKeyframeOffset: keys && bounds.keyframeOffset + keyframes.length < keys.length ? bounds.keyframeOffset + keyframes.length : null,
-            keyframeLimit: bounds.keyframeLimit, keyframesComplete: keys !== null && bounds.keyframeOffset === 0 && keyframes.length === keys.length,
-            keyframesTruncated: keys === null || bounds.keyframeOffset > 0 || keyframes.length < keys.length,
+            matchedKeyframes: keys === null ? null : matchedKeyframes,
+            keyframes, keyframeOffset: bounds.keyframeOffset, nextKeyframeOffset: keys && bounds.keyframeOffset + keyframes.length < matchedKeyframes ? bounds.keyframeOffset + keyframes.length : null,
+            keyframeLimit: bounds.keyframeLimit, keyframesComplete: keys !== null && bounds.keyframeOffset === 0 && keyframes.length === matchedKeyframes,
+            keyframesTruncated: keys === null || bounds.keyframeOffset > 0 || keyframes.length < matchedKeyframes,
             frameRange: first === null ? null : { first, last }, frameOverSampleRange: first === null || last === null || sample === null || !finite(first / sample) || !finite(last / sample) ? null : { first: first / sample, last: last / sample }, dataValid: diagnosticCount === startIssues };
         return row;
     });
@@ -151,7 +159,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     const hash = createHash('sha256');
     hash.update(JSON.stringify([options.nodeReference.id, options.clipReference.id, text(dump?.name), sample, duration, dump?.speed, dump?.wrapMode, totalTracks, sourceComplete]));
     hash.update(timingHash.digest('hex'));
-    for (const { keyframes, keyframeOffset, nextKeyframeOffset, keyframeLimit, keyframesComplete, keyframesTruncated, ...row } of tracks) hash.update(JSON.stringify(row));
+    for (const { keyframes, matchedKeyframes, keyframeOffset, nextKeyframeOffset, keyframeLimit, keyframesComplete, keyframesTruncated, ...row } of tracks) hash.update(JSON.stringify(row));
     for (const row of eventRows) hash.update(JSON.stringify(row));
     hash.update(JSON.stringify([diagnostics, diagnosticCount, supported]));
     const revision = hash.digest('hex');
@@ -171,6 +179,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         matchedTracks: curves ? selectedTracks.length : null, trackBinding: options.trackBinding ? { ...options.trackBinding } : null,
         matchedEvents: events ? selectedEvents.length : null, eventCallback: options.eventCallback ?? null,
         eventFrameRange: options.eventFrameRange ? { ...options.eventFrameRange } : null,
+        keyframeFrameRange: options.keyframeFrameRange ? { ...options.keyframeFrameRange } : null,
         trackOffset: bounds.trackOffset, trackLimit: bounds.trackLimit, eventOffset: bounds.eventOffset, eventLimit: bounds.eventLimit,
         nextTrackOffset: null as number | null, nextEventOffset: null as number | null,
         tracks: selectedTracks.slice(bounds.trackOffset, bounds.trackOffset + bounds.trackLimit), events: selectedEvents.slice(bounds.eventOffset, bounds.eventOffset + bounds.eventLimit),
