@@ -183,7 +183,10 @@ export class FileTools {
                 if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'library' || entry.name === 'temp') continue;
                 const fullPath = path.join(frame.directory, entry.name);
                 const relative = path.relative(root, fullPath).replace(/\\/g, '/');
-                if (entry.isDirectory()) stack.push({ directory: fullPath, handle: await openDirectory(fullPath) });
+                if (entry.isDirectory()) {
+                    if (stack.length >= 128) throw new ToolError({ code: 'PROJECT_SEARCH_LIMIT', status: 413, message: 'Project search exceeded the 128-directory nesting limit.', recovery: 'Select a narrower directory before searching again.' });
+                    stack.push({ directory: fullPath, handle: await openDirectory(fullPath) });
+                }
                 else if (regex.test(relative) || (args.directory && regex.test(path.relative(scope, fullPath).replace(/\\/g, '/')))) files.push(relative);
             }
             return { files, total: files.length, truncated: files.length >= limit };
