@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Extend scenario nodeAssert with immediate local/world position+tolerance predicates, AND-composed with activation. Retain observed mismatch evidence and stop subsequent actions; invalid metrics refuse, no polling or movement writes.
 - Recognize instantiated generic class references as class-instance semantic-adapter boundaries via their compiler target; generic interfaces remain unaffected.
 - Preserve intrinsic string-mapping operands and unresolved string-mapping diagnostics for generic Uppercase/Lowercase/Capitalize/Uncapitalize types; compiler-reduced string literals remain resolved.
 - Compose explicit local/world position predicates in scenario nodeWait using the existing read-only polling adapter. Whole-input preflight copies nested position data and refuses invalid later predicates before dispatch; no movement/tween completion inference.
