@@ -4,6 +4,7 @@ import { ToolError } from '../tool-error';
 import { dispatchGameViewLifecycle, inspectGameViewRuntime } from '../utils/game-view-transport';
 import { retryTransient } from '../utils/retry-policy';
 import { unitQuaternion, orientationMatches } from '../utils/node-orientation';
+import { validateGraphVariableInventory } from '../graph-variable-wait';
 import {
     RuntimeSession,
     RuntimeSessionError,
@@ -776,8 +777,8 @@ export class RuntimeSessionTools {
                                         const result = await new ComponentRuntimeTools().animationGraphPreview({ sessionId: args.sessionId, nodeReference: step.nodeReference!, componentId: step.componentId!, operation: 'inspect', expectedGraphUuid: step.graphUuid!, timeoutMs });
                                         if (result.graphUuid !== step.graphUuid) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Graph checkpoint identity changed.' });
                                         if (step.operation === 'graphObserve') return result;
-                                        if (!Array.isArray(result.variables)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Graph variable inventory unavailable.' });
-                                        const matches = result.variables.filter(variable => variable && typeof variable === 'object' && variable.name === step.variableName);
+                                        validateGraphVariableInventory(result.variables);
+                                        const matches = result.variables.filter(variable => variable.name === step.variableName);
                                         if (matches.length !== 1) throw new ToolError({ code: 'GRAPH_VARIABLE_NOT_FOUND', status: 404, message: 'Expected one exact graph variable.' });
                                         const variable = matches[0];
                                         const nativeType = step.variableType === 'boolean' ? 1 : step.variableType === 'integer' ? 3 : 0;

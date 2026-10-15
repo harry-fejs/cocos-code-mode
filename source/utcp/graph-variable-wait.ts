@@ -1,6 +1,17 @@
 import { ToolError } from './tool-error';
 
 export interface GraphVariableWaitCondition { graphUuid: string; name: string; type: 'float' | 'integer' | 'boolean'; value?: number | boolean; range?: { min: number; max: number }; timeoutMs?: number; pollMs?: number }
+export function validateGraphVariableInventory(variables: unknown): asserts variables is Array<Record<string, unknown>> {
+    if (!Array.isArray(variables) || variables.length > 64) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Bounded graph variable list unavailable.' });
+    const names = new Set<string>();
+    for (let index = 0; index < variables.length; index++) {
+        const entry = variables[index];
+        if (!Object.prototype.hasOwnProperty.call(variables, index) || !entry || typeof entry !== 'object' || Array.isArray(entry) || typeof entry.name !== 'string' || !entry.name.trim() || entry.name.length > 256 || !Number.isInteger(entry.type) || entry.type < 0 || entry.type > 3) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Graph variable inventory contains malformed metadata.' });
+        if (names.has(entry.name)) throw new ToolError({ code: 'AMBIGUOUS_GRAPH_VARIABLE', status: 409, message: 'Graph variable names must be unique.' });
+        names.add(entry.name);
+    }
+}
+
 export async function waitForGraphVariable(condition: GraphVariableWaitCondition, observe: (timeoutMs: number) => Promise<Record<string, unknown>>) {
     const timeoutMs = condition?.timeoutMs ?? 3000; const pollMs = condition?.pollMs ?? 100;
     if (!condition || typeof condition.graphUuid !== 'string' || !condition.graphUuid || condition.graphUuid.length > 256
@@ -20,14 +31,7 @@ export async function waitForGraphVariable(condition: GraphVariableWaitCondition
         finally { clearTimeout(timer); }
         if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Graph variable read completed after deadline.' });
         if (snapshot.graphUuid !== condition.graphUuid) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Runtime graph UUID changed during variable wait.' });
-        if (!Array.isArray(snapshot.variables) || snapshot.variables.length > 64) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Bounded graph variable list unavailable.' });
-        const names = new Set<string>();
-        for (let index = 0; index < snapshot.variables.length; index++) {
-            const entry = snapshot.variables[index];
-            if (!Object.prototype.hasOwnProperty.call(snapshot.variables, index) || !entry || typeof entry !== 'object' || Array.isArray(entry) || typeof entry.name !== 'string' || !entry.name.trim() || entry.name.length > 256 || !Number.isInteger(entry.type) || entry.type < 0 || entry.type > 3) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Graph variable inventory contains malformed metadata.' });
-            if (names.has(entry.name)) throw new ToolError({ code: 'AMBIGUOUS_GRAPH_VARIABLE', status: 409, message: 'Graph variable names must be unique.' });
-            names.add(entry.name);
-        }
+        validateGraphVariableInventory(snapshot.variables);
         const matches = snapshot.variables.filter(variable => variable.name === condition.name);
         if (matches.length !== 1) throw new ToolError({ code: 'GRAPH_VARIABLE_NOT_FOUND', status: 404, message: 'Expected exactly one named graph variable.' });
         const variable = matches[0] as Record<string, unknown>;
