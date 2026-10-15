@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add Prefab/Material/JsonAsset serialized component references and initially empty reference arrays for project resource binding. Native class decorators, null/empty-only defaults and create-only ownership; no loading, spawning or automatic assignment.
 - Support scalar and bounded dense array Color component fields with exact RGBA integer-byte defaults and independent native constructors; omitted scalar is opaque white and omitted array is empty. Native import/Inspector qualification remains deferred.
 - Add minParticleCount to read-only particle waits and scenario assert/wait checkpoints; compose inclusive min/max intervals and reject invalid ranges before dispatch. No new playback mutation or native qualification.
 - Add timeline revision/expectedRevision guarding retrieved metadata, all keyframe indices/times, track binding/count/range and event projection. Per-track keyframeOffset/keyframeLimit exposes bounded timing pages; opaque values, unretrieved tracks and runtime binding remain outside revision scope.
