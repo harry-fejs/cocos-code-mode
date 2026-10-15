@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Merge deprecation across duplicate catalog export contexts independent of traversal order, preserving publicExport and non-permitted discovery semantics.
 - Validate audio success state/flags/nullable native identities at the host boundary: finite nonnegative time/duration, consistent playing/playbackState, explicit nullable volume/loop and activation metadata. Malformed control results preserve uncertainty/retrySafe:false; no replay.
 - Propagate deprecated namespace context independently to descendant records, preserving public/internal classification instead of treating deprecation as an access restriction.
 - Preserve pendingMayComplete audio errors even without optional state, with mutationDispatched:true/retrySafe:false. State payload remains ancillary; unknown playback outcomes cannot lose replay-safety metadata during host error conversion.

@@ -61,6 +61,7 @@ function collectExports(input, version, roots, label = 'engine') {
     const existing = records.get(key);
     if (!existing) records.set(key, row);
     else {
+      existing.deprecated = existing.deprecated || row.deprecated;
       existing.exportedFrom = [...new Set([...existing.exportedFrom, ...row.exportedFrom])].sort(compare);
       existing.contextConstraints.features = [...new Set([...existing.contextConstraints.features, ...row.contextConstraints.features])].sort(compare);
       existing.evidence = [...new Map([...existing.evidence, ...row.evidence].map(item => [json(item), item])).values()];
