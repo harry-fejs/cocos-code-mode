@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Propagate internal/deprecated tags from all merged owner declarations to member records, preventing members on untagged declaration fragments from remaining publicExport under an internal owner.
 - Combine internal/deprecated metadata across merged symbol declarations so a later restrictive tag is not hidden by the representative declaration; internal merged exports are not labeled publicExport.
 - Resolve audio runtime node identities through a complete bounded10000-node/256-depth traversal before component lookup/playback; duplicate UUIDs, repeated/malformed topology and admission overflow refuse with typed errors rather than first-match success. No mutation replay.
 - Decode computed literal declaration keys for internal double-underscore metadata; dynamic identifier expressions are not mistaken for their value and remain unevaluated.

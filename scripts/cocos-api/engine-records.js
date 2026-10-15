@@ -25,6 +25,14 @@ function collectExports(input, version, roots, label = 'engine') {
       info.deprecated = info.deprecated || merged.deprecated;
     }
     const ownerMetadata = member ? metadata(declaration.parent) : info;
+    if (member && declaration.parent.name) {
+      const ownerSymbol = checker.getSymbolAtLocation(declaration.parent.name);
+      for (const part of ownerSymbol?.declarations || []) {
+        const merged = metadata(part);
+        ownerMetadata.internal = ownerMetadata.internal || merged.internal;
+        ownerMetadata.deprecated = ownerMetadata.deprecated || merged.deprecated;
+      }
+    }
     info.internal = info.internal || ownerMetadata.internal || !context.publicExport;
     info.deprecated = info.deprecated || ownerMetadata.deprecated;
     let sigs;
