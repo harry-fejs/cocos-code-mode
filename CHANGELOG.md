@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve readonly binding metadata for nested object/array destructuring const exports by resolving the owning declaration list; let/parameter bindings are not marked const and no deep immutability is inferred.
 - Route runtime state observation/wait reads through lifecycle-continuity inspection; reset during pending reads refuses stale state. Wait keeps one deadline across polling and checks session generation/target before accepting a match; no runtime mutation/replay added.
 - Use compiler-instantiated property read type for getter return metadata, preserving concrete generic inheritance rather than raw declaration T; accessor kind and declared annotation provenance remain unchanged.
 - Recheck current runtime session status/identity after asynchronous readiness reads; reset or lifecycle drift refuses stale ready:true snapshots with RUNTIME_TARGET_CHANGED. No stop/restart/mutation retry added.
