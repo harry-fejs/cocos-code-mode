@@ -33,7 +33,7 @@ const store = new RuntimeSessionStore();
 const RUNTIME_STATE_TIMEOUT_MS = 60_000;
 let previewMutationPending = false;
 let unconfirmedPreviewMutation: { expected: PreviewState['state'], targetId?: string, minFrameCount?: number, requestSettled: boolean } | undefined;
-const activeScenarios = new Set<string>();
+const activeScenarios = new Map<string, { cancelled: boolean }>();
 
 async function withRuntimeStateTimeout<T>(promise: Promise<T>, deadline = Date.now() + RUNTIME_STATE_TIMEOUT_MS): Promise<T> {
     let timer: NodeJS.Timeout | undefined;
@@ -577,12 +577,14 @@ export class RuntimeSessionTools {
             return { ...step, ...(step.nodeReference ? { nodeReference: { id: step.nodeReference.id } } : {}) };
         });
         if (activeScenarios.has(args.sessionId)) throw new ToolError({ code: 'RUNTIME_SCENARIO_BUSY', status: 409, message: 'A scenario or its timed-out request still owns this session; no steps dispatched.' });
-        activeScenarios.add(args.sessionId);
+        const scenario = { cancelled: false };
+        activeScenarios.set(args.sessionId, scenario);
         let inFlight: Promise<unknown> | undefined;
         try {
         const outcomes: Array<Record<string, unknown>> = [];
         for (let index = 0; index < steps.length; index++) {
             const step = steps[index];
+            if (scenario.cancelled) throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario cancelled; no next step dispatched.', details: { sessionId: args.sessionId, failedStep: index, outcomes } });
             if (Date.now() >= scenarioDeadline) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: `Runtime scenario deadline elapsed before step ${index}.`, details: { sessionId: args.sessionId, failedStep: index, outcomes } });
             const remaining = Math.min(10000, scenarioDeadline - Date.now());
             if (!['assert', 'observe', 'audioObserve', 'audioAssert'].includes(step.operation) && remaining < 100) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Scenario has insufficient remaining time for a bounded primitive; no next step dispatched.', details: { sessionId: args.sessionId, failedStep: index, outcomes } });
@@ -596,6 +598,7 @@ export class RuntimeSessionTools {
                             ? this.runtimeStateObserve({ sessionId: args.sessionId })
                             : step.operation === 'audioObserve' || step.operation === 'audioAssert' || step.operation === 'audioControl' || step.operation === 'audioWait'
                                 ? import('./audio-playback-tools').then(async ({ AudioPlaybackTools }) => {
+                                    if (scenario.cancelled) throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario cancelled before audio dispatch.' });
                                     const audio = new AudioPlaybackTools();
                                     const target = { sessionId: args.sessionId, nodeReference: step.nodeReference! };
                                     const timeoutMs = Math.min(step.timeoutMs ?? (step.operation === 'audioControl' ? 5000 : 10000), stepDeadline - Date.now());
@@ -612,6 +615,7 @@ export class RuntimeSessionTools {
                 inFlight = undefined;
                 if (Date.now() >= stepDeadline) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Scenario step completed after its deadline; inspect before retrying any action.' });
                 outcomes.push({ index, operation: step.operation, result });
+                if (scenario.cancelled) throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario cancelled after the dispatched step settled; no subsequent step dispatched.' });
                 if ('passed' in result && result.passed !== true) throw new ToolError({ code: 'RUNTIME_SCENARIO_ASSERTION_FAILED', status: 409, message: `Runtime scenario assertion failed at step ${index}.` });
             } catch (error) {
                 throw new ToolError({ code: error instanceof ToolError ? error.code : 'RUNTIME_SCENARIO_FAILED', status: error instanceof ToolError ? error.status : 502,
@@ -629,6 +633,20 @@ export class RuntimeSessionTools {
                 activeScenarios.delete(args.sessionId);
             }
         }
+    }
+
+    @utcpTool(
+        'runtimeScenarioCancel',
+        'Request cooperative cancellation of the active scenario for an exact session. Does not cancel native work, release pending ownership, restore or replay actions.',
+        { type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string', minLength: 1, maxLength: 64 } }, required: ['sessionId'] },
+        { type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string' }, active: { type: 'boolean' }, cancellationRequested: { type: 'boolean' }, nativeWorkCancelled: { type: 'boolean', const: false } }, required: ['sessionId', 'active', 'cancellationRequested', 'nativeWorkCancelled'] },
+        'POST', ['runtime', 'scenario', 'cancel']
+    )
+    async runtimeScenarioCancel(args: { sessionId: string }): Promise<{ sessionId: string, active: boolean, cancellationRequested: boolean, nativeWorkCancelled: false }> {
+        if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded runtime sessionId is required.' });
+        const scenario = activeScenarios.get(args.sessionId);
+        if (scenario) scenario.cancelled = true;
+        return { sessionId: args.sessionId, active: !!scenario, cancellationRequested: !!scenario, nativeWorkCancelled: false };
     }
     @utcpTool(
         'runtimeScenarioAssert',
