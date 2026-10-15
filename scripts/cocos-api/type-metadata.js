@@ -240,7 +240,8 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
   const parameters = signature.parameters.map((symbol, position) => {
     const parameter = symbol.valueDeclaration || symbol.declarations?.[0] || declaration.parameters?.[position];
     if (parameter?.dotDotDotToken) {
-      const restType = checker.getTypeOfSymbolAtLocation(symbol, parameter);
+      const rawRestType = checker.getTypeOfSymbolAtLocation(symbol, parameter);
+      const restType = rawRestType.flags & ts.TypeFlags.TypeParameter ? checker.getBaseConstraintOfType(rawRestType) || rawRestType : rawRestType;
       const alternatives = restType.isUnion?.() ? restType.types : [restType];
       let requiredLength = Infinity;
       for (const alternative of alternatives) {
