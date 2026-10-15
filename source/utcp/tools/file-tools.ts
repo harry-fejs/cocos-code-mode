@@ -272,13 +272,19 @@ export class FileTools {
     async projectListDirectory(args: { dirPath?: string, limit?: number }): Promise<{ entries: { name: string, type: 'file' | 'directory', size?: number }[], total: number, truncated: boolean }> {
         const directory = resolveSafePath(projectRoot(), args.dirPath ?? '.');
         if (!fs.existsSync(directory) || !fs.statSync(directory).isDirectory()) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Directory not found: ${args.dirPath ?? '.'}` });
-        const allEntries = fs.readdirSync(directory, { withFileTypes: true });
         const limit = boundedPositive(args.limit, DEFAULT_DIRECTORY_ENTRIES, MAX_DIRECTORY_ENTRIES);
-        const entries = allEntries.slice(0, limit).map((entry) => {
-            const fullPath = path.join(directory, entry.name);
-            const stat = fs.statSync(fullPath);
-            return { name: entry.name, type: (entry.isDirectory() ? 'directory' : 'file') as 'file' | 'directory', size: entry.isFile() ? stat.size : undefined };
-        });
-        return { entries, total: allEntries.length, truncated: allEntries.length > entries.length };
+        const entries: { name: string, type: 'file' | 'directory', size?: number }[] = [];
+        const handle = await fs.opendir(directory);
+        let total = 0;
+        try {
+            let entry: fs.Dirent | null;
+            while ((entry = await handle.read()) !== null) {
+                if (++total > MAX_SEARCH_ENTRIES) throw new ToolError({ code: 'PROJECT_DIRECTORY_LIMIT', status: 413, message: 'Directory listing exceeded the 100000-entry traversal limit.' });
+                if (entries.length >= limit) continue;
+                const stat = fs.statSync(path.join(directory, entry.name));
+                entries.push({ name: entry.name, type: entry.isDirectory() ? 'directory' : 'file', size: entry.isFile() ? stat.size : undefined });
+            }
+        } finally { await handle.close(); }
+        return { entries, total, truncated: total > entries.length };
     }
 }
