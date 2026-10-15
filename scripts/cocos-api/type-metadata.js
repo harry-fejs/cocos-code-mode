@@ -53,6 +53,16 @@ function typeInfo(checker, type, node) {
         visit(checker.getTypeFromTypeNode(conditional.falseType));
       }
     }
+    if (current.flags & ts.TypeFlags.Object && current.objectFlags & ts.ObjectFlags.Mapped) {
+      unresolved.push({ kind: 'mapped-type', reference: canonicalType(checker.typeToString(current, node, ts.TypeFormatFlags.NoTruncation)) });
+      // Declaration operands are provenance, not proof of instantiated mapped properties.
+      const mapped = current.declaration;
+      if (mapped && ts.isMappedTypeNode(mapped)) {
+        for (const operand of [mapped.typeParameter.constraint, mapped.nameType, mapped.type]) {
+          if (operand) visit(checker.getTypeFromTypeNode(operand));
+        }
+      }
+    }
     if (current.isUnionOrIntersection?.()) current.types.forEach(visit);
     if (checker.isArrayType(current) || checker.isTupleType(current)) {
       checker.getTypeArguments(current).forEach(visit);
