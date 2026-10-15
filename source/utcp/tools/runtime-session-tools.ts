@@ -519,6 +519,7 @@ export class RuntimeSessionTools {
             additionalProperties: false,
             properties: {
                 sessionId: { type: 'string', minLength: 1, maxLength: 64 },
+                totalTimeoutMs: { type: 'integer', minimum: 100, maximum: 60000, default: 30000 },
                 steps: {
                     type: 'array', minItems: 1, maxItems: 16,
                     items: {
@@ -543,9 +544,12 @@ export class RuntimeSessionTools {
         'POST',
         ['runtime', 'scenario', 'run', 'steps'],
     )
-    async runtimeScenarioRun(args: { sessionId: string, steps: Array<{ operation: 'wait' | 'assert' | 'pause' | 'resume' | 'step', paused?: boolean, minFrameCount?: number, timeoutMs?: number }> }): Promise<{ success: true, sessionId: string, outcomes: Array<Record<string, unknown>> }> {
+    async runtimeScenarioRun(args: { sessionId: string, steps: Array<{ operation: 'wait' | 'assert' | 'pause' | 'resume' | 'step', paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, outcomes: Array<Record<string, unknown>> }> {
         if (!Array.isArray(args.steps) || args.steps.length === 0 || args.steps.length > 16) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runtimeScenarioRun requires 1-16 typed steps.' });
         if (typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded runtime sessionId is required.' });
+        const totalTimeoutMs = args.totalTimeoutMs ?? 30000;
+        if (!Number.isInteger(totalTimeoutMs) || totalTimeoutMs < 100 || totalTimeoutMs > 60000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'totalTimeoutMs must be an integer from 100 to 60000.' });
+        const scenarioDeadline = Date.now() + totalTimeoutMs;
         const steps = Array.from(args.steps, (step, index) => {
             if (!step || typeof step !== 'object' || Array.isArray(step)
                 || Object.keys(step).some(key => !['operation', 'paused', 'minFrameCount', 'timeoutMs'].includes(key))
@@ -560,12 +564,16 @@ export class RuntimeSessionTools {
         const outcomes: Array<Record<string, unknown>> = [];
         for (let index = 0; index < steps.length; index++) {
             const step = steps[index];
+            if (Date.now() >= scenarioDeadline) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: `Runtime scenario deadline elapsed before step ${index}.`, details: { sessionId: args.sessionId, failedStep: index, outcomes } });
+            const remaining = Math.max(100, Math.min(10000, scenarioDeadline - Date.now()));
             try {
-                const result = step.operation === 'wait'
-                    ? await this.runtimeWaitForState({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount, timeoutMs: step.timeoutMs })
+                const pending = step.operation === 'wait'
+                    ? this.runtimeWaitForState({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount, timeoutMs: Math.min(step.timeoutMs ?? 10000, remaining) })
                     : step.operation === 'assert'
-                        ? await this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount })
-                        : await this.previewControl({ sessionId: args.sessionId, operation: step.operation, timeoutMs: step.timeoutMs ?? 10000 });
+                        ? this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount })
+                        : this.previewControl({ sessionId: args.sessionId, operation: step.operation, timeoutMs: Math.min(step.timeoutMs ?? 10000, remaining) });
+                const result: Record<string, unknown> = await withRuntimeStateTimeout<Record<string, unknown>>(pending as Promise<Record<string, unknown>>, scenarioDeadline);
+                if (Date.now() >= scenarioDeadline) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Scenario step completed after the caller deadline; inspect before retrying any action.' });
                 outcomes.push({ index, operation: step.operation, result });
                 if ('passed' in result && result.passed !== true) throw new ToolError({ code: 'RUNTIME_SCENARIO_ASSERTION_FAILED', status: 409, message: `Runtime scenario assertion failed at step ${index}.` });
             } catch (error) {

@@ -101,7 +101,7 @@ Use `editorQuery({category:'engine_api',operation:'records',recordId})` for one 
 
 `operation:'get_signature'` requires an exact `recordId`, hydrates only that record from an external catalog, and returns its declared signatures with `permitted:false`. It is a read-only type/discovery result; unresolved/overloaded/native semantics remain explicit and no callable route is inferred.
 
-Use `editorQuery({category:'engine_api',operation:'compare_version',targetVersion:'3.7.3',recordId,compareVersion:'3.8.8',compareRecordId})` for two selected records. They must have the same version-independent semantic identity. Results expose catalog identities and signature/metadata/resolution hash comparisons (`changed`, `unchanged`, or `unknown`), with `permitted:false` and `mutationAuthorized:false`. Missing records never imply whole-catalog removal. Output fields are declared in gateway metadata; installed transport preservation remains separate qualification.
+`runtimeScenarioRun` also accepts `totalTimeoutMs` (100–60000) to cap the entire finite sequence, not just individual waits/actions. If the aggregate deadline expires before a step, it returns a typed failure with `failedStep` and prior outcomes; no later action is replayed.
 
 Follow `nextCursor` only when more records are needed; preserve the same version/class/filter. Cursors are catalog-bound. `qualified:false`, `runtimeVerified:false`, and `live.mutationAuthorized:false` are intentional: declaration presence and live class availability do not prove mutation/history/persistence. Supplying a component `reference` refreshes Inspector path evidence on every request instead of retaining stale script mappings.
 
