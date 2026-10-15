@@ -2,7 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
-- Add scalar serialized Color component fields with exact RGBA integer-byte defaults, opaque-white omitted default and independent native constructor initialization. Creation gates unchanged; Color arrays and native import/Inspector qualification are not claimed.
+- Support scalar and bounded dense array Color component fields with exact RGBA integer-byte defaults and independent native constructors; omitted scalar is opaque white and omitted array is empty. Native import/Inspector qualification remains deferred.
 - Add minParticleCount to read-only particle waits and scenario assert/wait checkpoints; compose inclusive min/max intervals and reject invalid ranges before dispatch. No new playback mutation or native qualification.
 - Add timeline revision/expectedRevision guarding retrieved metadata, all keyframe indices/times, track binding/count/range and event projection. Per-track keyframeOffset/keyframeLimit exposes bounded timing pages; opaque values, unretrieved tracks and runtime binding remain outside revision scope.
 - Publish named timeline track/keyframe/event result contracts with nullable timing and per-track continuation offsets; opaque keyframe payloads remain unavailable rather than exposed as unchecked records.

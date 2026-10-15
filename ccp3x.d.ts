@@ -1048,13 +1048,14 @@ declare namespace ccp3x {
     | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }
     | { name: string; type: 'Vec3'; array?: false; default?: { x: number; y: number; z: number } }
     | { name: string; type: 'Color'; array?: false; default?: { r: number; g: number; b: number; a: number } }
-    | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame'; array?: false; default?: null }
+    | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array?: false; default?: null }
     | { name: string; type: 'number'; array: true; default?: number[] }
     | { name: string; type: 'string'; array: true; default?: string[] }
     | { name: string; type: 'boolean'; array: true; default?: boolean[] }
     | { name: string; type: 'Vec2'; array: true; default?: { x: number; y: number }[] }
     | { name: string; type: 'Vec3'; array: true; default?: { x: number; y: number; z: number }[] }
-    | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame'; array: true; default?: [] };
+    | { name: string; type: 'Color'; array: true; default?: { r: number; g: number; b: number; a: number }[] }
+    | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] };
     function scriptComponentCreate(args: { assetUrl: string; className: string; properties?: ComponentPropertyDescriptor[]; write: boolean }): { assetUrl: string; className: string; source: string; sha256: string; bytes: number; sourceCreated: boolean; uuid: string | null; classRegistration: 'unknown' | 'pending'; attached: false; runtimeVerified: false; sceneSaved: false };
 
     /** Manage auxiliary animation curves and keys. */
