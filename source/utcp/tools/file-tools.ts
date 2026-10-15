@@ -214,6 +214,7 @@ export class FileTools {
                 throw new ToolError({ code: 'PROJECT_SEARCH_FAILED', status: 503, message: 'A project directory could not be read; search results are incomplete.', recovery: 'Check directory availability and permissions before retrying the read-only search.' });
             }
         };
+        let traversalFailed = false;
         try {
             stack.push({ directory: scope, handle: await openDirectory(scope) });
             while (stack.length) {
@@ -240,8 +241,12 @@ export class FileTools {
                 }
             }
             return { files, total: files.length, truncated };
+        } catch (error) {
+            traversalFailed = true;
+            throw error;
         } finally {
-            await Promise.all(stack.map(async ({ handle }) => { try { await handle.close(); } catch { /* Preserve the search result/error while releasing remaining handles. */ } }));
+            const closures = await Promise.allSettled(stack.map(({ handle }) => handle.close()));
+            if (!traversalFailed && closures.some(result => result.status === 'rejected')) throw new ToolError({ code: 'PROJECT_SEARCH_CLOSE_FAILED', status: 503, message: 'Search directory cleanup could not be confirmed.' });
         }
     }
 
