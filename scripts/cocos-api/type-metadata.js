@@ -161,6 +161,11 @@ function typeInfo(checker, type, node) {
         if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
         if (!symbol || symbol.name === 'unknown' || !symbol.declarations?.length) unresolved.push({ kind: 'reference', reference: compact(current.typeName) });
       }
+      if (ts.isImportTypeNode(current)) {
+        let symbol = checker.getSymbolAtLocation(current.qualifier || current.argument.literal);
+        if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+        if (!symbol || symbol.name === 'unknown' || !symbol.declarations?.length) unresolved.push({ kind: 'import-reference', reference: compact(current) });
+      }
       if (ts.isTypeNode(current) || current === node) {
         const children = [];
         ts.forEachChild(current, child => {
