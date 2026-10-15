@@ -108,10 +108,10 @@ function typeInfo(checker, type, node) {
       else referenceSymbols.set(symbol.name, symbol);
     }
     if (symbol && !symbol.name.startsWith('__') && !references.has(symbol.name)) {
-      const enumDeclaration = symbol.declarations?.find(ts.isEnumDeclaration);
+      const enumDeclarations = symbol.declarations?.filter(ts.isEnumDeclaration) || [];
       references.set(symbol.name, { name: symbol.name, resolution: symbol.declarations?.length ? 'resolved' : 'unknown',
-        kind: enumDeclaration ? 'enum' : declaration ? ts.isInterfaceDeclaration(declaration) ? 'interface' : 'type-alias' : 'type-reference',
-        enumValues: enumDeclaration ? enumDeclaration.members.map(member => ({ name: member.name.getText(), value: checker.getConstantValue(member) ?? compact(member.initializer) })) : null });
+        kind: enumDeclarations.length ? 'enum' : declaration ? ts.isInterfaceDeclaration(declaration) ? 'interface' : 'type-alias' : 'type-reference',
+        enumValues: enumDeclarations.length ? enumDeclarations.flatMap(item => item.members.map(member => ({ name: member.name.getText(), value: checker.getConstantValue(member) ?? compact(member.initializer) }))) : null });
     }
     if (collection) return;
     if (symbol && declaration && !seenSymbols.has(symbol)) {
