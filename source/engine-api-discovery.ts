@@ -10,7 +10,7 @@ import { openExternalApiCatalog } from './external-api-catalog';
 
 export interface EngineDiscoveryArgs {
     category?: string; className?: string; targetVersion?: string; domain?: string;
-    operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces';
+    operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members';
     namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge';
     filter?: string; recordId?: string; reference?: IInstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string;
 }
@@ -37,8 +37,8 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     if (!Object.prototype.hasOwnProperty.call(VERSIONS, version)) throw new ToolError({ code: 'UNSUPPORTED_VERSION', status: 422, message: 'Only catalogued versions 3.7.3 and 3.8.8 are available.' });
     if (args.category === 'component_schema' && !args.className) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'component_schema requires className.' });
     const operation = args.operation ?? 'records';
-    if (!['records', 'list_domains', 'list_classes', 'list_namespaces'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Unknown catalog discovery operation.' });
-    if (operation !== 'records' && (args.reference || args.className || args.category === 'component_schema')) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Catalog navigation does not accept an instance or class schema target.' });
+    if (!['records', 'list_domains', 'list_classes', 'list_namespaces', 'list_members'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Unknown catalog discovery operation.' });
+    if (operation !== 'records' && (args.reference || args.recordId || args.category === 'component_schema' || args.className && !['list_members'].includes(operation))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Catalog navigation does not accept an instance, record or class schema target.' });
     if (args.recordId !== undefined && (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024 || operation !== 'records')) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'recordId requires records operation and a bounded nonempty identity.' });
     const maxEntries = limit(args.maxEntries, 50, 200), maxBytes = limit(args.maxBytes, 32768, 131072);
     const external = openExternalApiCatalog(version);
@@ -109,6 +109,16 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
         const namespaces = new Map<string, number>();
         for (const record of records) namespaces.set(record.namespace, (namespaces.get(record.namespace) ?? 0) + 1);
         records.splice(0, records.length, ...[...namespaces].sort(([a], [b]) => a.localeCompare(b)).map(([namespace, recordCount]) => ({ id: `${version}:namespace:${namespace}`, namespace, name: namespace, kind: 'namespace-summary', recordCount, permitted: false })));
+    } else if (operation === 'list_members') {
+        const members = new Map<string, ApiRecord>();
+        for (const record of records) {
+            if (!record.className || !record.member && !record.name) continue;
+            const key = `${record.namespace}:${record.className}:${record.member ?? record.name}`;
+            const existing = members.get(key);
+            if (existing) existing.recordCount = Number(existing.recordCount) + 1;
+            else members.set(key, { id: `${version}:member-index:${key}`, namespace: record.namespace, className: record.className, member: record.member ?? record.name, name: record.member ?? record.name, kind: 'member-summary', recordCount: 1, permitted: false });
+        }
+        records.splice(0, records.length, ...[...members.values()].sort((a, b) => a.id.localeCompare(b.id)));
     }
     if (offset > records.length) throw new ToolError({ code: 'STALE_CURSOR', status: 409, message: 'Catalog cursor offset exceeds this result set.' });
     if (args.className && records.length === 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Class ${args.className} is absent from the ${version} catalog.` });
