@@ -150,15 +150,28 @@ function typeInfo(checker, type, node) {
   };
   visit(type);
   if (node) {
-    const scan = current => {
+    const pending = [node];
+    let scanned = 0;
+    let syntaxExceeded = false;
+    while (pending.length) {
+      const current = pending.pop();
+      scanned++;
       if (ts.isTypeReferenceNode(current)) {
         let symbol = checker.getSymbolAtLocation(current.typeName);
         if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
         if (!symbol || symbol.name === 'unknown' || !symbol.declarations?.length) unresolved.push({ kind: 'reference', reference: compact(current.typeName) });
       }
-      if (ts.isTypeNode(current) || current === node) ts.forEachChild(current, scan);
-    };
-    scan(node);
+      if (ts.isTypeNode(current) || current === node) {
+        const children = [];
+        ts.forEachChild(current, child => {
+          if (scanned + pending.length + children.length >= 256) { syntaxExceeded = true; return true; }
+          children.push(child);
+          return undefined;
+        });
+        for (let index = children.length - 1; index >= 0; index--) pending.push(children[index]);
+      }
+    }
+    if (syntaxExceeded) unresolved.push({ kind: 'syntax-budget', reference: 'Type annotation scan exceeds 256 nodes' });
   }
   const rendered = checker.typeToString(type, node, ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope);
   return { type: canonicalType(rendered), declaredType: node ? compact(node) : null, references: [...references.values()].sort((a, b) => compare(a.name, b.name)),
