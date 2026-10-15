@@ -4,6 +4,8 @@ export interface RuntimeNodeObservation {
     childUuids: string[];
     childCount: number;
     childrenTruncated: boolean;
+    childOffset: number;
+    nextChildOffset: number | null;
     active: boolean;
     activeInHierarchy: boolean;
     position: { x: number; y: number; z: number };
@@ -14,9 +16,10 @@ export interface RuntimeNodeObservation {
 }
 
 /** Serialized finite Game View reader. No component access, methods supplied by callers or mutation. */
-export function observeRuntimeNode(nodeUuid: string, expiresAt: number): RuntimeNodeObservation | { code: string; message: string } {
+export function observeRuntimeNode(nodeUuid: string, expiresAt: number, childOffset = 0): RuntimeNodeObservation | { code: string; message: string } {
     try {
         const fail = (code: string, message: string): never => { throw { code, message }; };
+        if (!Number.isSafeInteger(childOffset) || childOffset < 0 || childOffset > 9999) fail('INVALID_ARGUMENT', 'childOffset must be0..9999.');
         type Node = { uuid: string; children: Node[]; parent: Node | null; active: boolean; activeInHierarchy: boolean; position: unknown; worldPosition: unknown; scale: unknown; rotation: unknown; worldRotation: unknown };
         const cc = (globalThis as unknown as { cc?: { GAME_VIEW?: boolean; ENGINE_VERSION?: string; VERSION?: string; director?: { getScene(): Node | null }; isValid(value: unknown, strict?: boolean): boolean } }).cc;
         if (!cc || cc.GAME_VIEW !== true) fail('UNSUPPORTED_RUNTIME_TRANSPORT', 'Actual Game View required.');
@@ -59,12 +62,14 @@ export function observeRuntimeNode(nodeUuid: string, expiresAt: number): Runtime
         const parent = node.parent;
         if (node !== scene && (!parent || typeof parent.uuid !== 'string' || !parent.uuid || parent.uuid.length > 256 || !parent.children.includes(node))) fail('RUNTIME_TARGET_CHANGED', 'Runtime parent identity unavailable.');
         const childCount = node.children.length;
-        const childUuids = node.children.slice(0, 128).map(child => child.uuid);
-        const result = { nodeUuid, parentUuid: parent?.uuid ?? null, childUuids, childCount, childrenTruncated: childCount > childUuids.length, active: node.active, activeInHierarchy: node.activeInHierarchy, position: vector(node.position), worldPosition: vector(node.worldPosition), scale: vector(node.scale), rotation: quaternion(node.rotation), worldRotation: quaternion(node.worldRotation) };
+        if (childOffset > childCount) fail('INVALID_ARGUMENT', 'childOffset exceeds current child collection; restart paging.');
+        const childUuids = node.children.slice(childOffset, childOffset + 128).map(child => child.uuid);
+        const nextChildOffset = childOffset + childUuids.length < childCount ? childOffset + childUuids.length : null;
+        const result = { nodeUuid, parentUuid: parent?.uuid ?? null, childUuids, childCount, childOffset, nextChildOffset, childrenTruncated: childOffset > 0 || nextChildOffset !== null, active: node.active, activeInHierarchy: node.activeInHierarchy, position: vector(node.position), worldPosition: vector(node.worldPosition), scale: vector(node.scale), rotation: quaternion(node.rotation), worldRotation: quaternion(node.worldRotation) };
         let ancestor: Node | null = node; let attached = false;
         for (let depth = 0; ancestor && depth <= 256; depth++, ancestor = ancestor.parent) if (ancestor === scene) { attached = true; break; }
         if (!attached || engine !== (globalThis as unknown as { cc?: unknown }).cc || engine.director?.getScene() !== scene || !engine.isValid(node, true) || node.uuid !== nodeUuid) fail('RUNTIME_TARGET_CHANGED', 'Runtime node or scene changed during observation.');
-        if (node.parent !== parent || node.children.length !== childCount || childUuids.some((id, index) => node.children[index]?.uuid !== id || node.children[index]?.parent !== node)) fail('RUNTIME_TARGET_CHANGED', 'Runtime hierarchy changed during observation.');
+        if (node.parent !== parent || node.children.length !== childCount || childUuids.some((id, index) => node.children[childOffset + index]?.uuid !== id || node.children[childOffset + index]?.parent !== node)) fail('RUNTIME_TARGET_CHANGED', 'Runtime hierarchy changed during observation.');
         if (Date.now() >= expiresAt) fail('RUNTIME_STATE_TIMEOUT', 'Node observation completed after deadline.');
         return result;
     } catch (error) {
