@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Compose animationEvents in runtimeScenarioRun through the exact-clip read-only event observer, with maxEvents1..100, whole-input preflight and existing scenario deadline/ownership. Capture starts at listener registration; no playback dispatch, prior history or guaranteed completion inferred.
 - Match exact decorator callee names for editModeDeclared metadata rather than text substrings, excluding unrelated decorators/string arguments while retaining direct and qualified syntax; no runtime identity/qualification inferred.
 - Reject sparse animation clipboard reference lists and invalid paste booleans before native dispatch; reject sparse/blank copy/paste response identities without replay. Preserve dense valid node order and native snapshot flow.
 - Exclude whole-clause and per-specifier type-only imports from execution constant/guard provenance, including namespace imports; mixed imports retain real value bindings only.
