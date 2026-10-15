@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve generic constraint/default dependencies in signature references and include default-type unresolved diagnostics; existing related-type discovery consumes the signature references without a new catalog contract.
+- Add exact session/run scenario ownership inspection with current step, settled outcome count, cancellation and pending/caller-finished flags. Local read-only progress only; inactive is not success or native completion, no historical results retained.
 - Preserve constructor signature kind for callable/constructable hybrid API types; overload positions and parameter/result dependencies remain unchanged.
 - Add finite scenario delay steps (durationMs0..5000) for wall-clock cue spacing with full-input preflight, deadline refusal and cooperative cancellation. Independent of game pause/time-scale; delay never proves animation/audio/VFX completion.
 - Traverse dictionary DTO index-signature key/value types in offline API metadata, retaining named dependencies, unknown values and recursive-cycle diagnostics under the existing expansion budget. No catalog regeneration or runtime permission change.

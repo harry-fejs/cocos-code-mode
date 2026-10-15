@@ -34,7 +34,7 @@ const store = new RuntimeSessionStore();
 const RUNTIME_STATE_TIMEOUT_MS = 60_000;
 let previewMutationPending = false;
 let unconfirmedPreviewMutation: { expected: PreviewState['state'], targetId?: string, minFrameCount?: number, requestSettled: boolean } | undefined;
-const activeScenarios = new Map<string, { cancelled: boolean, runId: string }>();
+const activeScenarios = new Map<string, { cancelled: boolean; runId: string; stepIndex: number | null; operation: string | null; completedSteps: number; requestPending: boolean; callerFinished: boolean }>();
 
 async function withRuntimeStateTimeout<T>(promise: Promise<T>, deadline = Date.now() + RUNTIME_STATE_TIMEOUT_MS): Promise<T> {
     let timer: NodeJS.Timeout | undefined;
@@ -622,7 +622,7 @@ export class RuntimeSessionTools {
             return { ...step, ...(step.nodeReference ? { nodeReference: { id: step.nodeReference.id } } : {}) };
         });
         if (activeScenarios.has(args.sessionId)) throw new ToolError({ code: 'RUNTIME_SCENARIO_BUSY', status: 409, message: 'A scenario or its timed-out request still owns this session; no steps dispatched.' });
-        const scenario = { cancelled: false, runId: args.runId ?? randomUUID() };
+        const scenario = { cancelled: false, runId: args.runId ?? randomUUID(), stepIndex: null as number | null, operation: null as string | null, completedSteps: 0, requestPending: false, callerFinished: false };
         activeScenarios.set(args.sessionId, scenario);
         let inFlight: Promise<unknown> | undefined;
         try {
@@ -635,6 +635,7 @@ export class RuntimeSessionTools {
             if (!['assert', 'observe', 'audioObserve', 'audioAssert'].includes(step.operation) && remaining < 100) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Scenario has insufficient remaining time for a bounded primitive; no next step dispatched.', details: { sessionId: args.sessionId, runId: scenario.runId, failedStep: index, outcomes } });
             try {
                 const stepDeadline = Math.min(scenarioDeadline, Date.now() + (step.timeoutMs ?? 10000));
+                scenario.stepIndex = index; scenario.operation = step.operation;
                 const delay = async (): Promise<Record<string, unknown>> => {
                     const start = Date.now(), end = start + step.durationMs!;
                     if (end >= stepDeadline) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Cue delay cannot fit the remaining scenario deadline.' });
@@ -702,10 +703,13 @@ export class RuntimeSessionTools {
                                 })
                                 : this.previewControl({ sessionId: args.sessionId, operation: step.operation, timeoutMs: Math.min(step.timeoutMs ?? 10000, remaining) });
                 inFlight = pending;
+                scenario.requestPending = true;
+                void pending.then(() => { scenario.requestPending = false; }, () => { scenario.requestPending = false; });
                 const result: Record<string, unknown> = await withRuntimeStateTimeout<Record<string, unknown>>(pending as Promise<Record<string, unknown>>, stepDeadline);
                 inFlight = undefined;
                 if (Date.now() >= stepDeadline) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Scenario step completed after its deadline; inspect before retrying any action.' });
                 outcomes.push({ index, operation: step.operation, result });
+                scenario.completedSteps = outcomes.length;
                 if (scenario.cancelled) throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario cancelled after the dispatched step settled; no subsequent step dispatched.' });
                 if ('passed' in result && result.passed !== true) throw new ToolError({ code: 'RUNTIME_SCENARIO_ASSERTION_FAILED', status: 409, message: `Runtime scenario assertion failed at step ${index}.` });
             } catch (error) {
@@ -717,6 +721,7 @@ export class RuntimeSessionTools {
         }
         return { success: true, sessionId: args.sessionId, runId: scenario.runId, outcomes };
         } finally {
+            scenario.callerFinished = true;
             if (inFlight) {
                 // Timeout ends the caller wait, not ownership of the outstanding request.
                 void inFlight.then(() => activeScenarios.delete(args.sessionId), () => activeScenarios.delete(args.sessionId));
@@ -724,6 +729,16 @@ export class RuntimeSessionTools {
                 activeScenarios.delete(args.sessionId);
             }
         }
+    }
+
+    @utcpTool('runtimeScenarioInspect', 'Read current in-memory scenario ownership/progress without native calls. Inactive does not prove success or native completion; no historical results retained.', {
+        type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string', minLength: 1, maxLength: 64 }, runId: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,64}$' } }, required: ['sessionId', 'runId'],
+    }, { type: 'object', properties: { sessionId: { type: 'string' }, runId: { type: 'string' }, active: { type: 'boolean' }, progress: { type: ['object', 'null'], properties: { stepIndex: { type: ['integer', 'null'] }, operation: { type: ['string', 'null'] }, completedSteps: { type: 'integer' }, requestPending: { type: 'boolean' }, callerFinished: { type: 'boolean' }, cancellationRequested: { type: 'boolean' } }, required: ['stepIndex', 'operation', 'completedSteps', 'requestPending', 'callerFinished', 'cancellationRequested'] } }, required: ['sessionId', 'runId', 'active', 'progress'] }, 'GET', ['runtime', 'scenario', 'inspect', 'read-only'])
+    async runtimeScenarioInspect(args: { sessionId: string; runId: string }) {
+        if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64 || typeof args.runId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(args.runId)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Exact bounded sessionId and runId required.' });
+        const scenario = activeScenarios.get(args.sessionId);
+        if (scenario && scenario.runId !== args.runId) throw new ToolError({ code: 'RUNTIME_SCENARIO_IDENTITY_MISMATCH', status: 409, message: 'Inspection does not match the active run.' });
+        return { sessionId: args.sessionId, runId: args.runId, active: !!scenario, progress: scenario ? { stepIndex: scenario.stepIndex, operation: scenario.operation, completedSteps: scenario.completedSteps, requestPending: scenario.requestPending, callerFinished: scenario.callerFinished, cancellationRequested: scenario.cancelled } : null };
     }
 
     @utcpTool(
