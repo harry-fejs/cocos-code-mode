@@ -1559,6 +1559,8 @@ declare namespace ccp3x {
     }): AudioPlaybackResult;
     /** Observe actual Game View audio state without edit-renderer substitution. */
     function audioPlaybackObserve(args: { sessionId: string; nodeReference: { id: string } }): AudioPlaybackResult;
+    /** Observe-only wait with at least one playing/loaded/minTime condition and a bounded caller deadline. Target changes refuse; playing=false is not proof of natural completion. In-flight reads may settle after timeout; no playback replay/listeners. */
+    function audioPlaybackWaitForState(args: { sessionId: string; nodeReference: { id: string }; playing?: boolean; loaded?: boolean; minTime?: number; timeoutMs?: number; pollMs?: number }): { matched: true; observations: number; observation: AudioPlaybackResult };
     /** Build-folder data-only preflight; no serving, load or runtime validity inference. */
     function assetBundleArtifactInspect(args: { bundlePath: string; bundleName: string; maxResources?: number; resourceOffset?: number; expectedRevision?: string }): { bundleName: string; version: string; files: Array<{ name: string; bytes: number; sha256: string }>; revision: string; resources: Array<{ index: string; path: string; type: string | null; emittedUuid: string; uniqueAddress: boolean }>; resourceCount: number; resourceOffset: number; nextOffset: number | null; truncated: boolean; writes: false; runtimeVerified: false; verificationScope: string };
     /** Explicit built data-bundle load/resource/release validation; expectedUuid is decoded runtime identity, not raw emitted token. Do not replay uncertain callbacks. */

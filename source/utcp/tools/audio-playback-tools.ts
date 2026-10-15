@@ -106,6 +106,49 @@ export class AudioPlaybackTools {
         return this.execute(args, 'observe');
     }
 
+    @utcpTool('audioPlaybackWaitForState', 'Wait for observed AudioSource playing/loaded/time conditions in one attached Game View target. Read-only polling; stopped is not proof of natural completion. No playback dispatch or event listeners.', {
+        type: 'object', additionalProperties: false,
+        properties: { ...targetProperties, playing: { type: 'boolean' }, loaded: { type: 'boolean' }, minTime: { type: 'number', minimum: 0, maximum: 3600 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000 } },
+        required: ['sessionId', 'nodeReference'],
+    }, { type: 'object', additionalProperties: false, properties: { matched: { type: 'boolean', const: true }, observations: { type: 'integer' }, observation: outputSchema }, required: ['matched', 'observations', 'observation'] }, 'POST', ['audio', 'playback', 'wait', 'read-only'])
+    async audioPlaybackWaitForState(args: AudioPlaybackObserveArgs & { playing?: boolean; loaded?: boolean; minTime?: number; timeoutMs?: number; pollMs?: number }) {
+        validate(args, 'observe');
+        const timeoutMs = args.timeoutMs ?? 3000;
+        const pollMs = args.pollMs ?? 100;
+        if (args.playing === undefined && args.loaded === undefined && args.minTime === undefined
+            || args.playing !== undefined && typeof args.playing !== 'boolean'
+            || args.loaded !== undefined && typeof args.loaded !== 'boolean'
+            || args.minTime !== undefined && (typeof args.minTime !== 'number' || !Number.isFinite(args.minTime) || args.minTime < 0 || args.minTime > 3600)
+            || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000
+            || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide a bounded audio state condition, deadline and poll interval.' });
+        const deadline = Date.now() + timeoutMs;
+        let targetId: string | undefined;
+        let observations = 0;
+        for (;;) {
+            const remaining = deadline - Date.now();
+            if (remaining <= 0) throw new ToolError({ code: 'AUDIO_STATE_TIMEOUT', status: 409, message: 'Audio observation deadline expired; no playback mutation dispatched.' });
+            let timer: NodeJS.Timeout | undefined;
+            let observation: AudioPlaybackSuccess;
+            try {
+                observation = await Promise.race([this.audioPlaybackObserve({ sessionId: args.sessionId, nodeReference: { id: args.nodeReference.id } }), new Promise<never>((_, reject) => {
+                    timer = setTimeout(() => reject(new ToolError({ code: 'AUDIO_STATE_TIMEOUT', status: 409, message: 'Audio read exceeded the caller deadline; in-flight observation may still settle.' })), remaining);
+                })]);
+            } finally { clearTimeout(timer); }
+            if (Date.now() >= deadline) throw new ToolError({ code: 'AUDIO_STATE_TIMEOUT', status: 409, message: 'Audio observation completed after the caller deadline.' });
+            if (observation.success !== true || observation.operation !== 'observe' || observation.sessionId !== args.sessionId || observation.nodeUuid !== args.nodeReference.id
+                || typeof observation.targetId !== 'string' || !observation.targetId) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Audio observation identity is invalid.' });
+            if (targetId !== undefined && observation.targetId !== targetId) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Audio target changed during state wait.' });
+            targetId = observation.targetId;
+            const state = observation.state;
+            if (!state || typeof state.playing !== 'boolean' || typeof state.loaded !== 'boolean'
+                || args.minTime !== undefined && (typeof state.currentTime !== 'number' || !Number.isFinite(state.currentTime) || state.currentTime < 0)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Audio wait received invalid state metrics.' });
+            observations++;
+            if ((args.playing === undefined || state.playing === args.playing) && (args.loaded === undefined || state.loaded === args.loaded)
+                && (args.minTime === undefined || state.currentTime >= args.minTime)) return { matched: true as const, observations, observation };
+            await new Promise(resolve => setTimeout(resolve, Math.min(pollMs, Math.max(0, deadline - Date.now()))));
+        }
+    }
+
     private async execute(args: AudioPlaybackObserveArgs, operation: AudioPlaybackOperation, time?: number, timeoutMs?: number): Promise<AudioPlaybackSuccess> {
         validate(args, operation, time, timeoutMs);
         try {
