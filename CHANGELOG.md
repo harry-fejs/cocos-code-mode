@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Recheck timeline node identity and AnimationClip Asset DB identity/type/location after native dump; observed deletion/path/type drift refuses instead of returning mixed target evidence. No source-byte/atomic/ABA or scene-binding validity guarantee.
 - Mark const variable bindings readonly in catalog metadata while leaving let/var writable; this does not imply deep immutability of referenced objects or runtime write authorization.
 - Preserve parent variable-statement JSDoc text for variable metadata when the declaration has no own documentation, keeping existing restrictive tag classification unchanged.
 - Expose per-track keyframeLimit/keyframesComplete/keyframesTruncated for timeline timing pages, distinguishing partial/tail/missing data from a complete empty track. Page-only metadata remains excluded from revision hashes; no keyframe-value/binding/runtime completeness inference.

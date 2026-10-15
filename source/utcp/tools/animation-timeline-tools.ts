@@ -70,6 +70,15 @@ export class AnimationTimelineTools {
         // includeCurves bypasses slimClipDump, retaining raw events/keyframes. Existing
         // animationQuery caps curves at 1000 and reports totalCurves/truncated.
         const response = await new AnimationTools().animationQuery({ operation: 'clip_dump', nodeReference, clipReference, includeCurves: true, maxCurves: 1000 });
+        const [afterNodeValue, afterClipValue]: unknown[] = await Promise.all([
+            Editor.Message.request('scene', 'query-node', nodeReference.id),
+            Editor.Message.request('asset-db', 'query-asset-info', clipReference.id),
+        ]);
+        const afterNode = timelineRecord(afterNodeValue), afterClip = timelineRecord(afterClipValue);
+        const afterUuid = timelineRecord(afterNode?.uuid);
+        if (!afterNode || !afterClip || (afterUuid && 'value' in afterUuid ? afterUuid.value : afterNode.uuid) !== nodeReference.id
+            || afterClip.uuid !== clipReference.id || afterClip.type !== 'cc.AnimationClip' || afterClip.invalid === true
+            || ['url', 'file', 'importer', 'isDirectory'].some(field => afterClip[field] !== clip[field])) throw new ToolError({ code: 'TIMELINE_TARGET_CHANGED', status: 409, message: 'Timeline node or clip Asset DB identity changed during dump inspection; result refused. No mutation dispatched.' });
         return inspectAnimationTimeline(response.result, { ...args, nodeReference, clipReference }, { nodeUuid: nodeReference.id, clipUuid: clipReference.id });
     }
 }
