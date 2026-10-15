@@ -224,7 +224,12 @@ export class FileTools {
                 catch {
                     throw new ToolError({ code: 'PROJECT_SEARCH_FAILED', status: 503, message: 'A project directory could not be read; search results are incomplete.' });
                 }
-                if (!entry) { await frame.handle.close(); stack.pop(); continue; }
+                if (!entry) {
+                    try { await frame.handle.close(); }
+                    catch { throw new ToolError({ code: 'PROJECT_SEARCH_CLOSE_FAILED', status: 503, message: 'Search directory cleanup could not be confirmed.' }); }
+                    stack.pop();
+                    continue;
+                }
                 if (++visitedEntries > MAX_SEARCH_ENTRIES) {
                     throw new ToolError({ code: 'PROJECT_SEARCH_LIMIT', status: 413, message: 'Project search exceeded the 100000-entry traversal limit.', recovery: 'Select a narrower directory before searching again.' });
                 }
@@ -245,7 +250,7 @@ export class FileTools {
             traversalFailed = true;
             throw error;
         } finally {
-            const closures = await Promise.allSettled(stack.map(({ handle }) => handle.close()));
+            const closures = await Promise.allSettled(stack.map(async ({ handle }) => { await handle.close(); }));
             if (!traversalFailed && closures.some(result => result.status === 'rejected')) throw new ToolError({ code: 'PROJECT_SEARCH_CLOSE_FAILED', status: 503, message: 'Search directory cleanup could not be confirmed.' });
         }
     }
