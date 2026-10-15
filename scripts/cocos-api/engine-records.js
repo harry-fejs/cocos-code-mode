@@ -74,7 +74,8 @@ function collectExports(input, version, roots, label = 'engine') {
     if (ancestors.has(symbol)) return;
     const declaration = symbol.valueDeclaration || symbol.declarations[0];
     const declaredKind = kind(declaration);
-    const local = { ...context, publicExport: context.publicExport && !/^__private(?:\.|$)/.test(name) };
+    const internal = symbol.declarations.some(part => metadata(part).internal);
+    const local = { ...context, publicExport: context.publicExport && !internal && !/^__private(?:\.|$)/.test(name) };
     record(symbol, declaration, local, name, null);
     if (declaredKind === 'namespace' || symbol.flags & ts.SymbolFlags.Module) {
       const next = new Set([...ancestors, symbol]);

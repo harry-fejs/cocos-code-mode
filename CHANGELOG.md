@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Propagate internal merged namespace/export context to descendant records instead of labeling children public beneath an internal namespace; discovery remains non-permitted.
 - Validate successful audio transport responses against dispatched session/scene/node/operation and optional expected source/clip UUIDs. Foreign success refuses with retrySafe:false and control outcome uncertainty; no playback replay.
 - Propagate internal/deprecated tags from all merged owner declarations to member records, preventing members on untagged declaration fragments from remaining publicExport under an internal owner.
 - Combine internal/deprecated metadata across merged symbol declarations so a later restrictive tag is not hidden by the representative declaration; internal merged exports are not labeled publicExport.
