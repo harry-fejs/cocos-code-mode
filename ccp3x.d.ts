@@ -1052,6 +1052,8 @@ declare namespace ccp3x {
     | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }
     | { name: string; type: 'Vec3'; array?: false; default?: { x: number; y: number; z: number } }
     | { name: string; type: 'Vec4'; array?: false; default?: { x: number; y: number; z: number; w: number } }
+    | { name: string; type: 'Size'; array?: false; default?: { width: number; height: number } }
+    | { name: string; type: 'Rect'; array?: false; default?: { x: number; y: number; width: number; height: number } }
     /** Native cc.Quat data, finite xyzw preserved without normalization; omitted scalar is identity. */
     | { name: string; type: 'Quat'; array?: false; default?: { x: number; y: number; z: number; w: number } }
     | { name: string; type: 'Color'; array?: false; default?: { r: number; g: number; b: number; a: number } }
@@ -1063,6 +1065,8 @@ declare namespace ccp3x {
     | { name: string; type: 'Vec2'; array: true; default?: { x: number; y: number }[] }
     | { name: string; type: 'Vec3'; array: true; default?: { x: number; y: number; z: number }[] }
     | { name: string; type: 'Vec4'; array: true; default?: { x: number; y: number; z: number; w: number }[] }
+    | { name: string; type: 'Size'; array: true; default?: { width: number; height: number }[] }
+    | { name: string; type: 'Rect'; array: true; default?: { x: number; y: number; width: number; height: number }[] }
     | { name: string; type: 'Quat'; array: true; default?: { x: number; y: number; z: number; w: number }[] }
     | { name: string; type: 'Color'; array: true; default?: { r: number; g: number; b: number; a: number }[] }
     | { name: string; type: 'Node' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] });

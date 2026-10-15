@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add native Size/Rect scalar and array component fields with exact finite width/height or x/y/width/height, zero scalar defaults and independent native instances. Preserve signed values; no automatic layout/UITransform/collider writes or dimension normalization.
 - Exclude simple identifier assignment targets from direct constant-read guard provenance while retaining RHS reads and compound read-modify-write expressions; invalid imported writes are not authorized or executed.
 - Add native Vec4 scalar/array descriptors to scriptComponentCreate with exact finite xyzw coordinates and zero scalar default, independent per-instance values and existing Inspector metadata. No material assignment, normalization or shader execution.
 - Exclude named constant aliases reached through compiler-tracked type-only reexport chains from runtime guard-read provenance, even when the ultimate target is a declared value.
