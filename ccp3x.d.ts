@@ -1316,6 +1316,11 @@ declare namespace ccp3x {
     function uiCreateScrollView(args?: { name?: string; parentReference?: InstanceReference }): {
         reference: InstanceReference; viewport: InstanceReference; content: InstanceReference;
     };
+    /** Creates a separate static list window, not runtime virtualization. nextIndex is metadata, not a continuation handle; calling again creates another list. */
+    function uiVirtualListCreate(args: { name?: string; parentReference?: InstanceReference; itemCount: number; visibleItems: number; startIndex?: number }): {
+        reference: InstanceReference; viewport: InstanceReference; content: InstanceReference; itemReferences: InstanceReference[];
+        itemCount: number; instantiatedItems: number; startIndex: number; nextIndex: number | null; virtualized: false; runtimeRecyclingBound: false;
+    };
     /** Creates a bounded labeled EditBox + Submit Button form under one Widget root. Verifies all three child identities and focus order; failure reports owned-root cleanup status. Does not bind a gameplay callback or prove runtime input dispatch. */
     function uiCreateInputForm(args: { label: string; placeholder?: string; name?: string; parentReference?: InstanceReference }): {
         reference: InstanceReference; label: InstanceReference; input: InstanceReference; submit: InstanceReference; focusOrder: string[];

@@ -39,24 +39,28 @@ export class PortfolioCompletionTools {
             name: { type: 'string', minLength: 1, maxLength: 128 }, parentReference: InstanceReferenceSchema,
             itemCount: { type: 'integer', minimum: 0, maximum: 100000 },
             visibleItems: { type: 'integer', minimum: 1, maximum: MAX_VISIBLE_ITEMS },
+            startIndex: { type: 'integer', minimum: 0, maximum: 100000, default: 0 },
         }, required: ['itemCount', 'visibleItems'],
     }, {
-        type: 'object', properties: { reference: { type: 'object' }, viewport: { type: 'object' }, content: { type: 'object' }, itemReferences: { type: 'array' }, itemCount: { type: 'integer' }, instantiatedItems: { type: 'integer' }, virtualized: { type: 'boolean' } },
-        required: ['reference', 'viewport', 'content', 'itemReferences', 'itemCount', 'instantiatedItems', 'virtualized'],
+        type: 'object', properties: { reference: { type: 'object' }, viewport: { type: 'object' }, content: { type: 'object' }, itemReferences: { type: 'array' }, itemCount: { type: 'integer' }, instantiatedItems: { type: 'integer' }, virtualized: { type: 'boolean', const: false }, startIndex: { type: 'integer' }, nextIndex: { type: ['integer', 'null'] }, runtimeRecyclingBound: { type: 'boolean', const: false } },
+        required: ['reference', 'viewport', 'content', 'itemReferences', 'itemCount', 'instantiatedItems', 'virtualized', 'startIndex', 'nextIndex', 'runtimeRecyclingBound'],
     }, 'POST', ['ui', 'virtual', 'list', 'create'])
-    async uiVirtualListCreate(args: { name?: string, parentReference?: IInstanceReference, itemCount: number, visibleItems: number }): Promise<Record<string, unknown>> {
+    async uiVirtualListCreate(args: { name?: string, parentReference?: IInstanceReference, itemCount: number, visibleItems: number, startIndex?: number }): Promise<Record<string, unknown>> {
         if (!args || !Number.isInteger(args.itemCount) || args.itemCount < 0 || args.itemCount > 100000
             || !Number.isInteger(args.visibleItems) || args.visibleItems < 1 || args.visibleItems > MAX_VISIBLE_ITEMS) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `itemCount must be an integer from 0 to 100000 and visibleItems from 1 to ${MAX_VISIBLE_ITEMS}.` });
+        const startIndex = args.startIndex ?? 0;
+        if (!Number.isInteger(startIndex) || startIndex < 0 || startIndex > args.itemCount) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'startIndex must be an integer within 0..itemCount.' });
         const ui = new UiTools();
         const list = await ui.uiCreateScrollView({ name: args.name ?? 'VirtualList', parentReference: args.parentReference });
-        const materialized = Math.min(args.itemCount, args.visibleItems);
+        const materialized = Math.min(args.itemCount - startIndex, args.visibleItems);
         const itemReferences: IInstanceReference[] = [];
         for (let index = 0; index < materialized; index++) {
-            const item = await ui.createLabel({ name: `Item-${index}`, text: String(index), parentReference: list.content });
+            const itemIndex = startIndex + index;
+            const item = await ui.createLabel({ name: `Item-${itemIndex}`, text: String(itemIndex), parentReference: list.content });
             itemReferences.push(item.reference);
         }
         await Editor.Message.request('scene', 'snapshot');
-        return { ...list, itemReferences, itemCount: args.itemCount, instantiatedItems: materialized, virtualized: args.itemCount > materialized };
+        return { ...list, itemReferences, itemCount: args.itemCount, instantiatedItems: materialized, startIndex, nextIndex: startIndex + materialized < args.itemCount ? startIndex + materialized : null, virtualized: false, runtimeRecyclingBound: false };
     }
 
     @utcpTool('uiFormValidationBind', 'Create a bounded input form and return explicit validation metadata.', {
