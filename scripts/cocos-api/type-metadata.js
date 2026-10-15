@@ -81,13 +81,10 @@ function typeInfo(checker, type, node) {
       }
     }
     if (current.isUnionOrIntersection?.()) current.types.forEach(visit);
-    if (checker.isArrayType(current) || checker.isTupleType(current)) {
-      checker.getTypeArguments(current).forEach(visit);
-      return;
-    }
+    const collection = checker.isArrayType(current) || checker.isTupleType(current);
     if (current.flags & ts.TypeFlags.Object && current.objectFlags & ts.ObjectFlags.Reference) checker.getTypeArguments(current).forEach(visit);
     if (current.aliasTypeArguments) current.aliasTypeArguments.forEach(visit);
-    const symbol = current.aliasSymbol || current.symbol;
+    const symbol = collection ? current.aliasSymbol : current.aliasSymbol || current.symbol;
     if (current.flags & ts.TypeFlags.Object && (current.objectFlags & ts.ObjectFlags.Class || current.objectFlags & ts.ObjectFlags.Reference && current.target?.objectFlags & ts.ObjectFlags.Class)) {
       unresolved.push({ kind: 'semantic-adapter-required', reference: 'class-instance-type' });
     }
@@ -110,6 +107,7 @@ function typeInfo(checker, type, node) {
         kind: enumDeclaration ? 'enum' : declaration ? ts.isInterfaceDeclaration(declaration) ? 'interface' : 'type-alias' : 'type-reference',
         enumValues: enumDeclaration ? enumDeclaration.members.map(member => ({ name: member.name.getText(), value: checker.getConstantValue(member) ?? compact(member.initializer) })) : null });
     }
+    if (collection) return;
     if (symbol && declaration && !seenSymbols.has(symbol)) {
       seenSymbols.add(symbol);
       if (ts.isTypeAliasDeclaration(declaration) && !declaration.typeParameters?.length) { const underlying = checker.getTypeFromTypeNode(declaration.type); if (underlying !== current) visit(underlying); }

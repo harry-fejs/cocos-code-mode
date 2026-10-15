@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Retain array/tuple alias identities alongside element dependencies without expanding built-in collection prototype members; anonymous primitive arrays remain free of prototype metadata.
 - Add inclusive minChildCount/maxChildCount0..9999 intervals to runtime node waits and scenario nodeWait/nodeAssert. Use observed direct-child count independently of truncated UUID prefix; reversed/invalid ranges refuse before dispatch, no spawn/despawn writes.
 - Report ambiguous-reference when distinct compiler symbols share a short dependency name, preventing silently complete metadata for colliding namespace types; reference output shape remains unchanged.
 - Compose exact parentUuid predicates in scenario nodeWait/nodeAssert with null-root versus omitted semantics. Full-input preflight rejects invalid/self parents before dispatch; mismatch retains snapshot and stops later cues, no reparent writes.
