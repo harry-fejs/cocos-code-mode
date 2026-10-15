@@ -84,15 +84,15 @@ export class ComponentTools {
                 ? uuidValue
                 : typeof nestedUuid === 'string' ? nestedUuid : field(comp, 'uuid');
             const declaredType = typeof rawType === 'string' ? rawType : undefined;
+            if (typeof compUuid !== 'string' || !compUuid.trim() || !declaredType?.trim()) {
+                throw new Error(`nodeComponentsGet: component on ${args.reference.id} lacks authoritative uuid/type — dump shape drift`);
+            }
 
             if (!args.componentType || (declaredType && (
                 declaredType === args.componentType
                 || declaredType === `cc.${args.componentType}`
                 || declaredType.replace(/^cc\\./, '') === args.componentType.replace(/^cc\\./, '')
             ))) {
-                if (typeof compUuid !== 'string' || !declaredType) {
-                    throw new Error(`nodeComponentsGet: component on ${args.reference.id} lacks authoritative uuid/type — dump shape drift`);
-                }
                 foundComponents.push({ id: compUuid, type: declaredType });
             }
         }

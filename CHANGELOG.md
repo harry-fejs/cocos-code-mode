@@ -143,6 +143,7 @@
 - Declare bounded component type inventory, authoritative node component references, and filtered class discovery responses.
 - Require the class-discovery argument object in public types to match the existing handler contract.
 - Refuse node component inspection when Creator omits or malforms the serialized component array instead of returning empty success.
+- Validate every serialized component UUID/type before filtering, refusing empty identities and malformed nonmatching entries rather than hiding inventory drift.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
