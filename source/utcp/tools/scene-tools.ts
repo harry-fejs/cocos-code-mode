@@ -360,8 +360,17 @@ export class SceneTools {
             }
             return { nodeReference: nodeReference.reference, cameraReference: cameraReferenceValue };
         } catch (error) {
-            await Editor.Message.request('scene', 'remove-node', { uuid: nodeReference.reference.id }).catch(() => undefined);
-            await Editor.Message.request('scene', 'snapshot').catch(() => undefined);
+            let cleanupCause: string | undefined;
+            try {
+                await Editor.Message.request('scene', 'remove-node', { uuid: nodeReference.reference.id });
+                await Editor.Message.request('scene', 'snapshot');
+            } catch (cleanupError) { cleanupCause = cleanupError instanceof Error ? cleanupError.message : String(cleanupError); }
+            try {
+                const remaining = await Editor.Message.request('scene', 'query-node', nodeReference.reference.id);
+                if (remaining !== null && remaining !== undefined) throw new Error('Created camera node remains or cleanup response is invalid.');
+            } catch (cleanupError) {
+                throw new ToolError({ code: 'ROLLBACK_FAILED', status: 500, message: 'Camera creation failed and owned-node cleanup could not be verified.', details: { nodeUuid: nodeReference.reference.id, cause: error instanceof Error ? error.message : String(error), cleanupCause: cleanupCause ?? (cleanupError instanceof Error ? cleanupError.message : String(cleanupError)) } });
+            }
             throw error;
         }
     }

@@ -193,7 +193,7 @@ declare namespace ccp3x {
         changed: string[]; readBack: Array<{ reference: InstanceReference; path: string; value: unknown }>; verified: true;
     };
 
-    /** Creates a node with cc.Camera and reads back component identity. Does not certify scene save/reopen; cleanup failures on error are not independently reported. */
+    /** Creates a node with cc.Camera and reads back identity/projection. Does not certify scene save/reopen; failed creation reports ROLLBACK_FAILED when owned-node absence cannot be confirmed. */
     function cameraCreate(args: { name?: string; is2D?: boolean; parentReference?: InstanceReference }): {
         nodeReference: InstanceReference; cameraReference: InstanceReference;
     };

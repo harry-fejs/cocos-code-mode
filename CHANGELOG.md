@@ -135,6 +135,7 @@
 - Resolve camera property write indices from fresh serialized components and reject index identity drift before each write.
 - Refuse duplicate serialized camera UUID identities during preflight, per-write checks and final read-back.
 - Bound camera list/set hierarchy walks to 10,000 scheduled entries and refuse repeated node objects without returning partial inventory success.
+- Independently query failed camera creation cleanup; report ROLLBACK_FAILED when owned-node absence cannot be confirmed.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
