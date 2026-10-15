@@ -410,7 +410,9 @@ export class SceneTools {
         for (const row of cameraSceneNodes(tree)) {
             const nodeId = typeof row.uuid === 'string' ? row.uuid : undefined;
             if (nodeId) {
-                const dump = await Editor.Message.request('scene', 'query-node', nodeId);
+                const dump: unknown = await Editor.Message.request('scene', 'query-node', nodeId);
+                if (!dump || typeof dump !== 'object' || Array.isArray(dump)
+                    || !Array.isArray((dump as Record<string, unknown>).__comps__) && !Array.isArray((dump as Record<string, unknown>).components)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Camera inventory requires a complete serialized component array.' });
                 const components = cameraComponentsFromNode(dump);
                 inspectedComponents += components.length;
                 if (inspectedComponents > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Camera inventory exceeds the component inspection budget.' });
