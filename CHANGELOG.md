@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Include while/do/for condition operands in execution-guard provenance, preserving alias/symbol matching and safely ignoring absent for-loop conditions; no runtime reachability inference.
 - Add inclusive minSpeed/maxSpeed (-1e6..1e6) read-only Animation/SkeletalAnimation wait conditions and scenario animation assert/wait checkpoints. Signed speed supports reverse playback inspection; invalid/reversed windows preflight, unavailable metrics refuse. No speed or playback writes.
 - Include left controlling operands of logical/nullish short-circuit expressions in execution-guard provenance; right-only constant references do not become guards and no runtime reachability is inferred.
 - Add AudioSource, Animation and SkeletalAnimation scalar/array reference descriptors to scriptComponentCreate. Native component type decorators with null/empty defaults support later Inspector binding; no component construction, lookup, attachment or playback is performed.

@@ -328,8 +328,9 @@ function constraints(node, context, checker) {
   const guards = [];
   const scan = current => {
     const shortCircuit = ts.isBinaryExpression(current) && (current.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken || current.operatorToken.kind === ts.SyntaxKind.BarBarToken || current.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken);
-    if (ts.isIfStatement(current) || ts.isConditionalExpression(current) || shortCircuit) {
-      const expression = shortCircuit ? current.left : ts.isIfStatement(current) ? current.expression : current.condition;
+    const expressionGuard = ts.isIfStatement(current) || ts.isWhileStatement(current) || ts.isDoStatement(current);
+    if (expressionGuard || ts.isConditionalExpression(current) || ts.isForStatement(current) || shortCircuit) {
+      const expression = shortCircuit ? current.left : expressionGuard ? current.expression : current.condition;
       const usesConstant = part => {
         if (ts.isIdentifier(part) && (checker ? constantSymbols.has(checker.getSymbolAtLocation(part)) : constants.includes(part.text))) return true;
         if (ts.isPropertyAccessExpression(part) || ts.isElementAccessExpression(part)) {
@@ -338,7 +339,7 @@ function constraints(node, context, checker) {
         }
         return ts.forEachChild(part, usesConstant);
       };
-      if (usesConstant(expression)) guards.push(compact(expression));
+      if (expression && usesConstant(expression)) guards.push(compact(expression));
     }
     ts.forEachChild(current, scan);
   };
