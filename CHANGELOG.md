@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Extend runtime node snapshots with parent UUID, observed direct-child count and ordered128-child prefix plus explicit truncation. Recheck observed parent/prefix identity before returning; no atomic hierarchy snapshot, spawn/despawn or completeness inference beyond reported scope.
 - Preserve unresolved import-type module/member provenance as import-reference diagnostics in bounded annotation scans; resolved imported DTO dependencies remain unchanged.
 - Bound type-annotation reference scanning to256 scheduled nodes with iterative source-order traversal and explicit syntax-budget incompleteness; wide annotations no longer recurse/scan without an admission cap.
 - Compose finite local scale predicates in scenario nodeWait and immediate nodeAssert, with whole-input validation/copy, inclusive per-axis tolerance and retained mismatch evidence. Negative/zero scale supported; no transform mutation or tween-completion inference.

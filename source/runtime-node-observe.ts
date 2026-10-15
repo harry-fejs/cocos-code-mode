@@ -1,5 +1,9 @@
 export interface RuntimeNodeObservation {
     nodeUuid: string;
+    parentUuid: string | null;
+    childUuids: string[];
+    childCount: number;
+    childrenTruncated: boolean;
     active: boolean;
     activeInHierarchy: boolean;
     position: { x: number; y: number; z: number };
@@ -25,7 +29,7 @@ export function observeRuntimeNode(nodeUuid: string, expiresAt: number): Runtime
         while (stack.length) {
             if (Date.now() >= expiresAt) fail('RUNTIME_STATE_TIMEOUT', 'Node observation deadline elapsed.');
             const { node, depth } = stack.pop()!;
-            if (!node || typeof node !== 'object' || typeof node.uuid !== 'string' || !node.uuid || seen.has(node) || !Array.isArray(node.children)) fail('RUNTIME_TREE_INVALID', 'Malformed or repeated runtime node.');
+            if (!node || typeof node !== 'object' || typeof node.uuid !== 'string' || !node.uuid || node.uuid.length > 256 || seen.has(node) || !Array.isArray(node.children)) fail('RUNTIME_TREE_INVALID', 'Malformed or repeated runtime node.');
             if (depth > 256) fail('RUNTIME_TRAVERSAL_LIMIT', 'Runtime tree exceeds256 levels.');
             seen.add(node);
             if (node.uuid === nodeUuid) {
@@ -52,10 +56,15 @@ export function observeRuntimeNode(nodeUuid: string, expiresAt: number): Runtime
             return { x: row!.x as number, y: row!.y as number, z: row!.z as number, w: row!.w as number };
         };
         if (typeof node.active !== 'boolean' || typeof node.activeInHierarchy !== 'boolean') fail('UNSUPPORTED_RUNTIME_METRIC', 'Native activation state unavailable.');
-        const result = { nodeUuid, active: node.active, activeInHierarchy: node.activeInHierarchy, position: vector(node.position), worldPosition: vector(node.worldPosition), scale: vector(node.scale), rotation: quaternion(node.rotation), worldRotation: quaternion(node.worldRotation) };
+        const parent = node.parent;
+        if (node !== scene && (!parent || typeof parent.uuid !== 'string' || !parent.uuid || parent.uuid.length > 256 || !parent.children.includes(node))) fail('RUNTIME_TARGET_CHANGED', 'Runtime parent identity unavailable.');
+        const childCount = node.children.length;
+        const childUuids = node.children.slice(0, 128).map(child => child.uuid);
+        const result = { nodeUuid, parentUuid: parent?.uuid ?? null, childUuids, childCount, childrenTruncated: childCount > childUuids.length, active: node.active, activeInHierarchy: node.activeInHierarchy, position: vector(node.position), worldPosition: vector(node.worldPosition), scale: vector(node.scale), rotation: quaternion(node.rotation), worldRotation: quaternion(node.worldRotation) };
         let ancestor: Node | null = node; let attached = false;
         for (let depth = 0; ancestor && depth <= 256; depth++, ancestor = ancestor.parent) if (ancestor === scene) { attached = true; break; }
         if (!attached || engine !== (globalThis as unknown as { cc?: unknown }).cc || engine.director?.getScene() !== scene || !engine.isValid(node, true) || node.uuid !== nodeUuid) fail('RUNTIME_TARGET_CHANGED', 'Runtime node or scene changed during observation.');
+        if (node.parent !== parent || node.children.length !== childCount || childUuids.some((id, index) => node.children[index]?.uuid !== id || node.children[index]?.parent !== node)) fail('RUNTIME_TARGET_CHANGED', 'Runtime hierarchy changed during observation.');
         if (Date.now() >= expiresAt) fail('RUNTIME_STATE_TIMEOUT', 'Node observation completed after deadline.');
         return result;
     } catch (error) {
