@@ -10,13 +10,39 @@ function classify(record) {
   return ['declaration-only', 'Catalog evidence alone does not prove a reviewed adapter, context availability or qualification.'];
 }
 
+function readBounded(root, filename, maximum, expected) {
+  const real = fs.realpathSync(filename);
+  const relative = path.relative(root, real);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) throw new Error('Ledger input escapes its root.');
+  const fd = fs.openSync(real, 'r');
+  try {
+    const before = fs.fstatSync(fd);
+    if (!before.isFile() || before.size > maximum) throw new Error('Ledger input exceeds its byte bound.');
+    const buffer = Buffer.allocUnsafe(before.size + 1);
+    let count = 0;
+    while (count < buffer.length) {
+      const read = fs.readSync(fd, buffer, count, buffer.length - count, null);
+      if (!read) break;
+      count += read;
+    }
+    const after = fs.fstatSync(fd), current = fs.statSync(real);
+    if (count !== before.size || after.size !== before.size || after.mtimeMs !== before.mtimeMs || after.ctimeMs !== before.ctimeMs
+        || current.ino !== after.ino || current.dev !== after.dev || current.size !== after.size || current.mtimeMs !== after.mtimeMs || current.ctimeMs !== after.ctimeMs
+        || fs.realpathSync(filename) !== real) throw new Error('Ledger input changed during bounded read.');
+    const bytes = buffer.subarray(0, count);
+    if (expected && hash(bytes) !== expected) throw new Error('Ledger input no longer matches indexed bytes.');
+    return bytes;
+  } finally { fs.closeSync(fd); }
+}
+
 function generateLedger(catalogRoot, output) {
   const destination = path.resolve(output);
   const parent = fs.realpathSync(path.dirname(destination));
   const scratch = fs.mkdtempSync(path.join(parent, '.eligibility-'));
   try {
     const indexed = indexCatalog(catalogRoot, path.join(scratch, 'lookup'));
-    const lookupBytes = fs.readFileSync(path.join(scratch, 'lookup', 'lookup.json'));
+    const lookupRoot = path.join(scratch, 'lookup');
+    const lookupBytes = readBounded(lookupRoot, path.join(lookupRoot, 'lookup.json'), 32 * 1024 * 1024, indexed.lookupSha256);
     if (hash(lookupBytes) !== indexed.lookupSha256) throw new Error('Generated lookup identity changed.');
     const lookup = JSON.parse(lookupBytes.toString('utf8'));
     const root = fs.realpathSync(catalogRoot);
@@ -24,8 +50,7 @@ function generateLedger(catalogRoot, output) {
     let routes = null;
     let routeEvidence = null;
     if (fs.existsSync(routeFile)) {
-      const routeBytes = fs.readFileSync(routeFile);
-      if (routeBytes.length > 8 * 1024 * 1024) throw new Error('Bridge route artifact exceeds ledger bound.');
+      const routeBytes = readBounded(root, routeFile, 8 * 1024 * 1024);
       const routeDocument = JSON.parse(routeBytes.toString('utf8'));
       if (!Array.isArray(routeDocument.routes) || routeDocument.version !== lookup.version || routeDocument.catalogHash !== lookup.catalogHash) throw new Error('Bridge route artifact identity is inconsistent with the catalog.');
       routes = routeDocument.routes;
@@ -36,25 +61,7 @@ function generateLedger(catalogRoot, output) {
     const counts = {};
     const sourceEvidence = [];
     for (const shard of lookup.shards) {
-      const filename = path.join(root, shard.file);
-      const real = fs.realpathSync(filename);
-      const relative = path.relative(root, real);
-      if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) throw new Error('Shard escapes catalog root.');
-      const fd = fs.openSync(real, 'r');
-      let bytes;
-      try {
-        const stat = fs.fstatSync(fd);
-        if (!stat.isFile() || stat.size > 8 * 1024 * 1024) throw new Error('Shard exceeds ledger input bound.');
-        const buffer = Buffer.allocUnsafe(stat.size + 1);
-        let count = 0;
-        while (count < buffer.length) {
-          const read = fs.readSync(fd, buffer, count, buffer.length - count, null);
-          if (!read) break;
-          count += read;
-        }
-        bytes = buffer.subarray(0, count);
-        if (hash(bytes) !== shard.sha256) throw new Error('Shard no longer matches indexed bytes.');
-      } finally { fs.closeSync(fd); }
+      const bytes = readBounded(root, path.join(root, shard.file), 8 * 1024 * 1024, shard.sha256);
       const document = JSON.parse(bytes.toString('utf8'));
       if (!Array.isArray(document.records) || document.records.length !== shard.count) throw new Error('Shard count differs from indexed evidence.');
       sourceEvidence.push({ file: shard.file, sha256: shard.sha256, count: shard.count });
