@@ -36,6 +36,10 @@ function typeInfo(checker, type, node) {
     if (current.flags & ts.TypeFlags.Object && current.objectFlags & ts.ObjectFlags.Reference) checker.getTypeArguments(current).forEach(visit);
     if (current.aliasTypeArguments) current.aliasTypeArguments.forEach(visit);
     const symbol = current.aliasSymbol || current.symbol;
+    const callSignatures = checker.getSignaturesOfType(current, ts.SignatureKind.Call);
+    const constructSignatures = checker.getSignaturesOfType(current, ts.SignatureKind.Construct);
+    if (callSignatures.length) unresolved.push({ kind: 'semantic-adapter-required', reference: 'callable-type' });
+    if (constructSignatures.length) unresolved.push({ kind: 'semantic-adapter-required', reference: 'constructable-type' });
     const declaration = symbol?.declarations?.find(item => ts.isInterfaceDeclaration(item) || ts.isTypeAliasDeclaration(item));
     if (symbol && !symbol.name.startsWith('__') && !references.has(symbol.name)) {
       const enumDeclaration = symbol.declarations?.find(ts.isEnumDeclaration);
@@ -56,7 +60,7 @@ function typeInfo(checker, type, node) {
         const propertyDeclaration = property.valueDeclaration || property.declarations?.[0];
         if (propertyDeclaration) visit(checker.getTypeOfSymbolAtLocation(property, propertyDeclaration));
       }
-      for (const signature of checker.getSignaturesOfType(current, ts.SignatureKind.Call)) {
+      for (const signature of [...callSignatures, ...constructSignatures]) {
         signature.parameters.forEach(parameter => { const parameterDeclaration = parameter.valueDeclaration || parameter.declarations?.[0]; if (parameterDeclaration) visit(checker.getTypeOfSymbolAtLocation(parameter, parameterDeclaration)); });
         visit(checker.getReturnTypeOfSignature(signature));
       }
