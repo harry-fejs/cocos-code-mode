@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Snapshot validated runtimeScenarioAssert arguments before readiness observation so caller changes to paused/frame bounds cannot grant false passes. Original mismatch issues/state retained; no runtime mutation/replay.
 - Grant editModeDeclared only to bare decorators or exact single true arguments; dynamic/false/empty/invalid call arguments are not evaluated or promoted as proven enable declarations.
 - Snapshot validated runtimeWaitForState arguments before asynchronous observations so caller changes to paused/minFrameCount/maxFrameCount cannot relax the original wait condition. Shared deadline/session continuity checks remain; no mutation/replay.
 - Do not report editModeDeclared for explicit executeInEditMode(false) decorator calls; retain bare/true declaration syntax and avoid runtime execution or qualification claims.

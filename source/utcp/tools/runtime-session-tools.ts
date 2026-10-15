@@ -943,6 +943,7 @@ export class RuntimeSessionTools {
         }
         if (session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: `Runtime session is stopped: ${session.sessionId}`, recovery: 'Attach a new game-view session before asserting runtime state.' });
         if (session.targetKind !== 'game-view') throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: `Runtime target ${session.targetKind} has no verified transport.` });
+        args = { ...args };
         const observed = await this.inspect({ operation: 'inspect', sessionId: session.sessionId });
         if (!observed.state || !observed.ready) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Runtime assertion state unavailable.' });
         const state = observed.state;
