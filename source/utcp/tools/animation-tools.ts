@@ -319,7 +319,7 @@ export class AnimationTools {
     async animationCopyNode(args: { references: IInstanceReference[] }): Promise<{ success: true, references: IInstanceReference[] }> {
         const ids = this.requireNodeIds(args.references);
         const copied = await Editor.Message.request('scene', 'copy-node', ids) as unknown;
-        if (!Array.isArray(copied) || copied.some((id) => typeof id !== 'string' || id.length === 0)) throw new ToolError({ code: 'ANIMATION_COPY_UNCONFIRMED', status: 502, message: 'Creator did not return copied node identities.' });
+        if (!Array.isArray(copied) || copied.findIndex((id) => typeof id !== 'string' || !id.trim()) >= 0) throw new ToolError({ code: 'ANIMATION_COPY_UNCONFIRMED', status: 502, message: 'Creator did not return dense copied node identities.' });
         return { success: true, references: copied.map((id) => ({ id, type: 'cc.Node' })) };
     }
 
@@ -336,15 +336,20 @@ export class AnimationTools {
     async animationPasteNode(args: { references: IInstanceReference[], targetReference: IInstanceReference, keepWorldTransform?: boolean, pasteAsChild?: boolean }): Promise<{ success: true, references: IInstanceReference[] }> {
         const ids = this.requireNodeIds(args.references);
         const target = requireRef(args.targetReference, 'targetReference');
+        if (args.keepWorldTransform !== undefined && typeof args.keepWorldTransform !== 'boolean' || args.pasteAsChild !== undefined && typeof args.pasteAsChild !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'keepWorldTransform and pasteAsChild must be booleans.' });
         const pasted = await Editor.Message.request('scene', 'paste-node', { target, uuids: ids, keepWorldTransform: args.keepWorldTransform ?? true, pasteAsChild: args.pasteAsChild ?? false }) as unknown;
-        if (!Array.isArray(pasted) || pasted.length === 0 || pasted.some((id) => typeof id !== 'string' || id.length === 0)) throw new ToolError({ code: 'ANIMATION_PASTE_UNCONFIRMED', status: 502, message: 'Creator did not return pasted node identities.' });
+        if (!Array.isArray(pasted) || pasted.length === 0 || pasted.findIndex((id) => typeof id !== 'string' || !id.trim()) >= 0) throw new ToolError({ code: 'ANIMATION_PASTE_UNCONFIRMED', status: 502, message: 'Creator did not return dense pasted node identities; inspect the scene before retrying.' });
         await Editor.Message.request('scene', 'snapshot');
         return { success: true, references: pasted.map((id) => ({ id, type: 'cc.Node' })) };
     }
 
     private requireNodeIds(references: IInstanceReference[] | undefined): string[] {
         if (!Array.isArray(references) || references.length < 1 || references.length > 100) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references must contain 1 to 100 node references.' });
-        const ids = references.map((reference) => requireRef(reference, 'references[]'));
+        const ids: string[] = [];
+        for (let index = 0; index < references.length; index++) {
+            if (!Object.prototype.hasOwnProperty.call(references, index)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references must contain dense node references.' });
+            ids.push(requireRef(references[index], `references[${index}]`));
+        }
         return ids;
     }
     @utcpTool(
