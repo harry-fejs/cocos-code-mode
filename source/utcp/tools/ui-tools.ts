@@ -1111,6 +1111,9 @@ export class UiTools {
         ['ui', 'input', 'form', 'create', 'compound']
     )
     async uiCreateInputForm(args: { label: string, placeholder?: string, name?: string, parentReference?: IInstanceReference }): Promise<{ reference: IInstanceReference, label: IInstanceReference, input: IInstanceReference, submit: IInstanceReference, focusOrder: string[] }> {
+        if (!args || typeof args.label !== 'string' || args.label.length === 0
+            || args.placeholder !== undefined && typeof args.placeholder !== 'string'
+            || args.name !== undefined && typeof args.name !== 'string') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Input form requires a non-empty label and optional string placeholder/name.' });
         const form = await this.createUiNode({ uiType: 'Widget', name: args.name ?? 'InputForm', parentReference: args.parentReference });
         try {
         const label = await this.createLabel({ name: 'Label', text: args.label, parentReference: form.reference });
