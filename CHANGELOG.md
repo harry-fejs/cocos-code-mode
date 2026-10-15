@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Treat parentheses around literal edit-mode decorator booleans as transparent, preserving true enable credit while false/dynamic arguments remain unpromoted; no expression evaluation.
 - Pin shared component runtime dispatch args, node identity and nested variable before readiness awaits. Caller changes cannot turn a pending inspect into a write or redirect its component/clip/variable payload; no automatic mutation replay.
 - Snapshot validated runtimeNodeObserve session/node identity and hierarchy revision guard before readiness awaits, preventing caller changes from redirecting the serialized native read or replacing the expected revision mid-request. No node mutation/replay added.
 - Preserve combined in out invariant annotations on generic signature/class constructor type parameters instead of collapsing them to in; individual in/out/null metadata remains compatible.
