@@ -336,6 +336,9 @@ export class SceneTools {
             const verifiedNode = await Editor.Message.request('scene', 'query-node', nodeReference.reference.id);
             const verifiedCamera = cameraComponentsFromNode(verifiedNode).find((component) => isCameraComponent(component));
             if (!verifiedCamera || cameraReference(verifiedCamera).id !== cameraReferenceValue.id) throw new ToolError({ code: 'CAMERA_CREATE_UNCONFIRMED', status: 502, message: 'Creator did not confirm camera read-back.' });
+            if (args.is2D !== undefined && cameraComponentField(verifiedCamera, 'projection') !== (args.is2D ? 1 : 0)) {
+                throw new ToolError({ code: 'CAMERA_CREATE_UNCONFIRMED', status: 502, message: 'Creator did not retain the requested camera projection.' });
+            }
             return { nodeReference: nodeReference.reference, cameraReference: cameraReferenceValue };
         } catch (error) {
             await Editor.Message.request('scene', 'remove-node', { uuid: nodeReference.reference.id }).catch(() => undefined);
