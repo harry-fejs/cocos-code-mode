@@ -100,7 +100,7 @@ function typeInfo(checker, type, node) {
     }
     if (symbol && declaration && !seenSymbols.has(symbol)) {
       seenSymbols.add(symbol);
-      if (ts.isTypeAliasDeclaration(declaration)) { const underlying = checker.getTypeFromTypeNode(declaration.type); if (underlying !== current) visit(underlying); }
+      if (ts.isTypeAliasDeclaration(declaration) && !declaration.typeParameters?.length) { const underlying = checker.getTypeFromTypeNode(declaration.type); if (underlying !== current) visit(underlying); }
     }
     if (current.flags & ts.TypeFlags.Object && (current.objectFlags & ts.ObjectFlags.Anonymous || declaration)) {
       for (const index of checker.getIndexInfosOfType(current)) {
