@@ -17,6 +17,7 @@ function collectExports(input, version, roots, label = 'engine') {
   const unknowns = [];
   const { checker, root } = input;
   function record(symbol, declaration, context, className, member, inheritedFrom = null) {
+    const memberOwner = member && ts.isParameter(declaration) && ts.isConstructorDeclaration(declaration.parent) ? declaration.parent.parent : declaration.parent;
     const info = metadata(declaration);
     for (const part of symbol.declarations || []) {
       if (part === declaration) continue;
@@ -24,9 +25,9 @@ function collectExports(input, version, roots, label = 'engine') {
       info.internal = info.internal || merged.internal;
       info.deprecated = info.deprecated || merged.deprecated;
     }
-    const ownerMetadata = member ? metadata(declaration.parent) : info;
-    if (member && declaration.parent.name) {
-      const ownerSymbol = checker.getSymbolAtLocation(declaration.parent.name);
+    const ownerMetadata = member ? metadata(memberOwner) : info;
+    if (member && memberOwner.name) {
+      const ownerSymbol = checker.getSymbolAtLocation(memberOwner.name);
       for (const part of ownerSymbol?.declarations || []) {
         const merged = metadata(part);
         ownerMetadata.internal = ownerMetadata.internal || merged.internal;
@@ -42,7 +43,7 @@ function collectExports(input, version, roots, label = 'engine') {
     } else sigs = signatures(checker, symbol, declaration);
     const unresolved = [...new Map(sigs.flatMap(signature => signature.unresolved).map(item => [json(item), item])).values()].sort((a, b) => compare(json(a), json(b)));
     const inheritedName = inheritedFrom?.name?.getText() || null;
-    const owner = member ? declaration.parent : ts.isVariableDeclaration(declaration) && declaration.initializer && ts.isClassExpression(declaration.initializer) ? declaration.initializer : declaration;
+    const owner = member ? memberOwner : ts.isVariableDeclaration(declaration) && declaration.initializer && ts.isClassExpression(declaration.initializer) ? declaration.initializer : declaration;
     const ownerSymbol = owner.name && checker.getSymbolAtLocation(owner.name);
     const mergedOwners = ownerSymbol?.declarations?.filter(part => ts.isInterfaceDeclaration(part) || ts.isClassDeclaration(part) || ts.isClassExpression(part));
     const owners = mergedOwners?.length ? mergedOwners : [owner];
