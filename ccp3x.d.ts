@@ -1208,8 +1208,8 @@ declare namespace ccp3x {
     /** Glob-like regular-file search; symlink/special entries are omitted and links are not traversed. limit must be integer1..500 (verbose:1000). total counts returned matches only; truncated indicates cap reached, not remaining count. Streams entries; beyond100000 throws PROJECT_SEARCH_LIMIT. Read errors throw PROJECT_SEARCH_FAILED. Excluded directories remain outside coverage; concurrent entry replacement is not prevented. */
     function projectSearchFiles(args: { pattern: string; directory?: string; limit?: number; verbose?: boolean }): { files: string[]; total: number; truncated: boolean };
 
-    /** Writes UTF-8 text and verifies filesystem read-back. Asset refresh is best-effort, not importer completion proof. Inspect after ambiguous errors before retry. */
-    function projectWriteFile(args: { filePath: string; content: string; createDirs?: boolean }): { success: true; bytesWritten: number };
+    /** Writes UTF-8 text and verifies read-back. Optional expectedSha256 from projectReadFile requires an existing matching decoded-text revision before mkdir/write; optimistic only, not atomic compare-and-set. Asset refresh is best-effort. Inspect ambiguous errors before retry. */
+    function projectWriteFile(args: { filePath: string; content: string; createDirs?: boolean; expectedSha256?: string }): { success: true; bytesWritten: number };
     /** Literal replacement, all matches by default. Optional expectedSha256 hashes decoded UTF-8 text (as returned by projectReadFile); mismatch throws FILE_CONTENT_CHANGED before writing. Optimistic only, not atomic compare-and-set. Empty search/no match returns success=false; read-back does not certify asset reimport. */
     function projectReplaceInFile(args: { filePath: string; search: string; replace: string; replaceAll?: boolean; expectedSha256?: string }):
         { success: false; replacements: 0 } | { success: true; replacements: number };

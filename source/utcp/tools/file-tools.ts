@@ -126,14 +126,20 @@ export class FileTools {
     }
 
     @utcpTool('projectWriteFile', 'Atomically write bounded UTF-8 text within the project and verify read-back.', {
-        type: 'object', properties: { filePath: { type: 'string' }, content: { type: 'string' }, createDirs: { type: 'boolean' } }, required: ['filePath', 'content'],
+        type: 'object', properties: { filePath: { type: 'string' }, content: { type: 'string' }, createDirs: { type: 'boolean' }, expectedSha256: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'Optional decoded-text revision from projectReadFile; requires an existing matching file before mutation, not atomic compare-and-set.' } }, required: ['filePath', 'content'],
     }, { type: 'object', properties: { success: { type: 'boolean' }, bytesWritten: { type: 'number' } }, required: ['success', 'bytesWritten'] }, 'POST', ['file', 'write', 'project', 'text'])
-    async projectWriteFile(args: { filePath: string, content: string, createDirs?: boolean }): Promise<{ success: boolean, bytesWritten: number }> {
+    async projectWriteFile(args: { filePath: string, content: string, createDirs?: boolean, expectedSha256?: string }): Promise<{ success: boolean, bytesWritten: number }> {
         const root = projectRoot();
         if (typeof args.content !== 'string') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'content must be a string.' });
         if (args.createDirs !== undefined && typeof args.createDirs !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'createDirs must be a boolean.' });
         if (Buffer.byteLength(args.content, 'utf8') > MAX_WRITE_BYTES) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: `File content exceeds the ${MAX_WRITE_BYTES} byte cap.` });
+        if (args.expectedSha256 !== undefined && (typeof args.expectedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedSha256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedSha256 must be a lowercase SHA-256 of decoded UTF-8 text.' });
         const filePath = resolveSafePath(root, args.filePath);
+        if (args.expectedSha256 !== undefined) {
+            if (!fs.existsSync(filePath)) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Guarded write requires an existing file; no write dispatched.' });
+            const previous = readBoundedProjectText(filePath, MAX_WRITE_BYTES);
+            if (createHash('sha256').update(previous.content, 'utf8').digest('hex') !== args.expectedSha256) throw new ToolError({ code: 'FILE_CONTENT_CHANGED', status: 409, message: 'Project file text differs from expectedSha256; no write dispatched.' });
+        }
         if (args.createDirs !== false) fs.mkdirSync(path.dirname(filePath), { recursive: true });
         const bytesWritten = atomicWriteVerified(filePath, args.content);
         const relative = path.relative(root, filePath).replace(/\\/g, '/');
