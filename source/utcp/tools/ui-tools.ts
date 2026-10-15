@@ -1112,6 +1112,7 @@ export class UiTools {
     )
     async uiCreateInputForm(args: { label: string, placeholder?: string, name?: string, parentReference?: IInstanceReference }): Promise<{ reference: IInstanceReference, label: IInstanceReference, input: IInstanceReference, submit: IInstanceReference, focusOrder: string[] }> {
         const form = await this.createUiNode({ uiType: 'Widget', name: args.name ?? 'InputForm', parentReference: args.parentReference });
+        try {
         const label = await this.createLabel({ name: 'Label', text: args.label, parentReference: form.reference });
         const input = await this.createUiNode({ uiType: 'EditBox', name: 'Input', parentReference: form.reference });
         if (args.placeholder !== undefined) {
@@ -1121,8 +1122,13 @@ export class UiTools {
         const submit = await this.createButton({ name: 'Submit', text: 'Submit', parentReference: form.reference });
         await Editor.Message.request('scene', 'snapshot');
         const dump = await this.queryNodeDump(form.reference.id);
-        if (!dump || (dump.children ?? []).length < 3) throw new ToolError({ code: 'POSTCONDITION_FAILED', status: 500, message: 'uiCreateInputForm hierarchy verification failed' });
+        const children = new Set((dump?.children ?? []).map(child => this.childUuid(child)));
+        if (!dump || ![label.reference.id, input.reference.id, submit.reference.id].every(id => children.has(id))) throw new ToolError({ code: 'POSTCONDITION_FAILED', status: 500, message: 'uiCreateInputForm hierarchy verification failed' });
         return { reference: form.reference, label: label.reference, input: input.reference, submit: submit.reference, focusOrder: [input.reference.id, submit.reference.id] };
+        } catch (error: unknown) {
+            const rollback = await this.rollbackNode(form.reference.id);
+            throw new ToolError({ code: rollback ? 'ROLLBACK_FAILED' : 'POSTCONDITION_FAILED', status: 502, message: rollback ? 'Input form creation failed and owned root cleanup was not confirmed.' : 'Input form creation failed; owned root absence was confirmed.', details: { createdNodeId: form.reference.id, cause: error instanceof Error ? error.message : String(error), rollback }, recovery: 'Inspect the owned form root before retrying; do not replay an ambiguous create.' });
+        }
     }
 
     private unwrapValue(value: unknown): unknown {
@@ -1355,8 +1361,12 @@ export class UiTools {
      */
     private async rollbackNode(uuid: string): Promise<string | null> {
         try {
-            await Editor.Message.request('scene', 'remove-node', { uuid });
-            await Editor.Message.request('scene', 'snapshot');
+            let removalError: unknown;
+            try { await Editor.Message.request('scene', 'remove-node', { uuid }); }
+            catch (error) { removalError = error; }
+            try { await Editor.Message.request('scene', 'snapshot'); } catch { /* Absence must still be inspected independently. */ }
+            const remaining = await Editor.Message.request('scene', 'query-node', uuid);
+            if (remaining !== null && remaining !== undefined) return removalError instanceof Error ? removalError.message : 'Owned node absence was not confirmed.';
             return null;
         } catch (e) {
             return e instanceof Error ? e.message : String(e);

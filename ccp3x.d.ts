@@ -1284,6 +1284,10 @@ declare namespace ccp3x {
         dbName?: string
     }): { result: any };
 
+    /** Creates a bounded labeled EditBox + Submit Button form under one Widget root. Verifies all three child identities and focus order; failure reports owned-root cleanup status. Does not bind a gameplay callback or prove runtime input dispatch. */
+    function uiCreateInputForm(args: { label: string; placeholder?: string; name?: string; parentReference?: InstanceReference }): {
+        reference: InstanceReference; label: InstanceReference; input: InstanceReference; submit: InstanceReference; focusOrder: string[];
+    };
     /** Read-only bounded live 2D UI layout diagnostics. Optional overlay returns a transient bounded PNG payload and never mutates scene state. */
     function uiLayoutReport(args: {
         root?: InstanceReference,
