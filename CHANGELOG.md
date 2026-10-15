@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Bound each enum dependency projection to256 declaration-ordered members with enum-budget incompleteness diagnostics beyond the exact cap; avoid unbounded member result allocation.
 - Add siblingIndex0..9999/null-root conditions to runtime node waits and scenario nodeWait/nodeAssert, composable with parent identity. Reject invalid indices/inconsistent observations, retain mismatch snapshot and stop later cues; no reorder/render-order inference.
 - Diagnose nonfinite compiler enum constants as unresolved and retain initializer provenance instead of serializing Infinity/NaN into misleading JSON null values.
 - Emit enum-value unresolved diagnostics for members without compiler constant values; retain initializer text only as provenance, never as proof of an evaluated enum value.
