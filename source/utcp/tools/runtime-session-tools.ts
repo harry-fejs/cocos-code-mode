@@ -422,7 +422,9 @@ export class RuntimeSessionTools {
             });
         }
         try {
-            return { success: true, sessionId: session.sessionId, state: await this.readState(session.targetId) };
+            const observed = await this.inspect({ operation: 'inspect', sessionId: session.sessionId });
+            if (!observed.state) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Runtime state unavailable.' });
+            return { success: true, sessionId: session.sessionId, state: observed.state };
         } catch (error) {
             if (error instanceof ToolError) throw error;
             throw new ToolError({
@@ -472,12 +474,20 @@ export class RuntimeSessionTools {
         if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'timeoutMs must be an integer from 100 to 10000.' });
         const started = Date.now();
         const deadline = started + timeoutMs;
-        let state = await this.readState(session.targetId, deadline);
+        const observe = async (): Promise<RuntimeState> => {
+            const remaining = deadline - Date.now();
+            if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Runtime state wait deadline expired before observation.' });
+            const observed = await withRuntimeStateTimeout(this.inspect({ operation: 'inspect', sessionId: session.sessionId, timeoutMs: Math.max(100, remaining) }), deadline);
+            if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Runtime state observation settled after wait deadline.' });
+            if (!observed.state || !observed.ready || observed.session.createdAt !== session.createdAt || observed.session.targetId !== session.targetId || observed.session.targetKind !== session.targetKind) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Runtime wait session identity changed.' });
+            return observed.state;
+        };
+        let state = await observe();
         while ((args.paused !== undefined && state.paused !== args.paused) || (args.minFrameCount !== undefined && (state.frameCount === null || state.frameCount < args.minFrameCount))) {
             if (args.minFrameCount !== undefined && state.frameCount === null) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Game-view frame count is unavailable.' });
             if (Date.now() - started >= timeoutMs) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Runtime state did not match the requested condition before timeout.', recovery: 'Start a verified game-view preview or increase timeoutMs within the bound.', details: { state, elapsedMs: Date.now() - started } });
             await withRuntimeStateTimeout(new Promise<void>((resolve) => setTimeout(resolve, 50)), deadline);
-            state = await this.readState(session.targetId, deadline);
+            state = await observe();
         }
         return { success: true, sessionId: session.sessionId, state, elapsedMs: Date.now() - started };
     }
