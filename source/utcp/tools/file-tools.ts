@@ -109,6 +109,15 @@ function atomicWriteVerified(filePath: string, content: string): number {
     if (bytes > MAX_WRITE_BYTES) {
         throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: `File content exceeds the ${MAX_WRITE_BYTES} byte cap.` });
     }
+    let existingMode: number | undefined;
+    if (process.platform !== 'win32') {
+        try {
+            const existing = fs.lstatSync(filePath);
+            if (existing.isFile()) existingMode = existing.mode & 0o777;
+        } catch (error) {
+            if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 'ENOENT') throw error;
+        }
+    }
     const tempPath = path.join(
         path.dirname(filePath),
         `.${path.basename(filePath)}.ccp3x-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.tmp`,
@@ -117,7 +126,10 @@ function atomicWriteVerified(filePath: string, content: string): number {
     try {
         const handle = fs.openSync(tempPath, 'wx');
         tempOwned = true;
-        try { fs.writeFileSync(handle, content, 'utf8'); }
+        try {
+            fs.writeFileSync(handle, content, 'utf8');
+            if (existingMode !== undefined) fs.fchmodSync(handle, existingMode);
+        }
         finally { fs.closeSync(handle); }
         fs.renameSync(tempPath, filePath);
         tempOwned = false;
