@@ -294,8 +294,9 @@ function metadata(node) {
   const decorators = (ts.canHaveDecorators(node) ? ts.getDecorators(node) || [] : []).map(decorator => compact(decorator.expression));
   const modifiers = (ts.canHaveModifiers(node) ? ts.getModifiers(node) || [] : []).map(modifier => ts.tokenToString(modifier.kind)).filter(Boolean);
   const visibility = node.name && ts.isPrivateIdentifier(node.name) || modifiers.includes('private') ? 'private' : modifiers.includes('protected') ? 'protected' : 'public';
+  const declaredName = node.name && (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name) || ts.isNumericLiteral(node.name)) ? node.name.text : node.name?.getText();
   return { decorators, visibility, static: modifiers.includes('static'), readonly: modifiers.includes('readonly') || ts.isGetAccessorDeclaration(node) && !node.symbol?.declarations?.some(ts.isSetAccessorDeclaration),
-    internal: tags.includes('internal') || tags.includes('engineInternal') || tags.includes('private') || !!node.name?.getText().startsWith('__'), deprecated: tags.includes('deprecated'),
+    internal: tags.includes('internal') || tags.includes('engineInternal') || tags.includes('private') || !!declaredName?.startsWith('__'), deprecated: tags.includes('deprecated'),
     abstract: modifiers.includes('abstract'), jsdoc: (node.jsDoc || []).map(doc => doc.getText()).join('\n') || null };
 }
 function constraints(node, context) {
