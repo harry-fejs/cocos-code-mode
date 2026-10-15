@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { utcpTool } from '../decorators';
 import { ToolError } from '../tool-error';
 import { dispatchGameViewLifecycle, inspectGameViewRuntime } from '../utils/game-view-transport';
@@ -33,7 +34,7 @@ const store = new RuntimeSessionStore();
 const RUNTIME_STATE_TIMEOUT_MS = 60_000;
 let previewMutationPending = false;
 let unconfirmedPreviewMutation: { expected: PreviewState['state'], targetId?: string, minFrameCount?: number, requestSettled: boolean } | undefined;
-const activeScenarios = new Map<string, { cancelled: boolean }>();
+const activeScenarios = new Map<string, { cancelled: boolean, runId: string }>();
 
 async function withRuntimeStateTimeout<T>(promise: Promise<T>, deadline = Date.now() + RUNTIME_STATE_TIMEOUT_MS): Promise<T> {
     let timer: NodeJS.Timeout | undefined;
@@ -520,6 +521,7 @@ export class RuntimeSessionTools {
             additionalProperties: false,
             properties: {
                 sessionId: { type: 'string', minLength: 1, maxLength: 64 },
+                runId: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,64}$', description: 'Caller-generated fresh per-run cancellation identity. Omit for a generated identity.' },
                 totalTimeoutMs: { type: 'integer', minimum: 100, maximum: 60000, default: 30000 },
                 steps: {
                     type: 'array', minItems: 1, maxItems: 16,
@@ -544,15 +546,16 @@ export class RuntimeSessionTools {
         },
         {
             type: 'object',
-            properties: { success: { type: 'boolean' }, sessionId: { type: 'string' }, outcomes: { type: 'array' } },
-            required: ['success', 'sessionId', 'outcomes'],
+            properties: { success: { type: 'boolean' }, sessionId: { type: 'string' }, runId: { type: 'string' }, outcomes: { type: 'array' } },
+            required: ['success', 'sessionId', 'runId', 'outcomes'],
         },
         'POST',
         ['runtime', 'scenario', 'run', 'steps'],
     )
-    async runtimeScenarioRun(args: { sessionId: string, steps: Array<{ operation: 'wait' | 'assert' | 'observe' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', nodeReference?: { id: string }, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, outcomes: Array<Record<string, unknown>> }> {
+    async runtimeScenarioRun(args: { sessionId: string, runId?: string, steps: Array<{ operation: 'wait' | 'assert' | 'observe' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', nodeReference?: { id: string }, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, runId: string, outcomes: Array<Record<string, unknown>> }> {
         if (!Array.isArray(args.steps) || args.steps.length === 0 || args.steps.length > 16) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runtimeScenarioRun requires 1-16 typed steps.' });
         if (typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded runtime sessionId is required.' });
+        if (args.runId !== undefined && (typeof args.runId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(args.runId))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runId must be a fresh bounded alphanumeric/hyphen/underscore identity.' });
         const totalTimeoutMs = args.totalTimeoutMs ?? 30000;
         if (!Number.isInteger(totalTimeoutMs) || totalTimeoutMs < 100 || totalTimeoutMs > 60000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'totalTimeoutMs must be an integer from 100 to 60000.' });
         const scenarioDeadline = Date.now() + totalTimeoutMs;
@@ -577,7 +580,7 @@ export class RuntimeSessionTools {
             return { ...step, ...(step.nodeReference ? { nodeReference: { id: step.nodeReference.id } } : {}) };
         });
         if (activeScenarios.has(args.sessionId)) throw new ToolError({ code: 'RUNTIME_SCENARIO_BUSY', status: 409, message: 'A scenario or its timed-out request still owns this session; no steps dispatched.' });
-        const scenario = { cancelled: false };
+        const scenario = { cancelled: false, runId: args.runId ?? randomUUID() };
         activeScenarios.set(args.sessionId, scenario);
         let inFlight: Promise<unknown> | undefined;
         try {
@@ -620,11 +623,11 @@ export class RuntimeSessionTools {
             } catch (error) {
                 throw new ToolError({ code: error instanceof ToolError ? error.code : 'RUNTIME_SCENARIO_FAILED', status: error instanceof ToolError ? error.status : 502,
                     message: error instanceof ToolError ? error.message : `Runtime scenario failed at step ${index}.`,
-                    details: { sessionId: args.sessionId, failedStep: index, outcomes, ...(error instanceof ToolError && error.details ? { cause: error.details } : {}) },
+                    details: { sessionId: args.sessionId, runId: scenario.runId, failedStep: index, outcomes, ...(error instanceof ToolError && error.details ? { cause: error.details } : {}) },
                     recovery: error instanceof ToolError ? error.recovery : undefined });
             }
         }
-        return { success: true, sessionId: args.sessionId, outcomes };
+        return { success: true, sessionId: args.sessionId, runId: scenario.runId, outcomes };
         } finally {
             if (inFlight) {
                 // Timeout ends the caller wait, not ownership of the outstanding request.
@@ -638,13 +641,15 @@ export class RuntimeSessionTools {
     @utcpTool(
         'runtimeScenarioCancel',
         'Request cooperative cancellation of the active scenario for an exact session. Does not cancel native work, release pending ownership, restore or replay actions.',
-        { type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string', minLength: 1, maxLength: 64 } }, required: ['sessionId'] },
+        { type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string', minLength: 1, maxLength: 64 }, runId: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,64}$' } }, required: ['sessionId', 'runId'] },
         { type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string' }, active: { type: 'boolean' }, cancellationRequested: { type: 'boolean' }, nativeWorkCancelled: { type: 'boolean', const: false } }, required: ['sessionId', 'active', 'cancellationRequested', 'nativeWorkCancelled'] },
         'POST', ['runtime', 'scenario', 'cancel']
     )
-    async runtimeScenarioCancel(args: { sessionId: string }): Promise<{ sessionId: string, active: boolean, cancellationRequested: boolean, nativeWorkCancelled: false }> {
+    async runtimeScenarioCancel(args: { sessionId: string, runId: string }): Promise<{ sessionId: string, active: boolean, cancellationRequested: boolean, nativeWorkCancelled: false }> {
         if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded runtime sessionId is required.' });
+        if (typeof args.runId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(args.runId)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'An exact bounded runId is required.' });
         const scenario = activeScenarios.get(args.sessionId);
+        if (scenario && scenario.runId !== args.runId) throw new ToolError({ code: 'RUNTIME_SCENARIO_IDENTITY_MISMATCH', status: 409, message: 'Cancellation does not match the active run; no cancellation requested.' });
         if (scenario) scenario.cancelled = true;
         return { sessionId: args.sessionId, active: !!scenario, cancellationRequested: !!scenario, nativeWorkCancelled: false };
     }
