@@ -889,6 +889,7 @@ export class SceneTools {
     @utcpTool('sceneScriptHealthBatchScan', 'Scan bounded scene roots for missing custom script classes with per-root outcomes.', { type: 'object', additionalProperties: false, properties: { nodeReferences: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema }, limitPerRoot: { type: 'integer', minimum: 1, maximum: MAX_LIST_LIMIT, default: DEFAULT_LIST_LIMIT } }, required: ['nodeReferences'] }, { type: 'object', additionalProperties: false, properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['items', 'succeeded', 'failed', 'truncated'] }, 'GET', ['scene', 'script', 'health', 'batch', 'scan'])
     async sceneScriptHealthBatchScan(args: { nodeReferences: IInstanceReference[], limitPerRoot?: number }): Promise<Record<string, unknown>> {
         if (!Array.isArray(args?.nodeReferences) || args.nodeReferences.length < 1 || args.nodeReferences.length > 32) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'nodeReferences must contain 1 to 32 items.' });
+        if (args.limitPerRoot !== undefined && (!Number.isInteger(args.limitPerRoot) || args.limitPerRoot < 1 || args.limitPerRoot > MAX_LIST_LIMIT)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `limitPerRoot must be an integer from 1 to ${MAX_LIST_LIMIT}.` });
         const limit = boundedListLimit(args.limitPerRoot);
         const componentTypes = await Editor.Message.request('scene', 'query-components');
         if (!Array.isArray(componentTypes)) throw new ToolError({ code: 'SCRIPT_HEALTH_QUERY_FAILED', status: 502, message: 'Creator did not return registered component types.' });
@@ -898,20 +899,38 @@ export class SceneTools {
             try {
                 const tree = await Editor.Message.request('scene', 'query-node-tree', nodeReference.id) as any;
                 if (!tree) throw new Error(`Node ${nodeReference.id} was not found.`);
+                if (nodeUuidFromSceneUsage(tree, 'script health root') !== nodeReference.id) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Creator returned a different script health root.' });
                 const findings: Array<Record<string, unknown>> = [];
                 const stack: Array<{ node: any, path: string }> = [{ node: tree, path: typeof tree.name === 'string' ? tree.name : '' }];
+                const visited = new Set<object>();
+                let scheduled = 1;
+                let total = 0;
                 while (stack.length) {
                     const { node, path: nodePath } = stack.pop()!;
-                    for (const component of node.components || node.__comps__ || []) {
+                    if (!node || typeof node !== 'object' || visited.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health hierarchy contains an invalid or repeated node.' });
+                    visited.add(node);
+                    const components = node.components ?? node.__comps__ ?? [];
+                    if (!Array.isArray(components)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health component inventory must be an array.' });
+                    for (const component of components) {
                         const classId = componentClassId(component);
+                        if (classId !== undefined && typeof classId !== 'string') throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health class identity must be a string.' });
                         if (!classId || classId.startsWith('cc.') || registered.has(classId)) continue;
-                        findings.push({ nodeReference: { id: node.uuid, type: 'cc.Node' }, nodePath, componentReference: componentUuid(component) ? { id: componentUuid(component)!, type: 'cc.Component' } : null, classId });
+                        const nodeId = nodeUuidFromSceneUsage(node, 'script health hierarchy');
+                        total++;
+                        if (findings.length < limit) findings.push({ nodeReference: { id: nodeId, type: 'cc.Node' }, nodePath, componentReference: componentUuid(component) ? { id: componentUuid(component)!, type: 'cc.Component' } : null, classId });
                     }
-                    for (const child of [...(node.children || [])].reverse()) stack.push({ node: child, path: nodePath ? `${nodePath}/${child.name || ''}` : child.name || '' });
+                    const children = node.children ?? [];
+                    if (!Array.isArray(children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health children must be an array.' });
+                    scheduled += children.length;
+                    if (scheduled > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Script health hierarchy exceeds the 10000-node traversal budget.' });
+                    for (let childIndex = children.length - 1; childIndex >= 0; childIndex--) {
+                        const child = children[childIndex];
+                        stack.push({ node: child, path: nodePath ? `${nodePath}/${child?.name || ''}` : child?.name || '' });
+                    }
                 }
-                items.push({ index, ok: true, nodeReference, findings: findings.slice(0, limit), total: findings.length, truncated: findings.length > limit });
+                items.push({ index, ok: true, nodeReference, findings, total, truncated: total > findings.length });
             } catch (error) {
-                items.push({ index, ok: false, nodeReference, error: { message: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512) } });
+                items.push({ index, ok: false, nodeReference, error: { code: error instanceof ToolError ? error.code : 'SCRIPT_HEALTH_QUERY_FAILED', message: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512) } });
             }
         }
         const succeeded = items.filter((item) => item.ok === true).length;
