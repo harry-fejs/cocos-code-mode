@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve internal/deprecated tags on export aliases and their export declaration before resolving target symbols; apply export-site context without mutating the original declaration metadata.
 - Merge deprecation across duplicate catalog export contexts independent of traversal order, preserving publicExport and non-permitted discovery semantics.
 - Validate audio success state/flags/nullable native identities at the host boundary: finite nonnegative time/duration, consistent playing/playbackState, explicit nullable volume/loop and activation metadata. Malformed control results preserve uncertainty/retrySafe:false; no replay.
 - Propagate deprecated namespace context independently to descendant records, preserving public/internal classification instead of treating deprecation as an access restriction.

@@ -75,8 +75,13 @@ function collectExports(input, version, roots, label = 'engine') {
     if (ancestors.has(symbol)) return;
     const declaration = symbol.valueDeclaration || symbol.declarations[0];
     const declaredKind = kind(declaration);
-    const internal = symbol.declarations.some(part => metadata(part).internal);
-    const deprecated = !!context.deprecated || symbol.declarations.some(part => metadata(part).deprecated);
+    const exportMetadata = [];
+    if (exported !== symbol) for (const part of exported.declarations || []) {
+      exportMetadata.push(metadata(part));
+      if (ts.isExportSpecifier(part) && ts.isExportDeclaration(part.parent?.parent)) exportMetadata.push(metadata(part.parent.parent));
+    }
+    const internal = symbol.declarations.some(part => metadata(part).internal) || exportMetadata.some(item => item.internal);
+    const deprecated = !!context.deprecated || symbol.declarations.some(part => metadata(part).deprecated) || exportMetadata.some(item => item.deprecated);
     const local = { ...context, deprecated, publicExport: context.publicExport && !internal && !/^__private(?:\.|$)/.test(name) };
     record(symbol, declaration, local, name, null);
     if (declaredKind === 'namespace' || symbol.flags & ts.SymbolFlags.Module) {
