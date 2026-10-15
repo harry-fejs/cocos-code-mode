@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { IInstanceReference } from './utcp/schemas';
 import { ToolError } from './utcp/tool-error';
 
@@ -10,6 +11,7 @@ export interface TimelineInspectOptions {
     eventOffset?: number;
     eventLimit?: number;
     maxBytes?: number;
+    expectedRevision?: string;
 }
 export function timelineRecord(value: unknown): Row | null {
     return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Row : null;
@@ -23,6 +25,7 @@ function integer(value: unknown, fallback: number, min: number, max: number, nam
     return value;
 }
 export function timelineInspectBounds(options: TimelineInspectOptions) {
+    if (options.expectedRevision !== undefined && (typeof options.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(options.expectedRevision))) fail('INVALID_ARGUMENT', 'expectedRevision must be a lowercase SHA-256 revision.');
     return {
         trackOffset: integer(options.trackOffset, 0, 0, 1000000, 'trackOffset'),
         trackLimit: integer(options.trackLimit, 50, 1, 200, 'trackLimit'),
@@ -121,8 +124,17 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         return { index, frame: event && finite(event.frame) ? event.frame : null, frameOverSample: event && frameValid(event.frame) && sample !== null && finite(event.frame / sample) ? event.frame / sample : null,
             callback: text(event?.func), params: event && Array.isArray(event.params) && event.params.every((param: unknown) => typeof param === 'string') ? event.params as string[] : null, dataValid: diagnosticCount === startIssues };
     });
+    // Revision covers the complete retrieved projection, not opaque keyframe values or unreturned native tracks.
+    const hash = createHash('sha256');
+    hash.update(JSON.stringify([options.nodeReference.id, options.clipReference.id, text(dump?.name), sample, duration, dump?.speed, dump?.wrapMode, totalTracks, sourceComplete]));
+    for (const row of tracks) hash.update(JSON.stringify(row));
+    for (const row of eventRows) hash.update(JSON.stringify(row));
+    hash.update(JSON.stringify([diagnostics, diagnosticCount, supported]));
+    const revision = hash.digest('hex');
+    if (options.expectedRevision !== undefined && options.expectedRevision !== revision) throw new ToolError({ code: 'TIMELINE_REVISION_CHANGED', status: 409, message: 'Retrieved timeline metadata changed; restart paging. No mutation was dispatched.' });
     const result = {
         nodeReference: options.nodeReference, clipReference: options.clipReference,
+        revision, revisionScope: 'Retrieved timeline projection: clip metadata, track bindings/counts/ranges, event frames/callbacks/params and diagnostics. Excludes opaque keyframe values, intermediate frame positions, unretrieved native tracks, callback binding and runtime state. Not an atomic scene snapshot.',
         identity: { node: readback?.nodeUuid === options.nodeReference.id ? 'query-node-verified' : 'requested-reference', clip: readback?.clipUuid === options.clipReference.id ? 'asset-db-verified' : 'requested-reference', dumpClipUuidExposed: !!dump && ('uuid' in dump || 'clipUuid' in dump), dumpNodeUuidExposed: !!dump && 'nodeUuid' in dump },
         clip: { name: text(dump?.name), sample, duration, speed: finite(dump?.speed) ? dump.speed : null, wrapMode: finite(dump?.wrapMode) ? dump.wrapMode : null },
         sourceScope: 'Creator scene query-animation-clip editor dump via animationQuery(includeCurves:true,maxCurves:1000). Node/clip readbacks establish identity only, not dump binding. Property curves/events only; auxiliary curves, embedded players, binding resolution and callback existence are outside scope.',

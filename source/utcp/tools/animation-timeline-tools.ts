@@ -16,6 +16,7 @@ export class AnimationTimelineTools {
         type: 'object', additionalProperties: false,
         properties: {
             nodeReference: InstanceReferenceSchema, clipReference: InstanceReferenceSchema,
+            expectedRevision: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'Guard retrieved timeline metadata across pages, not opaque keyframe values or runtime state.' },
             trackOffset: { type: 'integer', minimum: 0, maximum: 1000000, default: 0 },
             trackLimit: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
             eventOffset: { type: 'integer', minimum: 0, maximum: 1000000, default: 0 },
@@ -25,6 +26,7 @@ export class AnimationTimelineTools {
     }, {
         type: 'object', properties: {
             nodeReference: InstanceReferenceSchema, clipReference: InstanceReferenceSchema,
+            revision: { type: 'string' }, revisionScope: { type: 'string' },
             identity: { type: 'object', properties: { node: { type: 'string' }, clip: { type: 'string' }, dumpClipUuidExposed: { type: 'boolean' }, dumpNodeUuidExposed: { type: 'boolean' } }, required: ['node', 'clip', 'dumpClipUuidExposed', 'dumpNodeUuidExposed'] },
             clip: { type: 'object', properties: { name: { type: ['string', 'null'] }, sample: { type: ['number', 'null'] }, duration: { type: ['number', 'null'] }, speed: { type: ['number', 'null'] }, wrapMode: { type: ['number', 'null'] } }, required: ['name', 'sample', 'duration', 'speed', 'wrapMode'] },
             sourceScope: { type: 'string' }, timingUnit: { type: 'string' }, validityScope: { type: 'string' },
@@ -44,7 +46,7 @@ export class AnimationTimelineTools {
             diagnostics: { type: 'array', maxItems: 64, items: { type: 'object', properties: { code: { type: 'string' }, location: { type: 'string' } }, required: ['code', 'location'] } },
             diagnosticCount: { type: 'integer' }, diagnosticsTruncated: { type: 'boolean' },
             runtimeVerified: { type: 'boolean', const: false }, sceneSaved: { type: 'boolean', const: false }, callbackExistenceVerified: { type: 'boolean', const: false },
-        }, required: ['nodeReference', 'clipReference', 'identity', 'clip', 'sourceScope', 'timingUnit', 'validityScope', 'valid', 'sourceComplete', 'complete', 'truncated', 'totalTracks', 'retrievedTracks', 'totalEvents', 'inspectedKeyframes', 'trackOffset', 'trackLimit', 'eventOffset', 'eventLimit', 'nextTrackOffset', 'nextEventOffset', 'tracks', 'events', 'diagnostics', 'diagnosticCount', 'diagnosticsTruncated', 'runtimeVerified', 'sceneSaved', 'callbackExistenceVerified'],
+        }, required: ['revision', 'revisionScope', 'nodeReference', 'clipReference', 'identity', 'clip', 'sourceScope', 'timingUnit', 'validityScope', 'valid', 'sourceComplete', 'complete', 'truncated', 'totalTracks', 'retrievedTracks', 'totalEvents', 'inspectedKeyframes', 'trackOffset', 'trackLimit', 'eventOffset', 'eventLimit', 'nextTrackOffset', 'nextEventOffset', 'tracks', 'events', 'diagnostics', 'diagnosticCount', 'diagnosticsTruncated', 'runtimeVerified', 'sceneSaved', 'callbackExistenceVerified'],
     }, 'GET', ['animation', 'timeline', 'inspect', 'read-only'])
     async animationTimelineInspect(args: TimelineInspectOptions) {
         const nodeReference = exactReference(args?.nodeReference, 'nodeReference');
