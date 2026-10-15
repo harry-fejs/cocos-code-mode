@@ -144,6 +144,14 @@ export class ComponentTools {
         if (!args.reference?.id || typeof args.componentType !== 'string' || !/^[A-Za-z_][A-Za-z0-9_.]{0,127}$/.test(args.componentType)) throw new Error('nodeComponentAdd requires a bounded component class identifier.');
         const node = await Editor.Message.request('scene', 'query-node', args.reference.id);
         if (!node) throw new Error(`Node ${args.reference.id} not found`);
+        const checkedComponents = (dump: unknown): unknown[] => {
+            const uuid = field(dump, 'uuid');
+            const components = field(dump, '__comps__');
+            if ((typeof uuid === 'string' ? uuid : field(uuid, 'value')) !== args.reference.id || !Array.isArray(components) || components.length > VERBOSE_TREE_NODES) {
+                throw new ToolError({ code: 'COMPONENT_CREATE_POSTCONDITION_UNKNOWN', status: 502, message: 'Component add node identity or bounded inventory could not be confirmed.', details: { nodeId: args.reference.id, retrySafe: false }, recovery: 'Inspect the exact node inventory before another mutation.' });
+            }
+            return components;
+        };
 
         const componentUuid = (component: unknown): string | undefined => {
             if (!component || typeof component !== 'object') return undefined;
@@ -164,7 +172,7 @@ export class ComponentTools {
             if (declared && typeof declared === 'object' && typeof (declared as Record<string, unknown>).value === 'string') return (declared as Record<string, unknown>).value as string;
             return typeof row.cid === 'string' ? row.cid : typeof value?.cid === 'string' ? value.cid : undefined;
         };
-        const existingUuids = new Set<string>((node.__comps__ ?? []).map(componentUuid).filter((id: string | undefined): id is string => !!id));
+        const existingUuids = new Set<string>(checkedComponents(node).map(componentUuid).filter((id): id is string => !!id));
 
         await Editor.Message.request('scene', 'execute-scene-script', { name: packageJSON.name, method: 'startCatchLogging', args: [] });
         let caughtLogs: string[] = [];
@@ -187,7 +195,7 @@ export class ComponentTools {
 
         const nodeAfter = await Editor.Message.request('scene', 'query-node', args.reference.id);
         if (!nodeAfter) throw new Error(`nodeComponentAdd: node ${args.reference.id} disappeared after create-component`);
-        const newComponents = (nodeAfter.__comps__ ?? []).filter((component: unknown) => {
+        const newComponents = checkedComponents(nodeAfter).filter((component: unknown) => {
             const id = componentUuid(component);
             return !!id && !existingUuids.has(id) && componentType(component) === args.componentType;
         });
@@ -198,7 +206,7 @@ export class ComponentTools {
 
         await Editor.Message.request('scene', 'snapshot');
         const verifiedNode = await Editor.Message.request('scene', 'query-node', args.reference.id);
-        const verifiedMatches = (verifiedNode?.__comps__ ?? []).filter((component: unknown) => componentUuid(component) === newId);
+        const verifiedMatches = checkedComponents(verifiedNode).filter((component: unknown) => componentUuid(component) === newId);
         if (verifiedMatches.length !== 1 || componentType(verifiedMatches[0]) !== args.componentType) throw new ToolError({ code: 'COMPONENT_CREATE_POSTCONDITION_UNKNOWN', status: 502, message: 'Added component UUID/type was not uniquely confirmed after snapshot.', details: { nodeId: args.reference.id, componentId: newId, componentType: args.componentType, retrySafe: false }, recovery: 'Inspect the node inventory before any further mutation.' });
         return { reference: { id: newId, type: args.componentType } };
     }
