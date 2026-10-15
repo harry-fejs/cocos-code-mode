@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add displayName<=256 characters to generated component field metadata, composable with tooltip across scalar/array/enum/reference types. Escaped Inspector labels leave code/serialized property identifiers and defaults unchanged.
 - Unwrap transparent parentheses on namespace constant guard targets before compiler-symbol matching; preserve exact-member and lexical-shadowing boundaries without evaluating expressions.
 - Add bounded tooltip metadata to scriptComponentCreate serialized fields across scalar/array/enum/reference types. Emit escaped native Inspector property options, preserving defaults/type identity; no source expression execution or gameplay behavior added.
 - Preserve inheritedFrom for constructor parameter properties by comparing enclosing class ownership rather than constructor declarations; own parameter properties remain non-inherited.
