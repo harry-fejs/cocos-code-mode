@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Exclude simple identifier assignment targets from direct constant-read guard provenance while retaining RHS reads and compound read-modify-write expressions; invalid imported writes are not authorized or executed.
 - Add native Vec4 scalar/array descriptors to scriptComponentCreate with exact finite xyzw coordinates and zero scalar default, independent per-instance values and existing Inspector metadata. No material assignment, normalization or shader execution.
 - Exclude named constant aliases reached through compiler-tracked type-only reexport chains from runtime guard-read provenance, even when the ultimate target is a declared value.
 - Enforce animationEventEdit(update) dense object payloads capped at200 before clip selection, rejecting null/primitive/array/sparse entries. Snapshot top-level event records before async selection; native inner payload semantics and empty-array compatibility remain unchanged.
