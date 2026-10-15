@@ -101,7 +101,7 @@ function atomicWriteVerified(filePath: string, content: string): number {
     try {
         fs.writeFileSync(tempPath, content, 'utf8');
         fs.renameSync(tempPath, filePath);
-        const readBack = fs.readFileSync(filePath, 'utf8');
+        const { content: readBack } = readBoundedProjectText(filePath, MAX_WRITE_BYTES);
         if (readBack !== content) {
             throw new ToolError({ code: 'READBACK_MISMATCH', status: 502, message: `File write read-back did not match ${filePath}.` });
         }
