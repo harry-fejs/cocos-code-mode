@@ -101,7 +101,9 @@ Use `editorQuery({category:'engine_api',operation:'records',recordId})` for one 
 
 `operation:'get_signature'` requires an exact `recordId`, hydrates only that record from an external catalog, and returns its declared signatures with `permitted:false`. It is a read-only type/discovery result; unresolved/overloaded/native semantics remain explicit and no callable route is inferred.
 
-`runtimeScenarioRun` also accepts `totalTimeoutMs` (100–60000) to cap the entire finite sequence, not just individual waits/actions. If the aggregate deadline expires before a step, it returns a typed failure with `failedStep` and prior outcomes; no later action is replayed.
+Use `editorQuery({category:'engine_api',operation:'compare_version',targetVersion:'3.7.3',recordId,compareVersion:'3.8.8',compareRecordId})` to compare two exact records sharing a semanticKey. Results compare signature/metadata/resolution hashes and retain catalog identities; missing records do not imply removals. Comparison grants no execution permission.
+
+`runtimeScenarioRun` accepts `totalTimeoutMs` (100–60000, default30000). All steps share that wall-clock deadline; expiry stops subsequent steps and retains failedStep/prior outcomes. An in-flight native request may still complete: timeout does not cancel, replay or restore an action. Inspect the bound session before another mutation.
 
 Follow `nextCursor` only when more records are needed; preserve the same version/class/filter. Cursors are catalog-bound. `qualified:false`, `runtimeVerified:false`, and `live.mutationAuthorized:false` are intentional: declaration presence and live class availability do not prove mutation/history/persistence. Supplying a component `reference` refreshes Inspector path evidence on every request instead of retaining stale script mappings.
 
