@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Mark getter/setter-backed DTO properties semantic-adapter-required without invoking accessors; readonly data fields are not treated as accessors.
 - Extend scenario nodeAssert with immediate local/world position+tolerance predicates, AND-composed with activation. Retain observed mismatch evidence and stop subsequent actions; invalid metrics refuse, no polling or movement writes.
 - Recognize instantiated generic class references as class-instance semantic-adapter boundaries via their compiler target; generic interfaces remain unaffected.
 - Preserve intrinsic string-mapping operands and unresolved string-mapping diagnostics for generic Uppercase/Lowercase/Capitalize/Uncapitalize types; compiler-reduced string literals remain resolved.
