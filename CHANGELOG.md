@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Resolve enum-member compiler types to their owning enum dependency, preserving enum values and detecting same-name enum collisions instead of exposing member names as independent type references.
 - Set colliding short-name references to resolution unknown and discard enum value claims when ambiguity is detected, keeping reference state consistent with ambiguous-reference diagnostics.
 - Add childOffset/nextChildOffset for ordered128-child runtime pages and optional expectedHierarchyRevision guarding session/parent/full direct-child identity order, including off-page changes. Internal full identity is stripped from public output; transform/runtime state and atomic/ABA guarantees remain outside revision scope.
 - Retain array/tuple alias identities alongside element dependencies without expanding built-in collection prototype members; anonymous primitive arrays remain free of prototype metadata.

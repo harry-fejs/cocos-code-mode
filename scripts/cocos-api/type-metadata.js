@@ -84,7 +84,9 @@ function typeInfo(checker, type, node) {
     const collection = checker.isArrayType(current) || checker.isTupleType(current);
     if (current.flags & ts.TypeFlags.Object && current.objectFlags & ts.ObjectFlags.Reference) checker.getTypeArguments(current).forEach(visit);
     if (current.aliasTypeArguments) current.aliasTypeArguments.forEach(visit);
-    const symbol = collection ? current.aliasSymbol : current.aliasSymbol || current.symbol;
+    let symbol = collection ? current.aliasSymbol : current.aliasSymbol || current.symbol;
+    const enumMember = current.symbol?.declarations?.find(ts.isEnumMember);
+    if (enumMember) symbol = checker.getSymbolAtLocation(enumMember.parent.name) || symbol;
     if (current.flags & ts.TypeFlags.Object && (current.objectFlags & ts.ObjectFlags.Class || current.objectFlags & ts.ObjectFlags.Reference && current.target?.objectFlags & ts.ObjectFlags.Class)) {
       unresolved.push({ kind: 'semantic-adapter-required', reference: 'class-instance-type' });
     }
