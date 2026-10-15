@@ -1,0 +1,158 @@
+import { IInstanceReference } from './utcp/schemas';
+import { ToolError } from './utcp/tool-error';
+
+type Row = Record<string, unknown>;
+export interface TimelineInspectOptions {
+    nodeReference: IInstanceReference;
+    clipReference: IInstanceReference;
+    trackOffset?: number;
+    trackLimit?: number;
+    eventOffset?: number;
+    eventLimit?: number;
+    maxBytes?: number;
+}
+export function timelineRecord(value: unknown): Row | null {
+    return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Row : null;
+}
+function fail(code: string, message: string, details: Row = {}): never {
+    throw new ToolError({ code, message, status: code === 'INVALID_ARGUMENT' ? 400 : 422, details });
+}
+function integer(value: unknown, fallback: number, min: number, max: number, name: string): number {
+    if (value === undefined) return fallback;
+    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min || value > max) fail('INVALID_ARGUMENT', `${name} must be an integer from ${min} to ${max}.`);
+    return value;
+}
+export function timelineInspectBounds(options: TimelineInspectOptions) {
+    return {
+        trackOffset: integer(options.trackOffset, 0, 0, 1000000, 'trackOffset'),
+        trackLimit: integer(options.trackLimit, 50, 1, 200, 'trackLimit'),
+        eventOffset: integer(options.eventOffset, 0, 0, 1000000, 'eventOffset'),
+        eventLimit: integer(options.eventLimit, 50, 1, 200, 'eventLimit'),
+        maxBytes: integer(options.maxBytes, 65536, 1024, 262144, 'maxBytes'),
+    };
+}
+const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+const text = (value: unknown): string | null => typeof value === 'string' ? value : null;
+const byteLength = (value: unknown): number => Buffer.byteLength(JSON.stringify(value), 'utf8');
+
+/** Projects the Creator 3.7 EditorAnimationClipDump, not serialized .anim assets.
+ * Native frame fields are retained verbatim; frame/sample is a labeled conversion, not runtime timing evidence.
+ * Every retrieved track/event is checked, even when not included in the response page.
+ */
+export function inspectAnimationTimeline(value: unknown, options: TimelineInspectOptions, readback?: { nodeUuid: string; clipUuid: string }) {
+    const bounds = timelineInspectBounds(options), dump = timelineRecord(value);
+    const diagnostics: Array<{ code: string; location: string }> = [];
+    let diagnosticCount = 0, supported = true;
+    const issue = (code: string, location: string, unsupported = false): void => {
+        diagnosticCount++;
+        if (diagnostics.length < 64) diagnostics.push({ code, location });
+        if (unsupported) supported = false;
+    };
+    if (!dump) issue('UNSUPPORTED_NATIVE_DUMP', 'clip', true);
+    // These identities are not required by the 3.7 dump type, but cannot be ignored if exposed.
+    for (const [field, expected] of [['uuid', options.clipReference.id], ['clipUuid', options.clipReference.id], ['nodeUuid', options.nodeReference.id]]) {
+        if (dump && field in dump && dump[field] !== expected) fail('TIMELINE_IDENTITY_MISMATCH', `Native ${field} differs from the requested identity.`, { field });
+    }
+    const sample = dump && finite(dump.sample) && dump.sample > 0 ? dump.sample : null;
+    const duration = dump && finite(dump.duration) && dump.duration >= 0 ? dump.duration : null;
+    if (sample === null) issue('INVALID_SAMPLE', 'clip.sample');
+    if (duration === null) issue('INVALID_DURATION', 'clip.duration');
+    if (!dump || typeof dump.name !== 'string') issue('UNSUPPORTED_CLIP_NAME', 'clip.name', true);
+    for (const field of ['speed', 'wrapMode']) if (dump && !finite(dump[field])) issue('INVALID_CLIP_NUMBER', `clip.${field}`);
+    if (dump && 'time' in dump && !finite(dump.time)) issue('INVALID_CLIP_NUMBER', 'clip.time');
+    const curves = dump && Array.isArray(dump.curves) ? dump.curves : null;
+    const events = dump && Array.isArray(dump.events) ? dump.events : null;
+    if (!curves) issue('UNSUPPORTED_CURVES', 'clip.curves', true);
+    if (!events) issue('UNSUPPORTED_EVENTS', 'clip.events', true);
+    if ((curves?.length ?? 0) > 1000 || (events?.length ?? 0) > 10000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native dump exceeds 1000 retrieved tracks or 10000 events.');
+    let sourceComplete = !!curves && !!events, totalTracks: number | null = curves?.length ?? null;
+    if (dump && 'totalCurves' in dump) {
+        if (!Number.isSafeInteger(dump.totalCurves) || typeof dump.totalCurves !== 'number' || dump.totalCurves < (curves?.length ?? 0)) {
+            issue('INVALID_TRACK_TOTAL', 'clip.totalCurves', true); sourceComplete = false; totalTracks = null;
+        } else { totalTracks = dump.totalCurves; sourceComplete = sourceComplete && dump.totalCurves === curves?.length; }
+    }
+    if (dump && 'truncated' in dump && typeof dump.truncated !== 'boolean') { issue('UNSUPPORTED_TRUNCATION', 'clip.truncated', true); sourceComplete = false; }
+    if (dump?.truncated === true) sourceComplete = false;
+    if (!sourceComplete && curves && events) issue('NATIVE_DUMP_TRUNCATED', 'clip.curves');
+    let scannedValues = 0, keyframeCount = 0;
+    // Validate opaque property dumps for non-finite numeric values without interpreting their schema.
+    const finiteTree = (root: unknown): boolean => {
+        const pending: Array<{ value: unknown; depth: number }> = [{ value: root, depth: 0 }];
+        const seen = new Set<object>();
+        while (pending.length) {
+            const entry = pending.pop()!;
+            if (++scannedValues > 1000000 || entry.depth > 32) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native value scan exceeds 1000000 values or 32 levels.');
+            if (typeof entry.value === 'number' && !Number.isFinite(entry.value)) return false;
+            if (entry.value && typeof entry.value === 'object') {
+                if (seen.has(entry.value)) return false;
+                seen.add(entry.value);
+                const children = Object.values(entry.value);
+                if (children.length + pending.length > 1000000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native value container exceeds the scan bound.');
+                for (const child of children) pending.push({ value: child, depth: entry.depth + 1 });
+            } else if (typeof entry.value === 'function' || typeof entry.value === 'symbol' || typeof entry.value === 'bigint' || entry.value === undefined) return false;
+        }
+        return true;
+    };
+    const frameValid = (frame: unknown): frame is number => finite(frame) && frame >= 0;
+    const tracks = (curves ?? []).map((raw: unknown, index: number) => {
+        const curve = timelineRecord(raw), location = `curves[${index}]`;
+        const startIssues = diagnosticCount;
+        if (!curve || typeof curve.nodePath !== 'string' || typeof curve.key !== 'string' || !curve.key) issue('UNSUPPORTED_TRACK_BINDING', location, true);
+        const keys: unknown[] | null = curve && Array.isArray(curve.keyframes) ? curve.keyframes : null;
+        if (!keys) issue('UNSUPPORTED_KEYFRAMES', `${location}.keyframes`, true);
+        keyframeCount += keys?.length ?? 0;
+        if (keyframeCount > 100000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native dump exceeds 100000 keyframes.');
+        let first: number | null = null, last: number | null = null;
+        for (const [keyIndex, rawKey] of (keys ?? []).entries()) {
+            const key = timelineRecord(rawKey), keyLocation = `${location}.keyframes[${keyIndex}]`;
+            if (!key || !frameValid(key.frame)) issue('INVALID_KEYFRAME_TIME', keyLocation);
+            if (!key || !('dump' in key) || !finiteTree(key)) issue('INVALID_KEYFRAME_DATA', keyLocation);
+            if (key && finite(key.frame) && key.frame >= 0) { first = first === null ? key.frame : Math.min(first, key.frame); last = last === null ? key.frame : Math.max(last, key.frame); }
+        }
+        for (const field of ['comp', 'parentPropKey', 'displayName']) if (curve && field in curve && typeof curve[field] !== 'string') issue('UNSUPPORTED_TRACK_METADATA', `${location}.${field}`, true);
+        const row = { index, identity: { nodePath: text(curve?.nodePath), property: text(curve?.key) }, component: text(curve?.comp), parentProperty: text(curve?.parentPropKey), displayName: text(curve?.displayName), keyframeCount: keys?.length ?? null,
+            frameRange: first === null ? null : { first, last }, frameOverSampleRange: first === null || last === null || sample === null || !finite(first / sample) || !finite(last / sample) ? null : { first: first / sample, last: last / sample }, dataValid: diagnosticCount === startIssues };
+        return row;
+    });
+    const eventRows = (events ?? []).map((raw: unknown, index: number) => {
+        const event = timelineRecord(raw), location = `events[${index}]`, startIssues = diagnosticCount;
+        if (!event || !frameValid(event.frame)) issue('INVALID_EVENT_TIME', location);
+        if (!event || typeof event.func !== 'string' || !event.func || !Array.isArray(event.params) || !event.params.every((param: unknown) => typeof param === 'string')) issue('UNSUPPORTED_EVENT_DATA', location, true);
+        return { index, frame: event && finite(event.frame) ? event.frame : null, frameOverSample: event && frameValid(event.frame) && sample !== null && finite(event.frame / sample) ? event.frame / sample : null,
+            callback: text(event?.func), params: event && Array.isArray(event.params) && event.params.every((param: unknown) => typeof param === 'string') ? event.params as string[] : null, dataValid: diagnosticCount === startIssues };
+    });
+    const result = {
+        nodeReference: options.nodeReference, clipReference: options.clipReference,
+        identity: { node: readback?.nodeUuid === options.nodeReference.id ? 'query-node-verified' : 'requested-reference', clip: readback?.clipUuid === options.clipReference.id ? 'asset-db-verified' : 'requested-reference', dumpClipUuidExposed: !!dump && ('uuid' in dump || 'clipUuid' in dump), dumpNodeUuidExposed: !!dump && 'nodeUuid' in dump },
+        clip: { name: text(dump?.name), sample, duration, speed: finite(dump?.speed) ? dump.speed : null, wrapMode: finite(dump?.wrapMode) ? dump.wrapMode : null },
+        sourceScope: 'Creator scene query-animation-clip editor dump via animationQuery(includeCurves:true,maxCurves:1000). Node/clip readbacks establish identity only, not dump binding. Property curves/events only; auxiliary curves, embedded players, binding resolution and callback existence are outside scope.',
+        timingUnit: 'Native frame fields retained. frameOverSample is arithmetic conversion only; native timing units and playback are not runtime-verified.',
+        valid: supported && sourceComplete && diagnosticCount === 0, validityScope: 'Finite retrieved timeline data only; not scene binding or playable validation.',
+        sourceComplete: sourceComplete && supported, complete: false, truncated: false,
+        totalTracks, retrievedTracks: curves?.length ?? null, totalEvents: events?.length ?? null, inspectedKeyframes: keyframeCount,
+        trackOffset: bounds.trackOffset, trackLimit: bounds.trackLimit, eventOffset: bounds.eventOffset, eventLimit: bounds.eventLimit,
+        nextTrackOffset: null as number | null, nextEventOffset: null as number | null,
+        tracks: tracks.slice(bounds.trackOffset, bounds.trackOffset + bounds.trackLimit), events: eventRows.slice(bounds.eventOffset, bounds.eventOffset + bounds.eventLimit),
+        diagnostics, diagnosticCount, diagnosticsTruncated: diagnosticCount > diagnostics.length,
+        runtimeVerified: false as const, sceneSaved: false as const, callbackExistenceVerified: false as const,
+    };
+    for (const [kind, rows] of [['track', result.tracks], ['event', result.events]] as const) for (const row of rows) {
+        if (byteLength(row) > bounds.maxBytes) fail('TIMELINE_RECORD_TOO_LARGE', 'One timeline record exceeds maxBytes; it cannot be silently omitted.', { kind, index: row.index, maxBytes: bounds.maxBytes });
+    }
+    const pagination = (): void => {
+        const trackEnd = bounds.trackOffset + result.tracks.length, eventEnd = bounds.eventOffset + result.events.length;
+        result.nextTrackOffset = trackEnd < tracks.length ? trackEnd : null;
+        result.nextEventOffset = eventEnd < eventRows.length ? eventEnd : null;
+        result.complete = result.sourceComplete && bounds.trackOffset === 0 && bounds.eventOffset === 0 && result.nextTrackOffset === null && result.nextEventOffset === null && !result.diagnosticsTruncated;
+        result.truncated = !sourceComplete || bounds.trackOffset > 0 || bounds.eventOffset > 0 || result.nextTrackOffset !== null || result.nextEventOffset !== null || result.diagnosticsTruncated;
+    };
+    pagination();
+    while (byteLength(result) > bounds.maxBytes) {
+        if (!result.tracks.length && !result.events.length) fail('TIMELINE_RESPONSE_TOO_LARGE', 'Timeline envelope and diagnostics exceed maxBytes.', { maxBytes: bounds.maxBytes });
+        if (result.events.length && (!result.tracks.length || byteLength(result.events[result.events.length - 1]) >= byteLength(result.tracks[result.tracks.length - 1]))) result.events.pop();
+        else result.tracks.pop();
+        pagination();
+    }
+    if ((tracks.length > bounds.trackOffset && !result.tracks.length) || (eventRows.length > bounds.eventOffset && !result.events.length)) fail('TIMELINE_RECORD_TOO_LARGE', 'The next timeline record cannot fit with the response envelope; increase maxBytes.', { maxBytes: bounds.maxBytes });
+    return result;
+}

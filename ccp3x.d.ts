@@ -1027,6 +1027,10 @@ declare namespace ccp3x {
         parameters?: string[],
         events?: unknown[]
     }): { success: boolean, error?: string, result?: any };
+    interface AnimationTimelineInspection { nodeReference: InstanceReference; clipReference: InstanceReference; identity: { node: string; clip: string; dumpClipUuidExposed: boolean; dumpNodeUuidExposed: boolean }; clip: { name: string | null; sample: number | null; duration: number | null; speed: number | null; wrapMode: number | null }; sourceScope: string; timingUnit: string; validityScope: string; valid: boolean; sourceComplete: boolean; complete: boolean; truncated: boolean; totalTracks: number | null; retrievedTracks: number | null; totalEvents: number | null; inspectedKeyframes: number; trackOffset: number; trackLimit: number; eventOffset: number; eventLimit: number; nextTrackOffset: number | null; nextEventOffset: number | null; tracks: Array<Record<string, unknown>>; events: Array<Record<string, unknown>>; diagnostics: Array<{ code: string; location: string }>; diagnosticCount: number; diagnosticsTruncated: boolean; runtimeVerified: false; sceneSaved: false; callbackExistenceVerified: false }
+    function animationTimelineInspect(args: { nodeReference: InstanceReference; clipReference: InstanceReference; trackOffset?: number; trackLimit?: number; eventOffset?: number; eventLimit?: number; maxBytes?: number }): AnimationTimelineInspection;
+    interface ComponentPropertyDescriptor { name: string; type: 'number' | 'string' | 'boolean' | 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame'; default?: number | string | boolean | null }
+    function scriptComponentCreate(args: { assetUrl: string; className: string; properties?: ComponentPropertyDescriptor[]; write: boolean }): { assetUrl: string; className: string; source: string; sha256: string; bytes: number; sourceCreated: boolean; uuid: string | null; classRegistration: 'unknown' | 'pending'; attached: false; runtimeVerified: false; sceneSaved: false };
 
     /** Manage auxiliary animation curves and keys. */
     function animationAuxCurveEdit(args: {

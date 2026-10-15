@@ -132,7 +132,6 @@ export class ComponentTools {
             if (remaining !== null && remaining !== undefined) {
                 throw new Error(`Component ${args.reference.id} still exists after removal`);
             }
-            await Editor.Message.request('scene', 'snapshot');
             return { success: true };
         } catch (error: unknown) {
             throw new Error(`Failed to remove component ${args.reference.id}. Reason: ${error instanceof Error ? error.message : String(error)}`);
@@ -140,7 +139,7 @@ export class ComponentTools {
     }
 
     async nodeComponentAdd(args: { reference: IInstanceReference, componentType: string }): Promise<{ reference: IInstanceReference }> {
-        if (!args.reference?.id || !args.componentType) throw new Error('nodeComponentAdd requires reference.id and componentType');
+        if (!args.reference?.id || typeof args.componentType !== 'string' || !/^[A-Za-z_][A-Za-z0-9_.]{0,127}$/.test(args.componentType)) throw new Error('nodeComponentAdd requires a bounded component class identifier.');
         const node = await Editor.Message.request('scene', 'query-node', args.reference.id);
         if (!node) throw new Error(`Node ${args.reference.id} not found`);
 

@@ -30,6 +30,8 @@ import './tools/runtime-tools';
 import './tools/runtime-session-tools';
 import './tools/audio-playback-tools';
 import './tools/component-runtime-tools';
+import './tools/animation-timeline-tools';
+import './tools/component-script-tools';
 import './tools/screenshot-tools';
 import './tools/batch-tools';
 import './tools/batch-read-tools';
