@@ -34,7 +34,7 @@ function collectExports(input, version, roots, label = 'engine') {
       }
     }
     info.internal = info.internal || ownerMetadata.internal || !context.publicExport;
-    info.deprecated = info.deprecated || ownerMetadata.deprecated;
+    info.deprecated = info.deprecated || ownerMetadata.deprecated || !!context.deprecated;
     let sigs;
     if (['interface', 'type', 'enum'].includes(kind(declaration)) && !member) {
       const value = typeInfo(checker, checker.getDeclaredTypeOfSymbol(symbol), ts.isInterfaceDeclaration(declaration) ? declaration : declaration.type);
@@ -75,7 +75,8 @@ function collectExports(input, version, roots, label = 'engine') {
     const declaration = symbol.valueDeclaration || symbol.declarations[0];
     const declaredKind = kind(declaration);
     const internal = symbol.declarations.some(part => metadata(part).internal);
-    const local = { ...context, publicExport: context.publicExport && !internal && !/^__private(?:\.|$)/.test(name) };
+    const deprecated = !!context.deprecated || symbol.declarations.some(part => metadata(part).deprecated);
+    const local = { ...context, deprecated, publicExport: context.publicExport && !internal && !/^__private(?:\.|$)/.test(name) };
     record(symbol, declaration, local, name, null);
     if (declaredKind === 'namespace' || symbol.flags & ts.SymbolFlags.Module) {
       const next = new Set([...ancestors, symbol]);

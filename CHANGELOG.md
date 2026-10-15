@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Propagate deprecated namespace context independently to descendant records, preserving public/internal classification instead of treating deprecation as an access restriction.
 - Preserve pendingMayComplete audio errors even without optional state, with mutationDispatched:true/retrySafe:false. State payload remains ancillary; unknown playback outcomes cannot lose replay-safety metadata during host error conversion.
 - Propagate internal merged namespace/export context to descendant records instead of labeling children public beneath an internal namespace; discovery remains non-permitted.
 - Validate successful audio transport responses against dispatched session/scene/node/operation and optional expected source/clip UUIDs. Foreign success refuses with retrySafe:false and control outcome uncertainty; no playback replay.
