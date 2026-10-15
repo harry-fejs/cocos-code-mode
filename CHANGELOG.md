@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add formerlySerializedAs metadata to scriptComponentCreate fields for native serialized-name migration. Reject self/duplicate/current-field collisions and unsafe prior names; source metadata does not itself migrate or verify saved scenes/prefabs.
 - Exclude decorator property/element access rooted at compiler-tracked type-only namespace aliases from edit-mode declaration credit; syntax fallback no longer revives erased runtime bindings.
 - Support Font/TTFFont/BitmapFont/SpriteAtlas/SceneAsset scalar and array references in scriptComponentCreate using native Inspector types and null/empty defaults. No font importer writes, atlas loading or scene transition is performed.
 - Support native Texture2D scalar/array references in scriptComponentCreate descriptors and public types. Fields start null/empty without constructing textures, loading assets or changing render/material state.
