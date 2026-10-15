@@ -242,7 +242,11 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
     if (parameter?.dotDotDotToken) {
       const restType = checker.getTypeOfSymbolAtLocation(symbol, parameter);
       const alternatives = restType.isUnion?.() ? restType.types : [restType];
-      const requiredLength = Math.min(...alternatives.map(type => checker.isTupleType(type) ? type.target.minLength : 0));
+      let requiredLength = Infinity;
+      for (const alternative of alternatives) {
+        requiredLength = Math.min(requiredLength, checker.isTupleType(alternative) ? alternative.target.minLength : 0);
+        if (requiredLength === 0) break;
+      }
       if (requiredLength > 0) minArgumentCount = Math.max(minArgumentCount, position + requiredLength);
     }
     const info = typeInfo(checker, checker.getTypeOfSymbolAtLocation(symbol, parameter || declaration), parameter?.type);
