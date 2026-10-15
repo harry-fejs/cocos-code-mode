@@ -112,6 +112,10 @@ function typeInfo(checker, type, node) {
         const propertyDeclaration = property.valueDeclaration || property.declarations?.[0];
         if (property.declarations?.some(item => ts.isGetAccessorDeclaration(item) || ts.isSetAccessorDeclaration(item))) {
           unresolved.push({ kind: 'semantic-adapter-required', reference: 'accessor-property' });
+          for (const accessor of property.declarations) {
+            if (!ts.isSetAccessorDeclaration(accessor)) continue;
+            for (const parameter of accessor.parameters) visit(checker.getTypeAtLocation(parameter));
+          }
         }
         const key = propertyDeclaration?.name;
         if (key && ts.isComputedPropertyName(key) && checker.getTypeAtLocation(key.expression).flags & ts.TypeFlags.ESSymbolLike) {

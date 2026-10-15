@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Retain setter input dependencies separately from accessor read types, including asymmetric getter/setter DTO declarations; semantic-adapter requirements remain unchanged and accessors are never executed.
 - Mark direct/nested TypeScript object types opaque-object until their transfer schema is resolved; structured DTO fields are not reclassified as opaque.
 - Extend runtimeNodeObserve with finite local/world quaternion DTOs retained verbatim. No normalization/Euler conversion or sign-equivalence inference; absent/nonfinite quaternion metrics refuse instead of fabricated rotations.
 - Mark getter/setter-backed DTO properties semantic-adapter-required without invoking accessors; readonly data fields are not treated as accessors.
