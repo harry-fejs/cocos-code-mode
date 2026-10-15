@@ -111,16 +111,21 @@ function atomicWriteVerified(filePath: string, content: string): number {
         path.dirname(filePath),
         `.${path.basename(filePath)}.ccp3x-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.tmp`,
     );
+    let tempOwned = false;
     try {
-        fs.writeFileSync(tempPath, content, 'utf8');
+        const handle = fs.openSync(tempPath, 'wx');
+        tempOwned = true;
+        try { fs.writeFileSync(handle, content, 'utf8'); }
+        finally { fs.closeSync(handle); }
         fs.renameSync(tempPath, filePath);
+        tempOwned = false;
         const { content: readBack } = readBoundedProjectText(filePath, MAX_WRITE_BYTES);
         if (readBack !== content) {
             throw new ToolError({ code: 'READBACK_MISMATCH', status: 502, message: `File write read-back did not match ${filePath}.` });
         }
         return bytes;
     } finally {
-        try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch { /* best effort cleanup */ }
+        try { if (tempOwned) fs.unlinkSync(tempPath); } catch { /* best effort cleanup of our own temporary file */ }
     }
 }
 
