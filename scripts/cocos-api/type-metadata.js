@@ -71,6 +71,9 @@ function typeInfo(checker, type, node) {
     if (current.flags & ts.TypeFlags.Object && current.objectFlags & ts.ObjectFlags.Reference) checker.getTypeArguments(current).forEach(visit);
     if (current.aliasTypeArguments) current.aliasTypeArguments.forEach(visit);
     const symbol = current.aliasSymbol || current.symbol;
+    if (current.flags & ts.TypeFlags.Object && current.objectFlags & ts.ObjectFlags.Class) {
+      unresolved.push({ kind: 'semantic-adapter-required', reference: 'class-instance-type' });
+    }
     const callSignatures = checker.getSignaturesOfType(current, ts.SignatureKind.Call);
     const constructSignatures = checker.getSignaturesOfType(current, ts.SignatureKind.Construct);
     if (callSignatures.length) unresolved.push({ kind: 'semantic-adapter-required', reference: 'callable-type' });
