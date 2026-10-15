@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Merge internal/publicExport flags conservatively across duplicate export-context records independent of traversal order; retain all export provenance without granting runtime permission.
 - Verify host audio success postconditions for play started/state-or-ended, pause paused, stop stopped/near-zero time and seek within existing0.05s readback tolerance. Mismatch retains state and uncertain-control/retrySafe:false metadata; no action replay.
 - Preserve internal/deprecated parent export-declaration tags on namespace reexports (export * as Alias), propagating context to descendants without mutating target declarations.
 - Recheck attached session/scene/createdAt after successful audio execution; lifecycle drift or failed continuity inspection refuses with control uncertainty/retrySafe:false. No preview restart or playback replay.
