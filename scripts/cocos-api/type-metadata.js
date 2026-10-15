@@ -29,6 +29,11 @@ function typeInfo(checker, type, node) {
     if (current.flags & ts.TypeFlags.Any) unresolved.push({ kind: 'any', reference: current.aliasSymbol?.name || current.intrinsicName || 'any' });
     if (current.flags & ts.TypeFlags.Unknown) unresolved.push({ kind: 'unknown', reference: 'unknown' });
     if (current.flags & ts.TypeFlags.TypeParameter) visit(checker.getBaseConstraintOfType(current));
+    if (current.flags & ts.TypeFlags.IndexedAccess) {
+      unresolved.push({ kind: 'indexed-access', reference: canonicalType(checker.typeToString(current, node, ts.TypeFormatFlags.NoTruncation)) });
+      visit(current.objectType);
+      visit(current.indexType);
+    }
     if (current.isUnionOrIntersection?.()) current.types.forEach(visit);
     if (checker.isArrayType(current) || checker.isTupleType(current)) {
       checker.getTypeArguments(current).forEach(visit);
