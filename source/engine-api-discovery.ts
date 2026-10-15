@@ -12,7 +12,7 @@ export interface EngineDiscoveryArgs {
     category?: string; className?: string; targetVersion?: string; domain?: string;
     operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'get_related_types' | 'lookup_editor_message' | 'compare_version';
     namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge';
-    kind?: string;
+    kind?: string; module?: string;
     filter?: string; recordId?: string; compareVersion?: string; compareRecordId?: string; reference?: IInstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string;
 }
 const ApiRecordSchema = z.object({ id: z.string().min(1), className: z.string().nullable().optional(), namespace: z.string(), member: z.string().nullable().optional(), name: z.string().optional(), kind: z.string().optional(), signatures: z.array(z.unknown()).optional() }).passthrough();
@@ -40,6 +40,8 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     const operation = args.operation ?? 'records';
     if (args.kind !== undefined && (typeof args.kind !== 'string' || !args.kind || args.kind.length > 128)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'kind must be a nonempty string of at most 128 characters.' });
     if (args.kind !== undefined && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'kind is not accepted for this discovery operation.' });
+    if (args.module !== undefined && (typeof args.module !== 'string' || !args.module || args.module.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'module must be a nonempty string of at most 256 characters.' });
+    if (args.module !== undefined && ['list_domains', 'lookup_editor_message', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'module is not accepted for this discovery operation.' });
     if (operation === 'lookup_editor_message') {
         if (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024
             || args.reference !== undefined || args.className !== undefined || args.category === 'component_schema'
@@ -83,6 +85,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     if (args.recordId !== undefined && (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024 || !['records', 'get_signature', 'get_related_types'].includes(operation))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'recordId requires a record operation and a bounded nonempty identity.' });
     const maxEntries = limit(args.maxEntries, 50, 200), maxBytes = limit(args.maxBytes, 32768, 131072);
     const external = openExternalApiCatalog(version);
+    if (args.module !== undefined && external && external.entries.some(entry => entry.module === undefined)) throw new ToolError({ code: 'CATALOG_INDEX_UPGRADE_REQUIRED', status: 409, message: 'Regenerate the approved lookup with module metadata and explicitly update its configured hash before filtering by module.' });
     const indexPath = path.join(CATALOG_ROOT, version, 'index.json');
     if (!external && !fs.existsSync(indexPath)) throw new ToolError({ code: 'CATALOG_UNAVAILABLE', status: 422, message: `No installed catalog for ${version}.` });
     const index = external ?? CatalogIndexSchema.parse(jsonFile(indexPath));
@@ -90,7 +93,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     const provenancePath = path.join(CATALOG_ROOT, version, 'provenance.json');
     const provenance = !external && fs.existsSync(provenancePath) ? z.object({ scope: z.string().optional(), originalCatalogHash: z.string().nullable().optional() }).passthrough().parse(jsonFile(provenancePath)) : null;
     const coverage = { scope: external ? 'operator-configured-full-catalog' : provenance?.scope ?? 'installed-catalog-scope-unverified', fullCatalogLoaded: external !== null, originalCatalogHash: external?.catalogHash ?? provenance?.originalCatalogHash ?? null };
-    const selector = JSON.stringify({ version, operation, namespace: args.namespace ?? '', domain: args.domain ?? '', filter: args.filter ?? '', className: args.className ?? '', recordId: args.recordId ?? '', kind: args.kind ?? '' });
+    const selector = JSON.stringify({ version, operation, namespace: args.namespace ?? '', domain: args.domain ?? '', filter: args.filter ?? '', className: args.className ?? '', recordId: args.recordId ?? '', kind: args.kind ?? '', module: args.module ?? '' });
     const selectorHash = crypto.createHash('sha256').update(selector).digest('hex');
     let offset = 0;
     if (args.cursor) {
@@ -106,6 +109,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
         for (const entry of external.entries) {
             if (args.recordId !== undefined && entry.id !== args.recordId) continue;
             if (args.kind !== undefined && entry.kind !== args.kind) continue;
+            if (args.module !== undefined && entry.module !== args.module) continue;
             if (args.domain && entry.domain !== args.domain) continue;
             if (args.namespace && entry.namespace !== args.namespace) continue;
             if (args.category === 'component_schema' && entry.namespace !== 'engine-runtime') continue;
@@ -121,6 +125,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
         for (const record of shard.records) {
             if (args.recordId !== undefined && record.id !== args.recordId) continue;
             if (args.kind !== undefined && record.kind !== args.kind) continue;
+            if (args.module !== undefined && record.module !== args.module) continue;
             if (args.namespace && record.namespace !== args.namespace) continue;
             if (args.category === 'component_schema' && record.namespace !== 'engine-runtime') continue;
             if (args.className && (record.className ?? '').replace(/^cc\./, '') !== args.className.replace(/^cc\./, '')) continue;

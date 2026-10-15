@@ -83,7 +83,7 @@ function projectRecord(record, index, domain, shard, ids) {
   if (ids.has(record.id)) throw new Error(`Duplicate catalog record ID: ${record.id}`);
   ids.add(record.id);
   return { id: record.id, shard, namespace: record.namespace, className: record.className,
-    name: record.name, member: record.member, kind: record.kind, domain: domain.name };
+    name: record.name, member: record.member, kind: record.kind, module: record.module, domain: domain.name };
 }
 function requireAbsent(file) {
   try { fs.lstatSync(file); }
