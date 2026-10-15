@@ -103,6 +103,8 @@ Use `editorQuery({category:'engine_api',operation:'records',recordId})` for one 
 
 `operation:'get_related_types'` requires one exact `recordId`. It returns reference/unresolved metadata as standard discovery `records`, each with `relation` and `metadata`, using the same `maxEntries`, `maxBytes` and selector-bound `nextCursor`. Empty metadata is an empty result, not missing-record evidence. It does not recursively resolve DTOs, execute code or infer native permissions; malformed metadata fails closed.
 
+`operation:'lookup_editor_message'` requires an exact editor-ipc catalog `recordId`. It returns declared message metadata through the bounded discovery envelope, never sends the described IPC, and refuses live references or a conflicting namespace. Pilot-only catalogs may not contain editor records; missing metadata is not proof that a native IPC is unavailable.
+
 Use `editorQuery({category:'engine_api',operation:'compare_version',targetVersion:'3.7.3',recordId,compareVersion:'3.8.8',compareRecordId})` to compare two exact records sharing a semanticKey. Results compare signature/metadata/resolution hashes and retain catalog identities; missing records do not imply removals. Comparison grants no execution permission.
 
 `runtimeScenarioRun` accepts `totalTimeoutMs` (100–60000, default30000). All steps share that wall-clock deadline; expiry stops subsequent steps and retains failedStep/prior outcomes. An in-flight native request may still complete: timeout does not cancel, replay or restore an action. Inspect the bound session before another mutation.

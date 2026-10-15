@@ -10,7 +10,7 @@ import { openExternalApiCatalog } from './external-api-catalog';
 
 export interface EngineDiscoveryArgs {
     category?: string; className?: string; targetVersion?: string; domain?: string;
-    operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'get_related_types' | 'compare_version';
+    operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'get_related_types' | 'lookup_editor_message' | 'compare_version';
     namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge';
     filter?: string; recordId?: string; compareVersion?: string; compareRecordId?: string; reference?: IInstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string;
 }
@@ -37,6 +37,15 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     if (!Object.prototype.hasOwnProperty.call(VERSIONS, version)) throw new ToolError({ code: 'UNSUPPORTED_VERSION', status: 422, message: 'Only catalogued versions 3.7.3 and 3.8.8 are available.' });
     if (args.category === 'component_schema' && !args.className) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'component_schema requires className.' });
     const operation = args.operation ?? 'records';
+    if (operation === 'lookup_editor_message') {
+        if (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024
+            || args.reference !== undefined || args.className !== undefined || args.category === 'component_schema'
+            || args.namespace !== undefined && args.namespace !== 'editor-ipc') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Editor message lookup requires an exact recordId in editor-ipc without live targets.' });
+        const result = await discoverEngineApi({ targetVersion: version, operation: 'records', recordId: args.recordId, namespace: 'editor-ipc', maxEntries: 1, maxBytes: Math.min(args.maxBytes ?? 32768, 131072) });
+        const output = { ...result, operation };
+        if (Buffer.byteLength(JSON.stringify(output)) > limit(args.maxBytes, 32768, 131072)) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'Editor message lookup exceeds maxBytes.' });
+        return output;
+    }
     if (!['records', 'list_domains', 'list_classes', 'list_namespaces', 'list_members', 'get_signature', 'get_related_types', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Unknown catalog discovery operation.' });
     if (operation === 'get_related_types' && (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'get_related_types requires a bounded exact recordId.' });
     if (operation === 'compare_version') {
