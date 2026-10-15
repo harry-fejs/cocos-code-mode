@@ -111,7 +111,7 @@ function collectExports(input, version, roots, label = 'engine') {
         const constructor = checker.getTypeOfSymbolAtLocation(symbol, declaration);
         for (const child of checker.getPropertiesOfType(constructor).sort((a, b) => compare(a.name, b.name))) {
           const decl = child.valueDeclaration || child.declarations?.[0];
-          if (decl && ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Static) record(child, decl, local, name, child.name);
+          if (decl && ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Static) record(child, decl, local, name, child.name, !symbol.declarations.includes(decl.parent) ? decl.parent : null);
         }
       }
       const baseTypes = checker.getBaseTypes(instance) || [];
