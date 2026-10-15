@@ -7,7 +7,7 @@ export const COMPONENT_PROPERTY_TYPES = ['enum', 'integer', 'number', 'string', 
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
 export const REQUIRED_COMPONENT_TYPES = ['UITransform', 'Layout', 'Widget', 'Mask', 'Canvas', 'Label', 'Sprite', 'Button', 'EditBox', 'ScrollView', 'Slider', 'Toggle', 'ProgressBar', 'AudioSource', 'Animation', 'Camera', 'MeshRenderer', 'SkinnedMeshRenderer', 'ParticleSystem', 'ParticleSystem2D', 'SkeletalAnimation'] as const;
 export type RequiredComponentType = typeof REQUIRED_COMPONENT_TYPES[number];
-export type ComponentPropertyDescriptor = { serializable?: boolean; formerlySerializedAs?: string; tooltip?: string; displayName?: string; group?: string; visible?: boolean; readOnly?: boolean; displayOrder?: number } & (
+export type ComponentPropertyDescriptor = { editorOnly?: boolean; serializable?: boolean; formerlySerializedAs?: string; tooltip?: string; displayName?: string; group?: string; visible?: boolean; readOnly?: boolean; displayOrder?: number } & (
     | { name: string; type: 'number'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
     | { name: string; type: 'integer'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
     | { name: string; type: 'enum'; array?: false; entries: Array<{ name: string; value: number }>; default: number }
@@ -70,7 +70,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
     const fields: string[] = [];
     const aliases = new Set<string>();
     for (const row of rows) {
-        assertComponentScriptInput(row, ['name', 'type', 'array', 'default', 'entries', 'tooltip', 'displayName', 'range', 'group', 'visible', 'readOnly', 'displayOrder', 'multiline', 'formerlySerializedAs', 'serializable']);
+        assertComponentScriptInput(row, ['name', 'type', 'array', 'default', 'entries', 'tooltip', 'displayName', 'range', 'group', 'visible', 'readOnly', 'displayOrder', 'multiline', 'formerlySerializedAs', 'serializable', 'editorOnly']);
         if (!identifier(row.name) || COMPONENT_MEMBERS[row.name] === true || names.has(row.name)) invalid('Property names must be unique safe identifiers and must not shadow Component members or lifecycle methods.');
         if (aliases.has(row.name)) invalid('Property names must not collide with serialized aliases.');
         if (row.formerlySerializedAs !== undefined) {
@@ -83,6 +83,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         const hasDefault = Object.prototype.hasOwnProperty.call(row, 'default');
         if (row.array !== undefined && typeof row.array !== 'boolean') invalid('array must be a boolean when provided.');
         if (row.serializable !== undefined && typeof row.serializable !== 'boolean') invalid('serializable must be a boolean.');
+        if (row.editorOnly !== undefined && typeof row.editorOnly !== 'boolean') invalid('editorOnly must be a boolean.');
         if (row.serializable === false && row.formerlySerializedAs !== undefined) invalid('Nonserialized fields cannot declare a prior serialized name.');
         if (row.tooltip !== undefined && (typeof row.tooltip !== 'string' || row.tooltip.length > 1024)) invalid('tooltip must be a string of at most 1024 characters.');
         if (row.displayName !== undefined && (typeof row.displayName !== 'string' || row.displayName.length > 256)) invalid('displayName must be a string of at most 256 characters.');
@@ -90,7 +91,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         for (const key of ['visible', 'readOnly']) if (row[key] !== undefined && typeof row[key] !== 'boolean') invalid(`${key} must be a boolean.`);
         if (row.displayOrder !== undefined && (typeof row.displayOrder !== 'number' || !Number.isFinite(row.displayOrder))) invalid('displayOrder must be a finite number.');
         if (row.multiline !== undefined && (type !== 'string' || row.array === true || typeof row.multiline !== 'boolean')) invalid('multiline must be a boolean on scalar string fields only.');
-        const tooltip = (row.tooltip === undefined ? '' : `, tooltip: ${literal(row.tooltip as string)}`) + (row.displayName === undefined ? '' : `, displayName: ${literal(row.displayName as string)}`) + (row.group === undefined ? '' : `, group: ${literal(row.group as string)}`) + (row.visible === undefined ? '' : `, visible: ${literal(row.visible as boolean)}`) + (row.readOnly === undefined ? '' : `, readonly: ${literal(row.readOnly as boolean)}`) + (row.displayOrder === undefined ? '' : `, displayOrder: ${literal(row.displayOrder as number)}`) + (row.multiline === undefined ? '' : `, multiline: ${literal(row.multiline as boolean)}`) + (row.formerlySerializedAs === undefined ? '' : `, formerlySerializedAs: ${literal(row.formerlySerializedAs as string)}`) + (row.serializable === undefined ? '' : `, serializable: ${literal(row.serializable as boolean)}`);
+        const tooltip = (row.tooltip === undefined ? '' : `, tooltip: ${literal(row.tooltip as string)}`) + (row.displayName === undefined ? '' : `, displayName: ${literal(row.displayName as string)}`) + (row.group === undefined ? '' : `, group: ${literal(row.group as string)}`) + (row.visible === undefined ? '' : `, visible: ${literal(row.visible as boolean)}`) + (row.readOnly === undefined ? '' : `, readonly: ${literal(row.readOnly as boolean)}`) + (row.displayOrder === undefined ? '' : `, displayOrder: ${literal(row.displayOrder as number)}`) + (row.multiline === undefined ? '' : `, multiline: ${literal(row.multiline as boolean)}`) + (row.formerlySerializedAs === undefined ? '' : `, formerlySerializedAs: ${literal(row.formerlySerializedAs as string)}`) + (row.serializable === undefined ? '' : `, serializable: ${literal(row.serializable as boolean)}`) + (row.editorOnly === undefined ? '' : `, editorOnly: ${literal(row.editorOnly as boolean)}`);
         let numericOptions = '';
         if (row.range !== undefined) {
             if (row.array === true || type !== 'number' && type !== 'integer') invalid('range is supported only on scalar number/integer fields.');
