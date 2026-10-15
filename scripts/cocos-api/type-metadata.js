@@ -28,6 +28,8 @@ function typeInfo(checker, type, node) {
     try {
     if (current.flags & ts.TypeFlags.Any) unresolved.push({ kind: 'any', reference: current.aliasSymbol?.name || current.intrinsicName || 'any' });
     if (current.flags & ts.TypeFlags.Unknown) unresolved.push({ kind: 'unknown', reference: 'unknown' });
+    if (current.flags & ts.TypeFlags.BigIntLike) unresolved.push({ kind: 'semantic-adapter-required', reference: 'bigint-type' });
+    if (current.flags & ts.TypeFlags.ESSymbolLike) unresolved.push({ kind: 'semantic-adapter-required', reference: 'symbol-type' });
     if (current.flags & ts.TypeFlags.TypeParameter) visit(checker.getBaseConstraintOfType(current));
     if (current.flags & ts.TypeFlags.IndexedAccess) {
       unresolved.push({ kind: 'indexed-access', reference: canonicalType(checker.typeToString(current, node, ts.TypeFormatFlags.NoTruncation)) });

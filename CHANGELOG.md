@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Mark bigint/bigint-literal and symbol/unique-symbol metadata as semantic-adapter-required, including nested DTO values; ordinary string/number/boolean DTOs remain unchanged.
 - Compose nodeObserve/nodeAssert/nodeWait activation checkpoints with runtime presentation scenarios via existing read-only adapters. Whole-input validation, retained mismatch evidence and deadline/cancellation ownership; missing nodes never satisfy inactive predicates.
 - Mark class-instance metadata as semantic-adapter-required while retaining named class identity; no private-field expansion, automatic construction or invocation permission inferred.
 - Preserve interface base-type names and generic base dependencies in DTO metadata; shared diamond heritage reuses existing traversal guards rather than producing false recursive-cycle diagnostics.
