@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Resolve audio runtime node identities through a complete bounded10000-node/256-depth traversal before component lookup/playback; duplicate UUIDs, repeated/malformed topology and admission overflow refuse with typed errors rather than first-match success. No mutation replay.
 - Decode computed literal declaration keys for internal double-underscore metadata; dynamic identifier expressions are not mistaken for their value and remain unevaluated.
 - Classify quoted/escaped declaration names by decoded semantic text for internal double-underscore metadata, matching equivalent identifier spelling without changing runtime permission.
 - Add inclusive minVolume/maxVolume0..1 intervals to audio waits and scenario audioAssert/audioWait, composed with existing source/clip/state predicates. Invalid/reversed intervals refuse before dispatch; unavailable native volume never counts as muted, no writes/audibility claim.

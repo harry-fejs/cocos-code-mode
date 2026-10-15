@@ -123,7 +123,11 @@ export function createAudioPlaybackExecutor() {
                 requireCondition(root === scene, 'RUNTIME_TARGET_CHANGED', 'Audio node is outside the attached runtime scene.', 409);
             };
             checkTarget();
-            const found = await findNode(request.nodeUuid);
+            const found = await findNode(request.nodeUuid).catch((error: unknown) => {
+                const failure = error as { code?: string; message?: string };
+                if (['RUNTIME_TREE_INVALID', 'RUNTIME_TRAVERSAL_LIMIT', 'AMBIGUOUS_RUNTIME_TARGET'].includes(failure?.code ?? '')) throw new AudioFailure(failure.code!, typeof failure.message === 'string' ? failure.message : 'Audio runtime lookup refused.', 409);
+                throw error;
+            });
             requireCondition(found && found.uuid === request.nodeUuid && found.isValid !== false, 'AUDIO_NODE_NOT_FOUND', 'The runtime audio node was not found.', 404);
             node = found;
             checkNode();

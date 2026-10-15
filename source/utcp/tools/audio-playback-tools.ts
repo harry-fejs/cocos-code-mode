@@ -51,21 +51,25 @@ const findNodeSource = `(async function findRuntimeNode(id) {
     if (!scene || typeof id !== 'string') return null;
     const pending = [{ node: scene, depth: 0 }];
     const visited = new Set();
-    let inspected = 0;
-    while (pending.length && inspected < 20000) {
-        const entry = pending.shift();
-        const node = entry.node;
-        if (!node || visited.has(node) || entry.depth > 2048) continue;
+    let scheduled = 1, found = null;
+    const fail = (code, message) => { throw Object.assign(new Error(message), { code, status: 409 }); };
+    while (pending.length) {
+        const { node, depth } = pending.pop();
+        if (!node || typeof node !== 'object' || visited.has(node) || typeof node.uuid !== 'string' || !node.uuid || node.uuid.length > 256 || !Array.isArray(node.children)) fail('RUNTIME_TREE_INVALID', 'Audio lookup encountered malformed/repeated runtime nodes.');
+        if (depth > 256) fail('RUNTIME_TRAVERSAL_LIMIT', 'Audio runtime tree exceeds256 levels.');
         visited.add(node);
-        inspected++;
-        if (node.uuid === id) return node;
-        const children = node.children;
-        if (!Array.isArray(children)) continue;
-        for (const child of children) {
-            if (child && !visited.has(child)) pending.push({ node: child, depth: entry.depth + 1 });
+        if (node.uuid === id) {
+            if (found) fail('AMBIGUOUS_RUNTIME_TARGET', 'Multiple audio nodes expose the requested UUID.');
+            found = node;
+        }
+        scheduled += node.children.length;
+        if (scheduled > 10000) fail('RUNTIME_TRAVERSAL_LIMIT', 'Audio lookup exceeds10000 scheduled nodes.');
+        for (const child of node.children) {
+            if (!child || child.parent !== node) fail('RUNTIME_TREE_INVALID', 'Audio runtime child parent mismatch.');
+            pending.push({ node: child, depth: depth + 1 });
         }
     }
-    return null;
+    return found;
 })`;
 const executorSource = createAudioPlaybackExecutor.toString();
 
