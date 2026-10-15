@@ -191,6 +191,14 @@ export class AudioPlaybackTools {
             throwRuntimeResult(result);
             if (result.sessionId !== args.sessionId || result.targetId !== session.targetId || result.nodeUuid !== args.nodeReference.id || result.operation !== operation
                 || args.expectedComponentUuid !== undefined && result.componentUuid !== args.expectedComponentUuid || args.expectedClipUuid !== undefined && result.clipUuid !== args.expectedClipUuid) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Audio response does not identify the dispatched session/node/operation and expected source/clip.', details: { mutationDispatched: operation !== 'observe', retrySafe: false, pendingMayComplete: operation !== 'observe' }, recovery: 'Inspect the exact audio target before any further control; do not replay this request blindly.' });
+            const state = result.state;
+            const nullableUuid = (value: unknown) => value === null || typeof value === 'string' && !!value.trim() && value.length <= 256;
+            if (!nullableUuid(result.componentUuid) || !nullableUuid(result.clipUuid) || typeof result.started !== 'boolean' || typeof result.ended !== 'boolean'
+                || !state || typeof state !== 'object' || Array.isArray(state) || typeof state.playing !== 'boolean' || typeof state.loaded !== 'boolean'
+                || !['init', 'playing', 'paused', 'stopped', 'interrupted'].includes(state.playbackState) || state.playing !== (state.playbackState === 'playing')
+                || typeof state.currentTime !== 'number' || !Number.isFinite(state.currentTime) || state.currentTime < 0 || typeof state.duration !== 'number' || !Number.isFinite(state.duration) || state.duration < 0
+                || state.volume !== null && (typeof state.volume !== 'number' || !Number.isFinite(state.volume) || state.volume < 0 || state.volume > 1) || state.loop !== null && typeof state.loop !== 'boolean'
+                || !['active', 'inactive', 'unknown'].includes(state.userActivation) || state.activationRequirement !== 'unknown') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Audio success contains unavailable or inconsistent state metrics.', details: { mutationDispatched: operation !== 'observe', pendingMayComplete: operation !== 'observe', retrySafe: false }, recovery: 'Inspect the exact audio target before further control; no automatic replay.' });
             return result;
         } catch (error) {
             if (error instanceof ToolError) throw error;

@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Validate audio success state/flags/nullable native identities at the host boundary: finite nonnegative time/duration, consistent playing/playbackState, explicit nullable volume/loop and activation metadata. Malformed control results preserve uncertainty/retrySafe:false; no replay.
 - Propagate deprecated namespace context independently to descendant records, preserving public/internal classification instead of treating deprecation as an access restriction.
 - Preserve pendingMayComplete audio errors even without optional state, with mutationDispatched:true/retrySafe:false. State payload remains ancillary; unknown playback outcomes cannot lose replay-safety metadata during host error conversion.
 - Propagate internal merged namespace/export context to descendant records instead of labeling children public beneath an internal namespace; discovery remains non-permitted.
