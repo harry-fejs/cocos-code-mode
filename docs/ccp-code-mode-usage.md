@@ -151,6 +151,7 @@ CCP controls Cocos Creator 3.x through tools for scenes, nodes, components, insp
 - Start with `runScriptDiagnostics` and `getScriptDiagnosticContext`.
 - Use runtime, screenshot, preview, or input-simulation tools for the requested surface.
 - Confirm editor build provenance through `/build-info` when a result looks stale.
+- `animationPlaybackWaitForState` polls one exact attached Game View clip using `sessionId`, `nodeReference`, `componentId`, `clipName` and `clipUuid`. Supply at least one `playing`, `paused` or `minTime` condition. It observes regular Animation/SkeletalAnimation only; it never starts playback or registers event listeners. Target drift, unavailable requested time metrics and caller deadline expiry throw explicitly. A timed-out read may still settle; no playback mutation is dispatched and no runtime qualification is implied.
 
 ### Inspect a blocking native Creator popup
 

@@ -99,6 +99,19 @@ export class ComponentRuntimeTools {
         type: 'object', additionalProperties: false, properties: { ...targetProperties, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, playing: { type: 'boolean' }, paused: { type: 'boolean' }, minTime: { type: 'number', minimum: 0, maximum: 3600 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000, default: 3000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000, default: 100 } }, required: ['sessionId', 'nodeReference', 'componentId', 'clipName', 'clipUuid'],
     }, { type: 'object', properties: { matched: { type: 'boolean' }, timedOut: { type: 'boolean' }, observations: { type: 'integer' }, state: animationStateSchema }, required: ['matched', 'timedOut', 'observations', 'state'] }, 'POST', ['skeletal', 'animation', 'wait', 'read-only'])
     async skeletalAnimationWaitForState(args: SkeletalArgs & { playing?: boolean; paused?: boolean; minTime?: number; pollMs?: number }) {
+        return this.waitForAnimationState(args, 'skeletal');
+    }
+
+    @utcpTool('animationPlaybackWaitForState', 'Wait for one exact Animation/SkeletalAnimation clip state in attached Game View. Read-only polling with a caller deadline; no playback dispatch, listeners or edit-scene fallback.', {
+        type: 'object', additionalProperties: false,
+        properties: { ...targetProperties, clipName: { type: 'string', minLength: 1, maxLength: 256 }, clipUuid: { type: 'string', minLength: 1, maxLength: 256 }, playing: { type: 'boolean' }, paused: { type: 'boolean' }, minTime: { type: 'number', minimum: 0, maximum: 3600 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000, default: 3000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000, default: 100 } },
+        required: ['sessionId', 'nodeReference', 'componentId', 'clipName', 'clipUuid'],
+    }, { type: 'object', properties: { matched: { type: 'boolean' }, timedOut: { type: 'boolean' }, observations: { type: 'integer' }, state: animationStateSchema }, required: ['matched', 'timedOut', 'observations', 'state'] }, 'POST', ['animation', 'playback', 'wait', 'read-only'])
+    async animationPlaybackWaitForState(args: SkeletalArgs & { playing?: boolean; paused?: boolean; minTime?: number; pollMs?: number }) {
+        return this.waitForAnimationState(args, 'animation');
+    }
+
+    private async waitForAnimationState(args: SkeletalArgs & { playing?: boolean; paused?: boolean; minTime?: number; pollMs?: number }, kind: 'animation' | 'skeletal') {
         const timeoutMs = args?.timeoutMs ?? 3000; const pollMs = args?.pollMs ?? 100;
         if (!args || args.playing === undefined && args.paused === undefined && args.minTime === undefined
             || args.playing !== undefined && typeof args.playing !== 'boolean' || args.paused !== undefined && typeof args.paused !== 'boolean'
@@ -108,7 +121,7 @@ export class ComponentRuntimeTools {
         for (;;) {
             const remaining = deadline - Date.now();
             if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state observation deadline expired.' });
-            const operation = validateSkeletal({ ...args, timeoutMs: Math.max(100, Math.min(remaining, 1000)) }, 'observe');
+            const operation: ComponentOperation = { ...validateSkeletal({ ...args, timeoutMs: Math.max(100, Math.min(remaining, 1000)) }, 'observe'), kind };
             let timer: NodeJS.Timeout | undefined; let result: Record<string, unknown>;
             try { result = await Promise.race([executeComponentOperation(operation), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read exceeded caller deadline; no playback mutation dispatched.' })), remaining); })]); }
             finally { clearTimeout(timer); }
