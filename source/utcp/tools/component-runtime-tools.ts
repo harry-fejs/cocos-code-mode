@@ -58,6 +58,7 @@ export class ComponentRuntimeTools {
         const clipOffset = args.clipOffset ?? 0;
         if (!Number.isInteger(clipOffset) || clipOffset < 0 || clipOffset > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'clipOffset must be0..256.' });
         if (args.expectedRevision !== undefined && !/^[a-f0-9]{64}$/.test(args.expectedRevision)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedRevision must be a lowercase SHA-256 revision.' });
+        args = { ...args, nodeReference: { id: args.nodeReference!.id } };
         const result = await executeComponentOperation({ kind: 'animation', operation: 'inspect', sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, maxClips, clipOffset, timeoutMs: validateTimeout(args.timeoutMs) });
         if (typeof result.inventorySnapshot !== 'string') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Clip identity snapshot unavailable.' });
         const revision = createHash('sha256').update(JSON.stringify([args.sessionId, result.targetId, result.nodeUuid, result.componentId, result.inventorySnapshot])).digest('hex');

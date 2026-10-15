@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Pin animationClipInventory request identity and expectedRevision before native observation, preventing caller deletion/replacement of the stale-page guard while the read is pending. No clip/playback mutation or replay.
 - Use compiler minimum argument count when classifying default-initialized parameters as optional; defaults before later required positions retain required slots while trailing defaults remain optional and provenance is preserved.
 - Pin animationGraphWaitForVariable observer callback session/node/component identities before polling, complementing the helper predicate snapshot. Caller changes between observations cannot switch to another node with the same graph UUID; no graph writes/replay.
 - Preserve optional declaration markers on catalog metadata, distinguishing optional properties/methods from required members without inferring runtime presence or invocation permission.
