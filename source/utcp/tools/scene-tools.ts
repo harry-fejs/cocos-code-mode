@@ -978,13 +978,14 @@ export class SceneTools {
     @utcpTool('scriptAssetSceneUsageBatchInspect', 'Inspect bounded scene usage for multiple imported script assets with per-script errors.', { type: 'object', additionalProperties: false, properties: { scriptReferences: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema }, limitPerScript: { type: 'integer', minimum: 1, maximum: MAX_LIST_LIMIT, default: DEFAULT_LIST_LIMIT } }, required: ['scriptReferences'] }, { type: 'object', additionalProperties: false, properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, partial: { type: 'boolean' } }, required: ['items', 'succeeded', 'failed', 'truncated', 'partial'] }, 'GET', ['scene', 'script', 'asset', 'usage', 'batch', 'inspect'])
     async scriptAssetSceneUsageBatchInspect(args: { scriptReferences: IInstanceReference[], limitPerScript?: number }): Promise<Record<string, unknown>> {
         if (!Array.isArray(args?.scriptReferences) || args.scriptReferences.length < 1 || args.scriptReferences.length > 32) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'scriptReferences must contain 1 to 32 items.' });
+        if (args.limitPerScript !== undefined && (!Number.isInteger(args.limitPerScript) || args.limitPerScript < 1 || args.limitPerScript > MAX_LIST_LIMIT)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `limitPerScript must be an integer from 1 to ${MAX_LIST_LIMIT}.` });
         const limit = boundedListLimit(args.limitPerScript);
         const items: Array<Record<string, unknown>> = [];
         for (const [index, scriptReference] of args.scriptReferences.entries()) {
             try {
                 items.push({ index, ok: true, scriptReference, result: await this.scriptAssetSceneUsageInspect({ scriptReference, limit }) });
             } catch (error) {
-                items.push({ index, ok: false, scriptReference, error: { message: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512) } });
+                items.push({ index, ok: false, scriptReference, error: { code: error instanceof ToolError ? error.code : 'SCRIPT_USAGE_INSPECTION_FAILED', message: error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512), recovery: error instanceof ToolError ? error.recovery?.slice(0, 512) : undefined } });
             }
         }
         const succeeded = items.filter((item) => item.ok === true).length;
