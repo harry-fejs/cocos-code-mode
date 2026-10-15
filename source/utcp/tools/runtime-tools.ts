@@ -26,23 +26,35 @@ export class RuntimeTools {
         const childOffset = args.childOffset ?? 0;
         if (!Number.isSafeInteger(childOffset) || childOffset < 0 || childOffset > 9999) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'childOffset must be0..9999.' });
         if (args.expectedHierarchyRevision !== undefined && (typeof args.expectedHierarchyRevision !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedHierarchyRevision))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedHierarchyRevision must be lowercase SHA256.' });
-        const inspected = await sessions.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, timeoutMs });
+        const deadline = Date.now() + timeoutMs;
+        const phase = async <T>(operation: () => Promise<T>): Promise<T> => {
+            const remaining = deadline - Date.now();
+            if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation caller deadline elapsed before next phase.' });
+            let timer: NodeJS.Timeout | undefined;
+            try {
+                const value = await Promise.race([operation(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation caller deadline elapsed; in-flight read may settle later.' })), remaining); })]);
+                if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation phase settled after caller deadline.' });
+                return value;
+            } finally { clearTimeout(timer); }
+        };
+        const inspected = await phase(() => sessions.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, timeoutMs: Math.max(100, deadline - Date.now()) }));
         const session = inspected.session;
         if (!inspected.ready || !session || !('status' in session) || session.status !== 'attached' || session.targetKind !== 'game-view' || session.sessionId !== args.sessionId) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Exact attached Game View session required.' });
-        const source = `(${observeRuntimeNode.toString()})(${JSON.stringify(args.nodeReference.id)}, ${Date.now() + timeoutMs}, ${childOffset})`;
-        const result = await executeGameViewOperation(session.targetId, source, timeoutMs + 2000, false) as ReturnType<typeof observeRuntimeNode>;
+        const source = `(${observeRuntimeNode.toString()})(${JSON.stringify(args.nodeReference.id)}, ${deadline}, ${childOffset})`;
+        const result = await phase(() => executeGameViewOperation(session.targetId, source, Math.max(1, deadline - Date.now()), false)) as ReturnType<typeof observeRuntimeNode>;
         if (!result || typeof result !== 'object' || Array.isArray(result)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Runtime node observation unavailable.' });
         if ('code' in result) throw new ToolError({ code: result.code, status: result.code === 'NODE_NOT_FOUND' ? 404 : 409, message: result.message });
         if (result.nodeUuid !== args.nodeReference.id || typeof result.active !== 'boolean' || typeof result.activeInHierarchy !== 'boolean' || [result.position, result.worldPosition, result.scale].some(v => !v || [v.x, v.y, v.z].some(n => typeof n !== 'number' || !Number.isFinite(n)))) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Runtime node identity/metrics invalid.' });
         if ([result.rotation, result.worldRotation].some(q => !q || [q.x, q.y, q.z, q.w].some(n => typeof n !== 'number' || !Number.isFinite(n)))) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Finite native quaternion metrics unavailable.' });
         if (result.parentUuid !== null && (typeof result.parentUuid !== 'string' || !result.parentUuid || result.parentUuid.length > 256) || !Number.isSafeInteger(result.childCount) || result.childCount < 0 || result.childCount > 10000 || !Array.isArray(result.childUuids) || result.childUuids.length !== Math.min(result.childCount - childOffset, 128) || Array.from(result.childUuids).some(id => typeof id !== 'string' || !id || id.length > 256) || new Set(result.childUuids).size !== result.childUuids.length || result.childOffset !== childOffset || childOffset > result.childCount || result.nextChildOffset !== (childOffset + result.childUuids.length < result.childCount ? childOffset + result.childUuids.length : null) || result.childrenTruncated !== (childOffset > 0 || result.nextChildOffset !== null)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Runtime hierarchy identity/count invalid.' });
         if (result.parentUuid === null ? result.siblingIndex !== null : !Number.isSafeInteger(result.siblingIndex) || result.siblingIndex! < 0 || result.siblingIndex! > 9999) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Runtime sibling index unavailable or inconsistent with parent.' });
-        const after = await sessions.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, timeoutMs });
+        const after = await phase(() => sessions.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, timeoutMs: Math.max(100, deadline - Date.now()) }));
         if (!after.ready || !after.session || !('status' in after.session) || after.session.status !== 'attached' || after.session.sessionId !== session.sessionId || after.session.targetId !== session.targetId || after.session.createdAt !== session.createdAt) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Session changed during node observation.' });
         if (typeof result.hierarchyIdentity !== 'string' || Buffer.byteLength(result.hierarchyIdentity) > 3000000) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Bounded hierarchy identity unavailable.' });
         const hierarchyRevision = createHash('sha256').update(JSON.stringify([session.sessionId, session.createdAt, session.targetId, result.nodeUuid, result.hierarchyIdentity])).digest('hex');
         if (args.expectedHierarchyRevision !== undefined && args.expectedHierarchyRevision !== hierarchyRevision) throw new ToolError({ code: 'RUNTIME_HIERARCHY_CHANGED', status: 409, message: 'Parent or direct child identity/order changed; restart paging.' });
         const { hierarchyIdentity, ...observation } = result;
+        if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation processing exceeded caller deadline.' });
         return { sessionId: session.sessionId, targetId: session.targetId, ...observation, hierarchyRevision, writes: false as const };
     }
 
