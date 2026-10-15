@@ -983,7 +983,7 @@ export class SceneTools {
     }
 
 
-    @utcpTool('sceneScriptUsageSummary', 'Summarize bounded custom script usage by class across the open scene.', { type: 'object', additionalProperties: false, properties: { maxClasses: { type: 'integer', minimum: 1, maximum: 256, default: 64 }, maxNodesPerClass: { type: 'integer', minimum: 1, maximum: 256, default: 32 } }, required: [] }, { type: 'object', additionalProperties: false, properties: { classes: { type: 'array' }, totalClasses: { type: 'integer' }, totalUsages: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['classes', 'totalClasses', 'totalUsages', 'truncated'] }, 'GET', ['scene', 'script', 'usage', 'summary'])
+    @utcpTool('sceneScriptUsageSummary', 'Summarize custom script usage from bounded inspection. countsComplete=false means per-class counts and totalClasses are lower bounds; node-detail truncation is separate.', { type: 'object', additionalProperties: false, properties: { maxClasses: { type: 'integer', minimum: 1, maximum: 256, default: 64 }, maxNodesPerClass: { type: 'integer', minimum: 1, maximum: 256, default: 32 } }, required: [] }, { type: 'object', additionalProperties: false, properties: { classes: { type: 'array' }, totalClasses: { type: 'integer' }, totalUsages: { type: 'integer' }, countsComplete: { type: 'boolean' }, truncated: { type: 'boolean' } }, required: ['classes', 'totalClasses', 'totalUsages', 'countsComplete', 'truncated'] }, 'GET', ['scene', 'script', 'usage', 'summary'])
     async sceneScriptUsageSummary(args: { maxClasses?: number, maxNodesPerClass?: number } = {}): Promise<Record<string, unknown>> {
         const maxClasses = args.maxClasses ?? 64;
         const maxNodesPerClass = args.maxNodesPerClass ?? 32;
@@ -999,8 +999,9 @@ export class SceneTools {
             groups.set(classId, group);
         }
         const all = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
-        const classes = all.slice(0, maxClasses).map(([classId, rows]) => ({ classId, count: rows.length, nodes: rows.slice(0, maxNodesPerClass).map((row) => ({ nodeReference: row.nodeReference, nodePath: row.nodePath, componentReference: row.componentReference })), truncated: rows.length > maxNodesPerClass }));
-        return { classes, totalClasses: all.length, totalUsages: usage.total, truncated: usage.truncated === true || all.length > classes.length || classes.some((entry) => entry.truncated) };
+        const countsComplete = usage.truncated === false;
+        const classes = all.slice(0, maxClasses).map(([classId, rows]) => ({ classId, count: rows.length, nodes: rows.slice(0, maxNodesPerClass).map((row) => ({ nodeReference: row.nodeReference, nodePath: row.nodePath, componentReference: row.componentReference })), truncated: !countsComplete || rows.length > maxNodesPerClass }));
+        return { classes, totalClasses: all.length, totalUsages: usage.total, countsComplete, truncated: !countsComplete || all.length > classes.length || classes.some((entry) => entry.truncated) };
     }
 
     @utcpTool('sceneScriptComponentInspect', 'Inspect one custom scene script component with class identity and authoritative serialized dump.', { type: 'object', additionalProperties: false, properties: { componentReference: InstanceReferenceSchema }, required: ['componentReference'] }, { type: 'object', additionalProperties: false, properties: { componentReference: InstanceReferenceSchema, classId: { type: 'string' }, dump: { type: 'object' } }, required: ['componentReference', 'classId', 'dump'] }, 'GET', ['scene', 'script', 'component', 'inspect'])
