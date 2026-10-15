@@ -32,7 +32,7 @@ export class InstructionTools {
     async readProjectInstruction(args: { filePath: string, verbose?: boolean }): Promise<{ content: string, exists: boolean, filePath: string, bytes: number }> {
         try {
             const result = await new FileTools().projectReadFile(args);
-            return { ...result, exists: true, filePath: args.filePath };
+            return { content: result.content, bytes: result.bytes, exists: true, filePath: args.filePath };
         } catch (error) {
             if (error instanceof ToolError && error.code === 'TARGET_NOT_FOUND') {
                 return { content: '', exists: false, filePath: args.filePath, bytes: 0 };

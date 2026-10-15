@@ -115,13 +115,14 @@ function atomicWriteVerified(filePath: string, content: string): number {
 export class FileTools {
     @utcpTool('projectReadFile', 'Read a bounded UTF-8 text file from the project directory.', {
         type: 'object', properties: { filePath: { type: 'string' }, verbose: { type: 'boolean' } }, required: ['filePath'],
-    }, { type: 'object', properties: { content: { type: 'string' }, bytes: { type: 'number' } }, required: ['content', 'bytes'] }, 'GET', ['file', 'read', 'project', 'text'])
-    async projectReadFile(args: { filePath: string, verbose?: boolean }): Promise<{ content: string, bytes: number }> {
+    }, { type: 'object', properties: { content: { type: 'string' }, bytes: { type: 'number' }, sha256: { type: 'string', pattern: '^[a-f0-9]{64}$' } }, required: ['content', 'bytes', 'sha256'] }, 'GET', ['file', 'read', 'project', 'text'])
+    async projectReadFile(args: { filePath: string, verbose?: boolean }): Promise<{ content: string, bytes: number, sha256: string }> {
         const root = projectRoot();
         const filePath = resolveSafePath(root, args.filePath);
         if (!fs.existsSync(filePath)) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `File not found: ${args.filePath}` });
         const cap = args.verbose === true ? VERBOSE_FILE_BYTES : MAX_FILE_BYTES;
-        return readBoundedProjectText(filePath, cap);
+        const result = readBoundedProjectText(filePath, cap);
+        return { ...result, sha256: createHash('sha256').update(result.content, 'utf8').digest('hex') };
     }
 
     @utcpTool('projectWriteFile', 'Atomically write bounded UTF-8 text within the project and verify read-back.', {

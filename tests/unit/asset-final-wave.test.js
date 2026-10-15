@@ -37,7 +37,11 @@ describe('final asset/import authoring wave', () => {
       const tools = new FileTools();
       assert.deepEqual(await tools.projectWriteFile({ filePath: 'src/a.ts', content: 'alpha\nbeta\n' }), { success: true, bytesWritten: 11 });
       assert.deepEqual(await tools.projectReplaceInFile({ filePath: 'src/a.ts', search: 'beta', replace: 'gamma' }), { success: true, replacements: 1 });
-      assert.deepEqual(await tools.projectReadFile({ filePath: 'src/a.ts' }), { content: 'alpha\ngamma\n', bytes: 12 });
+      const read = await tools.projectReadFile({ filePath: 'src/a.ts' });
+      assert.equal(read.content, 'alpha\ngamma\n');
+      assert.equal(read.bytes, 12);
+      await tools.projectReplaceInFile({ filePath: 'src/a.ts', search: 'gamma', replace: 'delta', expectedSha256: read.sha256 });
+      await assert.rejects(tools.projectReplaceInFile({ filePath: 'src/a.ts', search: 'delta', replace: 'stale', expectedSha256: read.sha256 }), (error) => error.code === 'FILE_CONTENT_CHANGED');
       assert.deepEqual(await tools.projectSearchFiles({ pattern: '*.ts', directory: 'src' }), { files: ['src/a.ts'], total: 1, truncated: false });
       await assert.rejects(() => tools.projectWriteFile({ filePath: '../outside.ts', content: 'blocked' }), (error) => error.code === 'INVALID_ARGUMENT');
     } finally {

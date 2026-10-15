@@ -1200,8 +1200,8 @@ declare namespace ccp3x {
         total: number; truncated: boolean;
     };
 
-    /** Reads complete UTF-8 decoded content within the normal/verbose byte cap using a bounded file handle. Observed source replacement/growth throws FILE_CHANGED_DURING_READ; oversized sources throw rather than truncate. Endpoint checks are not an atomic filesystem transaction. */
-    function projectReadFile(args: { filePath: string; verbose?: boolean }): { content: string; bytes: number };
+    /** Reads complete UTF-8 decoded content within normal/verbose cap using a bounded file handle. sha256 hashes returned decoded text for replacement expectedSha256, not raw file bytes. Observed replacement/growth throws FILE_CHANGED_DURING_READ; oversized sources refuse. Not an atomic filesystem transaction. */
+    function projectReadFile(args: { filePath: string; verbose?: boolean }): { content: string; bytes: number; sha256: string };
     /** Reads a line window (radius 0–50) through the same bounded stable reader. Beyond-EOF line requests throw INVALID_ARGUMENT; no truncation field is exposed. */
     function projectFileSnippet(args: { filePath: string; line: number; radius?: number }): { snippet: string; startLine: number; endLine: number };
 
