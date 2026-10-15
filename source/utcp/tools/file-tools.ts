@@ -203,9 +203,7 @@ export class FileTools {
         const root = projectRoot();
         const filePath = resolveSafePath(root, args.filePath);
         if (!fs.existsSync(filePath)) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `File not found: ${args.filePath}` });
-        const stat = fs.statSync(filePath);
-        if (!stat.isFile() || stat.size > MAX_FILE_BYTES) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: 'Replacement source must be a regular file within the bounded file size.' });
-        const content = fs.readFileSync(filePath, 'utf8');
+        const { content } = readBoundedProjectText(filePath, MAX_FILE_BYTES);
         if (!args.search) return { success: false, replacements: 0 };
         const replaceAll = args.replaceAll !== false;
         let next = content;
