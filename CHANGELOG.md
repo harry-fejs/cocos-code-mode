@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add native Vec4 scalar/array descriptors to scriptComponentCreate with exact finite xyzw coordinates and zero scalar default, independent per-instance values and existing Inspector metadata. No material assignment, normalization or shader execution.
+- Exclude named constant aliases reached through compiler-tracked type-only reexport chains from runtime guard-read provenance, even when the ultimate target is a declared value.
 - Enforce animationEventEdit(update) dense object payloads capped at200 before clip selection, rejecting null/primitive/array/sparse entries. Snapshot top-level event records before async selection; native inner payload semantics and empty-array compatibility remain unchanged.
 - Recognize parenthesized explicit string/template namespace member keys in guard provenance while continuing to reject parenthesized dynamic keys and preserving compiler value-export checks.
 - Resolve aliased namespace value exports before guard classification, retaining reexported engine constants while still excluding missing exports and preserving namespace symbol identity.

@@ -3,7 +3,7 @@ import path from 'path';
 import { createHash } from 'crypto';
 import { ToolError } from './utcp/tool-error';
 
-export const COMPONENT_PROPERTY_TYPES = ['enum', 'integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Quat', 'Color', 'Node', 'Label', 'Sprite', 'Button', 'EditBox', 'ScrollView', 'Slider', 'Toggle', 'ProgressBar', 'AudioSource', 'Animation', 'SkeletalAnimation', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
+export const COMPONENT_PROPERTY_TYPES = ['enum', 'integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Vec4', 'Quat', 'Color', 'Node', 'Label', 'Sprite', 'Button', 'EditBox', 'ScrollView', 'Slider', 'Toggle', 'ProgressBar', 'AudioSource', 'Animation', 'SkeletalAnimation', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
 export type ComponentPropertyDescriptor = { tooltip?: string; displayName?: string; group?: string; visible?: boolean; readOnly?: boolean; displayOrder?: number } & (
     | { name: string; type: 'number'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
@@ -13,6 +13,7 @@ export type ComponentPropertyDescriptor = { tooltip?: string; displayName?: stri
     | { name: string; type: 'boolean'; array?: false; default?: boolean }
     | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }
     | { name: string; type: 'Vec3'; array?: false; default?: { x: number; y: number; z: number } }
+    | { name: string; type: 'Vec4'; array?: false; default?: { x: number; y: number; z: number; w: number } }
     | { name: string; type: 'Quat'; array?: false; default?: { x: number; y: number; z: number; w: number } }
     | { name: string; type: 'Color'; array?: false; default?: { r: number; g: number; b: number; a: number } }
     | { name: string; type: 'Node' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array?: false; default?: null }
@@ -22,6 +23,7 @@ export type ComponentPropertyDescriptor = { tooltip?: string; displayName?: stri
     | { name: string; type: 'boolean'; array: true; default?: boolean[] }
     | { name: string; type: 'Vec2'; array: true; default?: { x: number; y: number }[] }
     | { name: string; type: 'Vec3'; array: true; default?: { x: number; y: number; z: number }[] }
+    | { name: string; type: 'Vec4'; array: true; default?: { x: number; y: number; z: number; w: number }[] }
     | { name: string; type: 'Quat'; array: true; default?: { x: number; y: number; z: number; w: number }[] }
     | { name: string; type: 'Color'; array: true; default?: { r: number; g: number; b: number; a: number }[] }
     | { name: string; type: 'Node' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] });
@@ -32,7 +34,7 @@ export interface ComponentScriptAsset { uuid: string; url: string; file: string;
 const MAX_SOURCE_BYTES = 64 * 1024;
 const RESERVED: Record<string, boolean> = Object.fromEntries(('abstract any as asserts async await bigint boolean break case catch class const constructor continue debugger declare default delete do else enum export extends false finally for from function get global if implements import in infer instanceof interface intrinsic is keyof let module namespace never new null number object of out override package private protected public readonly require return satisfies set static string super switch symbol this throw true try type typeof undefined unique unknown var void while with yield arguments eval _decorator Component Node AudioClip AnimationClip SpriteFrame CCFloat CCString CCBoolean ccclass property').split(' ').map(name => [name, true]));
 const COMPONENT_MEMBERS: Record<string, boolean> = Object.fromEntries(('name uuid node enabled enabledInHierarchy isValid hideFlags addComponent getComponent getComponents getComponentInChildren getComponentsInChildren destroy schedule scheduleOnce unschedule unscheduleAllCallbacks onLoad start update lateUpdate onEnable onDisable onDestroy resetInEditor onFocusInEditor onLostFocusInEditor onRestore toString toLocaleString valueOf hasOwnProperty isPrototypeOf propertyIsEnumerable').split(' ').map(name => [name, true]));
-const PROPERTY_IMPORTS: Record<ComponentPropertyType, string> = { enum: 'Enum', integer: 'CCInteger', number: 'CCFloat', string: 'CCString', boolean: 'CCBoolean', Vec2: 'Vec2', Vec3: 'Vec3', Quat: 'Quat', Color: 'Color', Node: 'Node', Label: 'Label', Sprite: 'Sprite', Button: 'Button', EditBox: 'EditBox', ScrollView: 'ScrollView', Slider: 'Slider', Toggle: 'Toggle', ProgressBar: 'ProgressBar', AudioSource: 'AudioSource', Animation: 'Animation', SkeletalAnimation: 'SkeletalAnimation', AudioClip: 'AudioClip', AnimationClip: 'AnimationClip', SpriteFrame: 'SpriteFrame', Prefab: 'Prefab', Material: 'Material', JsonAsset: 'JsonAsset' };
+const PROPERTY_IMPORTS: Record<ComponentPropertyType, string> = { enum: 'Enum', integer: 'CCInteger', number: 'CCFloat', string: 'CCString', boolean: 'CCBoolean', Vec2: 'Vec2', Vec3: 'Vec3', Vec4: 'Vec4', Quat: 'Quat', Color: 'Color', Node: 'Node', Label: 'Label', Sprite: 'Sprite', Button: 'Button', EditBox: 'EditBox', ScrollView: 'ScrollView', Slider: 'Slider', Toggle: 'Toggle', ProgressBar: 'ProgressBar', AudioSource: 'AudioSource', Animation: 'Animation', SkeletalAnimation: 'SkeletalAnimation', AudioClip: 'AudioClip', AnimationClip: 'AnimationClip', SpriteFrame: 'SpriteFrame', Prefab: 'Prefab', Material: 'Material', JsonAsset: 'JsonAsset' };
 function invalid(message: string): never { throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message }); }
 export function assertComponentScriptInput(value: unknown, allowed: string[]): asserts value is Record<string, unknown> {
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key))) invalid('Component script input must be an object containing only supported fields.');
@@ -94,14 +96,14 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
             const values = hasDefault ? row.default : [];
             if (!Array.isArray(values) || values.length > 256) invalid('Array defaults must contain at most 256 entries.');
             const primitive = type === 'integer' || type === 'number' || type === 'string' || type === 'boolean';
-            const vector = type === 'Vec2' || type === 'Vec3' || type === 'Color' || type === 'Quat';
+            const vector = type === 'Vec2' || type === 'Vec3' || type === 'Color' || (type === 'Quat' || type === 'Vec4');
             if (!primitive && !vector && values.length !== 0) invalid('Reference arrays must start empty; bind actual references separately in the Inspector.');
             const initializers: string[] = [];
             for (let index = 0; index < values.length; index++) {
                 const value = values[index];
                 if (!Object.prototype.hasOwnProperty.call(values, index)) invalid('Array defaults must be dense.');
                 if (vector) {
-                    const axes = type === 'Color' ? ['r', 'g', 'b', 'a'] : type === 'Quat' ? ['x', 'y', 'z', 'w'] : type === 'Vec2' ? ['x', 'y'] : ['x', 'y', 'z'];
+                    const axes = type === 'Color' ? ['r', 'g', 'b', 'a'] : (type === 'Quat' || type === 'Vec4') ? ['x', 'y', 'z', 'w'] : type === 'Vec2' ? ['x', 'y'] : ['x', 'y', 'z'];
                     assertComponentScriptInput(value, axes);
                     if (axes.some(axis => typeof value[axis] !== 'number' || !Number.isFinite(value[axis]))) invalid('Vector defaults require exactly the finite numeric coordinates of their declared type.');
                     if (type === 'Color' && axes.some(axis => !Number.isInteger(value[axis]) || (value[axis] as number) < 0 || (value[axis] as number) > 255)) invalid('Color defaults require exactly r/g/b/a integer bytes from 0 to 255.');
@@ -127,9 +129,9 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
             fields.push(tooltip ? `    @property({ type: Color${tooltip} })` : '    @property(Color)', `    ${row.name}: Color = new Color(${channels.map(channel => literal(value[channel] as number)).join(', ')});`, '');
             continue;
         }
-        if (type === 'Vec2' || type === 'Vec3' || type === 'Quat') {
-            const axes = type === 'Quat' ? ['x', 'y', 'z', 'w'] : type === 'Vec2' ? ['x', 'y'] : ['x', 'y', 'z'];
-            const value = hasDefault ? row.default : Object.fromEntries(axes.map(axis => [axis, axis === 'w' ? 1 : 0]));
+        if (type === 'Vec2' || type === 'Vec3' || (type === 'Quat' || type === 'Vec4')) {
+            const axes = (type === 'Quat' || type === 'Vec4') ? ['x', 'y', 'z', 'w'] : type === 'Vec2' ? ['x', 'y'] : ['x', 'y', 'z'];
+            const value = hasDefault ? row.default : Object.fromEntries(axes.map(axis => [axis, type === 'Quat' && axis === 'w' ? 1 : 0]));
             assertComponentScriptInput(value, axes);
             if (axes.some(axis => typeof value[axis] !== 'number' || !Number.isFinite(value[axis]))) invalid('Vector defaults require exactly the finite numeric coordinates of their declared type.');
             names.add(row.name);
