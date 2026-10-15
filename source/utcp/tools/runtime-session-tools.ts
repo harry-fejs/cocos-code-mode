@@ -587,10 +587,10 @@ export class RuntimeSessionTools {
         const outcomes: Array<Record<string, unknown>> = [];
         for (let index = 0; index < steps.length; index++) {
             const step = steps[index];
-            if (scenario.cancelled) throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario cancelled; no next step dispatched.', details: { sessionId: args.sessionId, failedStep: index, outcomes } });
-            if (Date.now() >= scenarioDeadline) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: `Runtime scenario deadline elapsed before step ${index}.`, details: { sessionId: args.sessionId, failedStep: index, outcomes } });
+            if (scenario.cancelled) throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario cancelled; no next step dispatched.', details: { sessionId: args.sessionId, runId: scenario.runId, failedStep: index, outcomes } });
+            if (Date.now() >= scenarioDeadline) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: `Runtime scenario deadline elapsed before step ${index}.`, details: { sessionId: args.sessionId, runId: scenario.runId, failedStep: index, outcomes } });
             const remaining = Math.min(10000, scenarioDeadline - Date.now());
-            if (!['assert', 'observe', 'audioObserve', 'audioAssert'].includes(step.operation) && remaining < 100) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Scenario has insufficient remaining time for a bounded primitive; no next step dispatched.', details: { sessionId: args.sessionId, failedStep: index, outcomes } });
+            if (!['assert', 'observe', 'audioObserve', 'audioAssert'].includes(step.operation) && remaining < 100) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Scenario has insufficient remaining time for a bounded primitive; no next step dispatched.', details: { sessionId: args.sessionId, runId: scenario.runId, failedStep: index, outcomes } });
             try {
                 const stepDeadline = Math.min(scenarioDeadline, Date.now() + (step.timeoutMs ?? 10000));
                 const pending = step.operation === 'wait'
