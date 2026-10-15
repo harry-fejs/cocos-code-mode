@@ -1312,6 +1312,10 @@ declare namespace ccp3x {
         dbName?: string
     }): { result: any };
 
+    /** Creates the native ScrollView prefab and returns its existing bound content and masked viewport; no duplicate content/layout subtree is generated. Native read-back is not save/reopen or runtime scroll proof. */
+    function uiCreateScrollView(args?: { name?: string; parentReference?: InstanceReference }): {
+        reference: InstanceReference; viewport: InstanceReference; content: InstanceReference;
+    };
     /** Creates a bounded labeled EditBox + Submit Button form under one Widget root. Verifies all three child identities and focus order; failure reports owned-root cleanup status. Does not bind a gameplay callback or prove runtime input dispatch. */
     function uiCreateInputForm(args: { label: string; placeholder?: string; name?: string; parentReference?: InstanceReference }): {
         reference: InstanceReference; label: InstanceReference; input: InstanceReference; submit: InstanceReference; focusOrder: string[];

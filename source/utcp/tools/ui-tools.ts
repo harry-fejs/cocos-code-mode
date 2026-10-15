@@ -1075,23 +1075,23 @@ export class UiTools {
         'POST',
         ['ui', 'scrollview', 'create', 'compound']
     )
-    async uiCreateScrollView(args: { name?: string, parentReference?: IInstanceReference }): Promise<{ reference: IInstanceReference, viewport: IInstanceReference, content: IInstanceReference }> {
+    async uiCreateScrollView(args: { name?: string, parentReference?: IInstanceReference } = {}): Promise<{ reference: IInstanceReference, viewport: IInstanceReference, content: IInstanceReference }> {
         const root = await this.createUiNode({ uiType: 'ScrollView', name: args.name ?? 'ScrollView', parentReference: args.parentReference });
         try {
-            const viewport = await this.createUiNode({ uiType: 'Widget', name: 'Viewport', parentReference: root.reference });
-            await Editor.Message.request('scene', 'create-component', { uuid: viewport.reference.id, component: 'cc.Mask' });
-            const content = await this.createUiNode({ uiType: 'Widget', name: 'Content', parentReference: viewport.reference });
-            await Editor.Message.request('scene', 'create-component', { uuid: content.reference.id, component: 'cc.Layout' });
-            await Editor.Message.request('scene', 'snapshot');
             const rootDump = await this.queryNodeDump(root.reference.id);
-            const viewportDump = await this.queryNodeDump(viewport.reference.id);
-            const viewportUuid = await this.findNamedChild(rootDump, 'Viewport');
-            const contentUuid = viewportDump?.children?.map((child) => this.childUuid(child)).find((uuid) => uuid === content.reference.id);
-            const viewportTypes = new Set((viewportDump?.__comps__ ?? []).map((component) => component.type).filter((type): type is string => typeof type === 'string'));
-            const contentDump = await this.queryNodeDump(content.reference.id);
-            const contentTypes = new Set((contentDump?.__comps__ ?? []).map((component) => component.type).filter((type): type is string => typeof type === 'string'));
-            if (!rootDump || viewportUuid !== viewport.reference.id || contentUuid !== content.reference.id || !viewportTypes.has('cc.Mask') || !contentTypes.has('cc.Layout')) throw new Error('scroll view hierarchy or component read-back mismatch');
-            return { reference: root.reference, viewport: viewport.reference, content: content.reference };
+            const scroll = rootDump?.__comps__?.find(component => component.type === 'cc.ScrollView')?.value;
+            if (!scroll) throw new Error('ScrollView component read-back is unavailable');
+            const binding = this.unwrapValue(scroll.content ?? scroll._content);
+            const contentUuid = this.childUuid(binding);
+            const contentDump = await this.queryNodeDump(contentUuid);
+            if (!contentDump || this.unwrapValue(contentDump.uuid) !== contentUuid) throw new Error('Bound content identity was not confirmed');
+            const viewportUuid = this.childUuid(this.unwrapValue(contentDump.parent));
+            const viewportDump = await this.queryNodeDump(viewportUuid);
+            if (!viewportDump || this.unwrapValue(viewportDump.uuid) !== viewportUuid
+                || !(rootDump?.children ?? []).some(child => this.childUuid(child) === viewportUuid)
+                || !(viewportDump.children ?? []).some(child => this.childUuid(child) === contentUuid)
+                || !(viewportDump.__comps__ ?? []).some(component => component.type === 'cc.Mask')) throw new Error('Bound ScrollView viewport/content hierarchy or mask was not confirmed');
+            return { reference: root.reference, viewport: { id: viewportUuid, type: 'cc.Node' }, content: { id: contentUuid, type: 'cc.Node' } };
         } catch (error: unknown) {
             const rollback = await this.rollbackNode(root.reference.id);
             throw new ToolError({ code: 'POSTCONDITION_FAILED', status: 502, message: `uiCreateScrollView hierarchy verification failed${rollback ? `; rollback failed: ${rollback}` : '; scroll view was rolled back'}.`, details: { createdNodeId: root.reference.id, cause: error instanceof Error ? error.message : String(error) }, recovery: rollback ? `Delete node ${root.reference.id} manually before retrying.` : 'Retry after the scene is ready.' });
