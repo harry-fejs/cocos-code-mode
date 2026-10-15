@@ -110,6 +110,7 @@ function typeInfo(checker, type, node) {
     if (symbol && !symbol.name.startsWith('__') && !references.has(symbol.name)) {
       const enumDeclarations = symbol.declarations?.filter(ts.isEnumDeclaration) || [];
       const enumValues = enumDeclarations.length ? [] : null;
+      const enumNames = new Set();
       enumMembers: for (const item of enumDeclarations) {
         for (const member of item.members) {
           if (enumValues.length >= 256) {
@@ -118,6 +119,8 @@ function typeInfo(checker, type, node) {
           }
           const value = checker.getConstantValue(member);
           const name = checker.getSymbolAtLocation(member.name)?.name || member.name.getText();
+          if (enumNames.has(name)) unresolved.push({ kind: 'enum-member-ambiguity', reference: `${symbol.name}.${name}` });
+          enumNames.add(name);
           const resolved = value !== undefined && (typeof value !== 'number' || Number.isFinite(value));
           if (!resolved) unresolved.push({ kind: 'enum-value', reference: `${symbol.name}.${name}` });
           enumValues.push({ name, value: resolved ? value : compact(member.initializer), constant: resolved });
