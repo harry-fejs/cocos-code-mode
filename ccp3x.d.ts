@@ -1205,7 +1205,7 @@ declare namespace ccp3x {
     /** Reads a line window (radius 0–50) through the same bounded stable reader. Beyond-EOF line requests throw INVALID_ARGUMENT; no truncation field is exposed. */
     function projectFileSnippet(args: { filePath: string; line: number; radius?: number }): { snippet: string; startLine: number; endLine: number };
 
-    /** Glob-like regular-file search; symlink/special entries are omitted and links are not traversed. limit must be integer1..500 (verbose:1000). total counts returned matches only; truncated indicates cap reached, not remaining count. Streams entries; beyond100000 throws PROJECT_SEARCH_LIMIT. Read errors throw PROJECT_SEARCH_FAILED. Excluded directories remain outside coverage; concurrent entry replacement is not prevented. */
+    /** Case-insensitive glob-like regular-file search: * stays within a segment, ** crosses separators; all other characters (including ?) are literal. Symlink/special entries omitted; links not traversed. limit integer1..500 (verbose1000). total counts returned matches; truncated means cap reached. Beyond100000 entries throws PROJECT_SEARCH_LIMIT; read failures throw PROJECT_SEARCH_FAILED. Excluded directories and concurrent replacement remain outside coverage. */
     function projectSearchFiles(args: { pattern: string; directory?: string; limit?: number; verbose?: boolean }): { files: string[]; total: number; truncated: boolean };
 
     /** Writes UTF-8 text and verifies read-back. Optional expectedSha256 from projectReadFile requires an existing matching decoded-text revision before mkdir/write; optimistic only, not atomic compare-and-set. Asset refresh is best-effort. Inspect ambiguous errors before retry. */

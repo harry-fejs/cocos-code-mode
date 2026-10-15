@@ -163,11 +163,8 @@ export class FileTools {
         const scope = resolveSafePath(root, args.directory ?? '.');
         if (!fs.existsSync(scope) || !fs.statSync(scope).isDirectory()) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Directory not found: ${args.directory ?? '.'}` });
         const limit = boundedPositive(args.limit, args.verbose === true ? VERBOSE_SEARCH_LIMIT : MAX_SEARCH_RESULTS, maximum);
-        const regexText = args.pattern
-            .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-            .replace(/\*\*/g, '<<<GLOBSTAR>>>')
-            .replace(/\*/g, '[^/]*')
-            .replace(/<<<GLOBSTAR>>>/g, '.*');
+        const regexText = args.pattern.replace(/\*\*|\*|[.?+^${}()|[\]\\]/g, token =>
+            token === '**' ? '.*' : token === '*' ? '[^/]*' : `\\${token}`);
         const regex = new RegExp(`^${regexText}$`, 'i');
         const files: string[] = [];
         const stack: Array<{ directory: string; handle: fs.Dir }> = [];
