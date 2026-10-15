@@ -29,6 +29,10 @@ function typeInfo(checker, type, node) {
     if (current.flags & ts.TypeFlags.Any) unresolved.push({ kind: 'any', reference: current.aliasSymbol?.name || current.intrinsicName || 'any' });
     if (current.flags & ts.TypeFlags.Unknown) unresolved.push({ kind: 'unknown', reference: 'unknown' });
     if (current.isUnionOrIntersection?.()) current.types.forEach(visit);
+    if (checker.isArrayType(current) || checker.isTupleType(current)) {
+      checker.getTypeArguments(current).forEach(visit);
+      return;
+    }
     if (current.flags & ts.TypeFlags.Object && current.objectFlags & ts.ObjectFlags.Reference) checker.getTypeArguments(current).forEach(visit);
     if (current.aliasTypeArguments) current.aliasTypeArguments.forEach(visit);
     const symbol = current.aliasSymbol || current.symbol;
