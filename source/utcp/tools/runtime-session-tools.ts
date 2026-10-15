@@ -528,8 +528,9 @@ export class RuntimeSessionTools {
                     items: {
                         type: 'object', additionalProperties: false,
                         properties: {
-                            operation: { type: 'string', enum: ['graphObserve', 'graphAssert', 'graphSet', 'graphWait', 'delay', 'wait', 'assert', 'observe', 'particleControl', 'particleObserve', 'particleAssert', 'particleWait', 'animationControl', 'animationObserve', 'animationAssert', 'animationWait', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'] },
+                            operation: { type: 'string', enum: ['nodeObserve', 'nodeAssert', 'nodeWait', 'graphObserve', 'graphAssert', 'graphSet', 'graphWait', 'delay', 'wait', 'assert', 'observe', 'particleControl', 'particleObserve', 'particleAssert', 'particleWait', 'animationControl', 'animationObserve', 'animationAssert', 'animationWait', 'audioObserve', 'audioAssert', 'audioControl', 'audioWait', 'pause', 'resume', 'step'] },
                             paused: { type: 'boolean' },
+                            active: { type: 'boolean' }, activeInHierarchy: { type: 'boolean' },
                             minFrameCount: { type: 'integer', minimum: 0, maximum: 1000000000 },
                             timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 },
                             durationMs: { type: 'integer', minimum: 0, maximum: 5000, description: 'Wall-clock cue spacing only; independent of game pause/time-scale, never completion evidence.' },
@@ -565,7 +566,7 @@ export class RuntimeSessionTools {
         'POST',
         ['runtime', 'scenario', 'run', 'steps'],
     )
-    async runtimeScenarioRun(args: { sessionId: string, runId?: string, steps: Array<{ operation: 'graphObserve' | 'graphAssert' | 'graphSet' | 'graphWait' | 'delay' | 'wait' | 'assert' | 'observe' | 'particleControl' | 'particleObserve' | 'particleAssert' | 'particleWait' | 'animationControl' | 'animationObserve' | 'animationAssert' | 'animationWait' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', graphUuid?: string, variableName?: string, variableType?: 'float' | 'integer' | 'boolean', expectedValue?: number | boolean, variableValue?: number | boolean, durationMs?: number, nodeReference?: { id: string }, animationOperation?: 'play' | 'pause' | 'resume' | 'stop', particleOperation?: 'play' | 'stop' | 'clear', minParticleCount?: number, maxParticleCount?: number, componentId?: string, clipName?: string, clipUuid?: string, playbackState?: 'init' | 'playing' | 'paused' | 'stopped' | 'interrupted', minTime?: number, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, runId: string, outcomes: Array<Record<string, unknown>> }> {
+    async runtimeScenarioRun(args: { sessionId: string, runId?: string, steps: Array<{ operation: 'nodeObserve' | 'nodeAssert' | 'nodeWait' | 'graphObserve' | 'graphAssert' | 'graphSet' | 'graphWait' | 'delay' | 'wait' | 'assert' | 'observe' | 'particleControl' | 'particleObserve' | 'particleAssert' | 'particleWait' | 'animationControl' | 'animationObserve' | 'animationAssert' | 'animationWait' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', active?: boolean, activeInHierarchy?: boolean, graphUuid?: string, variableName?: string, variableType?: 'float' | 'integer' | 'boolean', expectedValue?: number | boolean, variableValue?: number | boolean, durationMs?: number, nodeReference?: { id: string }, animationOperation?: 'play' | 'pause' | 'resume' | 'stop', particleOperation?: 'play' | 'stop' | 'clear', minParticleCount?: number, maxParticleCount?: number, componentId?: string, clipName?: string, clipUuid?: string, playbackState?: 'init' | 'playing' | 'paused' | 'stopped' | 'interrupted', minTime?: number, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, runId: string, outcomes: Array<Record<string, unknown>> }> {
         if (!Array.isArray(args.steps) || args.steps.length === 0 || args.steps.length > 16) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runtimeScenarioRun requires 1-16 typed steps.' });
         if (typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded runtime sessionId is required.' });
         if (args.runId !== undefined && (typeof args.runId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(args.runId))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runId must be a fresh bounded alphanumeric/hyphen/underscore identity.' });
@@ -573,6 +574,14 @@ export class RuntimeSessionTools {
         if (!Number.isInteger(totalTimeoutMs) || totalTimeoutMs < 100 || totalTimeoutMs > 60000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'totalTimeoutMs must be an integer from 100 to 60000.' });
         const scenarioDeadline = Date.now() + totalTimeoutMs;
         const steps = Array.from(args.steps, (step, index) => {
+            if (step?.operation === 'nodeObserve' || step?.operation === 'nodeAssert' || step?.operation === 'nodeWait') {
+                if (Object.keys(step).some(key => !['operation', 'nodeReference', 'active', 'activeInHierarchy', 'timeoutMs'].includes(key)) || !step.nodeReference || typeof step.nodeReference !== 'object' || Array.isArray(step.nodeReference) || Object.keys(step.nodeReference).some(key => key !== 'id')
+                    || typeof step.nodeReference.id !== 'string' || !step.nodeReference.id.trim() || step.nodeReference.id.length > 256
+                    || step.active !== undefined && typeof step.active !== 'boolean' || step.activeInHierarchy !== undefined && typeof step.activeInHierarchy !== 'boolean'
+                    || (step.operation === 'nodeObserve' ? step.active !== undefined || step.activeInHierarchy !== undefined : step.active === undefined && step.activeInHierarchy === undefined)
+                    || step.timeoutMs !== undefined && (!Number.isInteger(step.timeoutMs) || step.timeoutMs < 100 || step.timeoutMs > (step.operation === 'nodeWait' ? 10000 : 3000))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Invalid node checkpoint step ${index}.` });
+                return { ...step, nodeReference: { id: step.nodeReference.id } };
+            }
             if (step?.operation === 'graphObserve') {
                 if (Object.keys(step).some(key => !['operation', 'nodeReference', 'componentId', 'graphUuid', 'timeoutMs'].includes(key)) || !step.nodeReference || typeof step.nodeReference !== 'object' || Array.isArray(step.nodeReference) || Object.keys(step.nodeReference).some(key => key !== 'id')
                     || [step.nodeReference?.id, step.componentId, step.graphUuid].some(value => typeof value !== 'string' || !value.trim() || value.length > 256)
@@ -671,6 +680,19 @@ export class RuntimeSessionTools {
                         ? this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount })
                         : step.operation === 'observe'
                             ? this.runtimeStateObserve({ sessionId: args.sessionId })
+                            : step.operation === 'nodeObserve' || step.operation === 'nodeAssert' || step.operation === 'nodeWait'
+                                ? import('./runtime-tools').then(async ({ RuntimeTools }) => {
+                                    if (scenario.cancelled) throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario cancelled before node checkpoint.' });
+                                    const timeoutMs = Math.min(step.timeoutMs ?? (step.operation === 'nodeWait' ? 10000 : 3000), stepDeadline - Date.now());
+                                    if (timeoutMs < 100) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Node checkpoint deadline elapsed before dispatch.' });
+                                    const nodes = new RuntimeTools();
+                                    const target = { sessionId: args.sessionId, nodeReference: step.nodeReference!, timeoutMs };
+                                    if (step.operation === 'nodeWait') return nodes.runtimeNodeWaitForState({ ...target, active: step.active, activeInHierarchy: step.activeInHierarchy });
+                                    const observation = await nodes.runtimeNodeObserve(target);
+                                    if (step.operation === 'nodeObserve') return observation;
+                                    if (typeof observation.active !== 'boolean' || typeof observation.activeInHierarchy !== 'boolean') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Node activation metrics unavailable.' });
+                                    return { ...observation, passed: (step.active === undefined || observation.active === step.active) && (step.activeInHierarchy === undefined || observation.activeInHierarchy === step.activeInHierarchy) };
+                                })
                             : step.operation === 'graphObserve' || step.operation === 'graphAssert' || step.operation === 'graphWait' || step.operation === 'graphSet'
                                 ? import('./component-runtime-tools').then(async ({ ComponentRuntimeTools }) => {
                                     if (scenario.cancelled) throw new ToolError({ code: 'RUNTIME_SCENARIO_CANCELLED', status: 409, message: 'Scenario cancelled before graph wait dispatch.' });
