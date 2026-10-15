@@ -204,16 +204,29 @@ export class FileTools {
     }
 
     @utcpTool('projectReplaceInFile', 'Atomically replace bounded literal text in a project file and verify read-back.', {
-        type: 'object', properties: { filePath: { type: 'string' }, search: { type: 'string' }, replace: { type: 'string' }, replaceAll: { type: 'boolean' }, expectedSha256: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'SHA-256 of decoded UTF-8 text from projectReadFile; optimistic precondition, not atomic compare-and-set.' } }, required: ['filePath', 'search', 'replace'],
+        type: 'object', properties: { filePath: { type: 'string' }, search: { type: 'string' }, replace: { type: 'string' }, replaceAll: { type: 'boolean' }, expectedOccurrences: { type: 'integer', minimum: 0, maximum: MAX_FILE_BYTES, description: 'Required total non-overlapping literal matches, independently of replaceAll. Empty search counts as zero.' }, expectedSha256: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'SHA-256 of decoded UTF-8 text from projectReadFile; optimistic precondition, not atomic compare-and-set.' } }, required: ['filePath', 'search', 'replace'],
     }, { type: 'object', properties: { success: { type: 'boolean' }, replacements: { type: 'number' }, sha256: { type: 'string' } }, required: ['success', 'replacements', 'sha256'] }, 'POST', ['file', 'replace', 'edit', 'project'])
-    async projectReplaceInFile(args: { filePath: string, search: string, replace: string, replaceAll?: boolean, expectedSha256?: string }): Promise<{ success: boolean, replacements: number, sha256: string }> {
+    async projectReplaceInFile(args: { filePath: string, search: string, replace: string, replaceAll?: boolean, expectedSha256?: string, expectedOccurrences?: number }): Promise<{ success: boolean, replacements: number, sha256: string }> {
         if (typeof args.search !== 'string' || typeof args.replace !== 'string' || args.search.length > MAX_SEARCH_PATTERN_LENGTH || args.replace.length > MAX_WRITE_BYTES) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'search and replace must be bounded strings.' });
         if (args.expectedSha256 !== undefined && (typeof args.expectedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedSha256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedSha256 must be a lowercase SHA-256 of decoded UTF-8 text.' });
+        if (args.expectedOccurrences !== undefined && (!Number.isInteger(args.expectedOccurrences) || args.expectedOccurrences < 0 || args.expectedOccurrences > MAX_FILE_BYTES)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedOccurrences must be an integer from 0 to 524288.' });
         const root = projectRoot();
         const filePath = resolveSafePath(root, args.filePath);
         if (!fs.existsSync(filePath)) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `File not found: ${args.filePath}` });
         const { content } = readBoundedProjectText(filePath, MAX_FILE_BYTES);
         if (args.expectedSha256 !== undefined && createHash('sha256').update(content, 'utf8').digest('hex') !== args.expectedSha256) throw new ToolError({ code: 'FILE_CONTENT_CHANGED', status: 409, message: 'Project file text differs from expectedSha256; no replacement dispatched.' });
+        if (args.expectedOccurrences !== undefined) {
+            let occurrences = 0;
+            if (args.search) {
+                let offset = 0;
+                let found: number;
+                while ((found = content.indexOf(args.search, offset)) !== -1) {
+                    occurrences++;
+                    offset = found + args.search.length;
+                }
+            }
+            if (occurrences !== args.expectedOccurrences) throw new ToolError({ code: 'FILE_MATCH_COUNT_CHANGED', status: 409, message: 'Literal match count differs from expectedOccurrences; no replacement dispatched.', details: { expected: args.expectedOccurrences, observed: occurrences } });
+        }
         if (!args.search) return { success: false, replacements: 0, sha256: createHash('sha256').update(content, 'utf8').digest('hex') };
         const replaceAll = args.replaceAll !== false;
         let next = content;

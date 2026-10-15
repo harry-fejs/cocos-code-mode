@@ -1210,8 +1210,8 @@ declare namespace ccp3x {
 
     /** Writes UTF-8 text and verifies read-back. Optional expectedSha256 from projectReadFile requires an existing matching decoded-text revision before mkdir/write; optimistic only, not atomic compare-and-set. Asset refresh is best-effort. Inspect ambiguous errors before retry. */
     function projectWriteFile(args: { filePath: string; content: string; createDirs?: boolean; expectedSha256?: string }): { success: true; bytesWritten: number; sha256: string };
-    /** Literal replacement, all matches by default. Optional expectedSha256 hashes decoded UTF-8 text (as returned by projectReadFile); mismatch throws FILE_CONTENT_CHANGED before writing. Optimistic only, not atomic compare-and-set. Empty search/no match returns success=false; read-back does not certify asset reimport. */
-    function projectReplaceInFile(args: { filePath: string; search: string; replace: string; replaceAll?: boolean; expectedSha256?: string }):
+    /** Literal replacement, all matches by default. expectedOccurrences (integer0..524288) requires total non-overlapping literal matches even with replaceAll:false; empty search counts zero. Mismatch throws FILE_MATCH_COUNT_CHANGED before write. expectedSha256 guards decoded text. Both checks are optimistic, not atomic compare-and-set. Empty search/no match returns success=false; read-back does not certify asset reimport. */
+    function projectReplaceInFile(args: { filePath: string; search: string; replace: string; replaceAll?: boolean; expectedSha256?: string; expectedOccurrences?: number }):
         { success: false; replacements: 0; sha256: string } | { success: true; replacements: number; sha256: string };
 
     interface ScriptDiagnostic {
