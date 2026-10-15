@@ -545,12 +545,32 @@ export class RuntimeSessionTools {
     )
     async runtimeScenarioRun(args: { sessionId: string, steps: Array<{ operation: 'wait' | 'assert', paused?: boolean, minFrameCount?: number, timeoutMs?: number }> }): Promise<{ success: true, sessionId: string, outcomes: Array<Record<string, unknown>> }> {
         if (!Array.isArray(args.steps) || args.steps.length === 0 || args.steps.length > 16) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runtimeScenarioRun requires 1-16 typed steps.' });
+        if (typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded runtime sessionId is required.' });
+        const steps = Array.from(args.steps, (step, index) => {
+            if (!step || typeof step !== 'object' || Array.isArray(step)
+                || Object.keys(step).some(key => !['operation', 'paused', 'minFrameCount', 'timeoutMs'].includes(key))
+                || !['wait', 'assert'].includes(step.operation)
+                || step.paused === undefined && step.minFrameCount === undefined
+                || step.paused !== undefined && typeof step.paused !== 'boolean'
+                || step.minFrameCount !== undefined && (!Number.isInteger(step.minFrameCount) || step.minFrameCount < 0 || step.minFrameCount > 1000000000)
+                || step.timeoutMs !== undefined && (!Number.isInteger(step.timeoutMs) || step.timeoutMs < 100 || step.timeoutMs > 10000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Invalid runtime scenario step ${index}.` });
+            return { ...step };
+        });
         const outcomes: Array<Record<string, unknown>> = [];
-        for (let index = 0; index < args.steps.length; index++) {
-            const step = args.steps[index];
-            if (step.operation === 'wait') outcomes.push({ index, operation: step.operation, result: await this.runtimeWaitForState({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount, timeoutMs: step.timeoutMs }) });
-            else if (step.operation === 'assert') outcomes.push({ index, operation: step.operation, result: await this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount }) });
-            else throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Unsupported runtime scenario operation at step ${index}.` });
+        for (let index = 0; index < steps.length; index++) {
+            const step = steps[index];
+            try {
+                const result = step.operation === 'wait'
+                    ? await this.runtimeWaitForState({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount, timeoutMs: step.timeoutMs })
+                    : await this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, minFrameCount: step.minFrameCount });
+                outcomes.push({ index, operation: step.operation, result });
+                if ('passed' in result && result.passed !== true) throw new ToolError({ code: 'RUNTIME_SCENARIO_ASSERTION_FAILED', status: 409, message: `Runtime scenario assertion failed at step ${index}.` });
+            } catch (error) {
+                throw new ToolError({ code: error instanceof ToolError ? error.code : 'RUNTIME_SCENARIO_FAILED', status: error instanceof ToolError ? error.status : 502,
+                    message: error instanceof ToolError ? error.message : `Runtime scenario failed at step ${index}.`,
+                    details: { sessionId: args.sessionId, failedStep: index, outcomes, ...(error instanceof ToolError && error.details ? { cause: error.details } : {}) },
+                    recovery: error instanceof ToolError ? error.recovery : undefined });
+            }
         }
         return { success: true, sessionId: args.sessionId, outcomes };
     }
