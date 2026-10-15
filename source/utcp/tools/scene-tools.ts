@@ -852,6 +852,8 @@ export class SceneTools {
         ['scene', 'script', 'missing', 'invalid', 'scan', 'health', 'repair']
     )
     async sceneScriptHealthScan(args: { limit?: number } = {}): Promise<{ findings: Array<Record<string, unknown>>, total: number, truncated: boolean }> {
+        if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > MAX_LIST_LIMIT)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `limit must be an integer from 1 to ${MAX_LIST_LIMIT}.` });
+        const limit = boundedListLimit(args.limit);
         const tree = await Editor.Message.request('scene', 'query-node-tree');
         if (!tree) throw new Error('sceneScriptHealthScan: no open scene or prefab');
         const componentTypes = await Editor.Message.request('scene', 'query-components');
@@ -862,15 +864,24 @@ export class SceneTools {
             ? tree.name
             : (tree.name && typeof tree.name.value === 'string' ? tree.name.value : '');
         const stack: Array<{ node: any, path: string }> = [{ node: (await this.findPrefabEditRoot(tree)) ?? tree, path: rootName }];
+        const visited = new Set<object>();
+        let scheduled = 1;
+        let total = 0;
         while (stack.length) {
             const { node, path: nodePath } = stack.pop()!;
-            const components = node.components || node.__comps__ || [];
+            if (!node || typeof node !== 'object' || visited.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health hierarchy contains an invalid or repeated node.' });
+            visited.add(node);
+            const components = node.components ?? node.__comps__ ?? [];
+            if (!Array.isArray(components)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health components must be an array.' });
             for (const component of components) {
                 const classId = componentClassId(component);
                 const uuid = componentUuid(component);
+                if (classId !== undefined && typeof classId !== 'string') throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health class identity must be a string.' });
                 if (!classId || registered.has(classId) || classId.startsWith('cc.')) continue;
-                findings.push({
-                    nodeReference: { id: node.uuid, type: 'cc.Node' },
+                const nodeId = nodeUuidFromSceneUsage(node, 'script health hierarchy');
+                total++;
+                if (findings.length < limit) findings.push({
+                    nodeReference: { id: nodeId, type: 'cc.Node' },
                     nodeName: node.name || '',
                     nodePath,
                     componentReference: uuid ? { id: uuid, type: 'cc.Component' } : undefined,
@@ -878,12 +889,16 @@ export class SceneTools {
                     repair: 'Provide scriptReference or replacementClassId to sceneScriptRepair'
                 });
             }
-            for (const child of [...(node.children || [])].reverse()) {
-                stack.push({ node: child, path: nodePath ? `${nodePath}/${child.name || ''}` : child.name || '' });
+            const children = node.children ?? [];
+            if (!Array.isArray(children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script health children must be an array.' });
+            scheduled += children.length;
+            if (scheduled > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Script health hierarchy exceeds the 10000-node traversal budget.' });
+            for (let index = children.length - 1; index >= 0; index--) {
+                const child = children[index];
+                stack.push({ node: child, path: nodePath ? `${nodePath}/${child?.name || ''}` : child?.name || '' });
             }
         }
-        const limit = boundedListLimit(args.limit);
-        return { findings: findings.slice(0, limit), total: findings.length, truncated: findings.length > limit };
+        return { findings, total, truncated: total > findings.length };
     }
 
     @utcpTool('sceneScriptHealthBatchScan', 'Scan bounded scene roots for missing custom script classes with per-root outcomes.', { type: 'object', additionalProperties: false, properties: { nodeReferences: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema }, limitPerRoot: { type: 'integer', minimum: 1, maximum: MAX_LIST_LIMIT, default: DEFAULT_LIST_LIMIT } }, required: ['nodeReferences'] }, { type: 'object', additionalProperties: false, properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['items', 'succeeded', 'failed', 'truncated'] }, 'GET', ['scene', 'script', 'health', 'batch', 'scan'])
@@ -2128,9 +2143,11 @@ export class SceneTools {
 
         // Breadth-first: the prefab root is the shallowest node claiming to be one.
         const queue: any[] = [sceneTree];
-        while (queue.length) {
-            const node = queue.shift();
-            if (!node) continue;
+        const visited = new Set<object>();
+        for (let cursor = 0; cursor < queue.length; cursor++) {
+            const node = queue[cursor];
+            if (!node || typeof node !== 'object' || visited.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Prefab edit hierarchy contains an invalid or repeated node.' });
+            visited.add(node);
 
             if (node.uuid && node.uuid !== sceneTree.uuid) {
                 const dump: any = await Editor.Message.request('scene', 'query-node', node.uuid)
@@ -2142,7 +2159,10 @@ export class SceneTools {
                 }
             }
 
-            for (const child of node.children ?? []) {
+            const children = node.children ?? [];
+            if (!Array.isArray(children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Prefab edit hierarchy children must be an array.' });
+            if (queue.length + children.length > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Prefab edit hierarchy exceeds the 10000-node traversal budget.' });
+            for (const child of children) {
                 queue.push(child);
             }
         }
