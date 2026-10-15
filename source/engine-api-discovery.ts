@@ -188,7 +188,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
             if (args.category === 'component_schema' && record.namespace !== 'engine-runtime') continue;
             if (args.className && (record.className ?? '').replace(/^cc\./, '') !== args.className.replace(/^cc\./, '')) continue;
             if (args.filter && !`${record.className ?? ''}.${record.member ?? record.name ?? ''}`.toLowerCase().includes(args.filter.toLowerCase())) continue;
-            records.push({ ...record, permitted: false, writablePath: null, evidenceStatus: 'declared' });
+            records.push({ ...record, permitted: false, writablePath: null });
         }
     }
     records.sort((a, b) => a.id.localeCompare(b.id));
@@ -215,7 +215,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         records.splice(0, records.length, ...[...classes.values()].sort((a, b) => a.id.localeCompare(b.id)));
     } else if (operation === 'get_related_types') {
         if (!records[0]) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record is absent from the selected catalog scope.' });
-        const source = external ? ApiRecordSchema.parse({ ...readPage(() => external.readRecord(records[0].id)), permitted: false, evidenceStatus: 'declared' }) : records[0];
+        const source = external ? ApiRecordSchema.parse({ ...readPage(() => external.readRecord(records[0].id)), permitted: false }) : records[0];
         if (!source) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record related types are absent from the selected catalog scope.' });
         const related: Array<Record<string, unknown>> = [];
         const seen = new Set<string>();
@@ -265,7 +265,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     if (operation === 'get_signature') {
         const record = records[0] as ApiRecord | undefined;
         if (!record) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record signature is absent from the selected catalog scope/version/filters.' });
-        records.splice(0, records.length, { id: record.id, namespace: record.namespace, className: record.className, member: record.member, name: record.name, kind: record.kind, signatures: record.signatures ?? [], permitted: false, evidenceStatus: 'declared' });
+        records.splice(0, records.length, { id: record.id, namespace: record.namespace, className: record.className, member: record.member, name: record.name, kind: record.kind, signatures: record.signatures ?? [], permitted: false, evidenceStatus: record.evidenceStatus ?? null });
     }
     if (offset > records.length) throw new ToolError({ code: 'STALE_CURSOR', status: 409, message: 'Catalog cursor offset exceeds this result set.' });
     if (args.className && records.length === 0 && operation !== 'get_related_types') throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Class ${args.className} is absent from the ${version} catalog.` });
@@ -293,7 +293,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     if (Buffer.byteLength(JSON.stringify(result())) > maxBytes) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'Required catalog metadata exceeds maxBytes.' });
     for (const record of records.slice(offset, offset + maxEntries)) {
         checkDeadline();
-        selected.push(external && ['records', 'get_signature'].includes(operation) ? ApiRecordSchema.parse({ ...readPage(() => external.readRecord(record.id)), permitted: false, writablePath: null, evidenceStatus: 'declared' }) : record);
+        selected.push(external && ['records', 'get_signature'].includes(operation) ? ApiRecordSchema.parse({ ...readPage(() => external.readRecord(record.id)), permitted: false, writablePath: null }) : record);
         if (Buffer.byteLength(JSON.stringify(result())) > maxBytes) { selected.pop(); break; }
     }
     if (offset < records.length && selected.length === 0) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'One catalog record cannot fit maxBytes; narrow the query or increase its explicit bound.' });
