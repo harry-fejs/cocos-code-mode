@@ -1117,7 +1117,11 @@ export class UiTools {
         const input = await this.createUiNode({ uiType: 'EditBox', name: 'Input', parentReference: form.reference });
         if (args.placeholder !== undefined) {
             const inputPath = await this.componentPath(input.reference.id, 'cc.EditBox');
-            await Editor.Message.request('scene', 'set-property', { uuid: input.reference.id, path: `${inputPath}.placeholderLabel.string`, dump: { value: args.placeholder, type: 'cc.String' } });
+            const accepted = await Editor.Message.request('scene', 'set-property', { uuid: input.reference.id, path: `${inputPath}.placeholder`, dump: { value: args.placeholder, type: 'cc.String' } });
+            if (accepted === false) throw new Error('Creator refused EditBox placeholder');
+            const inputDump = await this.queryNodeDump(input.reference.id);
+            const editBox = inputDump?.__comps__?.find(component => component.type === 'cc.EditBox')?.value;
+            if (!editBox || this.unwrapValue(editBox.placeholder) !== args.placeholder) throw new Error('EditBox placeholder read-back mismatch');
         }
         const submit = await this.createButton({ name: 'Submit', text: 'Submit', parentReference: form.reference });
         await Editor.Message.request('scene', 'snapshot');
