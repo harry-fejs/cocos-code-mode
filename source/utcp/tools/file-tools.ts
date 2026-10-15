@@ -265,8 +265,14 @@ export class FileTools {
     @utcpTool('projectFileExists', 'Check bounded project-relative file or directory existence.', { type: 'object', properties: { filePath: { type: 'string' } }, required: ['filePath'] }, { type: 'object', properties: { exists: { type: 'boolean' }, isDirectory: { type: 'boolean' } }, required: ['exists', 'isDirectory'] }, 'GET', ['file', 'exists', 'project'])
     async projectFileExists(args: { filePath: string }): Promise<{ exists: boolean, isDirectory: boolean }> {
         const filePath = resolveSafePath(projectRoot(), args.filePath);
-        if (!fs.existsSync(filePath)) return { exists: false, isDirectory: false };
-        return { exists: true, isDirectory: fs.statSync(filePath).isDirectory() };
+        try {
+            const stat = fs.statSync(filePath);
+            return { exists: true, isDirectory: stat.isDirectory() };
+        } catch (error: unknown) {
+            const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string' ? error.code : undefined;
+            if (code === 'ENOENT' || code === 'ENOTDIR') return { exists: false, isDirectory: false };
+            throw new ToolError({ code: 'PROJECT_FILE_STAT_FAILED', status: 503, message: 'Project path metadata could not be read.', details: { cause: error instanceof Error ? error.message : String(error) } });
+        }
     }
 
     @utcpTool('projectListDirectory', 'List bounded entries in a project-relative directory.', { type: 'object', properties: { dirPath: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: MAX_DIRECTORY_ENTRIES } } }, { type: 'object', properties: { entries: { type: 'array' }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['entries', 'total', 'truncated'] }, 'GET', ['file', 'list', 'directory', 'project'])
