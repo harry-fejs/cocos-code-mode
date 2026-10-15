@@ -101,6 +101,8 @@ Use `editorQuery({category:'engine_api',operation:'records',recordId})` for one 
 
 `operation:'get_signature'` requires an exact `recordId`, hydrates only that record from an external catalog, and returns its declared signatures with `permitted:false`. It is a read-only type/discovery result; unresolved/overloaded/native semantics remain explicit and no callable route is inferred.
 
+`compare_version` is exposed through the registered `editorQuery` schema with `before`, `after`, `comparison`, `permitted:false`, and `mutationAuthorized:false` fields. The schema preserves comparison evidence instead of trimming it at the UTCP boundary; it remains catalog-only and non-qualified.
+
 Follow `nextCursor` only when more records are needed; preserve the same version/class/filter. Cursors are catalog-bound. `qualified:false`, `runtimeVerified:false`, and `live.mutationAuthorized:false` are intentional: declaration presence and live class availability do not prove mutation/history/persistence. Supplying a component `reference` refreshes Inspector path evidence on every request instead of retaining stale script mappings.
 
 `listComponentMethods({reference:nodeReference})` returns attached component UUIDs, not class names as handles. `methods` is discovery; only `permittedMethods` is accepted by the existing finite `callComponentMethod` policy. Do not invoke lifecycle callbacks merely to prove discovery works.
