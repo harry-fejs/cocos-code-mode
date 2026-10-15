@@ -88,6 +88,16 @@ export class AssetBundleRuntimeTools {
         const artifact = resolveBundleArtifact(project, args.bundlePath, args.bundleName);
         const artifactRevision = bundleArtifactIdentity(project, artifact).revision;
         if (args.expectedRevision !== undefined && args.expectedRevision !== artifactRevision) throw new ToolError({ code: 'BUNDLE_ARTIFACT_CHANGED', status: 409, message: 'Bundle config/index revision differs from the inspected precondition; no serving or runtime dispatch.' });
+        if (args.resource) {
+            const config = JSON.parse(artifact.config.toString('utf8')) as { paths: Record<string, unknown[]>; types?: string[] };
+            let matches = 0;
+            for (const entry of Object.values(config.paths)) {
+                const type = typeof entry[1] === 'string' ? entry[1] : config.types?.[entry[1] as number];
+                if (entry[0] === args.resource.path && type === `cc.${args.resource.type}`) matches++;
+            }
+            if (matches === 0) throw new ToolError({ code: 'BUNDLE_RESOURCE_NOT_FOUND', status: 404, message: 'Requested exact resource path/type is absent from captured bundle metadata; no serving or runtime dispatch.' });
+            if (matches > 1) throw new ToolError({ code: 'BUNDLE_RESOURCE_AMBIGUOUS', status: 409, message: 'Requested resource path/type resolves to multiple emitted entries; no serving or runtime dispatch.' });
+        }
         const runtime = new RuntimeSessionTools();
         const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, timeoutMs });
         const session = inspected.session;
