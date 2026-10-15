@@ -3,6 +3,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { VERBOSE_FILE_BYTES } from '../utils/verbose';
 import { ToolError } from '../tool-error';
+import { FileTools } from './file-tools';
 
 // Project instruction files — allowlist mirrors funplay's instruction-tools.
 // Raw fs + path-safety, same pattern as file-tools.ts.
@@ -63,7 +64,7 @@ export class InstructionTools {
 
     @utcpTool(
         'writeProjectInstruction',
-        'Write/overwrite a project instruction file (AGENTS.md, CLAUDE.md, etc.). Creates parent dirs. Triggers asset-db refresh if inside assets/.',
+        'Atomically write bounded UTF-8 project instruction text and verify read-back. Creates parent dirs; asset refresh is best-effort, not importer completion proof.',
         {
             type: 'object',
             properties: {
@@ -85,14 +86,7 @@ export class InstructionTools {
         ['instruction', 'project', 'write', 'save', 'agent', 'prompt', 'AGENTS', 'CLAUDE']
     )
     async writeProjectInstruction(args: { filePath: string, content: string }): Promise<{ success: boolean, filePath: string, bytesWritten: number }> {
-        const projectPath = (Editor.Project as any).path as string;
-        const resolved = resolveSafePath(projectPath, args.filePath);
-        fs.mkdirSync(path.dirname(resolved), { recursive: true });
-        fs.writeFileSync(resolved, args.content, 'utf-8');
-        const relToProject = path.relative(projectPath, resolved).replace(/\\/g, '/');
-        if (relToProject.startsWith('assets/')) {
-            try { await Editor.Message.request('asset-db', 'refresh-asset', `db://${relToProject}`); } catch { /* best-effort hint: the write itself was verified; asset-db re-import is owned by the editor */ }
-        }
-        return { success: true, filePath: args.filePath, bytesWritten: Buffer.byteLength(args.content, 'utf-8') };
+        const result = await new FileTools().projectWriteFile(args);
+        return { ...result, filePath: args.filePath };
     }
 }
