@@ -32,7 +32,7 @@ function projectRoot(): string {
 
 function assertInside(root: string, candidate: string, input: string): string {
     const relative = path.relative(root, candidate);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
         throw new ToolError({
             code: 'INVALID_ARGUMENT',
             status: 400,
