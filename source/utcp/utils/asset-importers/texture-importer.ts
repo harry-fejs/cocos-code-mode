@@ -29,8 +29,7 @@ export class TextureImporter extends BaseAssetImporter {
         let handled = TextureUtils.applyProperties(userData, path, value);
         
         if (!handled) {
-            // Default: direct assignment to userData
-            // TODO: Support nested paths if needed (e.g. 'some.deep.prop')
+            // Fallback supports bounded dot-separated userData paths; native nested schema validation remains importer-specific.
             if (path.includes('.')) {
                 // Simple dot notation support
                 const parts = path.split('.');
