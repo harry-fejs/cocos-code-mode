@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Set colliding short-name references to resolution unknown and discard enum value claims when ambiguity is detected, keeping reference state consistent with ambiguous-reference diagnostics.
 - Add childOffset/nextChildOffset to runtime node observation for ordered128-child pages, including exact-end empty pages and beyond-end refusal. Each call observes current hierarchy independently; no cross-page revision or atomic snapshot claim.
 - Retain array/tuple alias identities alongside element dependencies without expanding built-in collection prototype members; anonymous primitive arrays remain free of prototype metadata.
 - Add inclusive minChildCount/maxChildCount0..9999 intervals to runtime node waits and scenario nodeWait/nodeAssert. Use observed direct-child count independently of truncated UUID prefix; reversed/invalid ranges refuse before dispatch, no spawn/despawn writes.

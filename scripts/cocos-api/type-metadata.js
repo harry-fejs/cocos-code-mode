@@ -98,7 +98,11 @@ function typeInfo(checker, type, node) {
     }
     if (symbol && !symbol.name.startsWith('__')) {
       const previous = referenceSymbols.get(symbol.name);
-      if (previous && previous !== symbol) unresolved.push({ kind: 'ambiguous-reference', reference: symbol.name });
+      if (previous && previous !== symbol) {
+        unresolved.push({ kind: 'ambiguous-reference', reference: symbol.name });
+        const reference = references.get(symbol.name);
+        if (reference) { reference.resolution = 'unknown'; reference.enumValues = null; }
+      }
       else referenceSymbols.set(symbol.name, symbol);
     }
     if (symbol && !symbol.name.startsWith('__') && !references.has(symbol.name)) {
