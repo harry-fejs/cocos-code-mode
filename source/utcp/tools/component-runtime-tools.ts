@@ -193,6 +193,8 @@ export class ComponentRuntimeTools {
     }, { type: 'object', properties: { matched: { type: 'boolean', const: true }, observations: { type: 'integer' }, graphUuid: { type: 'string' }, variable: { type: 'object' }, writes: { type: 'boolean', const: false } }, required: ['matched', 'observations', 'graphUuid', 'variable', 'writes'] }, 'POST', ['animation', 'graph', 'wait', 'read-only'])
     async animationGraphWaitForVariable(args: BaseArgs & GraphVariableWaitCondition) {
         validateComponentTarget({ sessionId: args?.sessionId ?? '', nodeReference: { id: args?.nodeReference?.id ?? '' }, componentId: args?.componentId }, true);
-        return waitForGraphVariable(args, timeoutMs => executeComponentOperation({ kind: 'graph', operation: 'inspect', sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, timeoutMs }));
+        const { sessionId, componentId } = args;
+        const nodeId = args.nodeReference!.id!;
+        return waitForGraphVariable(args, timeoutMs => executeComponentOperation({ kind: 'graph', operation: 'inspect', sessionId: sessionId!, nodeReference: { id: nodeId }, componentId: componentId!, timeoutMs }));
     }
 }
