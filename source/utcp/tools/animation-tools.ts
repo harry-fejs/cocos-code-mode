@@ -280,7 +280,12 @@ function requireFrames(value: unknown, name = 'frames'): number[] {
     if (!Array.isArray(value) || value.length === 0 || value.length > 200) {
         throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `${name} must contain 1 to 200 frame indices.` });
     }
-    return value.map((frame, index) => requireFrame(frame, `${name}[${index}]`));
+    const frames: number[] = [];
+    for (let index = 0; index < value.length; index++) {
+        if (!Object.prototype.hasOwnProperty.call(value, index)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `${name} must contain dense frame indices.` });
+        frames.push(requireFrame(value[index], `${name}[${index}]`));
+    }
+    return frames;
 }
 
 function requireOperations(value: unknown): AnimationOperation[] {
