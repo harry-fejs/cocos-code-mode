@@ -920,10 +920,11 @@ export class SceneTools {
 
     @utcpTool('sceneScriptUsageInspect', 'Inspect bounded script component usage across the open scene with optional class filtering.', { type: 'object', additionalProperties: false, properties: { classId: { type: 'string', maxLength: 256 }, limit: { type: 'integer', minimum: 1, maximum: MAX_LIST_LIMIT, default: DEFAULT_LIST_LIMIT } }, required: [] }, { type: 'object', additionalProperties: false, properties: { usages: { type: 'array' }, total: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['usages', 'total', 'truncated'] }, 'GET', ['scene', 'script', 'usage', 'inspect'])
     async sceneScriptUsageInspect(args: { classId?: string, limit?: number } = {}): Promise<Record<string, unknown>> {
+        if (args.classId !== undefined && (typeof args.classId !== 'string' || !args.classId || args.classId.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'classId must be a bounded non-empty string.' });
+        if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > MAX_LIST_LIMIT)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `limit must be an integer from 1 to ${MAX_LIST_LIMIT}.` });
+        const limit = boundedListLimit(args.limit);
         const tree = await Editor.Message.request('scene', 'query-node-tree');
         if (!tree) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'No open scene or prefab hierarchy.' });
-        if (args.classId !== undefined && (typeof args.classId !== 'string' || !args.classId || args.classId.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'classId must be a bounded non-empty string.' });
-        const limit = boundedListLimit(args.limit);
         const usages: Array<Record<string, unknown>> = [];
         const stack: Array<{ node: any, path: string }> = [{ node: tree, path: typeof tree.name === 'string' ? tree.name : '' }];
         const visited = new Set<object>();
@@ -933,7 +934,10 @@ export class SceneTools {
             const { node, path: nodePath } = stack.pop()!;
             if (!node || typeof node !== 'object' || visited.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script usage hierarchy contains an invalid or repeated node.' });
             visited.add(node);
-            for (const component of node.components || node.__comps__ || []) {
+            const components = node.components ?? node.__comps__ ?? [];
+            if (!Array.isArray(components)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script usage components must be an array.' });
+            for (const component of components) {
+                if (!component || typeof component !== 'object' || Array.isArray(component)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script usage contains an invalid component entry.' });
                 const classId = componentClassId(component);
                 const componentId = componentUuid(component);
                 if (!classId || classId.startsWith('cc.') || (args.classId && classId !== args.classId)) continue;
