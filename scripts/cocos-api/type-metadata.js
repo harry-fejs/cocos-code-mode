@@ -294,7 +294,7 @@ function signatures(checker, symbol, declaration) {
     return row;
   });
   const info = typeInfo(checker, type, declaration.type);
-  return [{ overload: 0, kind: 'value', type: info.type, declaredType: info.declaredType, references: info.references,
+  return [{ overload: 0, visibility: metadata(declaration).visibility, kind: 'value', type: info.type, declaredType: info.declaredType, references: info.references,
     defaultExpression: compact(declaration.initializer), unresolved: info.unresolved }];
 }
 function metadata(node) {
