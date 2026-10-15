@@ -15,6 +15,8 @@ export interface AudioPlaybackState {
     playing: boolean;
     playbackState: 'init' | 'playing' | 'paused' | 'stopped' | 'interrupted';
     loaded: boolean;
+    volume: number | null;
+    loop: boolean | null;
     userActivation: 'active' | 'inactive' | 'unknown';
     activationRequirement: 'unknown';
 }
@@ -38,6 +40,7 @@ export type AudioPlaybackResult = AudioPlaybackSuccess | {
 interface AudioSourceHandle {
     uuid?: string;
     currentTime: number; duration: number; playing: boolean; state: number; isValid?: boolean;
+    volume?: number; loop?: boolean;
     clip: { uuid?: string; isValid?: boolean } | null; _lastSetClip?: object | null; _isLoaded?: boolean; _player?: object;
     play(): void; pause(): void; stop(): void;
 }
@@ -71,6 +74,7 @@ export function createAudioPlaybackExecutor() {
         const currentTime = source.currentTime;
         const duration = source.duration;
         const playing = source.playing;
+        const volume = source.volume, loop = source.loop;
         const names = ['INIT', 'PLAYING', 'PAUSED', 'STOPPED', 'INTERRUPTED'] as const;
         const state = source.state;
         const name = names.find((key) => typeof AudioSource.AudioState?.[key] === 'number' && AudioSource.AudioState[key] === state);
@@ -78,7 +82,7 @@ export function createAudioPlaybackExecutor() {
             && typeof playing === 'boolean' && name && playing === (name === 'PLAYING'), 'AUDIO_STATE_UNAVAILABLE', 'AudioSource state readback is unavailable or inconsistent.');
         const host: { navigator?: { userActivation?: { isActive?: boolean } } } = globalThis;
         const active = host.navigator?.userActivation?.isActive;
-        return { currentTime, duration, playing, playbackState: name!.toLowerCase() as AudioPlaybackState['playbackState'],
+        return { currentTime, duration, playing, volume: typeof volume === 'number' && Number.isFinite(volume) && volume >= 0 && volume <= 1 ? volume : null, loop: typeof loop === 'boolean' ? loop : null, playbackState: name!.toLowerCase() as AudioPlaybackState['playbackState'],
             // Version-pinned read-only guard: currentTime otherwise reports only a cached seek.
             loaded: source._isLoaded === true && !!source._player && source._lastSetClip === source.clip,
             userActivation: typeof active === 'boolean' ? (active ? 'active' : 'inactive') : 'unknown', activationRequirement: 'unknown' };

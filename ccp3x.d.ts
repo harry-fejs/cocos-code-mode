@@ -1576,6 +1576,8 @@ declare namespace ccp3x {
             playing: boolean;
             playbackState: "init" | "playing" | "paused" | "stopped" | "interrupted";
             loaded: boolean;
+            volume: number | null;
+            loop: boolean | null;
             userActivation: "active" | "inactive" | "unknown";
             activationRequirement: "unknown";
         };

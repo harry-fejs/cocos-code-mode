@@ -22,8 +22,9 @@ const stateSchema: JsonSchema = {
     properties: {
         currentTime: { type: 'number', minimum: 0 }, duration: { type: 'number', minimum: 0 }, playing: { type: 'boolean' },
         playbackState: { type: 'string', enum: ['init', 'playing', 'paused', 'stopped', 'interrupted'] }, loaded: { type: 'boolean' },
+        volume: { type: ['number', 'null'], minimum: 0, maximum: 1 }, loop: { type: ['boolean', 'null'] },
         userActivation: { type: 'string', enum: ['active', 'inactive', 'unknown'] }, activationRequirement: { type: 'string', enum: ['unknown'] },
-    }, required: ['currentTime', 'duration', 'playing', 'playbackState', 'loaded', 'userActivation', 'activationRequirement'],
+    }, required: ['currentTime', 'duration', 'playing', 'playbackState', 'loaded', 'volume', 'loop', 'userActivation', 'activationRequirement'],
 };
 const outputSchema: JsonSchema = {
     type: 'object', additionalProperties: false,
@@ -74,10 +75,11 @@ function operationSource(request: { sessionId: string; targetId: string; nodeUui
         const key = Symbol.for('ccp3x.audioPlaybackExecutor');
         let execute = globalThis[key];
         if (typeof execute !== 'function') {
-            execute = Object.assign((${executorSource})(), { identityContract: 2 });
+            execute = Object.assign((${executorSource})(), { identityContract: 2, snapshotContract: 3 });
             globalThis[key] = execute;
         }
         if ((${requestLiteral}.expectedComponentUuid !== undefined || ${requestLiteral}.expectedClipUuid !== undefined) && execute.identityContract !== 2) return { success: false, error: { code: 'AUDIO_EXECUTOR_STALE', status: 409, message: 'Existing audio executor cannot enforce identity guards. Restart the owned preview explicitly; cached mutation ownership was not reset.' } };
+        if (execute.snapshotContract !== 3) return { success: false, error: { code: 'AUDIO_EXECUTOR_STALE', status: 409, message: 'Existing audio executor lacks current sound snapshot fields. Explicit owned preview restart required; mutation ownership was preserved.' } };
         return execute(${requestLiteral}, globalThis.cc, ${findNodeSource});
     })()`;
 }
