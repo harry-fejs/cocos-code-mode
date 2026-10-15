@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Validate animationClipInventory returned count/offset/page length/continuation and dense typed clip slots before granting a revision. Preserve null empty slots, first/tail/end pages and native identity metadata; malformed pages refuse without playback or auto-pagination.
 - Preserve required lower arity bounds from compiler base constraints on generic rest parameters while retaining unresolved generic type metadata and original annotation provenance.
 - Require string expectedRevision before animationClipInventory hash regex validation, rejecting coercible arrays/objects before native observation. Valid revision paging semantics unchanged.
 - Align default-prefix parameter optionality with effective minimum arity including required rest tuples; required positional slots no longer contradict signature minArgumentCount while optional-only tails remain omittable.
