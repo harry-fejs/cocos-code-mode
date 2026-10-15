@@ -95,10 +95,11 @@ function* cameraSceneNodes(root: unknown): Generator<Record<string, unknown>> {
     let componentCount = 0;
     while (stack.length) {
         const node = stack.pop();
-        if (!node || typeof node !== 'object') continue;
+        if (!node || typeof node !== 'object' || Array.isArray(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Camera hierarchy contains an invalid node.' });
         if (seen.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Camera hierarchy contains a repeated node object.' });
         seen.add(node);
         const row = node as Record<string, unknown>;
+        if (row.children !== undefined && !Array.isArray(row.children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Camera hierarchy children must be an array when present.' });
         componentCount += cameraComponentsFromNode(row).length;
         if (componentCount > VERBOSE_TREE_NODES) throw new ToolError({ code: 'LIMIT_EXCEEDED', status: 413, message: 'Camera hierarchy exceeds the component traversal budget.' });
         if (Array.isArray(row.children)) {
