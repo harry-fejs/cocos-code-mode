@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Attribute constructor parameter properties to their enclosing class for declaredClassName, owner tags and heritage while retaining property kind, readonly/source declaration and excluding ordinary parameters.
+- Add minEventCount to scenario animationEvents expected-event checkpoints, bounded by the selected maxEvents capture cap. Report matchedEventCount and preserve default-one semantics; counts refer only to captured selected lifecycle events, not loop totals or event history.
 - Add expectedEvent to scenario animationEvents checkpoints. Require a selected play/pause/resume/stop/lastframe/finished event within the bounded capture; missing events retain capture and stop later steps as mismatch. Observe-only behavior remains; no playback replay or stop-as-finished inference.
 - Recognize parenthesized/literal element-access edit-mode decorator syntax while leaving dynamic keys unrecognized; exact syntax provenance still does not prove native decorator identity.
 - Compose animationEvents in runtimeScenarioRun through the exact-clip read-only event observer, with maxEvents1..100, whole-input preflight and existing scenario deadline/ownership. Capture starts at listener registration; no playback dispatch, prior history or guaranteed completion inferred.
