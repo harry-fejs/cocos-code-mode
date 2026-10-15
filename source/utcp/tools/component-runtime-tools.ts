@@ -60,14 +60,26 @@ export class ComponentRuntimeTools {
         if (args.expectedRevision !== undefined && (typeof args.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedRevision))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedRevision must be a lowercase SHA-256 revision.' });
         args = { ...args, nodeReference: { id: args.nodeReference!.id } };
         const result = await executeComponentOperation({ kind: 'animation', operation: 'inspect', sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, maxClips, clipOffset, timeoutMs: validateTimeout(args.timeoutMs) });
-        if (typeof result.inventorySnapshot !== 'string') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Clip identity snapshot unavailable.' });
+        if (typeof result.inventorySnapshot !== 'string' || result.inventorySnapshot.length > 800000) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Bounded clip identity snapshot unavailable.' });
         if (typeof result.totalClips !== 'number' || !Number.isSafeInteger(result.totalClips) || result.totalClips < 0 || result.totalClips > 256 || clipOffset > result.totalClips || result.clipOffset !== clipOffset || !Array.isArray(result.clips) || result.clips.length !== Math.min(maxClips, result.totalClips - clipOffset)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Clip inventory page count/offset is inconsistent.' });
         const end = clipOffset + result.clips.length;
         if (result.nextOffset !== (end < result.totalClips ? end : null) || result.truncated !== (end < result.totalClips)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Clip inventory continuation is inconsistent.' });
+        let snapshot: unknown;
+        try { snapshot = JSON.parse(result.inventorySnapshot); }
+        catch { throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Clip identity snapshot is not valid JSON.' }); }
+        if (!Array.isArray(snapshot) || snapshot.length !== result.totalClips) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Clip identity snapshot count is inconsistent.' });
+        const names = new Map<string, number>();
+        for (const identity of snapshot) {
+            if (identity === null) continue;
+            if (!Array.isArray(identity) || identity.length !== 2 || identity.some(value => typeof value !== 'string' || !value || value.length > 256)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Clip identity snapshot contains invalid slots.' });
+            names.set(identity[0], (names.get(identity[0]) ?? 0) + 1);
+        }
         for (let index = 0; index < result.clips.length; index++) {
             const slot = result.clips[index];
             if (!Object.prototype.hasOwnProperty.call(result.clips, index) || !slot || typeof slot !== 'object' || Array.isArray(slot) || typeof slot.uniqueName !== 'boolean' || typeof slot.empty !== 'boolean'
                 || (slot.empty ? slot.clipName !== null || slot.clipUuid !== null || slot.uniqueName !== false : typeof slot.clipName !== 'string' || !slot.clipName || slot.clipName.length > 256 || typeof slot.clipUuid !== 'string' || !slot.clipUuid || slot.clipUuid.length > 256)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Clip inventory slot metadata is invalid.' });
+            const identity = snapshot[clipOffset + index];
+            if (identity === null ? !slot.empty : slot.empty || slot.clipName !== identity[0] || slot.clipUuid !== identity[1] || slot.uniqueName !== (names.get(identity[0]) === 1)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Clip inventory page differs from its identity snapshot.' });
         }
         const revision = createHash('sha256').update(JSON.stringify([args.sessionId, result.targetId, result.nodeUuid, result.componentId, result.inventorySnapshot])).digest('hex');
         if (args.expectedRevision !== undefined && args.expectedRevision !== revision) throw new ToolError({ code: 'RUNTIME_INVENTORY_CHANGED', status: 409, message: 'Clip slot identity/order changed since the requested revision; restart paging.' });
