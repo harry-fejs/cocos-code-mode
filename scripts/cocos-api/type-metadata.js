@@ -343,9 +343,11 @@ function constraints(node, context, checker) {
         if (ts.isPropertyAccessExpression(part) || ts.isElementAccessExpression(part)) {
           let target = part.expression;
           while (ts.isParenthesizedExpression(target) || ts.isAsExpression(target) || ts.isTypeAssertionExpression(target) || ts.isNonNullExpression(target) || ts.isSatisfiesExpression(target)) target = target.expression;
-          const explicitMember = ts.isPropertyAccessExpression(part) || part.argumentExpression && (ts.isStringLiteral(part.argumentExpression) || ts.isNoSubstitutionTemplateLiteral(part.argumentExpression));
+          let key = ts.isElementAccessExpression(part) ? part.argumentExpression : undefined;
+          while (key && ts.isParenthesizedExpression(key)) key = key.expression;
+          const explicitMember = ts.isPropertyAccessExpression(part) || key && (ts.isStringLiteral(key) || ts.isNoSubstitutionTemplateLiteral(key));
           if (explicitMember && ts.isIdentifier(target) && (checker ? namespaceSymbols.has(checker.getSymbolAtLocation(target)) : namespaceNames.has(target.text))) {
-            const name = ts.isPropertyAccessExpression(part) ? part.name.text : part.argumentExpression.text;
+            const name = ts.isPropertyAccessExpression(part) ? part.name.text : key.text;
             const member = checker?.getPropertyOfType(checker.getTypeAtLocation(target), name);
             const value = member && member.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(member) : member;
             if (!checker || value?.declarations?.length && value.flags & ts.SymbolFlags.Value) return true;
