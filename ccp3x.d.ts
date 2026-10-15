@@ -1070,7 +1070,8 @@ declare namespace ccp3x {
     | { name: string; type: 'Quat'; array: true; default?: { x: number; y: number; z: number; w: number }[] }
     | { name: string; type: 'Color'; array: true; default?: { r: number; g: number; b: number; a: number }[] }
     | { name: string; type: 'Node' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] });
-    function scriptComponentCreate(args: { assetUrl: string; className: string; properties?: ComponentPropertyDescriptor[]; write: boolean }): { assetUrl: string; className: string; source: string; sha256: string; bytes: number; sourceCreated: boolean; uuid: string | null; classRegistration: 'unknown' | 'pending'; attached: false; runtimeVerified: false; sceneSaved: false };
+    type RequiredComponentType = 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'SkeletalAnimation';
+    function scriptComponentCreate(args: { assetUrl: string; className: string; requiredComponents?: RequiredComponentType[]; properties?: ComponentPropertyDescriptor[]; write: boolean }): { assetUrl: string; className: string; source: string; sha256: string; bytes: number; sourceCreated: boolean; uuid: string | null; classRegistration: 'unknown' | 'pending'; attached: false; runtimeVerified: false; sceneSaved: false };
 
     /** Manage auxiliary animation curves and keys. */
     function animationAuxCurveEdit(args: {

@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add requiredComponents to scriptComponentCreate: up to8 unique allowlisted native UI/audio/animation dependencies emitted through @requireComponent. Source declaration only; no construction/attachment by this tool, dependency behavior applies when Creator later attaches the script.
+- Preserve simple assignment target read/write distinctions through transparent parentheses and erased TypeScript wrappers; retain computed-key/RHS reads and compound assignments without executing writes.
 - Add inclusive minDuration/maxDuration0..86400 seconds to regular/skeletal animation waits and scenario animationAssert/animationWait. Compose with time/speed/playing/paused, reject invalid ranges before reads and refuse unavailable selected metrics; no clip/playback writes or completion inference.
 - Preserve delete reference-read semantics through transparent parentheses/erased TypeScript wrappers, excluding target values while retaining evaluated bases/computed keys.
 - Add inclusive minDuration/maxDuration0..86400 seconds to audioPlaybackWaitForState and scenario audioAssert/audioWait. Whole-input finite/range preflight and unavailable metric refusal; compose with existing state conditions, no playback or completion inference.

@@ -5,6 +5,8 @@ import { ToolError } from './utcp/tool-error';
 
 export const COMPONENT_PROPERTY_TYPES = ['enum', 'integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Vec4', 'Size', 'Rect', 'Quat', 'Color', 'Node', 'Label', 'Sprite', 'Button', 'EditBox', 'ScrollView', 'Slider', 'Toggle', 'ProgressBar', 'AudioSource', 'Animation', 'SkeletalAnimation', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
+export const REQUIRED_COMPONENT_TYPES = ['Label', 'Sprite', 'Button', 'EditBox', 'ScrollView', 'Slider', 'Toggle', 'ProgressBar', 'AudioSource', 'Animation', 'SkeletalAnimation'] as const;
+export type RequiredComponentType = typeof REQUIRED_COMPONENT_TYPES[number];
 export type ComponentPropertyDescriptor = { tooltip?: string; displayName?: string; group?: string; visible?: boolean; readOnly?: boolean; displayOrder?: number } & (
     | { name: string; type: 'number'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
     | { name: string; type: 'integer'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
@@ -31,7 +33,7 @@ export type ComponentPropertyDescriptor = { tooltip?: string; displayName?: stri
     | { name: string; type: 'Quat'; array: true; default?: { x: number; y: number; z: number; w: number }[] }
     | { name: string; type: 'Color'; array: true; default?: { r: number; g: number; b: number; a: number }[] }
     | { name: string; type: 'Node' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] });
-export interface ComponentScriptDescriptor { className: string; properties?: ComponentPropertyDescriptor[] }
+export interface ComponentScriptDescriptor { className: string; properties?: ComponentPropertyDescriptor[]; requiredComponents?: RequiredComponentType[] }
 export interface ComponentScriptSource { source: string; sha256: string; bytes: number; className: string }
 export interface ComponentScriptPath { assetUrl: string; file: string; parentUrl: string; parent: string }
 export interface ComponentScriptAsset { uuid: string; url: string; file: string; isDirectory?: boolean }
@@ -49,11 +51,18 @@ export function componentScriptHash(value: string | Buffer): string { return cre
 
 /** Deterministic data-component authoring only; never evaluates source or invokes lifecycle methods. */
 export function generateComponentScriptSource(input: unknown): ComponentScriptSource {
-    assertComponentScriptInput(input, ['className', 'properties']);
+    assertComponentScriptInput(input, ['className', 'properties', 'requiredComponents']);
     if (!identifier(input.className)) invalid('className must be a non-reserved ASCII identifier of 1 to 64 characters beginning with a letter.');
     const rows = input.properties === undefined ? [] : input.properties;
     if (!Array.isArray(rows) || rows.length > 64) invalid('properties must contain at most 64 typed field descriptors.');
     const imports = new Set<string>(['_decorator', 'Component']);
+    const required = input.requiredComponents === undefined ? [] : input.requiredComponents;
+    if (!Array.isArray(required) || required.length > 8) invalid('requiredComponents must contain at most 8 unique supported native component types.');
+    const dependencies = new Set<string>();
+    for (const name of required) {
+        if (typeof name !== 'string' || !REQUIRED_COMPONENT_TYPES.includes(name as RequiredComponentType) || dependencies.has(name)) invalid('requiredComponents must be dense, unique supported native component types.');
+        dependencies.add(name); imports.add(name);
+    }
     const names = new Set<string>();
     const fields: string[] = [];
     for (const row of rows) {
@@ -161,12 +170,13 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         imports.add(PROPERTY_IMPORTS[type]);
         fields.push(tooltip || numericOptions ? `    @property({ type: ${PROPERTY_IMPORTS[type]}${tooltip}${numericOptions} })` : `    @property(${PROPERTY_IMPORTS[type]})`, `    ${row.name}: ${initial === null ? `${type} | null` : type === 'integer' ? 'number' : type} = ${literal(initial)};`, '');
     }
-    if (imports.has(input.className)) invalid('className must not shadow a generated cc import.');
+    if (imports.has(input.className) || dependencies.size > 0 && input.className === 'requireComponent') invalid('className must not shadow a generated cc import or decorator.');
     const source = [
         '// Project-owned Creator 3.7 data component; serialized fields only, no gameplay or lifecycle behavior.',
         `import { ${[...imports].join(', ')} } from 'cc';`,
-        `const { ccclass${fields.length ? ', property' : ''} } = _decorator;`,
+        `const { ccclass${fields.length ? ', property' : ''}${dependencies.size ? ', requireComponent' : ''} } = _decorator;`,
         `@ccclass(${literal(input.className)})`,
+        ...(dependencies.size ? [`@requireComponent([${[...dependencies].join(', ')}])`] : []),
         `export class ${input.className} extends Component {`,
         ...fields,
         '}', '',

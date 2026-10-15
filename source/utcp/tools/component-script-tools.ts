@@ -1,13 +1,14 @@
 import { utcpTool } from '../decorators';
 import { ToolError } from '../tool-error';
 import { invalidateAfterWrite } from '../utils/memo-cache';
-import { assertComponentScriptInput, COMPONENT_PROPERTY_TYPES, generateComponentScriptSource, preflightComponentScriptPath, readComponentScriptSource } from '../../component-script-source';
-import type { ComponentPropertyDescriptor } from '../../component-script-source';
+import { assertComponentScriptInput, COMPONENT_PROPERTY_TYPES, REQUIRED_COMPONENT_TYPES, generateComponentScriptSource, preflightComponentScriptPath, readComponentScriptSource } from '../../component-script-source';
+import type { ComponentPropertyDescriptor, RequiredComponentType } from '../../component-script-source';
 
 export interface ScriptComponentCreateInput {
     assetUrl: string;
     className: string;
     properties?: ComponentPropertyDescriptor[];
+    requiredComponents?: RequiredComponentType[];
     write: boolean;
 }
 export interface ScriptComponentCreateResult {
@@ -30,6 +31,7 @@ export class ComponentScriptTools {
         properties: {
             assetUrl: { type: 'string', maxLength: 512, pattern: '^db://assets/(?:[A-Za-z0-9_-]+/)*[A-Za-z][A-Za-z0-9_-]*\\.ts$' },
             className: { type: 'string', minLength: 1, maxLength: 64, pattern: '^[A-Za-z][A-Za-z0-9_]*$' },
+            requiredComponents: { type: 'array', maxItems: 8, uniqueItems: true, items: { type: 'string', enum: [...REQUIRED_COMPONENT_TYPES] }, description: 'Native @requireComponent dependencies only. Creator applies them when the script is later attached; this tool never attaches components.' },
             properties: {
                 type: 'array', maxItems: 64,
                 items: {
@@ -62,9 +64,9 @@ export class ComponentScriptTools {
         }, required: ['assetUrl', 'className', 'source', 'sha256', 'bytes', 'sourceCreated', 'uuid', 'classRegistration', 'attached', 'runtimeVerified', 'sceneSaved'],
     }, 'POST', ['script', 'component', 'project-code', 'create', 'static'])
     async scriptComponentCreate(args: ScriptComponentCreateInput): Promise<ScriptComponentCreateResult> {
-        assertComponentScriptInput(args, ['assetUrl', 'className', 'properties', 'write']);
+        assertComponentScriptInput(args, ['assetUrl', 'className', 'requiredComponents', 'properties', 'write']);
         if (typeof args.write !== 'boolean') throw new ToolError({ code: 'WRITE_CONTRACT_REQUIRED', status: 400, message: 'write must be an explicit boolean; only write=true permits creating a new source.' });
-        const generated = generateComponentScriptSource({ className: args.className, ...(args.properties === undefined ? {} : { properties: args.properties }) });
+        const generated = generateComponentScriptSource({ className: args.className, ...(args.requiredComponents === undefined ? {} : { requiredComponents: args.requiredComponents }), ...(args.properties === undefined ? {} : { properties: args.properties }) });
         const source = await preflightComponentScriptPath(args.assetUrl);
         const result: ScriptComponentCreateResult = { assetUrl: source.assetUrl, ...generated, sourceCreated: false, uuid: null, classRegistration: 'unknown', attached: false, runtimeVerified: false, sceneSaved: false };
         if (!args.write) return result;
