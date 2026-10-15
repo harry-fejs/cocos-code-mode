@@ -1047,6 +1047,7 @@ declare namespace ccp3x {
     | { name: string; type: 'boolean'; array?: false; default?: boolean }
     | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }
     | { name: string; type: 'Vec3'; array?: false; default?: { x: number; y: number; z: number } }
+    | { name: string; type: 'Color'; array?: false; default?: { r: number; g: number; b: number; a: number } }
     | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame'; array?: false; default?: null }
     | { name: string; type: 'number'; array: true; default?: number[] }
     | { name: string; type: 'string'; array: true; default?: string[] }

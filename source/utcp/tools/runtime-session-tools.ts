@@ -538,6 +538,7 @@ export class RuntimeSessionTools {
                             clipUuid: { type: 'string', minLength: 1, maxLength: 256 },
                             animationOperation: { type: 'string', enum: ['play', 'pause', 'resume', 'stop'] },
                             particleOperation: { type: 'string', enum: ['play', 'stop', 'clear'] },
+                            minParticleCount: { type: 'integer', minimum: 0, maximum: 1000000 },
                             maxParticleCount: { type: 'integer', minimum: 0, maximum: 1000000 },
                             playing: { type: 'boolean' },
                             loaded: { type: 'boolean' },
@@ -560,7 +561,7 @@ export class RuntimeSessionTools {
         'POST',
         ['runtime', 'scenario', 'run', 'steps'],
     )
-    async runtimeScenarioRun(args: { sessionId: string, runId?: string, steps: Array<{ operation: 'wait' | 'assert' | 'observe' | 'particleControl' | 'particleObserve' | 'particleAssert' | 'particleWait' | 'animationControl' | 'animationObserve' | 'animationAssert' | 'animationWait' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', nodeReference?: { id: string }, animationOperation?: 'play' | 'pause' | 'resume' | 'stop', particleOperation?: 'play' | 'stop' | 'clear', maxParticleCount?: number, componentId?: string, clipName?: string, clipUuid?: string, playbackState?: 'init' | 'playing' | 'paused' | 'stopped' | 'interrupted', minTime?: number, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, runId: string, outcomes: Array<Record<string, unknown>> }> {
+    async runtimeScenarioRun(args: { sessionId: string, runId?: string, steps: Array<{ operation: 'wait' | 'assert' | 'observe' | 'particleControl' | 'particleObserve' | 'particleAssert' | 'particleWait' | 'animationControl' | 'animationObserve' | 'animationAssert' | 'animationWait' | 'audioObserve' | 'audioAssert' | 'audioControl' | 'audioWait' | 'pause' | 'resume' | 'step', nodeReference?: { id: string }, animationOperation?: 'play' | 'pause' | 'resume' | 'stop', particleOperation?: 'play' | 'stop' | 'clear', minParticleCount?: number, maxParticleCount?: number, componentId?: string, clipName?: string, clipUuid?: string, playbackState?: 'init' | 'playing' | 'paused' | 'stopped' | 'interrupted', minTime?: number, audioOperation?: 'play' | 'pause' | 'stop' | 'seek', time?: number, playing?: boolean, loaded?: boolean, paused?: boolean, minFrameCount?: number, timeoutMs?: number }>, totalTimeoutMs?: number }): Promise<{ success: true, sessionId: string, runId: string, outcomes: Array<Record<string, unknown>> }> {
         if (!Array.isArray(args.steps) || args.steps.length === 0 || args.steps.length > 16) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runtimeScenarioRun requires 1-16 typed steps.' });
         if (typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded runtime sessionId is required.' });
         if (args.runId !== undefined && (typeof args.runId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(args.runId))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runId must be a fresh bounded alphanumeric/hyphen/underscore identity.' });
@@ -570,12 +571,14 @@ export class RuntimeSessionTools {
         const steps = Array.from(args.steps, (step, index) => {
             if (step && ['particleControl', 'particleObserve', 'particleAssert', 'particleWait'].includes(step.operation)) {
                 const predicates = step.operation === 'particleAssert' || step.operation === 'particleWait';
-                if (Object.keys(step).some(key => !['operation', 'nodeReference', 'componentId', 'particleOperation', 'playing', 'maxParticleCount', 'timeoutMs'].includes(key))
+                if (Object.keys(step).some(key => !['operation', 'nodeReference', 'componentId', 'particleOperation', 'playing', 'minParticleCount', 'maxParticleCount', 'timeoutMs'].includes(key))
                     || !step.nodeReference || typeof step.nodeReference !== 'object' || Array.isArray(step.nodeReference) || Object.keys(step.nodeReference).some(key => key !== 'id')
                     || [step.nodeReference?.id, step.componentId].some(value => typeof value !== 'string' || !value.trim() || value.length > 256)
                     || (step.operation === 'particleControl' ? !['play', 'stop', 'clear'].includes(step.particleOperation ?? '') : step.particleOperation !== undefined)
-                    || (predicates ? step.playing === undefined && step.maxParticleCount === undefined : step.playing !== undefined || step.maxParticleCount !== undefined)
+                    || (predicates ? step.playing === undefined && step.minParticleCount === undefined && step.maxParticleCount === undefined : step.playing !== undefined || step.minParticleCount !== undefined || step.maxParticleCount !== undefined)
                     || step.playing !== undefined && typeof step.playing !== 'boolean'
+                    || step.minParticleCount !== undefined && (!Number.isInteger(step.minParticleCount) || step.minParticleCount < 0 || step.minParticleCount > 1000000)
+                    || step.minParticleCount !== undefined && step.maxParticleCount !== undefined && step.minParticleCount > step.maxParticleCount
                     || step.maxParticleCount !== undefined && (!Number.isInteger(step.maxParticleCount) || step.maxParticleCount < 0 || step.maxParticleCount > 1000000)
                     || step.timeoutMs !== undefined && (!Number.isInteger(step.timeoutMs) || step.timeoutMs < 100 || step.timeoutMs > (step.operation === 'particleWait' ? 10000 : 3000))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Invalid particle scenario step ${index}.` });
                 return { ...step, nodeReference: { id: step.nodeReference!.id } };
@@ -641,14 +644,14 @@ export class RuntimeSessionTools {
                                     const particles = new P4ContractTools();
                                     const target = { sessionId: args.sessionId, nodeReference: step.nodeReference!, componentId: step.componentId!, timeoutMs };
                                     if (step.operation === 'particleWait') {
-                                        const result = await particles.particleWaitForState({ ...target, playing: step.playing, maxParticleCount: step.maxParticleCount });
+                                        const result = await particles.particleWaitForState({ ...target, playing: step.playing, minParticleCount: step.minParticleCount, maxParticleCount: step.maxParticleCount });
                                         return { ...result, passed: result.matched === true };
                                     }
                                     const result = await particles.particlePlayback({ ...target, operation: step.operation === 'particleControl' ? step.particleOperation! : 'inspect' });
                                     if (step.operation !== 'particleAssert') return result;
                                     const state = result.state as { playing?: unknown; particleCount?: unknown } | undefined;
                                     if (!state || typeof state.playing !== 'boolean' || typeof state.particleCount !== 'number' || !Number.isSafeInteger(state.particleCount) || state.particleCount < 0) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Particle assertion requires typed state/count metrics.' });
-                                    return { ...result, passed: (step.playing === undefined || state.playing === step.playing) && (step.maxParticleCount === undefined || state.particleCount <= step.maxParticleCount) };
+                                    return { ...result, passed: (step.playing === undefined || state.playing === step.playing) && (step.minParticleCount === undefined || state.particleCount >= step.minParticleCount) && (step.maxParticleCount === undefined || state.particleCount <= step.maxParticleCount) };
                                 })
                             : step.operation === 'animationControl' || step.operation === 'animationObserve' || step.operation === 'animationAssert' || step.operation === 'animationWait'
                                 ? import('./component-runtime-tools').then(async ({ ComponentRuntimeTools }) => {

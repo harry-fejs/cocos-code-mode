@@ -71,12 +71,14 @@ export class P4ContractTools {
 
     @utcpTool('particleWaitForState', 'Observe one exact Game View ParticleSystem until playing/count conditions match or the deadline expires. Read-only: never calls play/stop/clear. Exact componentId required; invalidated sessions fail closed.', {
         type: 'object', additionalProperties: false,
-        properties: { sessionId: { type: 'string', minLength: 1, maxLength: 64 }, nodeReference: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['id'] }, componentId: { type: 'string', minLength: 1, maxLength: 256 }, playing: { type: 'boolean' }, maxParticleCount: { type: 'integer', minimum: 0, maximum: 1000000 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000, default: 3000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000, default: 100 } }, required: ['sessionId', 'nodeReference', 'componentId'],
+        properties: { sessionId: { type: 'string', minLength: 1, maxLength: 64 }, nodeReference: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['id'] }, componentId: { type: 'string', minLength: 1, maxLength: 256 }, playing: { type: 'boolean' }, minParticleCount: { type: 'integer', minimum: 0, maximum: 1000000 }, maxParticleCount: { type: 'integer', minimum: 0, maximum: 1000000 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000, default: 3000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000, default: 100 } }, required: ['sessionId', 'nodeReference', 'componentId'],
     }, { type: 'object', properties: { matched: { type: 'boolean' }, timedOut: { type: 'boolean' }, observations: { type: 'integer' }, state: { type: 'object' } }, required: ['matched', 'timedOut', 'observations', 'state'] }, 'POST', ['particle', 'runtime', 'wait', 'read-only'])
-    async particleWaitForState(args: { sessionId: string; nodeReference: { id: string }; componentId: string; playing?: boolean; maxParticleCount?: number; timeoutMs?: number; pollMs?: number }) {
+    async particleWaitForState(args: { sessionId: string; nodeReference: { id: string }; componentId: string; playing?: boolean; minParticleCount?: number; maxParticleCount?: number; timeoutMs?: number; pollMs?: number }) {
         requireText(args?.sessionId, 'sessionId', 64); requireText(args?.nodeReference?.id, 'nodeReference.id'); requireText(args?.componentId, 'componentId');
         const timeoutMs = args.timeoutMs ?? 3000; const pollMs = args.pollMs ?? 100;
-        if (args.playing === undefined && args.maxParticleCount === undefined || args.playing !== undefined && typeof args.playing !== 'boolean'
+        if (args.playing === undefined && args.minParticleCount === undefined && args.maxParticleCount === undefined || args.playing !== undefined && typeof args.playing !== 'boolean'
+            || args.minParticleCount !== undefined && (!Number.isInteger(args.minParticleCount) || args.minParticleCount < 0 || args.minParticleCount > 1000000)
+            || args.minParticleCount !== undefined && args.maxParticleCount !== undefined && args.minParticleCount > args.maxParticleCount
             || args.maxParticleCount !== undefined && (!Number.isInteger(args.maxParticleCount) || args.maxParticleCount < 0 || args.maxParticleCount > 1000000)
             || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000 || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) {
             throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide playing/count condition and bounded timeout/poll interval.' });
@@ -95,7 +97,7 @@ export class P4ContractTools {
             const state = result.state as { playing?: unknown; particleCount?: unknown } | undefined;
             if (!state || typeof state.playing !== 'boolean') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Particle inspect returned no valid state.' });
             if (typeof state.particleCount !== 'number' || !Number.isSafeInteger(state.particleCount) || state.particleCount < 0) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Particle count must be a non-negative safe integer.' });
-            const matched = (args.playing === undefined || state.playing === args.playing) && (args.maxParticleCount === undefined || (state.particleCount as number) <= args.maxParticleCount);
+            const matched = (args.playing === undefined || state.playing === args.playing) && (args.minParticleCount === undefined || state.particleCount >= args.minParticleCount) && (args.maxParticleCount === undefined || (state.particleCount as number) <= args.maxParticleCount);
             if (matched || Date.now() >= deadline) return { matched, timedOut: !matched, observations, state };
             await new Promise(resolve => setTimeout(resolve, Math.min(pollMs, Math.max(0, deadline - Date.now()))));
         }

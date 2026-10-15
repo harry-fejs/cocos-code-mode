@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add minParticleCount to read-only particle waits and scenario assert/wait checkpoints; compose inclusive min/max intervals and reject invalid ranges before dispatch. No new playback mutation or native qualification.
 - Add timeline revision/expectedRevision guarding retrieved metadata, all keyframe indices/times, track binding/count/range and event projection. Per-track keyframeOffset/keyframeLimit exposes bounded timing pages; opaque values, unretrieved tracks and runtime binding remain outside revision scope.
 - Publish named timeline track/keyframe/event result contracts with nullable timing and per-track continuation offsets; opaque keyframe payloads remain unavailable rather than exposed as unchecked records.
 - Compose exact node/component/clip animation observe/assert/wait checkpoints in runtime scenarios with whole-input preflight, finite deadlines, cancellation and retained pending ownership. Reuses existing runtime adapters; no playback replay or new live qualification.
