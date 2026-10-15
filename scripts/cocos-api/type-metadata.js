@@ -318,7 +318,8 @@ function constraints(node, context, checker) {
       constants.push(...bindings.map(item => item.name.text));
       if (checker) for (const item of bindings) {
         const symbol = checker.getSymbolAtLocation(item.name);
-        if (symbol) constantSymbols.add(symbol);
+        const target = symbol && symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+        if (symbol && target?.declarations?.length && target.flags & ts.SymbolFlags.Value) constantSymbols.add(symbol);
       }
     } else if (ts.isImportDeclaration(statement) && statement.moduleSpecifier.text === 'internal:constants' && statement.importClause?.namedBindings && ts.isNamespaceImport(statement.importClause.namedBindings)) {
       const name = statement.importClause.namedBindings.name;

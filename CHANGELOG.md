@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Require resolved declared value targets for named constant guard aliases when compiler symbols are available; unresolved imports remain listed as import provenance but do not earn guard-read credit.
 - Add range.slider to generated scalar numeric fields, emitting native Inspector slide metadata with true/false/omitted preserved. Enabled sliders require a nondegenerate range; defaults/range validation remain, with no runtime clamp.
 - Require a compiler-resolved value export for namespace constant guard members when a checker is available; absent/type-only members no longer claim resolved guard reads, AST-only provenance remains syntax-based.
 - Add bounded nonblank group labels to scriptComponentCreate fields, composing native Inspector grouping with tooltip/displayName across existing field kinds. Escaped metadata leaves serialized keys/defaults and runtime behavior unchanged.
