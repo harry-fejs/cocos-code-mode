@@ -1,6 +1,7 @@
 import packageJSON from '../../../package.json';
 import { utcpTool } from '../decorators';
 import { SuccessIndicatorSchema, ISuccessIndicator, InstanceReferenceSchema, IInstanceReference } from '../schemas';
+import { ToolError } from '../tool-error';
 import { VERBOSE_TREE_NODES } from '../utils/verbose';
 
 function field(value: unknown, key: string): unknown {
@@ -168,11 +169,20 @@ export class ComponentTools {
         await Editor.Message.request('scene', 'execute-scene-script', { name: packageJSON.name, method: 'startCatchLogging', args: [] });
         let caughtLogs: string[] = [];
         try {
-            await Editor.Message.request('scene', 'create-component', { uuid: args.reference.id, component: args.componentType });
+            try {
+                await Editor.Message.request('scene', 'create-component', { uuid: args.reference.id, component: args.componentType });
+            } catch (error) {
+                throw new ToolError({ code: 'COMPONENT_CREATE_OUTCOME_UNKNOWN', status: 502, message: 'Component creation dispatch failed; the mutation outcome must be reconciled.', details: { nodeId: args.reference.id, componentType: args.componentType, retrySafe: false, cause: error instanceof Error ? error.message : String(error) }, recovery: 'Inspect the exact node component inventory before another creation attempt; do not replay this mutation automatically.' });
+            }
             caughtLogs = await Editor.Message.request('scene', 'execute-scene-script', { name: packageJSON.name, method: 'stopCatchLogging', args: [] }) ?? [];
         } catch (error) {
-            await Editor.Message.request('scene', 'execute-scene-script', { name: packageJSON.name, method: 'stopCatchLogging', args: [] }).catch(() => undefined);
-            throw error;
+            let cleanupFailed = false;
+            try { await Editor.Message.request('scene', 'execute-scene-script', { name: packageJSON.name, method: 'stopCatchLogging', args: [] }); }
+            catch { cleanupFailed = true; }
+            if (error instanceof ToolError && error.code === 'COMPONENT_CREATE_OUTCOME_UNKNOWN') {
+                throw new ToolError({ code: error.code, status: error.status, message: error.message, details: { ...error.details, loggingCleanupFailed: cleanupFailed }, recovery: error.recovery });
+            }
+            throw new ToolError({ code: 'COMPONENT_CREATE_POSTCONDITION_UNKNOWN', status: 502, message: 'Component creation returned but logging completion failed; component state is unverified.', details: { nodeId: args.reference.id, componentType: args.componentType, retrySafe: false, loggingCleanupFailed: cleanupFailed }, recovery: 'Inspect the node component inventory before retrying; the component may already exist.' });
         }
 
         const nodeAfter = await Editor.Message.request('scene', 'query-node', args.reference.id);
