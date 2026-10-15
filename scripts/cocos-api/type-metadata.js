@@ -18,12 +18,18 @@ function typeInfo(checker, type, node) {
   const seenSymbols = new Set();
   const references = new Map();
   let count = 0;
+  let budgetExceeded = false;
   const visit = current => {
     if (!current) return;
     if (active.has(current)) { unresolved.push({ kind: 'cycle', reference: current.aliasSymbol?.name || current.symbol?.name || 'recursive-type' }); return; }
     if (seen.has(current)) return;
+    if (count >= 256) {
+      if (!budgetExceeded) unresolved.push({ kind: 'type-budget', reference: 'Type expansion exceeds 256 nodes' });
+      budgetExceeded = true;
+      return;
+    }
+    count++;
     seen.add(current);
-    if (++count > 256) { unresolved.push({ kind: 'type-budget', reference: 'Type expansion exceeds 256 nodes' }); return; }
     active.add(current);
     try {
     if (current.flags & ts.TypeFlags.Any) unresolved.push({ kind: 'any', reference: current.aliasSymbol?.name || current.intrinsicName || 'any' });
