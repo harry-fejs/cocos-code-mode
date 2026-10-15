@@ -267,7 +267,8 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
       unresolved.push(...value.unresolved);
       for (const reference of value.references) genericReferences.set(json(reference), reference);
     }
-    return { name: parameter.symbol?.name || checker.typeToString(parameter), constraint: info?.type || null, default: compact(declared?.default) };
+    const modifiers = declared?.modifiers || [];
+    return { name: parameter.symbol?.name || checker.typeToString(parameter), const: modifiers.some(modifier => modifier.kind === ts.SyntaxKind.ConstKeyword), constraint: info?.type || null, default: compact(declared?.default) };
   });
   return { overload: index, visibility, kind: ts.isSetAccessorDeclaration(declaration) ? 'set' : ts.isGetAccessorDeclaration(declaration) ? 'get' : 'call',
     text: returnType && ts.isGetAccessorDeclaration(declaration) ? `(): ${result.type}` : checker.signatureToString(signature, declaration, ts.TypeFormatFlags.NoTruncation), typeParameters, parameters, receiver, predicate,
