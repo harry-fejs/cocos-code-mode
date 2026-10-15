@@ -342,6 +342,10 @@ function constraints(node, context, checker) {
           if (ts.isPropertyAccessExpression(part.left)) return usesConstant(part.left.expression) || usesConstant(part.right);
           if (ts.isElementAccessExpression(part.left)) return usesConstant(part.left.expression) || usesConstant(part.left.argumentExpression) || usesConstant(part.right);
         }
+        if (ts.isDeleteExpression(part)) {
+          if (ts.isPropertyAccessExpression(part.expression)) return usesConstant(part.expression.expression);
+          if (ts.isElementAccessExpression(part.expression)) return usesConstant(part.expression.expression) || usesConstant(part.expression.argumentExpression);
+        }
         if (ts.isPropertyAssignment(part)) return (ts.isComputedPropertyName(part.name) && usesConstant(part.name.expression)) || usesConstant(part.initializer);
         if (checker && ts.isShorthandPropertyAssignment(part) && constantSymbols.has(checker.getShorthandAssignmentValueSymbol(part))) return true;
         if (ts.isIdentifier(part) && (checker ? constantSymbols.has(checker.getSymbolAtLocation(part)) : constants.includes(part.text))) return true;

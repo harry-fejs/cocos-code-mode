@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Exclude deleted property values from direct constant-read guard provenance while retaining evaluated base/computed-key reads; no deletion is executed or authorized by metadata extraction.
 - Add expectedEventSequence ordered-subsequence checkpoints to scenario animationEvents, preserving exact clip/sequence evidence and allowing unrelated events between matches. Dense sequence must fit capture cap and is exclusive with expectedEvent/minEventCount; no playback/history replay.
 - Exclude simple property/element assignment target values from guard reads while retaining evaluated base/computed-key/RHS expressions and compound assignments; no mutation authorization or execution added.
 - Add native Size/Rect scalar and array component fields with exact finite width/height or x/y/width/height, zero scalar defaults and independent native instances. Preserve signed values; no automatic layout/UITransform/collider writes or dimension normalization.
