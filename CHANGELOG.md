@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Require finite nonnegative nondecreasing elapsedMs in scenario animation event checkpoints before sequence/count matching. Equal timestamps remain valid; malformed capture timing cannot grant checkpoint success.
 - Add optional animatable property metadata to scriptComponentCreate descriptors/schema/public types. Preserves defaults and initialization; metadata alone does not create timeline tracks or prove binding/interpolation/runtime support.
 - Add optional editorOnly property metadata to scriptComponentCreate descriptors/schema/public types. Does not enable edit-mode execution or imply runtime field absence/build stripping; defaults and per-instance initialization remain unchanged.
 - Require resolved declared value exports for compiler-backed namespace decorator metadata instead of same-name syntax fallback; missing/type-only members do not earn edit-mode declaration credit.

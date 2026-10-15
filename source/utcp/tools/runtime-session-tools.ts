@@ -820,6 +820,11 @@ export class RuntimeSessionTools {
                                         const capture = await animation.animationPlaybackEvents({ ...target, maxEvents: step.maxEvents });
                                         if (step.expectedEvent === undefined && step.expectedEventSequence === undefined) return capture;
                                         if (!Array.isArray(capture.events) || capture.events.length > (step.maxEvents ?? 20) || capture.events.findIndex((event, index) => !event || typeof event !== 'object' || Array.isArray(event) || !['play', 'pause', 'resume', 'stop', 'lastframe', 'finished'].includes(event.type) || event.clipUuid !== step.clipUuid || event.clipName !== step.clipName || event.sequence !== index + 1) >= 0) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Animation event checkpoint requires bounded sequential events for the exact requested clip.' });
+                                        let previousElapsedMs = 0;
+                                        for (const event of capture.events) {
+                                            if (typeof event.elapsedMs !== 'number' || !Number.isFinite(event.elapsedMs) || event.elapsedMs < previousElapsedMs) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Animation event checkpoint requires finite nonnegative nondecreasing capture times.' });
+                                            previousElapsedMs = event.elapsedMs;
+                                        }
                                         if (step.expectedEventSequence !== undefined) {
                                             let matchedSequenceLength = 0;
                                             for (const event of capture.events) if (matchedSequenceLength < step.expectedEventSequence.length && event.type === step.expectedEventSequence[matchedSequenceLength]) matchedSequenceLength++;
