@@ -207,6 +207,7 @@ function typeInfo(checker, type, node) {
       if (ts.isComputedPropertyName(current)) {
         const keyType = checker.getTypeAtLocation(current.expression);
         if (keyType.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) unresolved.push({ kind: 'value-reference', reference: compact(current.expression) });
+        else if (!(keyType.flags & (ts.TypeFlags.StringLiteral | ts.TypeFlags.NumberLiteral | ts.TypeFlags.UniqueESSymbol))) unresolved.push({ kind: 'computed-key', reference: compact(current.expression) });
       }
       if (ts.isTypeNode(current) || current === node || ts.isInterfaceDeclaration(current) || ts.isHeritageClause(current) || ts.isExpressionWithTypeArguments(current) || ts.isPropertySignature(current) || ts.isParameter(current) || ts.isMethodSignature(current) || ts.isCallSignatureDeclaration(current) || ts.isConstructSignatureDeclaration(current) || ts.isIndexSignatureDeclaration(current) || ts.isTypeParameterDeclaration(current) || ts.isGetAccessorDeclaration(current) || ts.isSetAccessorDeclaration(current)) {
         const children = [];

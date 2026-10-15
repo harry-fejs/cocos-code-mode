@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Diagnose nonliteral computed DTO key spaces as computed-key uncertainty when compiler omits invalid properties; literal string/number and unique-symbol identities keep existing handling.
 - Expose native AudioSource volume0..1 and loop as nullable sound snapshot metrics; unavailable/invalid values are null, never guessed. Cached older snapshot executors refuse without ownership reset; no volume/loop writes or audible-output inference.
 - Diagnose duplicate semantic enum member names across merged declarations as enum-member-ambiguity while retaining conflicting source values for inspection; never choose a winner silently.
 - Add inclusive maxTime0..3600 to regular/skeletal animation waits and scenario animationAssert/animationWait. Compose with minTime/state, reject reversed windows before dispatch and refuse unavailable time even for upper-bound-only checks; no playback mutation or natural completion inference.
