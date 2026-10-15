@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Require explicit property/literal element names for namespace-import guard provenance; dynamic flags[key] access no longer claims a fixed engine-constant guard, while nested real constant reads remain detectable.
 - Add exact case-sensitive eventCallback filtering to animationTimelineInspect. Matching-event pagination preserves native indices/source totals; all retrieved events still validate and affect revision. Callback existence, binding and execution remain unverified.
 - Add exact trackBinding(nodePath/property) selection to animationTimelineInspect, with root-path support, matching-track offsets/counts and original native indices. Whole retrieved dump validation/revision and source counts remain intact; selected-query completeness is not scene binding or playable validation.
 - Include switch discriminants in execution-guard provenance with existing compiler-symbol shadowing checks; no case-selection or runtime reachability inference.

@@ -335,7 +335,8 @@ function constraints(node, context, checker) {
         if (ts.isIdentifier(part) && (checker ? constantSymbols.has(checker.getSymbolAtLocation(part)) : constants.includes(part.text))) return true;
         if (ts.isPropertyAccessExpression(part) || ts.isElementAccessExpression(part)) {
           const target = part.expression;
-          if (ts.isIdentifier(target) && (checker ? namespaceSymbols.has(checker.getSymbolAtLocation(target)) : namespaceNames.has(target.text))) return true;
+          const explicitMember = ts.isPropertyAccessExpression(part) || part.argumentExpression && (ts.isStringLiteral(part.argumentExpression) || ts.isNoSubstitutionTemplateLiteral(part.argumentExpression));
+          if (explicitMember && ts.isIdentifier(target) && (checker ? namespaceSymbols.has(checker.getSymbolAtLocation(target)) : namespaceNames.has(target.text))) return true;
         }
         return ts.forEachChild(part, usesConstant);
       };
