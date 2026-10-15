@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve parent variable-statement JSDoc text for variable metadata when the declaration has no own documentation, keeping existing restrictive tag classification unchanged.
 - Expose per-track keyframeLimit/keyframesComplete/keyframesTruncated for timeline timing pages, distinguishing partial/tail/missing data from a complete empty track. Page-only metadata remains excluded from revision hashes; no keyframe-value/binding/runtime completeness inference.
 - Merge internal/publicExport flags conservatively across duplicate export-context records independent of traversal order; retain all export provenance without granting runtime permission.
 - Verify host audio success postconditions for play started/state-or-ended, pause paused, stop stopped/near-zero time and seek within existing0.05s readback tolerance. Mismatch retains state and uncertain-control/retrySafe:false metadata; no action replay.
