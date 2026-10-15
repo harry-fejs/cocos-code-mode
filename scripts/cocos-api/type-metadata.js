@@ -309,6 +309,8 @@ function constraints(node, context, checker) {
   const sf = node.getSourceFile();
   const constants = [];
   const constantSymbols = new Set();
+  const namespaceNames = new Set();
+  const namespaceSymbols = new Set();
   for (const statement of sf.statements) {
     if (ts.isImportDeclaration(statement) && statement.moduleSpecifier.text === 'internal:constants' && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings)) {
       constants.push(...statement.importClause.namedBindings.elements.map(item => item.name.text));
@@ -316,13 +318,25 @@ function constraints(node, context, checker) {
         const symbol = checker.getSymbolAtLocation(item.name);
         if (symbol) constantSymbols.add(symbol);
       }
+    } else if (ts.isImportDeclaration(statement) && statement.moduleSpecifier.text === 'internal:constants' && statement.importClause?.namedBindings && ts.isNamespaceImport(statement.importClause.namedBindings)) {
+      const name = statement.importClause.namedBindings.name;
+      namespaceNames.add(name.text);
+      const symbol = checker?.getSymbolAtLocation(name);
+      if (symbol) namespaceSymbols.add(symbol);
     }
   }
   const guards = [];
   const scan = current => {
     if (ts.isIfStatement(current) || ts.isConditionalExpression(current)) {
       const expression = ts.isIfStatement(current) ? current.expression : current.condition;
-      const usesConstant = part => ts.isIdentifier(part) && (checker ? constantSymbols.has(checker.getSymbolAtLocation(part)) : constants.includes(part.text)) || ts.forEachChild(part, usesConstant);
+      const usesConstant = part => {
+        if (ts.isIdentifier(part) && (checker ? constantSymbols.has(checker.getSymbolAtLocation(part)) : constants.includes(part.text))) return true;
+        if (ts.isPropertyAccessExpression(part) || ts.isElementAccessExpression(part)) {
+          const target = part.expression;
+          if (ts.isIdentifier(target) && (checker ? namespaceSymbols.has(checker.getSymbolAtLocation(target)) : namespaceNames.has(target.text))) return true;
+        }
+        return ts.forEachChild(part, usesConstant);
+      };
       if (usesConstant(expression)) guards.push(compact(expression));
     }
     ts.forEachChild(current, scan);
