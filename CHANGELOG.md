@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Keep instantiated generic setter write types explicitly unresolved instead of traversing raw declaration parameters as actual inputs; accessor adapter requirements remain and non-generic setter dependencies are unchanged.
 - Avoid re-expanding uninstantiated generic alias declarations when traversing compiler-instantiated types; concrete aliases no longer acquire false unresolved type parameters, while generic arguments remain unresolved.
 - Add immediate nodeAssert orientation predicates using the same finite-nonzero/sign-invariant quaternion comparison as node waits. Mismatch retains raw snapshot and stops later cues; invalid observed rotations refuse. No rotation mutation or completion inference.
 - Traverse interface members through compiler-instantiated property/index/signature types rather than re-reading generic declaration members; concrete Box<string> no longer inherits an unresolved declaration T.

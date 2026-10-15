@@ -113,7 +113,11 @@ function typeInfo(checker, type, node) {
           unresolved.push({ kind: 'semantic-adapter-required', reference: 'accessor-property' });
           for (const accessor of property.declarations) {
             if (!ts.isSetAccessorDeclaration(accessor)) continue;
-            for (const parameter of accessor.parameters) visit(checker.getTypeAtLocation(parameter));
+            if (current.objectFlags & ts.ObjectFlags.Reference && current.target !== current && current.target?.typeParameters?.length) {
+              unresolved.push({ kind: 'setter-write-type', reference: 'Instantiated setter input requires compiler write-type resolution' });
+            } else {
+              for (const parameter of accessor.parameters) visit(checker.getTypeAtLocation(parameter));
+            }
           }
         }
         const key = propertyDeclaration?.name;
