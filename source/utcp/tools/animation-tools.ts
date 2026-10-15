@@ -1199,7 +1199,7 @@ export class AnimationTools {
         if (operation === 'delete') return applyToClip(args.clipReference, 'deleteEvent', [requireFrames(args?.frames)]);
         if (operation === 'update') return applyToClip(args.clipReference, 'updateEvent', [requireFrames(args?.frames), Array.isArray(args?.events) ? args.events : (() => { throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'events must be an array.' }); })()]);
         if (operation === 'move') {
-            if (!Number.isInteger(args?.offset) || !Number.isFinite(args.offset)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offset must be an integer.' });
+            if (!Number.isInteger(args?.offset) || !Number.isFinite(args.offset) || Math.abs(args.offset!) > 1000000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offset must be an integer from -1000000 to 1000000.' });
             return applyToClip(args.clipReference, 'moveEvents', [requireFrames(args?.frames), args.offset]);
         }
         if (operation === 'copy_to') return applyToClip(args.clipReference, 'copyEventsTo', [requireFrames(args?.frames), requireFrame(args?.destinationFrame, 'destinationFrame')]);

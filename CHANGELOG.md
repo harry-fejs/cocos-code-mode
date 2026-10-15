@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Enforce animationEventEdit(move) published integer offset bounds -1000000..1000000 before native clip selection; signed boundary and zero offsets remain supported. No native mutation replay.
 - Enforce animationEventEdit(add) dense string parameters (max32, max1024 characters each) before selecting or mutating a clip. Copy validated parameters before awaiting native selection; no mutation replay added.
 - Exclude erased TypeScript type nodes from execution-guard read provenance, avoiding typeof-import names inside casts/type arguments while preserving actual constant reads wrapped by casts.
 - Add optional exact native component selector to animationTimelineInspect.trackBinding, distinguishing same-node/property tracks by comp metadata. Omitted component preserves all matching components; no scene binding resolution or uniqueness inference.
