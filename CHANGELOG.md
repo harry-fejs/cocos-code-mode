@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Return typed RUNTIME_COMPONENT_SESSION_RECHECK_FAILED when post-operation session inspection throws, preserving mutationDispatched/retrySafe and a bounded cause code. Do not hide successful dispatch behind a plain transport error or automatically replay control.
 - Require matching session createdAt generation after shared component runtime execution, refusing reset/re-attach drift even when session/scene identifiers match. Preserve mutation-dispatched and retry-safety evidence; no automatic replay.
 - Preserve owner abstract metadata on extracted callable/construct signatures, distinguishing abstract class constructors from concrete subclasses even when the compiler reuses base constructor declarations; no invocation permission granted.
 - Pin the validated runtimeScenarioRun envelope before acquiring session ownership. Caller session/run changes during a pending step cannot redirect later cues, corrupt result identity or leave the original session lock retained; existing pending-request ownership remains unchanged.
