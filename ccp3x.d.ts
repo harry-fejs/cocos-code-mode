@@ -1210,8 +1210,8 @@ declare namespace ccp3x {
 
     /** Writes UTF-8 text and verifies filesystem read-back. Asset refresh is best-effort, not importer completion proof. Inspect after ambiguous errors before retry. */
     function projectWriteFile(args: { filePath: string; content: string; createDirs?: boolean }): { success: true; bytesWritten: number };
-    /** Literal replacement, all matches by default. Empty search/no match returns success=false; successful filesystem read-back does not certify asset reimport. */
-    function projectReplaceInFile(args: { filePath: string; search: string; replace: string; replaceAll?: boolean }):
+    /** Literal replacement, all matches by default. Optional expectedSha256 hashes decoded UTF-8 text (as returned by projectReadFile); mismatch throws FILE_CONTENT_CHANGED before writing. Optimistic only, not atomic compare-and-set. Empty search/no match returns success=false; read-back does not certify asset reimport. */
+    function projectReplaceInFile(args: { filePath: string; search: string; replace: string; replaceAll?: boolean; expectedSha256?: string }):
         { success: false; replacements: 0 } | { success: true; replacements: number };
 
     interface ScriptDiagnostic {

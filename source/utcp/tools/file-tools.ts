@@ -2,6 +2,7 @@ import { utcpTool } from '../decorators';
 import { invalidateAfterWrite } from '../utils/memo-cache';
 import fs from 'fs-extra';
 import path from 'path';
+import { createHash } from 'crypto';
 import { VERBOSE_FILE_BYTES, VERBOSE_SEARCH_LIMIT } from '../utils/verbose';
 import { ToolError } from '../tool-error';
 
@@ -199,14 +200,16 @@ export class FileTools {
     }
 
     @utcpTool('projectReplaceInFile', 'Atomically replace bounded literal text in a project file and verify read-back.', {
-        type: 'object', properties: { filePath: { type: 'string' }, search: { type: 'string' }, replace: { type: 'string' }, replaceAll: { type: 'boolean' } }, required: ['filePath', 'search', 'replace'],
+        type: 'object', properties: { filePath: { type: 'string' }, search: { type: 'string' }, replace: { type: 'string' }, replaceAll: { type: 'boolean' }, expectedSha256: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'SHA-256 of decoded UTF-8 text from projectReadFile; optimistic precondition, not atomic compare-and-set.' } }, required: ['filePath', 'search', 'replace'],
     }, { type: 'object', properties: { success: { type: 'boolean' }, replacements: { type: 'number' } }, required: ['success', 'replacements'] }, 'POST', ['file', 'replace', 'edit', 'project'])
-    async projectReplaceInFile(args: { filePath: string, search: string, replace: string, replaceAll?: boolean }): Promise<{ success: boolean, replacements: number }> {
+    async projectReplaceInFile(args: { filePath: string, search: string, replace: string, replaceAll?: boolean, expectedSha256?: string }): Promise<{ success: boolean, replacements: number }> {
         if (typeof args.search !== 'string' || typeof args.replace !== 'string' || args.search.length > MAX_SEARCH_PATTERN_LENGTH || args.replace.length > MAX_WRITE_BYTES) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'search and replace must be bounded strings.' });
+        if (args.expectedSha256 !== undefined && (typeof args.expectedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedSha256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedSha256 must be a lowercase SHA-256 of decoded UTF-8 text.' });
         const root = projectRoot();
         const filePath = resolveSafePath(root, args.filePath);
         if (!fs.existsSync(filePath)) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `File not found: ${args.filePath}` });
         const { content } = readBoundedProjectText(filePath, MAX_FILE_BYTES);
+        if (args.expectedSha256 !== undefined && createHash('sha256').update(content, 'utf8').digest('hex') !== args.expectedSha256) throw new ToolError({ code: 'FILE_CONTENT_CHANGED', status: 409, message: 'Project file text differs from expectedSha256; no replacement dispatched.' });
         if (!args.search) return { success: false, replacements: 0 };
         const replaceAll = args.replaceAll !== false;
         let next = content;
