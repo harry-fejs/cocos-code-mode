@@ -388,7 +388,7 @@ function constraints(node, context, checker) {
     let expression = decorator.expression;
     while (ts.isParenthesizedExpression(expression)) expression = expression.expression;
     if (ts.isCallExpression(expression)) {
-      if (expression.arguments.length === 1 && expression.arguments[0].kind === ts.SyntaxKind.FalseKeyword) return false;
+      if (expression.arguments.length !== 1 || expression.arguments[0].kind !== ts.SyntaxKind.TrueKeyword) return false;
       expression = expression.expression;
     }
     while (ts.isParenthesizedExpression(expression)) expression = expression.expression;
