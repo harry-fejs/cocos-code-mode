@@ -17,6 +17,7 @@ function typeInfo(checker, type, node) {
   const active = new Set();
   const seenSymbols = new Set();
   const references = new Map();
+  const referenceSymbols = new Map();
   let count = 0;
   let budgetExceeded = false;
   const visit = current => {
@@ -97,6 +98,11 @@ function typeInfo(checker, type, node) {
     const declaration = symbol?.declarations?.find(item => ts.isInterfaceDeclaration(item) || ts.isTypeAliasDeclaration(item));
     if (declaration && ts.isInterfaceDeclaration(declaration)) {
       for (const base of checker.getBaseTypes(current) || []) visit(base);
+    }
+    if (symbol && !symbol.name.startsWith('__')) {
+      const previous = referenceSymbols.get(symbol.name);
+      if (previous && previous !== symbol) unresolved.push({ kind: 'ambiguous-reference', reference: symbol.name });
+      else referenceSymbols.set(symbol.name, symbol);
     }
     if (symbol && !symbol.name.startsWith('__') && !references.has(symbol.name)) {
       const enumDeclaration = symbol.declarations?.find(ts.isEnumDeclaration);
