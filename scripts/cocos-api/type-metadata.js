@@ -259,6 +259,8 @@ function signatureInfo(checker, signature, declaration, index) {
     references: [...genericReferences.values()].sort((a, b) => compare(json(a), json(b))), unresolved };
 }
 function signatures(checker, symbol, declaration) {
+  const accessors = (symbol.declarations || []).filter(d => ts.isGetAccessorDeclaration(d) || ts.isSetAccessorDeclaration(d));
+  if (accessors.length) return accessors.map((decl, i) => signatureInfo(checker, checker.getSignatureFromDeclaration(decl), decl, i));
   const type = checker.getTypeOfSymbolAtLocation(symbol, declaration);
   const calls = checker.getSignaturesOfType(type, ts.SignatureKind.Call);
   const constructs = checker.getSignaturesOfType(type, ts.SignatureKind.Construct);
@@ -267,8 +269,6 @@ function signatures(checker, symbol, declaration) {
     if (i >= calls.length) row.kind = 'construct';
     return row;
   });
-  const accessors = (symbol.declarations || []).filter(d => ts.isGetAccessorDeclaration(d) || ts.isSetAccessorDeclaration(d));
-  if (accessors.length) return accessors.map((decl, i) => signatureInfo(checker, checker.getSignatureFromDeclaration(decl), decl, i));
   const info = typeInfo(checker, type, declaration.type);
   return [{ overload: 0, kind: 'value', type: info.type, declaredType: info.declaredType, references: info.references,
     defaultExpression: compact(declaration.initializer), unresolved: info.unresolved }];
