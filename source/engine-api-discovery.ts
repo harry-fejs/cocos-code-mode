@@ -232,6 +232,31 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         };
         collect((source as Record<string, unknown>).references, 'references');
         collect((source as Record<string, unknown>).unresolved, 'unresolved');
+        const declaration = (source as Record<string, unknown>).declarationEvidence;
+        if (declaration !== undefined && declaration !== null) {
+            if (typeof declaration !== 'object' || Array.isArray(declaration)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration evidence metadata is malformed.' });
+            const declarationSignatures = (declaration as Record<string, unknown>).signatures;
+            if (declarationSignatures !== undefined) {
+                if (!Array.isArray(declarationSignatures)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signatures metadata is malformed.' });
+                for (const signature of declarationSignatures) {
+                    checkDeadline();
+                    if (!signature || typeof signature !== 'object' || Array.isArray(signature)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signature metadata is malformed.' });
+                    const row = signature as Record<string, unknown>;
+                    collect(row.references, 'declaration.signature.references');
+                    collect(row.returnReferences, 'declaration.signature.returnReferences');
+                    collect(row.unresolved, 'declaration.signature.unresolved');
+                    if (row.parameters !== undefined) {
+                        if (!Array.isArray(row.parameters)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration parameters metadata is malformed.' });
+                        for (const parameter of row.parameters) {
+                            if (!parameter || typeof parameter !== 'object' || Array.isArray(parameter)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration parameter metadata is malformed.' });
+                            const parameterRow = parameter as Record<string, unknown>;
+                            collect(parameterRow.references, 'declaration.parameter.references');
+                            collect(parameterRow.unresolved, 'declaration.parameter.unresolved');
+                        }
+                    }
+                }
+            }
+        }
         const signatures = (source as Record<string, unknown>).signatures;
         if (signatures !== undefined) {
             if (!Array.isArray(signatures)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signatures metadata is not an array.' });
