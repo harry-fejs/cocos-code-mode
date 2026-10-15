@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Support native TextAsset scalar/array references in scriptComponentCreate data fields. Scalar defaults remain null and array defaults empty/instance-owned; no asset construction, content evaluation or automatic reference assignment.
 - Expand nested generic constraints/rest unions iteratively under a256-type arity budget, preserving lower tuple bounds; budget exhaustion reports arity-budget and does not guess a positive minimum.
 - Add inclusive native keyframeFrameRange filtering to animationTimelineInspect with per-track matchedKeyframes and matching-key pagination. Original indices, whole-track ranges, full-dump diagnostics and filter-independent revisions remain; timing coverage is not runtime/binding validation.
 - Pin the first observed Game View target across regular and skeletal animation state waits. A replacement target cannot satisfy a pending checkpoint; missing identity fails closed without playback dispatch.
