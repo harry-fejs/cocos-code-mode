@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Retain operand dependencies and unresolved keyof diagnostics for generic key spaces; compiler-resolved key unions are not marked unresolved.
 - Retain object/key dependencies and explicit unresolved diagnostics for generic indexed-access types; compiler-resolved property accesses retain their normal resolved metadata.
 - Add immediate graphObserve/graphAssert scenario checkpoints through existing inspect-only adapter: exact graph identity, single typed variable comparison, retained mismatch evidence and stop-before-next-action behavior. No polling/mutation or graph-transition validity inference.
 - Expand compiler base constraints when inspecting direct generic type parameters, retaining constrained DTO dependencies and unresolved property diagnostics under existing cycle/budget guards.

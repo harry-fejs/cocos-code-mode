@@ -34,6 +34,10 @@ function typeInfo(checker, type, node) {
       visit(current.objectType);
       visit(current.indexType);
     }
+    if (current.flags & ts.TypeFlags.Index) {
+      unresolved.push({ kind: 'keyof', reference: canonicalType(checker.typeToString(current, node, ts.TypeFormatFlags.NoTruncation)) });
+      visit(current.type);
+    }
     if (current.isUnionOrIntersection?.()) current.types.forEach(visit);
     if (checker.isArrayType(current) || checker.isTupleType(current)) {
       checker.getTypeArguments(current).forEach(visit);
