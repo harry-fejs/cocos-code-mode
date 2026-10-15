@@ -1219,7 +1219,17 @@ export class AnimationTools {
             return applyToClip(args.clipReference, 'addEvent', [requireFrame(args.frame), requireText(args.functionName, 'functionName', 256), [...parameters]]);
         }
         if (operation === 'delete') return applyToClip(args.clipReference, 'deleteEvent', [requireFrames(args?.frames)]);
-        if (operation === 'update') return applyToClip(args.clipReference, 'updateEvent', [requireFrames(args?.frames), Array.isArray(args?.events) ? args.events : (() => { throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'events must be an array.' }); })()]);
+        if (operation === 'update') {
+            const frames = requireFrames(args.frames);
+            if (!Array.isArray(args.events) || args.events.length > 200) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'events must contain at most 200 native event objects.' });
+            const events: Record<string, unknown>[] = [];
+            for (let index = 0; index < args.events.length; index++) {
+                const event = args.events[index];
+                if (!Object.prototype.hasOwnProperty.call(args.events, index) || !event || typeof event !== 'object' || Array.isArray(event)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'events must contain dense native event objects.' });
+                events.push({ ...event });
+            }
+            return applyToClip(args.clipReference, 'updateEvent', [frames, events]);
+        }
         if (operation === 'move') {
             if (!Number.isInteger(args?.offset) || !Number.isFinite(args.offset) || Math.abs(args.offset!) > 1000000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offset must be an integer from -1000000 to 1000000.' });
             return applyToClip(args.clipReference, 'moveEvents', [requireFrames(args?.frames), args.offset]);

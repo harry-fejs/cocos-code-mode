@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Enforce animationEventEdit(update) dense object payloads capped at200 before clip selection, rejecting null/primitive/array/sparse entries. Snapshot top-level event records before async selection; native inner payload semantics and empty-array compatibility remain unchanged.
+- Recognize parenthesized explicit string/template namespace member keys in guard provenance while continuing to reject parenthesized dynamic keys and preserving compiler value-export checks.
 - Resolve aliased namespace value exports before guard classification, retaining reexported engine constants while still excluding missing exports and preserving namespace symbol identity.
 - Add multiline Inspector editing metadata for scalar string fields in scriptComponentCreate. Preserve exact escaped content/defaults and true/false/omitted behavior; reject arrays/non-string fields and invalid option types. No localization/runtime text binding.
 - Add visible/readOnly/displayOrder Inspector metadata across scriptComponentCreate fields, preserving serialized defaults/keys. Strict booleans and finite display order; readOnly maps to native readonly, not TypeScript or runtime immutability.
