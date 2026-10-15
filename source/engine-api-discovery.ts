@@ -10,7 +10,7 @@ import { openExternalApiCatalog } from './external-api-catalog';
 
 export interface EngineDiscoveryArgs {
     category?: string; className?: string; targetVersion?: string; domain?: string;
-    operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'compare_version';
+    operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'get_related_types' | 'compare_version';
     namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge';
     filter?: string; recordId?: string; compareVersion?: string; compareRecordId?: string; reference?: IInstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string;
 }
@@ -37,7 +37,8 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     if (!Object.prototype.hasOwnProperty.call(VERSIONS, version)) throw new ToolError({ code: 'UNSUPPORTED_VERSION', status: 422, message: 'Only catalogued versions 3.7.3 and 3.8.8 are available.' });
     if (args.category === 'component_schema' && !args.className) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'component_schema requires className.' });
     const operation = args.operation ?? 'records';
-    if (!['records', 'list_domains', 'list_classes', 'list_namespaces', 'list_members', 'get_signature', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Unknown catalog discovery operation.' });
+    if (!['records', 'list_domains', 'list_classes', 'list_namespaces', 'list_members', 'get_signature', 'get_related_types', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Unknown catalog discovery operation.' });
+    if (operation === 'get_related_types' && (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'get_related_types requires a bounded exact recordId.' });
     if (operation === 'compare_version') {
         if (!args.compareVersion || args.compareVersion === version || !Object.prototype.hasOwnProperty.call(VERSIONS, args.compareVersion)
             || typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024
@@ -62,9 +63,9 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
         return result;
     }
     if (args.compareVersion !== undefined || args.compareRecordId !== undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Comparison selectors require compare_version.' });
-    if (operation !== 'records' && operation !== 'get_signature' && (args.reference || args.recordId || args.category === 'component_schema' || args.className && !['list_members'].includes(operation))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Catalog navigation does not accept an instance, record or class schema target.' });
+    if (operation !== 'records' && !['get_signature', 'get_related_types', 'list_members'].includes(operation) && (args.reference || args.recordId || args.category === 'component_schema' || args.className)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Catalog navigation does not accept an instance, record or class schema target.' });
     if (operation === 'get_signature' && (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'get_signature requires a bounded exact recordId.' });
-    if (args.recordId !== undefined && (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024 || !['records', 'get_signature'].includes(operation))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'recordId requires records or get_signature operation and a bounded nonempty identity.' });
+    if (args.recordId !== undefined && (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024 || !['records', 'get_signature', 'get_related_types'].includes(operation))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'recordId requires a record operation and a bounded nonempty identity.' });
     const maxEntries = limit(args.maxEntries, 50, 200), maxBytes = limit(args.maxBytes, 32768, 131072);
     const external = openExternalApiCatalog(version);
     const indexPath = path.join(CATALOG_ROOT, version, 'index.json');
@@ -130,6 +131,38 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
             else classes.set(key, { id: `${version}:class-index:${key}`, namespace: record.namespace, className: record.className, name: record.className, kind: 'class-summary', recordCount: 1, permitted: false });
         }
         records.splice(0, records.length, ...[...classes.values()].sort((a, b) => a.id.localeCompare(b.id)));
+    } else if (operation === 'get_related_types') {
+        const source = external ? ApiRecordSchema.parse({ ...external.readRecord(records[0]?.id), permitted: false, evidenceStatus: 'declared' }) : records[0];
+        if (!source) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record related types are absent from the selected catalog scope.' });
+        const related: Array<Record<string, unknown>> = [];
+        const seen = new Set<string>();
+        const collect = (value: unknown, field: string) => {
+            if (value === undefined || value === null) return;
+            if (!Array.isArray(value)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: `Record ${field} metadata is not an array.` });
+            for (const item of value) {
+                if (!item || typeof item !== 'object' || Array.isArray(item)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: `Record ${field} contains malformed related-type metadata.` });
+                const row = item as Record<string, unknown>;
+                const key = JSON.stringify(row);
+                if (!seen.has(key)) { seen.add(key); related.push(row); }
+            }
+        };
+        collect((source as Record<string, unknown>).references, 'references');
+        collect((source as Record<string, unknown>).unresolved, 'unresolved');
+        const signatures = (source as Record<string, unknown>).signatures;
+        if (signatures !== undefined) {
+            if (!Array.isArray(signatures)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signatures metadata is not an array.' });
+            for (const signature of signatures) {
+                if (!signature || typeof signature !== 'object' || Array.isArray(signature)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signature metadata is malformed.' });
+                const row = signature as Record<string, unknown>;
+                collect(row.references, 'signature.references'); collect(row.returnReferences, 'signature.returnReferences'); collect(row.unresolved, 'signature.unresolved');
+                if (Array.isArray(row.parameters)) for (const parameter of row.parameters) {
+                    if (!parameter || typeof parameter !== 'object' || Array.isArray(parameter)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record parameter metadata is malformed.' });
+                    const parameterRow = parameter as Record<string, unknown>;
+                    collect(parameterRow.references, 'parameter.references'); collect(parameterRow.unresolved, 'parameter.unresolved');
+                } else if (row.parameters !== undefined) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signature parameters metadata is not an array.' });
+            }
+        }
+        return { version, operation, recordId: records[0].id, relatedTypes: related.slice(0, maxEntries), relatedTypeCount: related.length, truncated: related.length > maxEntries, catalogHash: index.catalogHash, permitted: false, runtimeVerified: false as const, qualified: false as const };
     } else if (operation === 'list_namespaces') {
         const namespaces = new Map<string, number>();
         for (const record of records) namespaces.set(record.namespace, (namespaces.get(record.namespace) ?? 0) + 1);
