@@ -301,7 +301,7 @@ export class MaterialTools {
 
     @utcpTool(
         'renderConfigurationApply',
-        'Apply bounded editor scene render-property updates atomically and verify scene read-back.',
+        'Apply bounded scene render-property updates with read-back and guarded restoration; not an atomic native transaction.',
         { type: 'object', additionalProperties: false, properties: { updates: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, path: { type: 'string', minLength: 1, maxLength: 256, pattern: '^[A-Za-z0-9_.]+$' }, value: {} }, required: ['reference', 'path', 'value'] } } }, required: ['updates'] },
         { type: 'object', additionalProperties: false, properties: { changed: { type: 'array' }, readBack: { type: 'array' }, verified: { type: 'boolean', const: true } }, required: ['changed', 'readBack', 'verified'] },
         'POST', ['render', 'configuration', 'apply', 'camera', 'light', 'fog', 'skybox']
@@ -319,10 +319,13 @@ export class MaterialTools {
             originals.push({ update, original: cloneValue(propertyAtPath(node, update.path)) });
         }
         const applied: typeof originals = [];
+        let mutationPending = false;
         try {
             for (const entry of originals) {
                 applied.push(entry);
+                mutationPending = true;
                 const result = await Editor.Message.request('scene', 'set-property', { uuid: entry.update.reference.id, path: entry.update.path, dump: { value: entry.update.value as never, type: 'Unknown' } });
+                mutationPending = false;
                 if (result === false) throw new Error(`Creator refused ${entry.update.path}`);
             }
             await Editor.Message.request('scene', 'snapshot');
@@ -335,8 +338,14 @@ export class MaterialTools {
             }
             return { changed: originals.map((entry) => entry.update.path), readBack, verified: true };
         } catch (error) {
+            if (mutationPending) throw new ToolError({ code: 'RENDER_MUTATION_OUTCOME_UNKNOWN', status: 502, message: 'Render property dispatch did not return a settled outcome; no restoration was dispatched.', details: { retrySafe: false, restored: null }, recovery: 'Inspect affected targets and reconcile the in-flight request before another mutation.' });
             try {
                 for (const entry of [...applied].reverse()) {
+                    const current = await Editor.Message.request('scene', 'query-node', entry.update.reference.id) as unknown as Record<string, unknown> | null;
+                    if (!current) throw new Error('Render target is unavailable before restoration.');
+                    const observed = propertyAtPath(current, entry.update.path);
+                    if (jsonEqual(observed, entry.original)) continue;
+                    if (!jsonEqual(observed, entry.update.value)) throw new Error('Render property changed outside this update; restoration refused.');
                     const result = await Editor.Message.request('scene', 'set-property', { uuid: entry.update.reference.id, path: entry.update.path, dump: { value: entry.original as never, type: 'Unknown' } });
                     if (result === false) throw new Error(`Creator refused rollback ${entry.update.path}`);
                 }

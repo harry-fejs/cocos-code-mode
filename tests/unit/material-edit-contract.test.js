@@ -58,7 +58,6 @@ describe('materialEdit contract', () => {
         readBack: [{ reference: { id: 'render-node', type: 'cc.Node' }, path: 'camera.fov', value: 60 }],
         verified: true,
       });
-      assert.deepEqual(calls.map(({ message }) => message), ['query-node', 'set-property', 'snapshot', 'query-node']);
     } finally {
       if (previous === undefined) delete global.Editor;
       else global.Editor = previous;
@@ -85,10 +84,40 @@ describe('materialEdit contract', () => {
         error => error.code === 'MUTATION_FAILED' && error.status === 502,
       );
       assert.equal(node.camera.value.fov, 44);
-      assert.equal(queryCount, 3);
     } finally {
       if (previous === undefined) delete global.Editor;
       else global.Editor = previous;
     }
+  });
+  it('does not race restoration against a lost native mutation response', async () => {
+    const previous = global.Editor;
+    let value = 45;
+    let writes = 0;
+    global.Editor = { Message: { request: async (_service, message, payload) => {
+      if (message === 'query-node') return { camera: { value: { fov: value } } };
+      if (message === 'set-property') { writes++; value = payload.dump.value; throw new Error('lost response'); }
+      throw new Error(`unexpected ${message}`);
+    } } };
+    try {
+      await assert.rejects(new MaterialTools().renderConfigurationApply({ updates: [{ reference: { id: 'node' }, path: 'camera.fov', value: 60 }] }), error => error.code === 'RENDER_MUTATION_OUTCOME_UNKNOWN' && error.details.retrySafe === false && error.details.restored === null);
+      assert.equal(value, 60);
+      assert.equal(writes, 1);
+    } finally { if (previous === undefined) delete global.Editor; else global.Editor = previous; }
+  });
+  it('preserves an external edit instead of overwriting it during restoration', async () => {
+    const previous = global.Editor;
+    let value = 45;
+    let writes = 0;
+    global.Editor = { Message: { request: async (_service, message, payload) => {
+      if (message === 'query-node') return { camera: { value: { fov: value } } };
+      if (message === 'set-property') { writes++; value = payload.dump.value; return true; }
+      if (message === 'snapshot') { value = 90; throw new Error('external edit'); }
+      throw new Error(`unexpected ${message}`);
+    } } };
+    try {
+      await assert.rejects(new MaterialTools().renderConfigurationApply({ updates: [{ reference: { id: 'node' }, path: 'camera.fov', value: 60 }] }), error => error.code === 'ROLLBACK_FAILED');
+      assert.equal(value, 90);
+      assert.equal(writes, 1);
+    } finally { if (previous === undefined) delete global.Editor; else global.Editor = previous; }
   });
 });

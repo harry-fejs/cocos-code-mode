@@ -188,7 +188,7 @@ declare namespace ccp3x {
         reference: InstanceReference; supported: boolean; pipeline?: unknown;
         diagnostics: Array<Record<string, unknown>>; runtimeSampling: false;
     };
-    /** Applies 1–32 non-overlapping scene updates with immediate read-back. Duplicate/ancestor paths on one target throw before mutation. Not scene save/reopen proof; inspect ambiguous failures before retry. */
+    /** Applies 1–32 non-overlapping scene updates with read-back and guarded restoration, not an atomic transaction. Lost dispatch responses throw RENDER_MUTATION_OUTCOME_UNKNOWN/retrySafe:false/restored:null; external changes refuse rollback. */
     function renderConfigurationApply(args: { updates: Array<{ reference: InstanceReference; path: string; value: unknown }> }): {
         changed: string[]; readBack: Array<{ reference: InstanceReference; path: string; value: unknown }>; verified: true;
     };
