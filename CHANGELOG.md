@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add boolean loop predicates to audio waits and scenario audioAssert/audioWait, AND-composed with state/time conditions on the pinned source/clip. Null/unavailable loop metrics refuse instead of matching false; no loop writes or completion inference.
 - Diagnose nonliteral computed DTO key spaces as computed-key uncertainty when compiler omits invalid properties; literal string/number and unique-symbol identities keep existing handling.
 - Expose native AudioSource volume0..1 and loop as nullable sound snapshot metrics; unavailable/invalid values are null, never guessed. Cached older snapshot executors refuse without ownership reset; no volume/loop writes or audible-output inference.
 - Diagnose duplicate semantic enum member names across merged declarations as enum-member-ambiguity while retaining conflicting source values for inspection; never choose a winner silently.

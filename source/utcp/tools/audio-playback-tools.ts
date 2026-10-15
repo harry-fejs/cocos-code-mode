@@ -115,16 +115,17 @@ export class AudioPlaybackTools {
 
     @utcpTool('audioPlaybackWaitForState', 'Wait for observed AudioSource playing/loaded/time conditions in one attached Game View target. Read-only polling; stopped is not proof of natural completion. No playback dispatch or event listeners.', {
         type: 'object', additionalProperties: false,
-        properties: { ...targetProperties, playing: { type: 'boolean' }, loaded: { type: 'boolean' }, playbackState: { type: 'string', enum: ['init', 'playing', 'paused', 'stopped', 'interrupted'] }, maxTime: { type: 'number', minimum: 0, maximum: 3600 }, minTime: { type: 'number', minimum: 0, maximum: 3600 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000 } },
+        properties: { ...targetProperties, playing: { type: 'boolean' }, loop: { type: 'boolean' }, loaded: { type: 'boolean' }, playbackState: { type: 'string', enum: ['init', 'playing', 'paused', 'stopped', 'interrupted'] }, maxTime: { type: 'number', minimum: 0, maximum: 3600 }, minTime: { type: 'number', minimum: 0, maximum: 3600 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000 } },
         required: ['sessionId', 'nodeReference'],
     }, { type: 'object', additionalProperties: false, properties: { matched: { type: 'boolean', const: true }, observations: { type: 'integer' }, observation: outputSchema }, required: ['matched', 'observations', 'observation'] }, 'POST', ['audio', 'playback', 'wait', 'read-only'])
-    async audioPlaybackWaitForState(args: AudioPlaybackObserveArgs & { playing?: boolean; loaded?: boolean; playbackState?: AudioPlaybackSuccess['state']['playbackState']; maxTime?: number; minTime?: number; timeoutMs?: number; pollMs?: number }) {
+    async audioPlaybackWaitForState(args: AudioPlaybackObserveArgs & { playing?: boolean; loop?: boolean; loaded?: boolean; playbackState?: AudioPlaybackSuccess['state']['playbackState']; maxTime?: number; minTime?: number; timeoutMs?: number; pollMs?: number }) {
         validate(args, 'observe');
         const timeoutMs = args.timeoutMs ?? 3000;
         const pollMs = args.pollMs ?? 100;
-        if (args.playing === undefined && args.loaded === undefined && args.maxTime === undefined && args.minTime === undefined && args.playbackState === undefined
+        if (args.playing === undefined && args.loaded === undefined && args.loop === undefined && args.maxTime === undefined && args.minTime === undefined && args.playbackState === undefined
             || args.playing !== undefined && typeof args.playing !== 'boolean'
             || args.loaded !== undefined && typeof args.loaded !== 'boolean'
+            || args.loop !== undefined && typeof args.loop !== 'boolean'
             || args.playbackState !== undefined && !['init', 'playing', 'paused', 'stopped', 'interrupted'].includes(args.playbackState)
             || args.minTime !== undefined && (typeof args.minTime !== 'number' || !Number.isFinite(args.minTime) || args.minTime < 0 || args.minTime > 3600)
             || args.maxTime !== undefined && (typeof args.maxTime !== 'number' || !Number.isFinite(args.maxTime) || args.maxTime < 0 || args.maxTime > 3600)
@@ -161,8 +162,9 @@ export class AudioPlaybackTools {
                 || typeof state.duration !== 'number' || !Number.isFinite(state.duration) || state.duration < 0
                 || !['active', 'inactive', 'unknown'].includes(state.userActivation)
                 || state.activationRequirement !== 'unknown') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Audio wait received invalid state metrics.' });
+            if (args.loop !== undefined && typeof state.loop !== 'boolean') throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Native looping state unavailable.' });
             observations++;
-            if ((args.playing === undefined || state.playing === args.playing) && (args.loaded === undefined || state.loaded === args.loaded)
+            if ((args.loop === undefined || state.loop === args.loop) && (args.playing === undefined || state.playing === args.playing) && (args.loaded === undefined || state.loaded === args.loaded)
                 && (args.playbackState === undefined || state.playbackState === args.playbackState)
                 && (args.maxTime === undefined || state.currentTime <= args.maxTime) && (args.minTime === undefined || state.currentTime >= args.minTime)) return { matched: true as const, observations, observation };
             await new Promise(resolve => setTimeout(resolve, Math.min(pollMs, Math.max(0, deadline - Date.now()))));
