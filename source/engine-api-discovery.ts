@@ -15,7 +15,7 @@ export interface EngineDiscoveryArgs {
     kind?: string; module?: string; visibility?: 'public' | 'protected' | 'private' | 'internal';
     context?: string; evidenceState?: string;
     member?: string;
-    timeoutMs?: number;
+    timeoutMs?: number; maxPages?: number;
     filter?: string; recordId?: string; compareVersion?: string; compareRecordId?: string; reference?: IInstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string;
 }
 const ApiRecordSchema = z.object({ id: z.string().min(1), className: z.string().nullable().optional(), namespace: z.string(), member: z.string().nullable().optional(), name: z.string().optional(), kind: z.string().optional(), signatures: z.array(z.unknown()).optional() }).passthrough();
@@ -38,25 +38,31 @@ function limit(value: number | undefined, fallback: number, maximum: number): nu
 
 export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Record<string, unknown>> {
     const timeoutMs = limit(args.timeoutMs, 5000, 30000);
-    return discoverWithinDeadline(args, Date.now() + timeoutMs);
+    return discoverWithinDeadline(args, Date.now() + timeoutMs, { remaining: limit(args.maxPages, 256, 1000) });
 }
 
-async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: number): Promise<Record<string, unknown>> {
+async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: number, pages: { remaining: number }): Promise<Record<string, unknown>> {
     const checkDeadline = () => {
         if (Date.now() >= deadline) throw new ToolError({ code: 'CATALOG_QUERY_TIMEOUT', status: 409, message: 'Catalog discovery exceeded its cooperative deadline; no complete result returned.' });
     };
     checkDeadline();
+    const readPage = <T>(read: () => T): T => {
+        checkDeadline();
+        if (pages.remaining <= 0) throw new ToolError({ code: 'CATALOG_PAGE_LIMIT', status: 413, message: 'Catalog shard-read budget exhausted; narrow the query or explicitly increase maxPages.' });
+        pages.remaining--;
+        return read();
+    };
     const version = args.targetVersion ?? '3.7.3';
     if (!Object.prototype.hasOwnProperty.call(VERSIONS, version)) throw new ToolError({ code: 'UNSUPPORTED_VERSION', status: 422, message: 'Only catalogued versions 3.7.3 and 3.8.8 are available.' });
     if (args.category === 'component_schema' && !args.className) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'component_schema requires className.' });
     const operation = args.operation ?? 'records';
     if (operation === 'explain_bridge_route') {
         if (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024
-            || Object.keys(args).some(key => !['category', 'operation', 'targetVersion', 'recordId', 'maxEntries', 'maxBytes', 'timeoutMs'].includes(key))
+            || Object.keys(args).some(key => !['category', 'operation', 'targetVersion', 'recordId', 'maxEntries', 'maxBytes', 'timeoutMs', 'maxPages'].includes(key))
             || args.category !== undefined && args.category !== 'engine_api') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Route explanation requires one exact bridge record ID without live targets or filters.' });
         limit(args.maxEntries, 50, 200);
         const maxBytes = limit(args.maxBytes, 32768, 131072);
-        const result = await discoverWithinDeadline({ targetVersion: version, operation: 'records', recordId: args.recordId, namespace: 'bridge', maxEntries: 1, maxBytes }, deadline);
+        const result = await discoverWithinDeadline({ targetVersion: version, operation: 'records', recordId: args.recordId, namespace: 'bridge', maxEntries: 1, maxBytes }, deadline, pages);
         const record = (result.records as ApiRecord[])[0];
         if (!Array.isArray(record.composedRoutes)) throw new ToolError({ code: 'CATALOG_INDEX_UPGRADE_REQUIRED', status: 409, message: 'Regenerate bridge records with composedRoutes and explicitly adopt their catalog/lookup hashes.' });
         if (!Number.isInteger(record.composedRouteCount) || record.composedRouteCount !== record.composedRoutes.length
@@ -83,7 +89,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
             || args.namespace !== undefined && args.namespace !== 'editor-ipc') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Editor message lookup requires an exact recordId in editor-ipc without live targets.' });
         limit(args.maxEntries, 50, 200);
         const maxBytes = limit(args.maxBytes, 32768, 131072);
-        const result = await discoverWithinDeadline({ targetVersion: version, operation: 'records', recordId: args.recordId, namespace: 'editor-ipc', maxEntries: 1, maxBytes }, deadline);
+        const result = await discoverWithinDeadline({ targetVersion: version, operation: 'records', recordId: args.recordId, namespace: 'editor-ipc', maxEntries: 1, maxBytes }, deadline, pages);
         const output = { ...result, operation };
         if (Buffer.byteLength(JSON.stringify(output)) > limit(args.maxBytes, 32768, 131072)) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'Editor message lookup exceeds maxBytes.' });
         checkDeadline();
@@ -98,8 +104,8 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
             || args.reference || args.className || args.domain || args.namespace || args.filter || args.cursor || args.category === 'component_schema') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'compare_version requires distinct catalog versions and two exact record IDs without live targets, filters or cursors.' });
         limit(args.maxEntries, 50, 200);
         const maxBytes = limit(args.maxBytes, 32768, 131072);
-        const before = await discoverWithinDeadline({ targetVersion: version, recordId: args.recordId, maxEntries: 1, maxBytes: 131072 }, deadline);
-        const after = await discoverWithinDeadline({ targetVersion: args.compareVersion, recordId: args.compareRecordId, maxEntries: 1, maxBytes: 131072 }, deadline);
+        const before = await discoverWithinDeadline({ targetVersion: version, recordId: args.recordId, maxEntries: 1, maxBytes: 131072 }, deadline, pages);
+        const after = await discoverWithinDeadline({ targetVersion: args.compareVersion, recordId: args.compareRecordId, maxEntries: 1, maxBytes: 131072 }, deadline, pages);
         const left = (before.records as ApiRecord[])[0], right = (after.records as ApiRecord[])[0];
         if (typeof left.semanticKey !== 'string' || !left.semanticKey || left.semanticKey !== right.semanticKey) throw new ToolError({ code: 'CATALOG_IDENTITY_MISMATCH', status: 409, message: 'Selected records do not prove the same version-independent semantic identity.' });
         checkDeadline();
@@ -167,7 +173,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         checkDeadline();
         if (args.domain && domain.name !== args.domain) continue;
         if (path.basename(domain.file) !== domain.file) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Unsafe catalog shard path.' });
-        const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(jsonFile(path.join(CATALOG_ROOT, version, domain.file)));
+        const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(readPage(() => jsonFile(path.join(CATALOG_ROOT, version, domain.file))));
         for (const record of shard.records) {
             checkDeadline();
             if (args.recordId !== undefined && record.id !== args.recordId) continue;
@@ -209,7 +215,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         records.splice(0, records.length, ...[...classes.values()].sort((a, b) => a.id.localeCompare(b.id)));
     } else if (operation === 'get_related_types') {
         if (!records[0]) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record is absent from the selected catalog scope.' });
-        const source = external ? ApiRecordSchema.parse({ ...external.readRecord(records[0]?.id), permitted: false, evidenceStatus: 'declared' }) : records[0];
+        const source = external ? ApiRecordSchema.parse({ ...readPage(() => external.readRecord(records[0].id)), permitted: false, evidenceStatus: 'declared' }) : records[0];
         if (!source) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record related types are absent from the selected catalog scope.' });
         const related: Array<Record<string, unknown>> = [];
         const seen = new Set<string>();
@@ -287,7 +293,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     if (Buffer.byteLength(JSON.stringify(result())) > maxBytes) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'Required catalog metadata exceeds maxBytes.' });
     for (const record of records.slice(offset, offset + maxEntries)) {
         checkDeadline();
-        selected.push(external && ['records', 'get_signature'].includes(operation) ? ApiRecordSchema.parse({ ...external.readRecord(record.id), permitted: false, writablePath: null, evidenceStatus: 'declared' }) : record);
+        selected.push(external && ['records', 'get_signature'].includes(operation) ? ApiRecordSchema.parse({ ...readPage(() => external.readRecord(record.id)), permitted: false, writablePath: null, evidenceStatus: 'declared' }) : record);
         if (Buffer.byteLength(JSON.stringify(result())) > maxBytes) { selected.pop(); break; }
     }
     if (offset < records.length && selected.length === 0) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'One catalog record cannot fit maxBytes; narrow the query or increase its explicit bound.' });
