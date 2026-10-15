@@ -101,10 +101,6 @@ function typeInfo(checker, type, node) {
     if (symbol && declaration && !seenSymbols.has(symbol)) {
       seenSymbols.add(symbol);
       if (ts.isTypeAliasDeclaration(declaration)) { const underlying = checker.getTypeFromTypeNode(declaration.type); if (underlying !== current) visit(underlying); }
-      if (ts.isInterfaceDeclaration(declaration)) for (const member of declaration.members) {
-        const memberType = member.type ? checker.getTypeFromTypeNode(member.type) : member.name ? checker.getTypeAtLocation(member) : null;
-        if (memberType) visit(memberType);
-      }
     }
     if (current.flags & ts.TypeFlags.Object && (current.objectFlags & ts.ObjectFlags.Anonymous || declaration)) {
       for (const index of checker.getIndexInfosOfType(current)) {
