@@ -219,15 +219,15 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         if (!source) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record related types are absent from the selected catalog scope.' });
         const related: Array<Record<string, unknown>> = [];
         const seen = new Set<string>();
-        const collect = (value: unknown, field: string) => {
+        const collect = (value: unknown, field: string, location: { signatureIndex?: number, parameterIndex?: number } = {}) => {
             if (value === undefined || value === null) return;
             if (!Array.isArray(value)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: `Record ${field} metadata is not an array.` });
             for (const item of value) {
                 checkDeadline();
                 if (!item || typeof item !== 'object' || Array.isArray(item)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: `Record ${field} contains malformed related-type metadata.` });
                 const row = item as Record<string, unknown>;
-                const key = JSON.stringify([field, row]);
-                if (!seen.has(key)) { seen.add(key); related.push({ ...row, relation: field }); }
+                const key = JSON.stringify([field, location, row]);
+                if (!seen.has(key)) { seen.add(key); related.push({ ...row, relation: field, ...location }); }
             }
         };
         collect((source as Record<string, unknown>).references, 'references');
@@ -238,20 +238,20 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
             const declarationSignatures = (declaration as Record<string, unknown>).signatures;
             if (declarationSignatures !== undefined) {
                 if (!Array.isArray(declarationSignatures)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signatures metadata is malformed.' });
-                for (const signature of declarationSignatures) {
+                for (const [signatureIndex, signature] of declarationSignatures.entries()) {
                     checkDeadline();
                     if (!signature || typeof signature !== 'object' || Array.isArray(signature)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signature metadata is malformed.' });
                     const row = signature as Record<string, unknown>;
-                    collect(row.references, 'declaration.signature.references');
-                    collect(row.returnReferences, 'declaration.signature.returnReferences');
-                    collect(row.unresolved, 'declaration.signature.unresolved');
+                    collect(row.references, 'declaration.signature.references', { signatureIndex });
+                    collect(row.returnReferences, 'declaration.signature.returnReferences', { signatureIndex });
+                    collect(row.unresolved, 'declaration.signature.unresolved', { signatureIndex });
                     if (row.parameters !== undefined) {
                         if (!Array.isArray(row.parameters)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration parameters metadata is malformed.' });
-                        for (const parameter of row.parameters) {
+                        for (const [parameterIndex, parameter] of row.parameters.entries()) {
                             if (!parameter || typeof parameter !== 'object' || Array.isArray(parameter)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration parameter metadata is malformed.' });
                             const parameterRow = parameter as Record<string, unknown>;
-                            collect(parameterRow.references, 'declaration.parameter.references');
-                            collect(parameterRow.unresolved, 'declaration.parameter.unresolved');
+                            collect(parameterRow.references, 'declaration.parameter.references', { signatureIndex, parameterIndex });
+                            collect(parameterRow.unresolved, 'declaration.parameter.unresolved', { signatureIndex, parameterIndex });
                         }
                     }
                 }
@@ -260,14 +260,14 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         const signatures = (source as Record<string, unknown>).signatures;
         if (signatures !== undefined) {
             if (!Array.isArray(signatures)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signatures metadata is not an array.' });
-            for (const signature of signatures) {
+            for (const [signatureIndex, signature] of signatures.entries()) {
                 if (!signature || typeof signature !== 'object' || Array.isArray(signature)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signature metadata is malformed.' });
                 const row = signature as Record<string, unknown>;
-                collect(row.references, 'signature.references'); collect(row.returnReferences, 'signature.returnReferences'); collect(row.unresolved, 'signature.unresolved');
-                if (Array.isArray(row.parameters)) for (const parameter of row.parameters) {
+                collect(row.references, 'signature.references', { signatureIndex }); collect(row.returnReferences, 'signature.returnReferences', { signatureIndex }); collect(row.unresolved, 'signature.unresolved', { signatureIndex });
+                if (Array.isArray(row.parameters)) for (const [parameterIndex, parameter] of row.parameters.entries()) {
                     if (!parameter || typeof parameter !== 'object' || Array.isArray(parameter)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record parameter metadata is malformed.' });
                     const parameterRow = parameter as Record<string, unknown>;
-                    collect(parameterRow.references, 'parameter.references'); collect(parameterRow.unresolved, 'parameter.unresolved');
+                    collect(parameterRow.references, 'parameter.references', { signatureIndex, parameterIndex }); collect(parameterRow.unresolved, 'parameter.unresolved', { signatureIndex, parameterIndex });
                 } else if (row.parameters !== undefined) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signature parameters metadata is not an array.' });
             }
         }
