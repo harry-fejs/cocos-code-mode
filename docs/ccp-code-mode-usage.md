@@ -99,6 +99,8 @@ Use `editorQuery({category:'engine_api',operation:'records',recordId})` for one 
 
 `operation:'list_members'` groups record metadata by namespace/class/member and reports `recordCount` (overloads/record views are not separate callable features). Optional `className` narrows the member scope. Select original record IDs through `records` to inspect signatures; summary IDs are navigation identities, not executable targets.
 
+`operation:'get_signature'` requires an exact `recordId`, hydrates only that record from an external catalog, and returns its declared signatures with `permitted:false`. It is a read-only type/discovery result; unresolved/overloaded/native semantics remain explicit and no callable route is inferred.
+
 Follow `nextCursor` only when more records are needed; preserve the same version/class/filter. Cursors are catalog-bound. `qualified:false`, `runtimeVerified:false`, and `live.mutationAuthorized:false` are intentional: declaration presence and live class availability do not prove mutation/history/persistence. Supplying a component `reference` refreshes Inspector path evidence on every request instead of retaining stale script mappings.
 
 `listComponentMethods({reference:nodeReference})` returns attached component UUIDs, not class names as handles. `methods` is discovery; only `permittedMethods` is accepted by the existing finite `callComponentMethod` policy. Do not invoke lifecycle callbacks merely to prove discovery works.
