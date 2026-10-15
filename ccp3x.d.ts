@@ -800,17 +800,14 @@ declare namespace ccp3x {
         verified: true
     };
 
-    /** Get list of globally available component types. */
-    function nodeGetAvailableComponentTypes(args: {
-        includeInternal: boolean,
-        filter?: string
-    }): { componentTypes: string[] };
-
-    /** Get components of specific type on a node. */
-    function nodeComponentsGet(args: {
-        reference: InstanceReference,
-        componentType?: string
-    }): { references: InstanceReference[] };
+    /** Lists available component class names after optional case-insensitive filter; result prefix is capped at 1–1000 and total counts filtered classes. */
+    function nodeGetAvailableComponentTypes(args?: { includeInternal?: boolean; filter?: string; limit?: number }): {
+        componentTypes: string[]; total: number; truncated: boolean;
+    };
+    /** Reads authoritative component UUID/type references from one serialized node; malformed component metadata throws instead of returning partial matches. */
+    function nodeComponentsGet(args: { reference: InstanceReference; componentType?: string }): { references: InstanceReference[] };
+    /** Lists classes known to the editor, optionally filtered by base class; filtering applies to returned class names. */
+    function listComponentClasses(args?: { extends?: string; excludeSelf?: boolean; filter?: string }): { classes: string[] };
 
     /** Get info about the current scene: bounds (canvas/scene size), unsaved changes (dirty), and which scene asset is open. */
     function sceneGetInfo(): { bounds: { x: number, y: number, width: number, height: number }, dirty: boolean, currentScene?: { uuid?: string, url?: string, name?: string } };
@@ -878,7 +875,8 @@ declare namespace ccp3x {
     function callComponentMethod(args: { reference: InstanceReference, methodName: string, methodArgs?: any[] }): { result: any };
 
     /** List classes known to the editor, optionally filtered by base class (e.g. "cc.Component"). Helps resolve valid class names before nodeComponentAdd. */
-    function listComponentClasses(args: { extends?: string, excludeSelf?: boolean, filter?: string }): { classes: string[] };
+    /** Lists classes known to the editor, optionally filtered by base class; filtering applies to returned class names. */
+    function listComponentClasses(args?: { extends?: string; excludeSelf?: boolean; filter?: string }): { classes: string[] };
 
     /** Discovered methods are not automatically permitted; finite invocation allowlist is reported separately. */
     function listComponentMethods(args: { reference: InstanceReference }): {
