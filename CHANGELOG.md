@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve type-only namespace decorator exclusion through erased as/assertion/non-null/satisfies base wrappers, preventing syntax fallback from reviving erased import bindings.
 - Let runtimeScenarioCancel promptly end the scenario caller wait while retaining session ownership until the dispatched primitive settles. Cancellation neither stops native work nor replays/dispatches subsequent steps; inspect still exposes pending ownership.
 - Add formerlySerializedAs metadata to scriptComponentCreate fields for native serialized-name migration. Reject self/duplicate/current-field collisions and unsafe prior names; source metadata does not itself migrate or verify saved scenes/prefabs.
 - Exclude decorator property/element access rooted at compiler-tracked type-only namespace aliases from edit-mode declaration credit; syntax fallback no longer revives erased runtime bindings.

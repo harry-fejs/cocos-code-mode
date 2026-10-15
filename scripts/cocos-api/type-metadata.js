@@ -437,7 +437,7 @@ function constraints(node, context, checker) {
     }
     if (checker && (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))) {
       let base = expression.expression;
-      while (ts.isParenthesizedExpression(base)) base = base.expression;
+      while (ts.isParenthesizedExpression(base) || ts.isAsExpression(base) || ts.isTypeAssertionExpression(base) || ts.isNonNullExpression(base) || ts.isSatisfiesExpression(base)) base = base.expression;
       const symbol = ts.isIdentifier(base) ? checker.getSymbolAtLocation(base) : undefined;
       if (symbol && symbol.flags & ts.SymbolFlags.Alias && checker.getTypeOnlyAliasDeclaration(symbol)) return false;
     }
