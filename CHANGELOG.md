@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve explicit/inferred signature type predicates, assertion kind and target parameter/type; include narrowed-type dependencies in signature and nested callback traversal without inferring invocation permission.
 - Compose exact graph-UUID typed variable waits inside runtime scenarios before later animation/audio/VFX cues. Full-input preflight, existing read-only polling/deadline and cancellation ownership; matching a variable never proves graph transition or playable validity.
 - Traverse generic constraint/default types on nested callable/constructable DTO signatures under existing cycle/budget guards; preserve unresolved defaults and semantic-adapter requirements.
 - Traverse explicit receivers of nested callable/constructable DTO signatures, preserving receiver dependencies and unknown diagnostics while retaining semantic-adapter-required status.

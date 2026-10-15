@@ -75,6 +75,7 @@ function typeInfo(checker, type, node) {
         if (receiverDeclaration) visit(checker.getTypeOfSymbolAtLocation(receiver, receiverDeclaration));
         signature.parameters.forEach(parameter => { const parameterDeclaration = parameter.valueDeclaration || parameter.declarations?.[0]; if (parameterDeclaration) visit(checker.getTypeOfSymbolAtLocation(parameter, parameterDeclaration)); });
         visit(checker.getReturnTypeOfSignature(signature));
+        visit(checker.getTypePredicateOfSignature(signature)?.type);
       }
     }
     } finally { active.delete(current); }
@@ -114,6 +115,18 @@ function signatureInfo(checker, signature, declaration, index) {
   });
   const result = typeInfo(checker, checker.getReturnTypeOfSignature(signature), declaration.type);
   unresolved.push(...result.unresolved);
+  const nativePredicate = checker.getTypePredicateOfSignature(signature);
+  const predicateInfo = nativePredicate?.type ? typeInfo(checker, nativePredicate.type, declaration.type?.type) : null;
+  const predicate = nativePredicate ? {
+    kind: ts.TypePredicateKind[nativePredicate.kind],
+    parameterName: nativePredicate.parameterName ?? null,
+    parameterIndex: nativePredicate.parameterIndex ?? null,
+    type: predicateInfo,
+  } : null;
+  if (predicateInfo) {
+    unresolved.push(...predicateInfo.unresolved);
+    for (const reference of predicateInfo.references) genericReferences.set(json(reference), reference);
+  }
   const typeParameters = (signature.typeParameters || []).map(parameter => {
     const constraint = checker.getBaseConstraintOfType(parameter);
     const info = constraint ? typeInfo(checker, constraint) : null;
@@ -127,7 +140,7 @@ function signatureInfo(checker, signature, declaration, index) {
     return { name: parameter.symbol?.name || checker.typeToString(parameter), constraint: info?.type || null, default: compact(declared?.default) };
   });
   return { overload: index, kind: ts.isSetAccessorDeclaration(declaration) ? 'set' : ts.isGetAccessorDeclaration(declaration) ? 'get' : 'call',
-    text: checker.signatureToString(signature, declaration, ts.TypeFormatFlags.NoTruncation), typeParameters, parameters, receiver,
+    text: checker.signatureToString(signature, declaration, ts.TypeFormatFlags.NoTruncation), typeParameters, parameters, receiver, predicate,
     returnType: result.type, declaredReturnType: result.declaredType, returnReferences: result.references,
     references: [...genericReferences.values()].sort((a, b) => compare(json(a), json(b))), unresolved };
 }
