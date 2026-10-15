@@ -151,6 +151,7 @@
 - Bind component inspection to the requested node UUID, cap serialized inventory at 10,000 entries and refuse duplicate component UUIDs before filtering.
 - Confirm component removal by post-mutation query; retained or malformed read-back throws instead of reporting success.
 - Report component creation dispatch/logging failures as typed unknown outcomes with retrySafe:false, preserving logging cleanup failure without replaying or deleting ambiguous components.
+- Require a unique new component candidate and exact UUID/type on final add read-back; refuse ambiguous creation rather than choosing the first match.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

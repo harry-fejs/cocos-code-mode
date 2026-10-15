@@ -187,18 +187,20 @@ export class ComponentTools {
 
         const nodeAfter = await Editor.Message.request('scene', 'query-node', args.reference.id);
         if (!nodeAfter) throw new Error(`nodeComponentAdd: node ${args.reference.id} disappeared after create-component`);
-        const newComponent = (nodeAfter.__comps__ ?? []).find((component: unknown) => {
+        const newComponents = (nodeAfter.__comps__ ?? []).filter((component: unknown) => {
             const id = componentUuid(component);
             return !!id && !existingUuids.has(id) && componentType(component) === args.componentType;
         });
+        if (newComponents.length > 1) throw new ToolError({ code: 'COMPONENT_CREATE_AMBIGUOUS', status: 409, message: 'Multiple new components match the requested class; creation identity is ambiguous.', details: { nodeId: args.reference.id, componentType: args.componentType, retrySafe: false }, recovery: 'Inspect the exact node inventory; do not retry creation or remove unowned components automatically.' });
+        const newComponent = newComponents[0];
         const newId = componentUuid(newComponent);
         if (!newId) throw new Error(`Failed to add component. Captured logs: ${caughtLogs.join('\n')}`);
 
         await Editor.Message.request('scene', 'snapshot');
         const verifiedNode = await Editor.Message.request('scene', 'query-node', args.reference.id);
-        const verified = (verifiedNode?.__comps__ ?? []).find((component: unknown) => componentUuid(component) === newId);
-        if (!verified) throw new Error(`Component ${newId} was not present after add read-back`);
-        return { reference: { id: newId, type: componentType(verified) ?? args.componentType } };
+        const verifiedMatches = (verifiedNode?.__comps__ ?? []).filter((component: unknown) => componentUuid(component) === newId);
+        if (verifiedMatches.length !== 1 || componentType(verifiedMatches[0]) !== args.componentType) throw new ToolError({ code: 'COMPONENT_CREATE_POSTCONDITION_UNKNOWN', status: 502, message: 'Added component UUID/type was not uniquely confirmed after snapshot.', details: { nodeId: args.reference.id, componentId: newId, componentType: args.componentType, retrySafe: false }, recovery: 'Inspect the node inventory before any further mutation.' });
+        return { reference: { id: newId, type: args.componentType } };
     }
 
     @utcpTool(
