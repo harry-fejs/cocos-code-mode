@@ -1143,6 +1143,31 @@ declare namespace ccp3x {
     function projectReplaceInFile(args: { filePath: string; search: string; replace: string; replaceAll?: boolean }):
         { success: false; replacements: 0 } | { success: true; replacements: number };
 
+    interface ScriptDiagnostic {
+        file: string; line: number; column: number; code: string; message: string;
+    }
+    interface ScriptDiagnosticsResult {
+        ok: boolean; errorCount: number; diagnostics: ScriptDiagnostic[];
+    }
+    interface ScriptDiagnosticContextResult {
+        ok: boolean; errorCount: number; diagnostics: Array<ScriptDiagnostic & { snippet: string }>;
+    }
+    interface ScriptDiagnosticsBatchResult<T> {
+        outcomes: Array<
+            { index: number; tsconfigPath: string; ok: true; result: T } |
+            { index: number; tsconfigPath: string; ok: false; error: { message: string } }
+        >;
+        succeeded: number; failed: number; hasErrors: boolean; partial: boolean;
+    }
+    /** Runs the project compiler. Returned diagnostics are capped; errorCount may exceed their length. A failed compiler invocation is represented by diagnostics, not a clean result. */
+    function runScriptDiagnostics(args: { tsconfigPath?: string }): ScriptDiagnosticsResult;
+    /** Adds source snippets to a bounded diagnostic prefix; unavailable source context may be empty. */
+    function getScriptDiagnosticContext(args: { tsconfigPath?: string; contextLines?: number; limit?: number; verbose?: boolean }): ScriptDiagnosticContextResult;
+    /** Accepts 1–16 configs. Outcome ok means invocation returned, not compilation passed; inspect result.ok and hasErrors. */
+    function scriptDiagnosticsBatch(args: { tsconfigPaths: string[] }): ScriptDiagnosticsBatchResult<ScriptDiagnosticsResult>;
+    /** Separates invocation failures from compiler diagnostics; succeeded counts returned invocations, not clean projects. */
+    function scriptDiagnosticContextBatch(args: { tsconfigPaths: string[]; contextLines?: number; limit?: number; verbose?: boolean }): ScriptDiagnosticsBatchResult<ScriptDiagnosticContextResult>;
+
     /** Tracks only this module's main-process broadcastObserve listeners; excludes panel/arbitrary Creator listeners. No callbacks or event payloads are exposed. */
     function editorListenersInspect(): { supported: true; listeners: Array<{ topic: string; state: 'registered' | 'removal-failed' }>; limitation: string };
 
