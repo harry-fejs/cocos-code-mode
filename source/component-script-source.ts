@@ -3,7 +3,7 @@ import path from 'path';
 import { createHash } from 'crypto';
 import { ToolError } from './utcp/tool-error';
 
-export const COMPONENT_PROPERTY_TYPES = ['enum', 'integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Quat', 'Color', 'Node', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
+export const COMPONENT_PROPERTY_TYPES = ['enum', 'integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Quat', 'Color', 'Node', 'AudioSource', 'Animation', 'SkeletalAnimation', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
 export type ComponentPropertyDescriptor =
     | { name: string; type: 'number'; array?: false; default?: number }
@@ -15,7 +15,7 @@ export type ComponentPropertyDescriptor =
     | { name: string; type: 'Vec3'; array?: false; default?: { x: number; y: number; z: number } }
     | { name: string; type: 'Quat'; array?: false; default?: { x: number; y: number; z: number; w: number } }
     | { name: string; type: 'Color'; array?: false; default?: { r: number; g: number; b: number; a: number } }
-    | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array?: false; default?: null }
+    | { name: string; type: 'Node' | 'AudioSource' | 'Animation' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array?: false; default?: null }
     | { name: string; type: 'number'; array: true; default?: number[] }
     | { name: string; type: 'integer'; array: true; default?: number[] }
     | { name: string; type: 'string'; array: true; default?: string[] }
@@ -24,7 +24,7 @@ export type ComponentPropertyDescriptor =
     | { name: string; type: 'Vec3'; array: true; default?: { x: number; y: number; z: number }[] }
     | { name: string; type: 'Quat'; array: true; default?: { x: number; y: number; z: number; w: number }[] }
     | { name: string; type: 'Color'; array: true; default?: { r: number; g: number; b: number; a: number }[] }
-    | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] };
+    | { name: string; type: 'Node' | 'AudioSource' | 'Animation' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] };
 export interface ComponentScriptDescriptor { className: string; properties?: ComponentPropertyDescriptor[] }
 export interface ComponentScriptSource { source: string; sha256: string; bytes: number; className: string }
 export interface ComponentScriptPath { assetUrl: string; file: string; parentUrl: string; parent: string }
@@ -32,7 +32,7 @@ export interface ComponentScriptAsset { uuid: string; url: string; file: string;
 const MAX_SOURCE_BYTES = 64 * 1024;
 const RESERVED: Record<string, boolean> = Object.fromEntries(('abstract any as asserts async await bigint boolean break case catch class const constructor continue debugger declare default delete do else enum export extends false finally for from function get global if implements import in infer instanceof interface intrinsic is keyof let module namespace never new null number object of out override package private protected public readonly require return satisfies set static string super switch symbol this throw true try type typeof undefined unique unknown var void while with yield arguments eval _decorator Component Node AudioClip AnimationClip SpriteFrame CCFloat CCString CCBoolean ccclass property').split(' ').map(name => [name, true]));
 const COMPONENT_MEMBERS: Record<string, boolean> = Object.fromEntries(('name uuid node enabled enabledInHierarchy isValid hideFlags addComponent getComponent getComponents getComponentInChildren getComponentsInChildren destroy schedule scheduleOnce unschedule unscheduleAllCallbacks onLoad start update lateUpdate onEnable onDisable onDestroy resetInEditor onFocusInEditor onLostFocusInEditor onRestore toString toLocaleString valueOf hasOwnProperty isPrototypeOf propertyIsEnumerable').split(' ').map(name => [name, true]));
-const PROPERTY_IMPORTS: Record<ComponentPropertyType, string> = { enum: 'Enum', integer: 'CCInteger', number: 'CCFloat', string: 'CCString', boolean: 'CCBoolean', Vec2: 'Vec2', Vec3: 'Vec3', Quat: 'Quat', Color: 'Color', Node: 'Node', AudioClip: 'AudioClip', AnimationClip: 'AnimationClip', SpriteFrame: 'SpriteFrame', Prefab: 'Prefab', Material: 'Material', JsonAsset: 'JsonAsset' };
+const PROPERTY_IMPORTS: Record<ComponentPropertyType, string> = { enum: 'Enum', integer: 'CCInteger', number: 'CCFloat', string: 'CCString', boolean: 'CCBoolean', Vec2: 'Vec2', Vec3: 'Vec3', Quat: 'Quat', Color: 'Color', Node: 'Node', AudioSource: 'AudioSource', Animation: 'Animation', SkeletalAnimation: 'SkeletalAnimation', AudioClip: 'AudioClip', AnimationClip: 'AnimationClip', SpriteFrame: 'SpriteFrame', Prefab: 'Prefab', Material: 'Material', JsonAsset: 'JsonAsset' };
 function invalid(message: string): never { throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message }); }
 export function assertComponentScriptInput(value: unknown, allowed: string[]): asserts value is Record<string, unknown> {
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key))) invalid('Component script input must be an object containing only supported fields.');

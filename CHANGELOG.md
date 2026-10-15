@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Include left controlling operands of logical/nullish short-circuit expressions in execution-guard provenance; right-only constant references do not become guards and no runtime reachability is inferred.
+- Add AudioSource, Animation and SkeletalAnimation scalar/array reference descriptors to scriptComponentCreate. Native component type decorators with null/empty defaults support later Inspector binding; no component construction, lookup, attachment or playback is performed.
 - Add native Quat scalar/array descriptors to scriptComponentCreate. Finite exact xyzw defaults are preserved without normalization; omitted scalar defaults to identity and arrays start empty. Generated fields are data only, not node rotation assignment or runtime binding.
 - Recognize property/element access through internal:constants namespace imports in execution-guard provenance, binding namespace aliases by compiler symbol and excluding shadowed locals; no runtime availability inference.
 - Bind execution-guard identifiers to imported compiler symbols in catalog extraction so local shadowing does not masquerade as an internal:constants guard; AST-only callers retain name-based provenance fallback.
