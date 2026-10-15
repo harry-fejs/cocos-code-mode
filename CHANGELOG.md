@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Validate keyframe/auxiliary move offsets as integer scalars or dense 1..200 integer arrays before native selection. Preserve omitted zero, signed values and input order; copy array offsets before async dispatch, with no native replay.
 - Separate object/property-access names from evaluated value reads in guard provenance, avoiding AST-only false positives for {EDITOR:true}/object.EDITOR while retaining shorthand, computed keys and initializer reads.
 - Reject sparse frame selections in the shared animation event/keyframe/auxiliary edit validator before clip selection. Dense frame order and bounded native indices remain unchanged; no mutation replay added.
 - Resolve shorthand-property value symbols in execution-guard provenance, retaining imported constant reads passed through object literals while excluding same-name shadowed locals.

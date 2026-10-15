@@ -288,6 +288,18 @@ function requireFrames(value: unknown, name = 'frames'): number[] {
     return frames;
 }
 
+function requireOffsets(value: unknown): number | number[] {
+    if (value === undefined) return 0;
+    if (typeof value === 'number' && Number.isInteger(value)) return value;
+    if (!Array.isArray(value) || value.length === 0 || value.length > 200) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Offsets must be an integer or 1 to 200 dense integer offsets.' });
+    const offsets: number[] = [];
+    for (let index = 0; index < value.length; index++) {
+        if (!Object.prototype.hasOwnProperty.call(value, index) || typeof value[index] !== 'number' || !Number.isInteger(value[index])) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Offsets must contain dense finite integers.' });
+        offsets.push(value[index]);
+    }
+    return offsets;
+}
+
 function requireOperations(value: unknown): AnimationOperation[] {
     if (!Array.isArray(value) || value.length === 0 || value.length > 100) {
         throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'operations must contain 1 to 100 animation operations.' });
@@ -1160,7 +1172,7 @@ export class AnimationTools {
         const nodePath = requireText(args?.nodePath, 'nodePath');
         const propKey = requireText(args?.propKey, 'propKey');
         if (operation === 'create') return applyToClip(args.clipReference, 'createKey', [nodePath, propKey, requireFrame(args?.frame), args?.customData ?? null]);
-        if (operation === 'move') return applyToClip(args.clipReference, 'moveKeys', [nodePath, propKey, requireFrames(args?.frames), args?.offsets ?? 0]);
+        if (operation === 'move') return applyToClip(args.clipReference, 'moveKeys', [nodePath, propKey, requireFrames(args?.frames), requireOffsets(args?.offsets)]);
         if (operation === 'remove') return applyToClip(args.clipReference, 'removeKey', [nodePath, propKey, requireFrames(args?.frames)]);
         if (operation === 'update') return applyToClip(args.clipReference, 'updateKey', [nodePath, propKey, requireFrames(args?.frames)]);
         if (operation === 'copy_to') return applyToClip(args.clipReference, 'copyKeysTo', [nodePath, propKey, requireFrames(args?.frames), requireFrame(args?.destinationFrame, 'destinationFrame')]);
@@ -1241,7 +1253,7 @@ export class AnimationTools {
         if (operation === 'remove') return applyToClip(args.clipReference, 'removeAuxiliaryCurve', [name]);
         if (operation === 'create_key') return applyToClip(args.clipReference, 'createAuxKey', [name, requireFrame(args?.frame), args?.customData]);
         if (operation === 'remove_key') return applyToClip(args.clipReference, 'removeAuxKey', [name, requireFrame(args?.frame)]);
-        if (operation === 'move_keys') return applyToClip(args.clipReference, 'moveAuxKeys', [name, requireFrames(args?.frames), args?.offset ?? 0]);
+        if (operation === 'move_keys') return applyToClip(args.clipReference, 'moveAuxKeys', [name, requireFrames(args?.frames), requireOffsets(args?.offset)]);
         if (operation === 'copy_key') {
             if (!args?.source || !args?.destination || typeof args.source !== 'object' || typeof args.destination !== 'object') {
                 throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'copy_key requires source and destination objects.' });
