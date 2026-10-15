@@ -101,7 +101,7 @@ Use `editorQuery({category:'engine_api',operation:'records',recordId})` for one 
 
 `operation:'get_signature'` requires an exact `recordId`, hydrates only that record from an external catalog, and returns its declared signatures with `permitted:false`. It is a read-only type/discovery result; unresolved/overloaded/native semantics remain explicit and no callable route is inferred.
 
-`operation:'get_related_types'` requires one exact `recordId` and returns bounded declared `references`/`unresolved` metadata from the record and its signatures/parameters. It does not recursively resolve DTOs, execute code, or infer writable/native permissions; malformed metadata fails closed.
+`operation:'get_related_types'` requires one exact `recordId`. It returns reference/unresolved metadata as standard discovery `records`, each with `relation` and `metadata`, using the same `maxEntries`, `maxBytes` and selector-bound `nextCursor`. Empty metadata is an empty result, not missing-record evidence. It does not recursively resolve DTOs, execute code or infer native permissions; malformed metadata fails closed.
 
 Use `editorQuery({category:'engine_api',operation:'compare_version',targetVersion:'3.7.3',recordId,compareVersion:'3.8.8',compareRecordId})` to compare two exact records sharing a semanticKey. Results compare signature/metadata/resolution hashes and retain catalog identities; missing records do not imply removals. Comparison grants no execution permission.
 
