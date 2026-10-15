@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Scan all merged interface annotation roots under one shared256-node admission budget, retaining invalid references in later declarations instead of false signatureResolved evidence.
 - Compose expectedComponentUuid/expectedClipUuid guards across audio scenario control/observe/assert/wait steps. Whole-input preflight rejects malformed/non-audio guards before any dispatch; identity mismatch propagates and stops later cues without replay.
 - Scan exported named interface declarations through bounded annotation reference analysis, retaining invalid computed-key provenance and preventing false signatureResolved catalog evidence.
 - Add optional expectedComponentUuid/expectedClipUuid guards to audio control/observe/wait, enforced before playback dispatch. Guarded calls refuse stale cached executors without replacing their pending/uncertain mutation ownership; explicit owned preview restart required to adopt the new contract.

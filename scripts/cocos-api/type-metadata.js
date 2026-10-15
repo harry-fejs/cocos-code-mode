@@ -173,9 +173,10 @@ function typeInfo(checker, type, node) {
   };
   visit(type);
   if (node) {
-    const pending = [node];
+    const declarations = ts.isInterfaceDeclaration(node) ? (type.symbol?.declarations || [node]).filter(ts.isInterfaceDeclaration) : [node];
+    const pending = declarations.slice(0, 256).reverse();
     let scanned = 0;
-    let syntaxExceeded = false;
+    let syntaxExceeded = declarations.length > 256;
     while (pending.length) {
       const current = pending.pop();
       scanned++;
@@ -198,7 +199,7 @@ function typeInfo(checker, type, node) {
         const keyType = checker.getTypeAtLocation(current.expression);
         if (keyType.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) unresolved.push({ kind: 'value-reference', reference: compact(current.expression) });
       }
-      if (ts.isTypeNode(current) || current === node || ts.isPropertySignature(current) || ts.isParameter(current) || ts.isMethodSignature(current) || ts.isCallSignatureDeclaration(current) || ts.isConstructSignatureDeclaration(current) || ts.isIndexSignatureDeclaration(current) || ts.isTypeParameterDeclaration(current) || ts.isGetAccessorDeclaration(current) || ts.isSetAccessorDeclaration(current)) {
+      if (ts.isTypeNode(current) || current === node || ts.isInterfaceDeclaration(current) || ts.isPropertySignature(current) || ts.isParameter(current) || ts.isMethodSignature(current) || ts.isCallSignatureDeclaration(current) || ts.isConstructSignatureDeclaration(current) || ts.isIndexSignatureDeclaration(current) || ts.isTypeParameterDeclaration(current) || ts.isGetAccessorDeclaration(current) || ts.isSetAccessorDeclaration(current)) {
         const children = [];
         ts.forEachChild(current, child => {
           if (scanned + pending.length + children.length >= 256) { syntaxExceeded = true; return true; }
