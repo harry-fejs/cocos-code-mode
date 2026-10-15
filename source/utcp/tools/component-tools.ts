@@ -130,7 +130,8 @@ export class ComponentTools {
             await Editor.Message.request('scene', 'remove-component', { uuid: args.reference.id });
             const remaining = await Editor.Message.request('scene', 'query-component', args.reference.id);
             if (remaining !== null && remaining !== undefined) {
-                throw new Error(`Component ${args.reference.id} still exists after removal`);
+                const remainingUuid = field(remaining, 'uuid') ?? field(field(remaining, 'value'), 'uuid');
+                throw new Error(`Component ${args.reference.id} still exists after removal (read-back ${String(remainingUuid ?? 'unknown')})`);
             }
             return { success: true };
         } catch (error: unknown) {
