@@ -6,6 +6,7 @@ export interface RuntimeNodeObservation {
     childrenTruncated: boolean;
     childOffset: number;
     nextChildOffset: number | null;
+    hierarchyIdentity: string;
     active: boolean;
     activeInHierarchy: boolean;
     position: { x: number; y: number; z: number };
@@ -62,14 +63,16 @@ export function observeRuntimeNode(nodeUuid: string, expiresAt: number, childOff
         const parent = node.parent;
         if (node !== scene && (!parent || typeof parent.uuid !== 'string' || !parent.uuid || parent.uuid.length > 256 || !parent.children.includes(node))) fail('RUNTIME_TARGET_CHANGED', 'Runtime parent identity unavailable.');
         const childCount = node.children.length;
+        const allChildUuids = node.children.map(child => child.uuid);
+        if (new Set(allChildUuids).size !== allChildUuids.length) fail('AMBIGUOUS_RUNTIME_TARGET', 'Duplicate direct child identities.');
         if (childOffset > childCount) fail('INVALID_ARGUMENT', 'childOffset exceeds current child collection; restart paging.');
         const childUuids = node.children.slice(childOffset, childOffset + 128).map(child => child.uuid);
         const nextChildOffset = childOffset + childUuids.length < childCount ? childOffset + childUuids.length : null;
-        const result = { nodeUuid, parentUuid: parent?.uuid ?? null, childUuids, childCount, childOffset, nextChildOffset, childrenTruncated: childOffset > 0 || nextChildOffset !== null, active: node.active, activeInHierarchy: node.activeInHierarchy, position: vector(node.position), worldPosition: vector(node.worldPosition), scale: vector(node.scale), rotation: quaternion(node.rotation), worldRotation: quaternion(node.worldRotation) };
+        const result = { nodeUuid, parentUuid: parent?.uuid ?? null, hierarchyIdentity: JSON.stringify([parent?.uuid ?? null, allChildUuids]), childUuids, childCount, childOffset, nextChildOffset, childrenTruncated: childOffset > 0 || nextChildOffset !== null, active: node.active, activeInHierarchy: node.activeInHierarchy, position: vector(node.position), worldPosition: vector(node.worldPosition), scale: vector(node.scale), rotation: quaternion(node.rotation), worldRotation: quaternion(node.worldRotation) };
         let ancestor: Node | null = node; let attached = false;
         for (let depth = 0; ancestor && depth <= 256; depth++, ancestor = ancestor.parent) if (ancestor === scene) { attached = true; break; }
         if (!attached || engine !== (globalThis as unknown as { cc?: unknown }).cc || engine.director?.getScene() !== scene || !engine.isValid(node, true) || node.uuid !== nodeUuid) fail('RUNTIME_TARGET_CHANGED', 'Runtime node or scene changed during observation.');
-        if (node.parent !== parent || node.children.length !== childCount || childUuids.some((id, index) => node.children[childOffset + index]?.uuid !== id || node.children[childOffset + index]?.parent !== node)) fail('RUNTIME_TARGET_CHANGED', 'Runtime hierarchy changed during observation.');
+        if (node.parent !== parent || node.children.length !== childCount || allChildUuids.some((id, index) => node.children[index]?.uuid !== id || node.children[index]?.parent !== node)) fail('RUNTIME_TARGET_CHANGED', 'Runtime hierarchy changed during observation.');
         if (Date.now() >= expiresAt) fail('RUNTIME_STATE_TIMEOUT', 'Node observation completed after deadline.');
         return result;
     } catch (error) {
