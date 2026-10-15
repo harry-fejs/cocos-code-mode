@@ -337,6 +337,7 @@ function constraints(node, context, checker) {
     if (expressionGuard || ts.isConditionalExpression(current) || ts.isForStatement(current) || shortCircuit) {
       const expression = shortCircuit ? current.left : expressionGuard ? current.expression : current.condition;
       const usesConstant = part => {
+        while (ts.isParenthesizedExpression(part) || ts.isAsExpression(part) || ts.isTypeAssertionExpression(part) || ts.isNonNullExpression(part) || ts.isSatisfiesExpression(part)) part = part.expression;
         if ((ts.isMethodDeclaration(part) || ts.isGetAccessorDeclaration(part) || ts.isSetAccessorDeclaration(part)) && ts.isObjectLiteralExpression(part.parent)) return ts.isComputedPropertyName(part.name) && usesConstant(part.name.expression);
         if (ts.isTypeNode(part) || ts.isFunctionLike(part) || ts.isClassExpression(part)) return false;
         if (ts.isBinaryExpression(part) && part.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
