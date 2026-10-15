@@ -70,7 +70,8 @@ export class ComponentTools {
         const node = await Editor.Message.request('scene', 'query-node', args.reference.id);
         if (!node) throw new Error(`Node ${args.reference.id} not found`);
 
-        const components = Array.isArray(node.__comps__) ? node.__comps__ : [];
+        if (!Array.isArray(node.__comps__)) throw new Error(`nodeComponentsGet: node ${args.reference.id} lacks a serialized component array — dump shape drift`);
+        const components = node.__comps__;
         const foundComponents: IInstanceReference[] = [];
         for (const comp of components) {
             const value = field(comp, 'value');
