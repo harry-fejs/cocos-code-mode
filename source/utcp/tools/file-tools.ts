@@ -48,6 +48,7 @@ function resolveSafePath(projectPath: string, relPath: string): string {
     if (typeof relPath !== 'string' || !relPath || relPath.length > MAX_PATH_LENGTH || /[\u0000\r\n]/.test(relPath)) {
         throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Project path must be a non-empty bounded string.' });
     }
+    if (path.isAbsolute(relPath) || /^[A-Za-z]:/.test(relPath)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Project paths must be relative, without drive-qualified or absolute paths.' });
     const root = path.resolve(projectPath);
     const resolved = assertInside(root, path.resolve(root, relPath), relPath);
     let probe = resolved;
