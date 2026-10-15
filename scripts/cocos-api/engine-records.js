@@ -104,7 +104,7 @@ function collectExports(input, version, roots, label = 'engine') {
       }
       for (const child of [...members.values()].sort((a, b) => compare(a.name, b.name))) {
         const decl = child.valueDeclaration || child.declarations?.[0];
-        if (decl) record(child, decl, local, name, child.name, decl.parent !== declaration ? decl.parent : null);
+        if (decl) record(child, decl, local, name, child.name, !symbol.declarations.includes(decl.parent) ? decl.parent : null);
       }
       if (symbol.valueDeclaration) {
         const constructor = checker.getTypeOfSymbolAtLocation(symbol, declaration);
