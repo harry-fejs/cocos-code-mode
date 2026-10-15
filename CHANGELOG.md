@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add inclusive numeric range conditions to animationGraphWaitForVariable, exclusive with exact value. Reject boolean ranges and noninteger integer bounds before observation; preserve exact-value compatibility, graph identity/type/deadline guards and writes:false. No transition/playability inference.
 - Traverse outer execution-guard AST iteratively in source order, avoiding recursive call-stack overflow on deeply nested statements; expression-level analysis/resource budgets remain separate.
 - Add UITransform/Layout/Widget/Mask/Canvas typed scalar/array references and requiredComponents support to scriptComponentCreate. Native declarations only, null/empty reference defaults; no node creation, layout configuration or automatic binding/attachment.
 - Treat compiler-resolved decorator alias decisions as authoritative over syntax fallback, preventing type-only/unresolved/different-target imports named executeInEditMode from earning declared edit-mode metadata.

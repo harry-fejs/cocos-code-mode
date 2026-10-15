@@ -1,12 +1,14 @@
 import { ToolError } from './tool-error';
 
-export interface GraphVariableWaitCondition { graphUuid: string; name: string; type: 'float' | 'integer' | 'boolean'; value: number | boolean; timeoutMs?: number; pollMs?: number }
+export interface GraphVariableWaitCondition { graphUuid: string; name: string; type: 'float' | 'integer' | 'boolean'; value?: number | boolean; range?: { min: number; max: number }; timeoutMs?: number; pollMs?: number }
 export async function waitForGraphVariable(condition: GraphVariableWaitCondition, observe: (timeoutMs: number) => Promise<Record<string, unknown>>) {
     const timeoutMs = condition?.timeoutMs ?? 3000; const pollMs = condition?.pollMs ?? 100;
     if (!condition || typeof condition.graphUuid !== 'string' || !condition.graphUuid || condition.graphUuid.length > 256
         || typeof condition.name !== 'string' || !condition.name.trim() || condition.name.length > 256
         || !['float', 'integer', 'boolean'].includes(condition.type)
-        || (condition.type === 'boolean' ? typeof condition.value !== 'boolean' : typeof condition.value !== 'number' || !Number.isFinite(condition.value) || condition.type === 'integer' && !Number.isInteger(condition.value))
+        || (condition.range === undefined
+            ? condition.type === 'boolean' ? typeof condition.value !== 'boolean' : typeof condition.value !== 'number' || !Number.isFinite(condition.value) || condition.type === 'integer' && !Number.isInteger(condition.value)
+            : condition.value !== undefined || condition.type === 'boolean' || !condition.range || typeof condition.range !== 'object' || Array.isArray(condition.range) || Object.keys(condition.range).some(key => key !== 'min' && key !== 'max') || typeof condition.range.min !== 'number' || !Number.isFinite(condition.range.min) || typeof condition.range.max !== 'number' || !Number.isFinite(condition.range.max) || condition.range.min > condition.range.max || condition.type === 'integer' && (!Number.isInteger(condition.range.min) || !Number.isInteger(condition.range.max)))
         || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000 || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide exact graph UUID, typed variable condition and bounded timeout/poll interval.' });
     const deadline = Date.now() + timeoutMs; let observations = 0;
     for (;;) {
@@ -24,7 +26,7 @@ export async function waitForGraphVariable(condition: GraphVariableWaitCondition
         const type = condition.type === 'boolean' ? 1 : condition.type === 'integer' ? 3 : 0;
         if (variable.type !== type || (condition.type === 'boolean' ? typeof variable.value !== 'boolean' : typeof variable.value !== 'number' || !Number.isFinite(variable.value) || condition.type === 'integer' && !Number.isInteger(variable.value))) throw new ToolError({ code: 'UNSUPPORTED_GRAPH_VARIABLE', status: 422, message: 'Observed graph variable does not match the requested finite type.' });
         observations++;
-        if (variable.value === condition.value) return { matched: true as const, observations, graphUuid: condition.graphUuid, variable: { name: condition.name, type: condition.type, value: variable.value }, writes: false as const };
+        if (condition.range === undefined ? variable.value === condition.value : (variable.value as number) >= condition.range.min && (variable.value as number) <= condition.range.max) return { matched: true as const, observations, graphUuid: condition.graphUuid, variable: { name: condition.name, type: condition.type, value: variable.value }, writes: false as const };
         await new Promise(resolve => setTimeout(resolve, Math.min(pollMs, Math.max(0, deadline - Date.now()))));
     }
 }
