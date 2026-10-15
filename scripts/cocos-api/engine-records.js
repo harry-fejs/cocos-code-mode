@@ -42,9 +42,10 @@ function collectExports(input, version, roots, label = 'engine') {
     } else sigs = signatures(checker, symbol, declaration);
     const unresolved = [...new Map(sigs.flatMap(signature => signature.unresolved).map(item => [json(item), item])).values()].sort((a, b) => compare(json(a), json(b)));
     const inheritedName = inheritedFrom?.name?.getText() || null;
-    const owner = member ? declaration.parent : declaration;
+    const owner = member ? declaration.parent : ts.isVariableDeclaration(declaration) && declaration.initializer && ts.isClassExpression(declaration.initializer) ? declaration.initializer : declaration;
     const ownerSymbol = owner.name && checker.getSymbolAtLocation(owner.name);
-    const owners = ownerSymbol?.declarations?.filter(part => ts.isInterfaceDeclaration(part) || ts.isClassDeclaration(part)) || [owner];
+    const mergedOwners = ownerSymbol?.declarations?.filter(part => ts.isInterfaceDeclaration(part) || ts.isClassDeclaration(part) || ts.isClassExpression(part));
+    const owners = mergedOwners?.length ? mergedOwners : [owner];
     const clauses = owners.flatMap(part => part.heritageClauses || []);
     const heritage = [...new Map(clauses.flatMap(clause => clause.types.map(type => ({ relation: ts.tokenToString(clause.token), type: compact(type) }))).map(item => [json(item), item])).values()];
     for (const clause of clauses) for (const type of clause.types) {
