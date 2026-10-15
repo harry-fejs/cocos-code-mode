@@ -1187,6 +1187,13 @@ declare namespace ccp3x {
         targetUuid: string | null; componentName: string | null; handler: string | null; customEventData: string;
     }>;
 
+    /** Bounded UTF-8 project text. Missing files return exists=false; containment and size errors still throw. bytes measures decoded UTF-8 content. */
+    function readProjectInstruction(args: { filePath: string; verbose?: boolean }):
+        { exists: false; content: ''; bytes: 0; filePath: string } |
+        { exists: true; content: string; bytes: number; filePath: string };
+    /** Uses the shared bounded atomic writer and filesystem read-back; asset refresh is best-effort. Inspect ambiguous failures before retry. */
+    function writeProjectInstruction(args: { filePath: string; content: string }): { success: true; filePath: string; bytesWritten: number };
+
     /** Tracks only this module's main-process broadcastObserve listeners; excludes panel/arbitrary Creator listeners. No callbacks or event payloads are exposed. */
     function editorListenersInspect(): { supported: true; listeners: Array<{ topic: string; state: 'registered' | 'removal-failed' }>; limitation: string };
 

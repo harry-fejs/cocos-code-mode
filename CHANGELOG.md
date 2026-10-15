@@ -121,6 +121,7 @@
 - Declare package profile and Creator preference APIs, distinguishing write acknowledgment from immediate read-back equality and persistence proof.
 - Declare button click simulation, binding, and read-only binding inspection with nullable serialized identities and explicit persistence limits.
 - Route instruction writes through the shared bounded atomic project writer with filesystem read-back and real-path containment checks.
+- Reuse bounded real-path-checked project reads for instruction text, preserve missing-file responses, and declare both instruction APIs.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
