@@ -807,7 +807,7 @@ declare namespace ccp3x {
     /** Reads authoritative component UUID/type references from one serialized node; malformed component metadata throws instead of returning partial matches. */
     function nodeComponentsGet(args: { reference: InstanceReference; componentType?: string }): { references: InstanceReference[] };
     /** Lists classes known to the editor, optionally filtered by base class; filtering applies to returned class names. */
-    function listComponentClasses(args?: { extends?: string; excludeSelf?: boolean; filter?: string }): { classes: string[] };
+    function listComponentClasses(args: { extends?: string; excludeSelf?: boolean; filter?: string }): { classes: string[] };
 
     /** Get info about the current scene: bounds (canvas/scene size), unsaved changes (dirty), and which scene asset is open. */
     function sceneGetInfo(): { bounds: { x: number, y: number, width: number, height: number }, dirty: boolean, currentScene?: { uuid?: string, url?: string, name?: string } };

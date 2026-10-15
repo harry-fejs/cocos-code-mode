@@ -141,6 +141,7 @@
 - Reject invalid camera inventory limits before scene IPC instead of silently accepting non-finite, fractional or out-of-schema caps.
 - Record attempted camera property writes before set-property dispatch so settled rejection after native mutation enters reverse rollback.
 - Declare bounded component type inventory, authoritative node component references, and filtered class discovery responses.
+- Require the class-discovery argument object in public types to match the existing handler contract.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
