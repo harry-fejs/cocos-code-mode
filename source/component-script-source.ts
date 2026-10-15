@@ -5,7 +5,7 @@ import { ToolError } from './utcp/tool-error';
 
 export const COMPONENT_PROPERTY_TYPES = ['enum', 'integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Quat', 'Color', 'Node', 'Label', 'Sprite', 'Button', 'EditBox', 'ScrollView', 'Slider', 'Toggle', 'ProgressBar', 'AudioSource', 'Animation', 'SkeletalAnimation', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
-export type ComponentPropertyDescriptor =
+export type ComponentPropertyDescriptor = { tooltip?: string } & (
     | { name: string; type: 'number'; array?: false; default?: number }
     | { name: string; type: 'integer'; array?: false; default?: number }
     | { name: string; type: 'enum'; array?: false; entries: Array<{ name: string; value: number }>; default: number }
@@ -24,7 +24,7 @@ export type ComponentPropertyDescriptor =
     | { name: string; type: 'Vec3'; array: true; default?: { x: number; y: number; z: number }[] }
     | { name: string; type: 'Quat'; array: true; default?: { x: number; y: number; z: number; w: number }[] }
     | { name: string; type: 'Color'; array: true; default?: { r: number; g: number; b: number; a: number }[] }
-    | { name: string; type: 'Node' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] };
+    | { name: string; type: 'Node' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] });
 export interface ComponentScriptDescriptor { className: string; properties?: ComponentPropertyDescriptor[] }
 export interface ComponentScriptSource { source: string; sha256: string; bytes: number; className: string }
 export interface ComponentScriptPath { assetUrl: string; file: string; parentUrl: string; parent: string }
@@ -51,12 +51,14 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
     const names = new Set<string>();
     const fields: string[] = [];
     for (const row of rows) {
-        assertComponentScriptInput(row, ['name', 'type', 'array', 'default', 'entries']);
+        assertComponentScriptInput(row, ['name', 'type', 'array', 'default', 'entries', 'tooltip']);
         if (!identifier(row.name) || COMPONENT_MEMBERS[row.name] === true || names.has(row.name)) invalid('Property names must be unique safe identifiers and must not shadow Component members or lifecycle methods.');
         if (typeof row.type !== 'string' || !COMPONENT_PROPERTY_TYPES.includes(row.type as ComponentPropertyType)) invalid('Unsupported property type.');
         const type = row.type as ComponentPropertyType;
         const hasDefault = Object.prototype.hasOwnProperty.call(row, 'default');
         if (row.array !== undefined && typeof row.array !== 'boolean') invalid('array must be a boolean when provided.');
+        if (row.tooltip !== undefined && (typeof row.tooltip !== 'string' || row.tooltip.length > 1024)) invalid('tooltip must be a string of at most 1024 characters.');
+        const tooltip = row.tooltip === undefined ? '' : `, tooltip: ${literal(row.tooltip as string)}`;
         if (type === 'enum') {
             if (row.array === true || !Array.isArray(row.entries) || row.entries.length < 1 || row.entries.length > 64) invalid('Scalar enum requires 1..64 explicit entries.');
             const labels = new Set<string>(), values = new Set<number>(), entries: string[] = [];
@@ -67,7 +69,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
             }
             if (typeof row.default !== 'number' || !values.has(row.default)) invalid('Enum default must explicitly select one declared value.');
             names.add(row.name); imports.add('Enum');
-            fields.push(`    @property({ type: Enum({ ${entries.join(', ')} }) })`, `    ${row.name}: number = ${literal(row.default)};`, '');
+            fields.push(`    @property({ type: Enum({ ${entries.join(', ')} })${tooltip} })`, `    ${row.name}: number = ${literal(row.default)};`, '');
             continue;
         }
         if (row.entries !== undefined) invalid('entries is supported only for enum fields.');
@@ -94,7 +96,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
             }
             names.add(row.name);
             imports.add(PROPERTY_IMPORTS[type]);
-            fields.push(`    @property([${PROPERTY_IMPORTS[type]}])`, `    ${row.name}: ${type === 'integer' ? 'number' : type}[] = [${initializers.join(', ')}];`, '');
+            fields.push(tooltip ? `    @property({ type: [${PROPERTY_IMPORTS[type]}]${tooltip} })` : `    @property([${PROPERTY_IMPORTS[type]}])`, `    ${row.name}: ${type === 'integer' ? 'number' : type}[] = [${initializers.join(', ')}];`, '');
             continue;
         }
         let initial: string | number | boolean | null;
@@ -105,7 +107,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
             if (channels.some(channel => typeof value[channel] !== 'number' || !Number.isInteger(value[channel]) || (value[channel] as number) < 0 || (value[channel] as number) > 255)) invalid('Color defaults require exactly r/g/b/a integer bytes from 0 to 255.');
             names.add(row.name);
             imports.add(type);
-            fields.push('    @property(Color)', `    ${row.name}: Color = new Color(${channels.map(channel => literal(value[channel] as number)).join(', ')});`, '');
+            fields.push(tooltip ? `    @property({ type: Color${tooltip} })` : '    @property(Color)', `    ${row.name}: Color = new Color(${channels.map(channel => literal(value[channel] as number)).join(', ')});`, '');
             continue;
         }
         if (type === 'Vec2' || type === 'Vec3' || type === 'Quat') {
@@ -115,7 +117,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
             if (axes.some(axis => typeof value[axis] !== 'number' || !Number.isFinite(value[axis]))) invalid('Vector defaults require exactly the finite numeric coordinates of their declared type.');
             names.add(row.name);
             imports.add(type);
-            fields.push(`    @property(${type})`, `    ${row.name}: ${type} = new ${type}(${axes.map(axis => literal(value[axis] as number)).join(', ')});`, '');
+            fields.push(tooltip ? `    @property({ type: ${type}${tooltip} })` : `    @property(${type})`, `    ${row.name}: ${type} = new ${type}(${axes.map(axis => literal(value[axis] as number)).join(', ')});`, '');
             continue;
         }
         if (type === 'number' || type === 'integer') {
@@ -134,7 +136,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         }
         names.add(row.name);
         imports.add(PROPERTY_IMPORTS[type]);
-        fields.push(`    @property(${PROPERTY_IMPORTS[type]})`, `    ${row.name}: ${initial === null ? `${type} | null` : type === 'integer' ? 'number' : type} = ${literal(initial)};`, '');
+        fields.push(tooltip ? `    @property({ type: ${PROPERTY_IMPORTS[type]}${tooltip} })` : `    @property(${PROPERTY_IMPORTS[type]})`, `    ${row.name}: ${initial === null ? `${type} | null` : type === 'integer' ? 'number' : type} = ${literal(initial)};`, '');
     }
     if (imports.has(input.className)) invalid('className must not shadow a generated cc import.');
     const source = [
