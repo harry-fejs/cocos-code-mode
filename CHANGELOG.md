@@ -5,6 +5,7 @@
 - Compose exact node/component/clip animation observe/assert/wait checkpoints in runtime scenarios with whole-input preflight, finite deadlines, cancellation and retained pending ownership. Reuses existing runtime adapters; no playback replay or new live qualification.
 - Compose exact-clip animation play/pause/resume/stop actions with scenario waits/assertions using the existing finite adapter. Whole-input preflight rejects invalid later actions; unknown dispatched outcomes stop without replay or rollback.
 - Extend sound scenario assert/wait checkpoints with explicit init/playing/paused/stopped/interrupted state and minimum playback time. Predicates compose against one observation; stopped is not natural completion, invalid metrics refuse and actions are never replayed.
+- Extend data-component source authoring with serialized Vec2/Vec3 fields, exact finite coordinate defaults and per-instance native constructor initialization. Preview/create ownership gates remain unchanged; native import/Inspector qualification remains deferred.
 - Add authoritative build preflight, redacted registered-toolchain inspection and guarded terminal native task options updates. Native task updates explicitly do not persist history or dispatch builds.
 - Add bounded project-code tween create/inspect/static validation with explicit new-source ownership and runtime-unavailable separation; no native tween asset or automatic target binding.
 - Reconcile duplicate workflow overrides, exact source routes and current hashes while preserving approved historical denominator identities separately from reproducible semantic hashes. Current coverage is not fresh live qualification.
@@ -153,6 +154,7 @@
 - Confirm component removal by post-mutation query; retained or malformed read-back throws instead of reporting success.
 - Report component creation dispatch/logging failures as typed unknown outcomes with retrySafe:false, preserving logging cleanup failure without replaying or deleting ambiguous components.
 - Require a unique new component candidate and exact UUID/type on final add read-back; refuse ambiguous creation rather than choosing the first match.
+- Require matching node UUID and a bounded explicit component inventory at each component-add observation before granting success.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

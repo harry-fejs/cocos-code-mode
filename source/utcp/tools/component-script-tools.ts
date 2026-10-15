@@ -37,7 +37,7 @@ export class ComponentScriptTools {
                     properties: {
                         name: { type: 'string', minLength: 1, maxLength: 64, pattern: '^[A-Za-z][A-Za-z0-9_]*$' },
                         type: { type: 'string', enum: [...COMPONENT_PROPERTY_TYPES] },
-                        default: { anyOf: [{ type: 'number' }, { type: 'string', maxLength: 4096 }, { type: 'boolean' }, { type: 'null' }], description: 'Must match the property type. Reference types permit only null; primitive defaults are 0, empty string and false when omitted.' },
+                        default: { anyOf: [{ type: 'number' }, { type: 'string', maxLength: 4096 }, { type: 'boolean' }, { type: 'null' }, { type: 'object', additionalProperties: false, properties: { x: { type: 'number' }, y: { type: 'number' } }, required: ['x', 'y'] }, { type: 'object', additionalProperties: false, properties: { x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' } }, required: ['x', 'y', 'z'] }], description: 'Must match the property type. Vec2/Vec3 require exact finite coordinates and default to zero vectors; references permit only null.' },
                     }, required: ['name', 'type'],
                 },
             },

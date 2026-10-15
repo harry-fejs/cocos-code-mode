@@ -3,12 +3,14 @@ import path from 'path';
 import { createHash } from 'crypto';
 import { ToolError } from './utcp/tool-error';
 
-export const COMPONENT_PROPERTY_TYPES = ['number', 'string', 'boolean', 'Node', 'AudioClip', 'AnimationClip', 'SpriteFrame'] as const;
+export const COMPONENT_PROPERTY_TYPES = ['number', 'string', 'boolean', 'Vec2', 'Vec3', 'Node', 'AudioClip', 'AnimationClip', 'SpriteFrame'] as const;
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
 export type ComponentPropertyDescriptor =
     | { name: string; type: 'number'; default?: number }
     | { name: string; type: 'string'; default?: string }
     | { name: string; type: 'boolean'; default?: boolean }
+    | { name: string; type: 'Vec2'; default?: { x: number; y: number } }
+    | { name: string; type: 'Vec3'; default?: { x: number; y: number; z: number } }
     | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame'; default?: null };
 export interface ComponentScriptDescriptor { className: string; properties?: ComponentPropertyDescriptor[] }
 export interface ComponentScriptSource { source: string; sha256: string; bytes: number; className: string }
@@ -17,7 +19,7 @@ export interface ComponentScriptAsset { uuid: string; url: string; file: string;
 const MAX_SOURCE_BYTES = 64 * 1024;
 const RESERVED: Record<string, boolean> = Object.fromEntries(('abstract any as asserts async await bigint boolean break case catch class const constructor continue debugger declare default delete do else enum export extends false finally for from function get global if implements import in infer instanceof interface intrinsic is keyof let module namespace never new null number object of out override package private protected public readonly require return satisfies set static string super switch symbol this throw true try type typeof undefined unique unknown var void while with yield arguments eval _decorator Component Node AudioClip AnimationClip SpriteFrame CCFloat CCString CCBoolean ccclass property').split(' ').map(name => [name, true]));
 const COMPONENT_MEMBERS: Record<string, boolean> = Object.fromEntries(('name uuid node enabled enabledInHierarchy isValid hideFlags addComponent getComponent getComponents getComponentInChildren getComponentsInChildren destroy schedule scheduleOnce unschedule unscheduleAllCallbacks onLoad start update lateUpdate onEnable onDisable onDestroy resetInEditor onFocusInEditor onLostFocusInEditor onRestore toString toLocaleString valueOf hasOwnProperty isPrototypeOf propertyIsEnumerable').split(' ').map(name => [name, true]));
-const PROPERTY_IMPORTS: Record<ComponentPropertyType, string> = { number: 'CCFloat', string: 'CCString', boolean: 'CCBoolean', Node: 'Node', AudioClip: 'AudioClip', AnimationClip: 'AnimationClip', SpriteFrame: 'SpriteFrame' };
+const PROPERTY_IMPORTS: Record<ComponentPropertyType, string> = { number: 'CCFloat', string: 'CCString', boolean: 'CCBoolean', Vec2: 'Vec2', Vec3: 'Vec3', Node: 'Node', AudioClip: 'AudioClip', AnimationClip: 'AnimationClip', SpriteFrame: 'SpriteFrame' };
 function invalid(message: string): never { throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message }); }
 export function assertComponentScriptInput(value: unknown, allowed: string[]): asserts value is Record<string, unknown> {
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key))) invalid('Component script input must be an object containing only supported fields.');
@@ -42,6 +44,16 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         const type = row.type as ComponentPropertyType;
         const hasDefault = Object.prototype.hasOwnProperty.call(row, 'default');
         let initial: string | number | boolean | null;
+        if (type === 'Vec2' || type === 'Vec3') {
+            const axes = type === 'Vec2' ? ['x', 'y'] : ['x', 'y', 'z'];
+            const value = hasDefault ? row.default : Object.fromEntries(axes.map(axis => [axis, 0]));
+            assertComponentScriptInput(value, axes);
+            if (axes.some(axis => typeof value[axis] !== 'number' || !Number.isFinite(value[axis]))) invalid('Vector defaults require exactly the finite numeric coordinates of their declared type.');
+            names.add(row.name);
+            imports.add(type);
+            fields.push(`    @property(${type})`, `    ${row.name}: ${type} = new ${type}(${axes.map(axis => literal(value[axis] as number)).join(', ')});`, '');
+            continue;
+        }
         if (type === 'number') {
             if (hasDefault && (typeof row.default !== 'number' || !Number.isFinite(row.default))) invalid('Number defaults must be finite numbers.');
             initial = hasDefault ? row.default as number : 0;
