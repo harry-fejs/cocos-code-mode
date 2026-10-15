@@ -343,8 +343,10 @@ function constraints(node, context, checker) {
           if (ts.isElementAccessExpression(part.left)) return usesConstant(part.left.expression) || usesConstant(part.left.argumentExpression) || usesConstant(part.right);
         }
         if (ts.isDeleteExpression(part)) {
-          if (ts.isPropertyAccessExpression(part.expression)) return usesConstant(part.expression.expression);
-          if (ts.isElementAccessExpression(part.expression)) return usesConstant(part.expression.expression) || usesConstant(part.expression.argumentExpression);
+          let target = part.expression;
+          while (ts.isParenthesizedExpression(target) || ts.isAsExpression(target) || ts.isTypeAssertionExpression(target) || ts.isNonNullExpression(target) || ts.isSatisfiesExpression(target)) target = target.expression;
+          if (ts.isPropertyAccessExpression(target)) return usesConstant(target.expression);
+          if (ts.isElementAccessExpression(target)) return usesConstant(target.expression) || usesConstant(target.argumentExpression);
         }
         if (ts.isPropertyAssignment(part)) return (ts.isComputedPropertyName(part.name) && usesConstant(part.name.expression)) || usesConstant(part.initializer);
         if (checker && ts.isShorthandPropertyAssignment(part) && constantSymbols.has(checker.getShorthandAssignmentValueSymbol(part))) return true;
