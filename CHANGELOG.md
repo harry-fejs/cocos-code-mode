@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add native Quat scalar/array descriptors to scriptComponentCreate. Finite exact xyzw defaults are preserved without normalization; omitted scalar defaults to identity and arrays start empty. Generated fields are data only, not node rotation assignment or runtime binding.
+- Recognize property/element access through internal:constants namespace imports in execution-guard provenance, binding namespace aliases by compiler symbol and excluding shadowed locals; no runtime availability inference.
 - Bind execution-guard identifiers to imported compiler symbols in catalog extraction so local shadowing does not masquerade as an internal:constants guard; AST-only callers retain name-based provenance fallback.
 - Add inclusive maxFrameCount0..1e9 windows to runtime waits/assertions and scenario wait/assert steps. Compose with minFrameCount/paused, reject reversed/invalid intervals before reads and refuse unavailable metrics for upper-only checks; no stepping or pause mutation.
 - Detect internal:constants guard aliases through AST identifiers rather than regex word boundaries, supporting dollar-containing aliases and avoiding string-literal text matches; metadata remains declaration provenance only.

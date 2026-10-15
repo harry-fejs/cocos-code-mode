@@ -1051,6 +1051,8 @@ declare namespace ccp3x {
     | { name: string; type: 'boolean'; array?: false; default?: boolean }
     | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }
     | { name: string; type: 'Vec3'; array?: false; default?: { x: number; y: number; z: number } }
+    /** Native cc.Quat data, finite xyzw preserved without normalization; omitted scalar is identity. */
+    | { name: string; type: 'Quat'; array?: false; default?: { x: number; y: number; z: number; w: number } }
     | { name: string; type: 'Color'; array?: false; default?: { r: number; g: number; b: number; a: number } }
     | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array?: false; default?: null }
     | { name: string; type: 'number'; array: true; default?: number[] }
@@ -1059,6 +1061,7 @@ declare namespace ccp3x {
     | { name: string; type: 'boolean'; array: true; default?: boolean[] }
     | { name: string; type: 'Vec2'; array: true; default?: { x: number; y: number }[] }
     | { name: string; type: 'Vec3'; array: true; default?: { x: number; y: number; z: number }[] }
+    | { name: string; type: 'Quat'; array: true; default?: { x: number; y: number; z: number; w: number }[] }
     | { name: string; type: 'Color'; array: true; default?: { r: number; g: number; b: number; a: number }[] }
     | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] };
     function scriptComponentCreate(args: { assetUrl: string; className: string; properties?: ComponentPropertyDescriptor[]; write: boolean }): { assetUrl: string; className: string; source: string; sha256: string; bytes: number; sourceCreated: boolean; uuid: string | null; classRegistration: 'unknown' | 'pending'; attached: false; runtimeVerified: false; sceneSaved: false };
