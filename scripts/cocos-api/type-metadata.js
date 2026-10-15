@@ -316,7 +316,7 @@ function signatures(checker, symbol, declaration) {
     const row = signatureInfo(checker, sig, sig.getDeclaration() || declaration, i);
     if (i >= calls.length) row.kind = 'construct';
     row.abstract = metadata(declaration).abstract || !!(sig.flags & ts.SignatureFlags.Abstract);
-    if (ts.isPropertyDeclaration(declaration) || ts.isPropertySignature(declaration)) {
+    if (ts.isPropertyDeclaration(declaration) || ts.isPropertySignature(declaration) || ts.isParameter(declaration) && ts.isConstructorDeclaration(declaration.parent) && !!(ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.ParameterPropertyModifier)) {
       row.visibility = metadata(declaration).visibility;
       row.unresolved.push({ kind: 'semantic-adapter-required', reference: i < calls.length ? 'callable-property' : 'constructable-property' });
     }
