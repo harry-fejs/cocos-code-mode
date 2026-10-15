@@ -316,8 +316,9 @@ function constraints(node, context) {
   const guards = [];
   const scan = current => {
     if (ts.isIfStatement(current) || ts.isConditionalExpression(current)) {
-      const condition = compact(current.condition || current.expression);
-      if (constants.some(name => new RegExp(`\\b${name}\\b`).test(condition))) guards.push(condition);
+      const expression = ts.isIfStatement(current) ? current.expression : current.condition;
+      const usesConstant = part => ts.isIdentifier(part) && constants.includes(part.text) || ts.forEachChild(part, usesConstant);
+      if (usesConstant(expression)) guards.push(compact(expression));
     }
     ts.forEachChild(current, scan);
   };
