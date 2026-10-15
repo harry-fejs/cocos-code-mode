@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add optional serializable metadata to scriptComponentCreate fields for native transient data authoring. Omission preserves existing defaults; false rejects formerlySerializedAs and does not claim saved-scene migration or persistence verification.
 - Pin Game View targetId across particleWaitForState observations, refusing replacement-target checkpoint success while preserving read-only playing/count predicates and cooperative cancellation.
 - Extend internal scenario cancellation guards to particle/node/session state waits before each observation and after read settlement. Pending reads are not aborted; no further polling is dispatched after cancellation is observed.
 - Preserve callable/constructable constructor parameter-property visibility and semantic-adapter requirements, matching equivalent property declarations without treating ordinary parameters as fields.
