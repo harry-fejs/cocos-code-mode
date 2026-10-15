@@ -121,6 +121,11 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
         }
         records.splice(0, records.length, ...[...members.values()].sort((a, b) => a.id.localeCompare(b.id)));
     }
+    if (operation === 'get_signature') {
+        const record = records[0] as ApiRecord | undefined;
+        if (!record) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record signature is absent from the selected catalog scope/version/filters.' });
+        records.splice(0, records.length, { id: record.id, namespace: record.namespace, className: record.className, member: record.member, name: record.name, kind: record.kind, signatures: record.signatures ?? [], permitted: false, evidenceStatus: 'declared' });
+    }
     if (offset > records.length) throw new ToolError({ code: 'STALE_CURSOR', status: 409, message: 'Catalog cursor offset exceeds this result set.' });
     if (args.className && records.length === 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Class ${args.className} is absent from the ${version} catalog.` });
     if (args.recordId !== undefined && records.length === 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record is absent from the selected catalog scope/version/filters.' });
