@@ -124,7 +124,7 @@ function atomicWriteVerified(filePath: string, content: string): number {
     );
     let tempOwned = false;
     try {
-        const handle = fs.openSync(tempPath, 'wx');
+        const handle = fs.openSync(tempPath, 'wx', existingMode ?? 0o666);
         tempOwned = true;
         try {
             fs.writeFileSync(handle, content, 'utf8');
