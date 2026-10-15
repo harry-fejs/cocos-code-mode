@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve interface base-type names and generic base dependencies in DTO metadata; shared diamond heritage reuses existing traversal guards rather than producing false recursive-cycle diagnostics.
+- Add read-only runtimeNodeWaitForState with combined active/activeInHierarchy conditions, pinned scene identity and one caller deadline. Missing/destroyed nodes remain errors; never inferred inactive, no activation writes and in-flight reads may settle after timeout.
 - Retain mapped DTO declaration key/value/remap dependencies with explicit mapped-type unresolved status; declaration operands do not claim instantiated-property completeness.
 - Add exact attached Game View runtimeNodeObserve for activation/local position/world position/local scale with finite DTOs,10000-node/256-depth traversal caps and before/after session checks. No edit-scene fallback, components, mutation or gameplay qualification inferred.
 - Retain deferred conditional type operands/declaration-branch dependencies and unresolved diagnostics; compiler-selected concrete branches remain resolved and do not inherit unused-branch dependencies.

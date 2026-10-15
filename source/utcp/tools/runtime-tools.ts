@@ -34,6 +34,32 @@ export class RuntimeTools {
         return { sessionId: session.sessionId, targetId: session.targetId, ...result, writes: false as const };
     }
 
+    @utcpTool('runtimeNodeWaitForState', 'Read-only exact Game View node activation wait. Requires active and/or activeInHierarchy; one caller deadline, no activation writes or absence-as-inactive inference.', {
+        type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string', minLength: 1, maxLength: 64 }, nodeReference: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['id'] }, active: { type: 'boolean' }, activeInHierarchy: { type: 'boolean' }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000 } }, required: ['sessionId', 'nodeReference'],
+    }, { type: 'object', properties: { matched: { type: 'boolean', const: true }, observations: { type: 'integer' }, observation: { type: 'object' } }, required: ['matched', 'observations', 'observation'] }, 'GET', ['node', 'runtime', 'wait', 'read-only'])
+    async runtimeNodeWaitForState(args: { sessionId: string; nodeReference: { id: string }; active?: boolean; activeInHierarchy?: boolean; timeoutMs?: number; pollMs?: number }) {
+        const timeoutMs = args?.timeoutMs ?? 3000, pollMs = args?.pollMs ?? 100;
+        if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64 || typeof args.nodeReference?.id !== 'string' || !args.nodeReference.id.trim() || args.nodeReference.id.length > 256
+            || args.active === undefined && args.activeInHierarchy === undefined || args.active !== undefined && typeof args.active !== 'boolean' || args.activeInHierarchy !== undefined && typeof args.activeInHierarchy !== 'boolean'
+            || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000 || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide exact session/node, boolean activation condition and bounded deadline/poll interval.' });
+        const deadline = Date.now() + timeoutMs; let observations = 0; let targetId: string | undefined;
+        for (;;) {
+            const remaining = deadline - Date.now();
+            if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node activation wait deadline elapsed.' });
+            let timer: NodeJS.Timeout | undefined;
+            let observation: Awaited<ReturnType<RuntimeTools['runtimeNodeObserve']>>;
+            try {
+                observation = await Promise.race([this.runtimeNodeObserve({ sessionId: args.sessionId, nodeReference: { id: args.nodeReference.id }, timeoutMs: Math.max(100, Math.min(remaining, 1000)) }), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation exceeded caller deadline; in-flight read may settle later.' })), remaining); })]);
+            } finally { clearTimeout(timer); }
+            if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation completed after deadline.' });
+            if (observation.sessionId !== args.sessionId || observation.nodeUuid !== args.nodeReference.id || typeof observation.targetId !== 'string' || !observation.targetId || typeof observation.active !== 'boolean' || typeof observation.activeInHierarchy !== 'boolean') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Node activation observation identity/state invalid.' });
+            if (targetId !== undefined && observation.targetId !== targetId) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Scene identity changed during node activation wait.' });
+            targetId = observation.targetId; observations++;
+            if ((args.active === undefined || observation.active === args.active) && (args.activeInHierarchy === undefined || observation.activeInHierarchy === args.activeInHierarchy)) return { matched: true as const, observations, observation };
+            await new Promise<void>(resolve => setTimeout(resolve, Math.min(pollMs, Math.max(0, deadline - Date.now()))));
+        }
+    }
+
     @utcpTool(
         'runtimePause',
         'Pause the actual Game View runtime and verify its paused state.',
