@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Validate graph wait snapshots as bounded64 dense variable records with typed names/types and unique names before matching. Malformed unrelated entries and duplicate declarations cannot be ignored to grant checkpoint success; no graph writes/playability inference.
 - Preserve minimum argument counts for union rest tuples using the least required alternative length; empty tuple/array alternatives retain zero additional minimum and no runtime argument rewriting is inferred.
 - Bind graph wait inspections to the pinned requested graph UUID at the serialized native boundary, refusing wrong graphs before variable value reads. Retain helper readback identity/type/deadline guards and read-only behavior.
 - Do not count optional prefix slots toward minimum arity when rest tuples have zero required elements; empty/all-optional rest tuples retain compiler base minimum while required rest elements preserve positional offsets.
