@@ -1167,14 +1167,21 @@ export class SceneTools {
         if (!nodeId) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'sceneScriptDetach requires nodeReference.id.' });
         const node = await Editor.Message.request('scene', 'query-node', nodeId) as any;
         if (!node) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Scene node ${nodeId} was not found.` });
-        const target = (node.__comps__ || []).find((component: unknown) => {
+        if (!Array.isArray(node.__comps__)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Creator did not return a complete component inventory for detach preflight.' });
+        const targets = node.__comps__.filter((component: unknown) => {
             const uuid = componentUuid(component);
             const classId = componentClassId(component);
             return (args.componentReference?.id && uuid === args.componentReference.id) || (!args.componentReference?.id && args.scriptClassId && classId === args.scriptClassId);
         });
+        if (targets.length > 1) throw new ToolError({ code: 'SCRIPT_TARGET_AMBIGUOUS', status: 409, message: 'Detach selector matches multiple components; provide an exact component UUID.' });
+        const target = targets[0];
         const componentId = componentUuid(target);
         const classId = componentClassId(target);
         if (!target || !componentId || !classId) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Script component was not found on node ${nodeId}.` });
+        if (args.scriptClassId !== undefined && args.scriptClassId !== classId) throw new ToolError({ code: 'SCRIPT_TARGET_CHANGED', status: 409, message: 'Detach target no longer matches scriptClassId.' });
+        const fresh = await Editor.Message.request('scene', 'query-node', nodeId) as any;
+        const freshTargets = Array.isArray(fresh?.__comps__) ? fresh.__comps__.filter((component: unknown) => componentUuid(component) === componentId) : [];
+        if (freshTargets.length !== 1 || componentClassId(freshTargets[0]) !== classId) throw new ToolError({ code: 'SCRIPT_TARGET_CHANGED', status: 409, message: 'Detach target identity changed during preflight; no removal was dispatched.' });
         await Editor.Message.request('scene', 'remove-component', { uuid: componentId });
         const after = await Editor.Message.request('scene', 'query-node', nodeId) as any;
         if (!after || !Array.isArray(after.__comps__) || after.__comps__.some((component: unknown) => componentUuid(component) === componentId)) throw new ToolError({ code: 'SCRIPT_DETACH_UNCONFIRMED', status: 502, message: `Creator did not confirm removal of script component ${componentId}.`, details: { nodeId, componentId, retrySafe: false }, recovery: 'Inspect the node before another removal; missing or malformed node data is not component absence proof.' });
