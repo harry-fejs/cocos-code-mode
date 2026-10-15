@@ -89,6 +89,7 @@ function typeInfo(checker, type, node) {
 }
 function signatureInfo(checker, signature, declaration, index) {
   const unresolved = [];
+  const genericReferences = new Map();
   const parameters = signature.parameters.map((symbol, position) => {
     const parameter = symbol.valueDeclaration || symbol.declarations?.[0] || declaration.parameters?.[position];
     const info = typeInfo(checker, checker.getTypeOfSymbolAtLocation(symbol, parameter || declaration), parameter?.type);
@@ -101,13 +102,19 @@ function signatureInfo(checker, signature, declaration, index) {
   const typeParameters = (signature.typeParameters || []).map(parameter => {
     const constraint = checker.getBaseConstraintOfType(parameter);
     const info = constraint ? typeInfo(checker, constraint) : null;
-    if (info) unresolved.push(...info.unresolved);
     const declared = parameter.symbol?.declarations?.[0];
+    const defaultInfo = declared?.default ? typeInfo(checker, checker.getTypeFromTypeNode(declared.default), declared.default) : null;
+    for (const value of [info, defaultInfo]) {
+      if (!value) continue;
+      unresolved.push(...value.unresolved);
+      for (const reference of value.references) genericReferences.set(json(reference), reference);
+    }
     return { name: parameter.symbol?.name || checker.typeToString(parameter), constraint: info?.type || null, default: compact(declared?.default) };
   });
   return { overload: index, kind: ts.isSetAccessorDeclaration(declaration) ? 'set' : ts.isGetAccessorDeclaration(declaration) ? 'get' : 'call',
     text: checker.signatureToString(signature, declaration, ts.TypeFormatFlags.NoTruncation), typeParameters, parameters,
-    returnType: result.type, declaredReturnType: result.declaredType, returnReferences: result.references, unresolved };
+    returnType: result.type, declaredReturnType: result.declaredType, returnReferences: result.references,
+    references: [...genericReferences.values()].sort((a, b) => compare(json(a), json(b))), unresolved };
 }
 function signatures(checker, symbol, declaration) {
   const type = checker.getTypeOfSymbolAtLocation(symbol, declaration);
