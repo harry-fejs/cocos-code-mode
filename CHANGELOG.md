@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add observed siblingIndex to runtime node snapshots (null for root), rechecking parent membership index after metric reads. This is hierarchy order only, not render order or reorder mutation; hierarchyRevision continues to cover parent/direct children, not sibling position.
 - Preserve members from every compiler-merged enum declaration rather than only the first declaration, retaining compiler constant values and declaration order.
 - Resolve enum-member compiler types to their owning enum dependency, preserving enum values and detecting same-name enum collisions instead of exposing member names as independent type references.
 - Set colliding short-name references to resolution unknown and discard enum value claims when ambiguity is detected, keeping reference state consistent with ambiguous-reference diagnostics.
