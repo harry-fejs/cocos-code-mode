@@ -44,6 +44,10 @@ function typeInfo(checker, type, node) {
       unresolved.push({ kind: 'template-literal', reference: canonicalType(checker.typeToString(current, node, ts.TypeFormatFlags.NoTruncation)) });
       current.types.forEach(visit);
     }
+    if (current.flags & ts.TypeFlags.StringMapping) {
+      unresolved.push({ kind: 'string-mapping', reference: canonicalType(checker.typeToString(current, node, ts.TypeFormatFlags.NoTruncation)) });
+      visit(current.type);
+    }
     if (current.flags & ts.TypeFlags.Conditional) {
       unresolved.push({ kind: 'conditional', reference: canonicalType(checker.typeToString(current, node, ts.TypeFormatFlags.NoTruncation)) });
       visit(current.checkType);
