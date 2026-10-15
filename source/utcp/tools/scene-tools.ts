@@ -531,11 +531,11 @@ export class SceneTools {
                 const currentComponents = checkedNodeComponents(currentNode);
                 if (requireUniqueCamera(currentComponents) !== componentIndex) throw new ToolError({ code: 'CAMERA_TARGET_CHANGED', status: 409, message: 'Camera serialized component index changed before property dispatch.' });
                 previous.set(property, cameraComponentField(currentComponents[componentIndex], property));
+                applied.push(property);
                 const propertyValue = value as IPropertyValueType;
                 mutationPending = true;
                 const changed = await Editor.Message.request('scene', 'set-property', { uuid: nodeId, path: `__comps__.${componentIndex}.${property}`, dump: { value: propertyValue, type: typeof value === 'number' ? 'Number' : typeof value === 'boolean' ? 'Boolean' : 'String' } });
                 mutationPending = false;
-                applied.push(property);
                 if (changed === false) throw new ToolError({ code: 'CAMERA_PROPERTY_UPDATE_FAILED', status: 502, message: `Creator rejected camera property ${property}.` });
             }
             await Editor.Message.request('scene', 'snapshot');

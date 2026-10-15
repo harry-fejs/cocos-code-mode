@@ -139,6 +139,7 @@
 - Scan the complete bounded camera hierarchy before property writes and reject camera UUID collisions across nodes or component types.
 - Validate camera property batch size and identifier names before IPC; refuse nested-path keys before any partial write.
 - Reject invalid camera inventory limits before scene IPC instead of silently accepting non-finite, fractional or out-of-schema caps.
+- Record attempted camera property writes before set-property dispatch so settled rejection after native mutation enters reverse rollback.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
