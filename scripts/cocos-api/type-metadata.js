@@ -287,7 +287,10 @@ function signatures(checker, symbol, declaration) {
     const row = signatureInfo(checker, sig, sig.getDeclaration() || declaration, i);
     if (i >= calls.length) row.kind = 'construct';
     row.abstract = metadata(declaration).abstract || !!(sig.flags & ts.SignatureFlags.Abstract);
-    if (ts.isPropertyDeclaration(declaration) || ts.isPropertySignature(declaration)) row.unresolved.push({ kind: 'semantic-adapter-required', reference: i < calls.length ? 'callable-property' : 'constructable-property' });
+    if (ts.isPropertyDeclaration(declaration) || ts.isPropertySignature(declaration)) {
+      row.visibility = metadata(declaration).visibility;
+      row.unresolved.push({ kind: 'semantic-adapter-required', reference: i < calls.length ? 'callable-property' : 'constructable-property' });
+    }
     return row;
   });
   const info = typeInfo(checker, type, declaration.type);
