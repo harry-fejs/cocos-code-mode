@@ -76,6 +76,7 @@ export class RuntimeTools {
         const expectedRotation = rotation ? unitQuaternion(rotation, 'INVALID_ARGUMENT') : undefined;
         const scale = args.scale;
         if (scale !== undefined && (!scale || typeof scale !== 'object' || Array.isArray(scale) || Object.keys(scale).some(key => !['x', 'y', 'z', 'tolerance'].includes(key)) || [scale.x, scale.y, scale.z, scale.tolerance].some(value => typeof value !== 'number' || !Number.isFinite(value)) || scale.tolerance < 0 || scale.tolerance > 1000000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Local scale requires finite xyz and tolerance0..1000000.' });
+        args = { ...args, nodeReference: { id: args.nodeReference.id }, ...(args.position ? { position: { ...args.position } } : {}), ...(args.rotation ? { rotation: { ...args.rotation } } : {}), ...(args.scale ? { scale: { ...args.scale } } : {}) };
         const deadline = Date.now() + timeoutMs; let observations = 0; let targetId: string | undefined;
         for (;;) {
             const remaining = deadline - Date.now();

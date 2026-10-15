@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Snapshot validated node wait session/node identity, activation/hierarchy predicates, transform tolerances and nested references before polling. Caller mutations cannot redirect target or alter match conditions; no node writes/replay added.
 - Preserve declaration visibility on every extracted signature, including private/protected constructors and accessors; discovery remains descriptive and does not grant invocation permission.
 - Snapshot validated audio wait predicates/session/clip guards and nested node identity before polling. Caller edits during awaits cannot redirect later observations or alter match criteria; no playback mutation or retry added.
 - Snapshot validated graph wait identity/type/exact or nested range condition before polling, preventing caller changes during asynchronous reads from redirecting predicates or earning unintended matches. Deadline/poll bounds remain fixed; no native writes or replay.
