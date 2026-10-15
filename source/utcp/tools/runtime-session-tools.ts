@@ -166,7 +166,14 @@ export class RuntimeSessionTools {
         if (session.targetKind !== 'game-view') throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: `Runtime target ${session.targetKind} has no verified transport.` });
         try {
             const state = await this.readState(session.targetId, Date.now() + (args.timeoutMs ?? 30_000));
-            return { success: true, operation: 'inspect', session, state, ready: true };
+            let current: RuntimeSession;
+            try { current = store.inspect(session.sessionId); }
+            catch (error) {
+                if (error instanceof RuntimeSessionError && error.code === 'SESSION_NOT_FOUND') throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Session was reset during readiness inspection; stale readiness refused.' });
+                throw error;
+            }
+            if (current.status !== 'attached' || current.targetId !== session.targetId || current.targetKind !== session.targetKind || current.createdAt !== session.createdAt) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Session lifecycle changed during readiness inspection.' });
+            return { success: true, operation: 'inspect', session: current, state, ready: true };
         } catch (error) {
             if (error instanceof ToolError) throw error;
             throw new ToolError({
