@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Traverse outer execution-guard AST iteratively in source order, avoiding recursive call-stack overflow on deeply nested statements; expression-level analysis/resource budgets remain separate.
 - Add UITransform/Layout/Widget/Mask/Canvas typed scalar/array references and requiredComponents support to scriptComponentCreate. Native declarations only, null/empty reference defaults; no node creation, layout configuration or automatic binding/attachment.
 - Treat compiler-resolved decorator alias decisions as authoritative over syntax fallback, preventing type-only/unresolved/different-target imports named executeInEditMode from earning declared edit-mode metadata.
 - Add menu and signed-int32 executionOrder class metadata to scriptComponentCreate using escaped native decorators, composable with dependencies/multiplicity. Source declarations only; no lifecycle invocation, edit-mode execution or automatic attachment.

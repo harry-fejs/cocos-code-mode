@@ -329,7 +329,9 @@ function constraints(node, context, checker) {
     }
   }
   const guards = [];
-  const scan = current => {
+  const pending = [node];
+  while (pending.length) {
+    const current = pending.pop();
     const shortCircuit = ts.isBinaryExpression(current) && (current.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken || current.operatorToken.kind === ts.SyntaxKind.BarBarToken || current.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken);
     const expressionGuard = ts.isIfStatement(current) || ts.isWhileStatement(current) || ts.isDoStatement(current) || ts.isSwitchStatement(current);
     if (expressionGuard || ts.isConditionalExpression(current) || ts.isForStatement(current) || shortCircuit) {
@@ -371,9 +373,10 @@ function constraints(node, context, checker) {
       };
       if (expression && usesConstant(expression)) guards.push(compact(expression));
     }
-    ts.forEachChild(current, scan);
-  };
-  scan(node);
+    const children = [];
+    ts.forEachChild(current, child => { children.push(child); });
+    for (let index = children.length - 1; index >= 0; index--) pending.push(children[index]);
+  }
   const overrides = (context.config?.moduleOverrides || []).filter(item => Object.keys(item.overrides || {}).some(file => file === context.path)).map(item => ({ test: item.test, replacement: item.overrides[context.path] }));
   const editModeDeclared = (ts.canHaveDecorators(node) ? ts.getDecorators(node) || [] : []).some(decorator => {
     let expression = decorator.expression;
