@@ -1137,6 +1137,12 @@ declare namespace ccp3x {
     /** Glob-like project-relative path search. total counts returned matches only; truncated indicates the result cap was reached, not an exact remaining count. Directory read errors throw PROJECT_SEARCH_FAILED; excluded directories remain outside search coverage. */
     function projectSearchFiles(args: { pattern: string; directory?: string; limit?: number; verbose?: boolean }): { files: string[]; total: number; truncated: boolean };
 
+    /** Writes UTF-8 text and verifies filesystem read-back. Asset refresh is best-effort, not importer completion proof. Inspect after ambiguous errors before retry. */
+    function projectWriteFile(args: { filePath: string; content: string; createDirs?: boolean }): { success: true; bytesWritten: number };
+    /** Literal replacement, all matches by default. Empty search/no match returns success=false; successful filesystem read-back does not certify asset reimport. */
+    function projectReplaceInFile(args: { filePath: string; search: string; replace: string; replaceAll?: boolean }):
+        { success: false; replacements: 0 } | { success: true; replacements: number };
+
     /** Tracks only this module's main-process broadcastObserve listeners; excludes panel/arbitrary Creator listeners. No callbacks or event payloads are exposed. */
     function editorListenersInspect(): { supported: true; listeners: Array<{ topic: string; state: 'registered' | 'removal-failed' }>; limitation: string };
 

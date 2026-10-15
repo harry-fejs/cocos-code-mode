@@ -115,6 +115,7 @@
 - Declare glob-like project file search with returned-match counts and explicit result-cap/completeness limitations.
 - Fail project file search when directory enumeration errors instead of returning incomplete or empty success.
 - Traverse project search directories with iterative DFS frames instead of recursive calls, preserving depth-first match order and caps.
+- Declare project text write and literal replacement APIs with verified-filesystem versus best-effort asset-refresh semantics.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
