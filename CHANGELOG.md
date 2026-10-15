@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Retain deferred conditional type operands/declaration-branch dependencies and unresolved diagnostics; compiler-selected concrete branches remain resolved and do not inherit unused-branch dependencies.
 - Retain template-literal interpolation dependencies and explicit unresolved template-literal diagnostics; compiler-reduced finite literal unions remain resolved.
 - Add scalar enum component descriptors with1..64 unique named nonnegative int32 entries and explicit member default, using native Enum property metadata. Refuse automatic -1, duplicate names/values, unknown defaults and enum arrays; no gameplay execution or native Inspector qualification.
 - Retain operand dependencies and unresolved keyof diagnostics for generic key spaces; compiler-resolved key unions are not marked unresolved.

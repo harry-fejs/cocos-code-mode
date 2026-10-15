@@ -42,6 +42,17 @@ function typeInfo(checker, type, node) {
       unresolved.push({ kind: 'template-literal', reference: canonicalType(checker.typeToString(current, node, ts.TypeFormatFlags.NoTruncation)) });
       current.types.forEach(visit);
     }
+    if (current.flags & ts.TypeFlags.Conditional) {
+      unresolved.push({ kind: 'conditional', reference: canonicalType(checker.typeToString(current, node, ts.TypeFormatFlags.NoTruncation)) });
+      visit(current.checkType);
+      visit(current.extendsType);
+      // Branches describe declaration dependencies, not a selected or instantiated result.
+      const conditional = current.root?.node;
+      if (conditional && ts.isConditionalTypeNode(conditional)) {
+        visit(checker.getTypeFromTypeNode(conditional.trueType));
+        visit(checker.getTypeFromTypeNode(conditional.falseType));
+      }
+    }
     if (current.isUnionOrIntersection?.()) current.types.forEach(visit);
     if (checker.isArrayType(current) || checker.isTupleType(current)) {
       checker.getTypeArguments(current).forEach(visit);
