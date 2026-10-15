@@ -1044,34 +1044,30 @@ export class SceneTools {
     )
     async sceneScriptRepair(args: { nodeReference: IInstanceReference, componentReference?: IInstanceReference, expectedClassId?: string, replacementClassId?: string, scriptReference?: IInstanceReference }): Promise<{ success: boolean, removedComponent?: string, createdComponent: IInstanceReference }> {
         const nodeUuid = args.nodeReference?.id;
-        if (!nodeUuid) throw new Error('sceneScriptRepair requires nodeReference.id');
-        const node = await Editor.Message.request('scene', 'query-node', nodeUuid);
-        if (!node) throw new Error(`sceneScriptRepair: node ${nodeUuid} not found`);
+        if (!nodeUuid) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'sceneScriptRepair requires nodeReference.id' });
+        const node = await Editor.Message.request('scene', 'query-node', nodeUuid) as any;
+        if (!node) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Scene node ${nodeUuid} was not found.` });
         const components = node.__comps__ || [];
-        const target = components.find((component: unknown) => {
-            const uuid = componentUuid(component);
-            const classId = componentClassId(component);
-            return (args.componentReference?.id && uuid === args.componentReference.id)
-                || (!args.componentReference?.id && args.expectedClassId && classId === args.expectedClassId);
-        });
-        if (!target) throw new Error('sceneScriptRepair: target component not found on node; rescan before retrying');
+        const target = components.find((component: unknown) => (args.componentReference?.id && componentUuid(component) === args.componentReference.id) || (!args.componentReference?.id && args.expectedClassId && componentClassId(component) === args.expectedClassId));
         const oldUuid = componentUuid(target);
-        if (!oldUuid) throw new Error('sceneScriptRepair: target component has no uuid');
-        const replacement = args.scriptReference?.id
-            ? await Editor.Message.request('scene', 'query-script-cid', args.scriptReference.id)
-            : args.replacementClassId;
-        if (typeof replacement !== 'string' || !replacement) throw new Error('sceneScriptRepair: replacement script is missing or invalid');
+        if (!target || !oldUuid) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'sceneScriptRepair target component was not found.' });
+        const replacement = args.scriptReference?.id ? await Editor.Message.request('scene', 'query-script-cid', args.scriptReference.id) : args.replacementClassId;
+        if (typeof replacement !== 'string' || !replacement) throw new ToolError({ code: 'SCRIPT_METADATA_UNAVAILABLE', status: 422, message: 'Replacement script class is missing or invalid.' });
         const available = await Editor.Message.request('scene', 'query-components');
-        if (!Array.isArray(available) || !findComponentType(available, replacement)) {
-            throw new Error(`sceneScriptRepair: replacement class '${replacement}' is not registered; keep the invalid component unchanged`);
+        if (!Array.isArray(available) || !findComponentType(available, replacement)) throw new ToolError({ code: 'SCRIPT_NOT_REGISTERED', status: 422, message: `Replacement class '${replacement}' is not registered in Creator.` });
+        let createdUuid: string | undefined;
+        try {
+            await Editor.Message.request('scene', 'remove-component', { uuid: oldUuid });
+            await Editor.Message.request('scene', 'create-component', { uuid: nodeUuid, component: replacement });
+            const after = await Editor.Message.request('scene', 'query-node', nodeUuid) as any;
+            const created = (after?.__comps__ || []).find((component: unknown) => componentClassId(component) === replacement && componentUuid(component) !== oldUuid);
+            createdUuid = componentUuid(created);
+            if (!created || !createdUuid) throw new ToolError({ code: 'SCRIPT_REPAIR_UNCONFIRMED', status: 502, message: 'Replacement component was not confirmed after creation.' });
+            await Editor.Message.request('scene', 'snapshot');
+            return { success: true, removedComponent: oldUuid, createdComponent: { id: createdUuid, type: replacement } };
+        } catch (error) {
+            throw new ToolError({ code: createdUuid ? 'SCRIPT_REPAIR_PARTIAL' : 'SCRIPT_REPAIR_FAILED', status: 502, message: 'Script repair did not complete; inspect the node before retrying.', details: { nodeUuid, removedComponent: oldUuid, replacement, createdComponent: createdUuid ?? null, cause: error instanceof Error ? error.message : String(error) }, recovery: 'Inspect current components; do not blindly repeat remove/create after an ambiguous mutation.' });
         }
-        await Editor.Message.request('scene', 'remove-component', { uuid: oldUuid });
-        await Editor.Message.request('scene', 'create-component', { uuid: nodeUuid, component: replacement });
-        const after = await Editor.Message.request('scene', 'query-node', nodeUuid);
-        const created = (after?.__comps__ || []).find((component: unknown) => componentClassId(component) === replacement && componentUuid(component) !== oldUuid);
-        if (!created || !componentUuid(created)) throw new Error('sceneScriptRepair: replacement was not found after create-component');
-        await Editor.Message.request('scene', 'snapshot');
-        return { success: true, removedComponent: oldUuid, createdComponent: { id: componentUuid(created)!, type: replacement } };
     }
     @utcpTool('sceneScriptRepairBatch', 'Repair bounded missing script components with per-item replacement verification.', { type: 'object', additionalProperties: false, properties: { items: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { nodeReference: InstanceReferenceSchema, componentReference: InstanceReferenceSchema, expectedClassId: { type: 'string', maxLength: 256 }, replacementClassId: { type: 'string', maxLength: 256 }, scriptReference: InstanceReferenceSchema }, required: ['nodeReference'] } } }, required: ['items'] }, { type: 'object', additionalProperties: false, properties: { outcomes: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, partial: { type: 'boolean' } }, required: ['outcomes', 'succeeded', 'failed', 'partial'] }, 'POST', ['scene', 'script', 'batch', 'repair'])
     async sceneScriptRepairBatch(args: { items: Array<{ nodeReference: IInstanceReference, componentReference?: IInstanceReference, expectedClassId?: string, replacementClassId?: string, scriptReference?: IInstanceReference }> }): Promise<Record<string, unknown>> {
@@ -1102,13 +1098,26 @@ export class SceneTools {
         const available = await Editor.Message.request('scene', 'query-components');
         if (!Array.isArray(available) || !findComponentType(available, classId)) throw new ToolError({ code: 'SCRIPT_NOT_REGISTERED', status: 422, message: `Script class '${classId}' is not registered in Creator.` });
         if ((node.__comps__ || []).some((component: unknown) => componentClassId(component) === classId)) throw new ToolError({ code: 'SCRIPT_ALREADY_ATTACHED', status: 409, message: `Script class '${classId}' is already attached to node ${nodeUuid}.` });
-        await Editor.Message.request('scene', 'create-component', { uuid: nodeUuid, component: classId });
-        const after = await Editor.Message.request('scene', 'query-node', nodeUuid) as any;
-        const created = (after?.__comps__ || []).find((component: unknown) => componentClassId(component) === classId);
-        const createdUuid = componentUuid(created);
-        if (!created || !createdUuid) throw new ToolError({ code: 'SCRIPT_ATTACH_UNCONFIRMED', status: 502, message: `Creator did not return the attached script component for node ${nodeUuid}.` });
-        await Editor.Message.request('scene', 'snapshot');
-        return { success: true, nodeReference: { id: nodeUuid, type: args.nodeReference.type ?? 'cc.Node' }, scriptReference: { id: scriptUuid, type: args.scriptReference.type ?? 'cc.Script' }, componentReference: { id: createdUuid, type: classId } };
+        let createdUuid: string | undefined;
+        try {
+            await Editor.Message.request('scene', 'create-component', { uuid: nodeUuid, component: classId });
+            const after = await Editor.Message.request('scene', 'query-node', nodeUuid) as any;
+            const created = (after?.__comps__ || []).find((component: unknown) => componentClassId(component) === classId);
+            createdUuid = componentUuid(created);
+            if (!created || !createdUuid) throw new ToolError({ code: 'SCRIPT_ATTACH_UNCONFIRMED', status: 502, message: `Creator did not return the attached script component for node ${nodeUuid}.` });
+            await Editor.Message.request('scene', 'snapshot');
+            return { success: true, nodeReference: { id: nodeUuid, type: args.nodeReference.type ?? 'cc.Node' }, scriptReference: { id: scriptUuid, type: args.scriptReference.type ?? 'cc.Script' }, componentReference: { id: createdUuid, type: classId } };
+        } catch (error) {
+            let rollbackFailure: string | undefined;
+            if (createdUuid) {
+                try {
+                    await Editor.Message.request('scene', 'remove-component', { uuid: createdUuid });
+                    const rollbackNode = await Editor.Message.request('scene', 'query-node', nodeUuid) as any;
+                    if ((rollbackNode?.__comps__ || []).some((component: unknown) => componentUuid(component) === createdUuid)) rollbackFailure = `Created component ${createdUuid} remains.`;
+                } catch (rollbackError) { rollbackFailure = rollbackError instanceof Error ? rollbackError.message : String(rollbackError); }
+            }
+            throw new ToolError({ code: rollbackFailure ? 'ROLLBACK_FAILED' : (error instanceof ToolError ? error.code : 'SCRIPT_ATTACH_FAILED'), status: 502, message: rollbackFailure ? `Script attachment failed and cleanup could not be verified.` : `Script attachment failed; owned component cleanup was verified.`, details: { nodeUuid, scriptUuid, classId, createdUuid: createdUuid ?? null, rollbackFailure, cause: error instanceof Error ? error.message : String(error) }, recovery: rollbackFailure ? 'Inspect the node and remove the owned component manually before retrying.' : 'Rescan the node before retrying; no ambiguous component remains.' });
+        }
     }
     @utcpTool('sceneScriptBatchAttach', 'Attach one registered script to a bounded set of scene nodes with per-item read-back outcomes.', { type: 'object', additionalProperties: false, properties: { nodeReferences: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema }, scriptReference: InstanceReferenceSchema }, required: ['nodeReferences', 'scriptReference'] }, { type: 'object', additionalProperties: false, properties: { outcomes: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, partial: { type: 'boolean' } }, required: ['outcomes', 'succeeded', 'failed', 'partial'] }, 'POST', ['scene', 'script', 'batch', 'attach'])
     async sceneScriptBatchAttach(args: { nodeReferences: IInstanceReference[], scriptReference: IInstanceReference }): Promise<Record<string, unknown>> {

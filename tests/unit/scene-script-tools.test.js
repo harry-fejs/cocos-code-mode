@@ -25,11 +25,11 @@ describe('scene script health tools', () => {
     assert.match(src, /'sceneScriptRepair'/);
     assert.match(src, /query-node/);
     assert.match(src, /query-script-cid/);
-    assert.match(src, /replacement class .*not registered/);
+    assert.match(src, /Replacement class .*not registered/);
     assert.match(src, /'scene', 'remove-component'/);
     assert.match(src, /'scene', 'create-component'/);
     assert.match(src, /'scene', 'snapshot'/);
-    assert.match(src, /replacement was not found after create-component/);
+    assert.match(src, /Replacement component was not confirmed after creation/);
   });
   it('registers a bounded script attach route with script metadata preflight', () => {
     const src = source();
