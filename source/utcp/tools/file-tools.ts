@@ -61,6 +61,33 @@ function resolveSafePath(projectPath: string, relPath: string): string {
     }
     return resolved;
 }
+function readBoundedProjectText(filePath: string, cap: number): { content: string, bytes: number } {
+    const realPath = fs.realpathSync(filePath);
+    const handle = fs.openSync(realPath, 'r');
+    try {
+        const before = fs.fstatSync(handle);
+        if (!before.isFile()) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path is not a regular file.' });
+        if (before.size > cap) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: `File too large (${before.size} bytes, cap ${cap}).` });
+        const buffer = Buffer.allocUnsafe(before.size + 1);
+        let count = 0;
+        while (count < buffer.length) {
+            const read = fs.readSync(handle, buffer, count, buffer.length - count, null);
+            if (!read) break;
+            count += read;
+        }
+        const after = fs.fstatSync(handle);
+        const current = fs.statSync(realPath);
+        if (count !== before.size || after.size !== before.size || after.mtimeMs !== before.mtimeMs || after.ctimeMs !== before.ctimeMs
+            || current.ino !== after.ino || current.dev !== after.dev || current.size !== after.size || current.mtimeMs !== after.mtimeMs || current.ctimeMs !== after.ctimeMs
+            || fs.realpathSync(filePath) !== realPath) {
+            throw new ToolError({ code: 'FILE_CHANGED_DURING_READ', status: 409, message: 'Project file changed during bounded read.' });
+        }
+        const content = buffer.subarray(0, count).toString('utf8');
+        const bytes = Buffer.byteLength(content, 'utf8');
+        if (bytes > cap) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: `File content exceeds the ${cap} byte cap.` });
+        return { content, bytes };
+    } finally { fs.closeSync(handle); }
+}
 
 function atomicWriteVerified(filePath: string, content: string): number {
     const bytes = Buffer.byteLength(content, 'utf8');
@@ -92,14 +119,8 @@ export class FileTools {
         const root = projectRoot();
         const filePath = resolveSafePath(root, args.filePath);
         if (!fs.existsSync(filePath)) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `File not found: ${args.filePath}` });
-        const stat = fs.statSync(filePath);
-        if (!stat.isFile()) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Path is not a regular file: ${args.filePath}` });
         const cap = args.verbose === true ? VERBOSE_FILE_BYTES : MAX_FILE_BYTES;
-        if (stat.size > cap) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: `File too large (${stat.size} bytes, cap ${cap}).` });
-        const content = fs.readFileSync(filePath, 'utf8');
-        const bytes = Buffer.byteLength(content, 'utf8');
-        if (bytes > cap) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: `File content exceeds the ${cap} byte cap.` });
-        return { content, bytes };
+        return readBoundedProjectText(filePath, cap);
     }
 
     @utcpTool('projectWriteFile', 'Atomically write bounded UTF-8 text within the project and verify read-back.', {
@@ -232,10 +253,7 @@ export class FileTools {
         if (!Number.isInteger(args.line) || args.line < 1 || !Number.isInteger(radius) || radius < 0 || radius > 50) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'line must be positive and radius must be an integer from 0 to 50.' });
         const filePath = resolveSafePath(root, args.filePath);
         if (!fs.existsSync(filePath)) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `File not found: ${args.filePath}` });
-        const stat = fs.statSync(filePath);
-        if (!stat.isFile() || stat.size > MAX_FILE_BYTES) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: 'Snippet source must be a regular file within the bounded file size.' });
-        const content = fs.readFileSync(filePath, 'utf8');
-        if (Buffer.byteLength(content, 'utf8') > MAX_FILE_BYTES) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: 'Snippet content exceeds the bounded file size.' });
+        const { content } = readBoundedProjectText(filePath, MAX_FILE_BYTES);
         const lines = content.split(/\r?\n/);
         if (args.line > lines.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Requested line exceeds the source line count (${lines.length}).` });
         const startLine = Math.max(1, args.line - radius);

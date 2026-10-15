@@ -1172,9 +1172,9 @@ declare namespace ccp3x {
         total: number; truncated: boolean;
     };
 
-    /** Reads complete UTF-8 decoded content within the normal/verbose byte cap; oversized sources throw rather than truncate. */
+    /** Reads complete UTF-8 decoded content within the normal/verbose byte cap using a bounded file handle. Observed source replacement/growth throws FILE_CHANGED_DURING_READ; oversized sources throw rather than truncate. Endpoint checks are not an atomic filesystem transaction. */
     function projectReadFile(args: { filePath: string; verbose?: boolean }): { content: string; bytes: number };
-    /** Reads a line window (radius 0–50) from a size-limited source. Beyond-EOF line requests throw INVALID_ARGUMENT; no truncation field is exposed. */
+    /** Reads a line window (radius 0–50) through the same bounded stable reader. Beyond-EOF line requests throw INVALID_ARGUMENT; no truncation field is exposed. */
     function projectFileSnippet(args: { filePath: string; line: number; radius?: number }): { snippet: string; startLine: number; endLine: number };
 
     /** Glob-like project-relative path search. total counts returned matches only; truncated indicates the result cap was reached, not an exact remaining count. Streams directory entries; traversal beyond 100000 entries throws PROJECT_SEARCH_LIMIT. Directory read errors throw PROJECT_SEARCH_FAILED; excluded directories remain outside search coverage. */
