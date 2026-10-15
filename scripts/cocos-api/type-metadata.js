@@ -171,7 +171,7 @@ function typeInfo(checker, type, node) {
         if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
         if (!symbol || symbol.name === 'unknown' || !symbol.declarations?.length) unresolved.push({ kind: 'value-reference', reference: compact(current.exprName) });
       }
-      if (ts.isTypeNode(current) || current === node) {
+      if (ts.isTypeNode(current) || current === node || ts.isPropertySignature(current) || ts.isParameter(current) || ts.isMethodSignature(current) || ts.isTypeParameterDeclaration(current) || ts.isGetAccessorDeclaration(current) || ts.isSetAccessorDeclaration(current)) {
         const children = [];
         ts.forEachChild(current, child => {
           if (scanned + pending.length + children.length >= 256) { syntaxExceeded = true; return true; }

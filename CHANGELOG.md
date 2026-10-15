@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Scan nested property/parameter/method/accessor/type-parameter annotation containers under the existing256-node budget, retaining unresolved reference provenance inside DTO and callback declarations.
 - Add exact parentUuid predicates to runtime node waits, including explicit null root versus omitted condition. Refuse self/invalid identities and unavailable parent metadata; no reparent writes or detached-node success inference.
 - Preserve unresolved typeof value-query names as value-reference diagnostics in bounded annotation scans; known value queries remain unchanged.
 - Extend runtime node snapshots with parent UUID, observed direct-child count and ordered128-child prefix plus explicit truncation. Recheck observed parent/prefix identity before returning; no atomic hierarchy snapshot, spawn/despawn or completeness inference beyond reported scope.
