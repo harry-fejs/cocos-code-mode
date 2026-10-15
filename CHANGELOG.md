@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add inclusive minDuration/maxDuration0..86400 seconds to regular/skeletal animation waits and scenario animationAssert/animationWait. Compose with time/speed/playing/paused, reject invalid ranges before reads and refuse unavailable selected metrics; no clip/playback writes or completion inference.
 - Preserve delete reference-read semantics through transparent parentheses/erased TypeScript wrappers, excluding target values while retaining evaluated bases/computed keys.
 - Add inclusive minDuration/maxDuration0..86400 seconds to audioPlaybackWaitForState and scenario audioAssert/audioWait. Whole-input finite/range preflight and unavailable metric refusal; compose with existing state conditions, no playback or completion inference.
 - Exclude deleted property values from direct constant-read guard provenance while retaining evaluated base/computed-key reads; no deletion is executed or authorized by metadata extraction.
