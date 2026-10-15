@@ -132,6 +132,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
         }
         records.splice(0, records.length, ...[...classes.values()].sort((a, b) => a.id.localeCompare(b.id)));
     } else if (operation === 'get_related_types') {
+        if (!records[0]) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record is absent from the selected catalog scope.' });
         const source = external ? ApiRecordSchema.parse({ ...external.readRecord(records[0]?.id), permitted: false, evidenceStatus: 'declared' }) : records[0];
         if (!source) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record related types are absent from the selected catalog scope.' });
         const related: Array<Record<string, unknown>> = [];
@@ -142,8 +143,8 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
             for (const item of value) {
                 if (!item || typeof item !== 'object' || Array.isArray(item)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: `Record ${field} contains malformed related-type metadata.` });
                 const row = item as Record<string, unknown>;
-                const key = JSON.stringify(row);
-                if (!seen.has(key)) { seen.add(key); related.push(row); }
+                const key = JSON.stringify([field, row]);
+                if (!seen.has(key)) { seen.add(key); related.push({ ...row, relation: field }); }
             }
         };
         collect((source as Record<string, unknown>).references, 'references');
@@ -162,7 +163,7 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
                 } else if (row.parameters !== undefined) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signature parameters metadata is not an array.' });
             }
         }
-        return { version, operation, recordId: records[0].id, relatedTypes: related.slice(0, maxEntries), relatedTypeCount: related.length, truncated: related.length > maxEntries, catalogHash: index.catalogHash, permitted: false, runtimeVerified: false as const, qualified: false as const };
+        records.splice(0, records.length, ...related.map((item, index) => ({ id: `${version}:related:${source.id}:${index}`, namespace: source.namespace, kind: 'related-type', name: typeof item.name === 'string' ? item.name : undefined, relation: item.relation, metadata: item, permitted: false })));
     } else if (operation === 'list_namespaces') {
         const namespaces = new Map<string, number>();
         for (const record of records) namespaces.set(record.namespace, (namespaces.get(record.namespace) ?? 0) + 1);
@@ -184,8 +185,8 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
         records.splice(0, records.length, { id: record.id, namespace: record.namespace, className: record.className, member: record.member, name: record.name, kind: record.kind, signatures: record.signatures ?? [], permitted: false, evidenceStatus: 'declared' });
     }
     if (offset > records.length) throw new ToolError({ code: 'STALE_CURSOR', status: 409, message: 'Catalog cursor offset exceeds this result set.' });
-    if (args.className && records.length === 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Class ${args.className} is absent from the ${version} catalog.` });
-    if (args.recordId !== undefined && records.length === 0) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record is absent from the selected catalog scope/version/filters.' });
+    if (args.className && records.length === 0 && operation !== 'get_related_types') throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Class ${args.className} is absent from the ${version} catalog.` });
+    if (args.recordId !== undefined && records.length === 0 && operation !== 'get_related_types') throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record is absent from the selected catalog scope/version/filters.' });
     let live: Record<string, unknown> = { checked: false, context: 'edit-scene', available: null, writablePaths: [], mutationAuthorized: false };
     if (args.className && version === '3.7.3' && !args.reference) {
         try {
