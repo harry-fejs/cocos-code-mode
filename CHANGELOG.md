@@ -128,6 +128,7 @@
 - Support exact-name filters in asset batch queries using the existing single-query path, with matching schema/validation/public types.
 - Cap asset inspection serialized previews by UTF-8 bytes without splitting code points, and declare raw versus truncated data response types.
 - Declare render pipeline, diagnostics, material validation, and scene render-update contracts with explicit runtime/persistence evidence boundaries.
+- Include attempted render scene-property writes in rollback even when IPC rejects after applying the mutation.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 

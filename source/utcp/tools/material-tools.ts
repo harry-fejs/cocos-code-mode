@@ -318,9 +318,9 @@ export class MaterialTools {
         const applied: typeof originals = [];
         try {
             for (const entry of originals) {
+                applied.push(entry);
                 const result = await Editor.Message.request('scene', 'set-property', { uuid: entry.update.reference.id, path: entry.update.path, dump: { value: entry.update.value as never, type: 'Unknown' } });
                 if (result === false) throw new Error(`Creator refused ${entry.update.path}`);
-                applied.push(entry);
             }
             await Editor.Message.request('scene', 'snapshot');
             const readBack: Array<Record<string, unknown>> = [];
