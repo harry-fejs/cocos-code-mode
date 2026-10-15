@@ -220,6 +220,13 @@ export class ComponentRuntimeTools {
         validateComponentTarget({ sessionId: args?.sessionId ?? '', nodeReference: { id: args?.nodeReference?.id ?? '' }, componentId: args?.componentId }, true);
         const { sessionId, componentId, graphUuid } = args;
         const nodeId = args.nodeReference!.id!;
-        return waitForGraphVariable(args, timeoutMs => executeComponentOperation({ kind: 'graph', operation: 'inspect', sessionId: sessionId!, nodeReference: { id: nodeId }, componentId: componentId!, expectedGraphUuid: graphUuid, timeoutMs }));
+        let targetId: string | undefined;
+        return waitForGraphVariable(args, async timeoutMs => {
+            const result = await executeComponentOperation({ kind: 'graph', operation: 'inspect', sessionId: sessionId!, nodeReference: { id: nodeId }, componentId: componentId!, expectedGraphUuid: graphUuid, timeoutMs });
+            if (typeof result.targetId !== 'string' || !result.targetId) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Graph observation target identity is unavailable.' });
+            if (targetId !== undefined && result.targetId !== targetId) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Graph target changed during variable wait.' });
+            targetId = result.targetId;
+            return result;
+        });
     }
 }
