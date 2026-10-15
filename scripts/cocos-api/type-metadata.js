@@ -338,9 +338,11 @@ function constraints(node, context, checker) {
         if ((ts.isMethodDeclaration(part) || ts.isGetAccessorDeclaration(part) || ts.isSetAccessorDeclaration(part)) && ts.isObjectLiteralExpression(part.parent)) return ts.isComputedPropertyName(part.name) && usesConstant(part.name.expression);
         if (ts.isTypeNode(part) || ts.isFunctionLike(part) || ts.isClassExpression(part)) return false;
         if (ts.isBinaryExpression(part) && part.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-          if (ts.isIdentifier(part.left)) return usesConstant(part.right);
-          if (ts.isPropertyAccessExpression(part.left)) return usesConstant(part.left.expression) || usesConstant(part.right);
-          if (ts.isElementAccessExpression(part.left)) return usesConstant(part.left.expression) || usesConstant(part.left.argumentExpression) || usesConstant(part.right);
+          let target = part.left;
+          while (ts.isParenthesizedExpression(target) || ts.isAsExpression(target) || ts.isTypeAssertionExpression(target) || ts.isNonNullExpression(target) || ts.isSatisfiesExpression(target)) target = target.expression;
+          if (ts.isIdentifier(target)) return usesConstant(part.right);
+          if (ts.isPropertyAccessExpression(target)) return usesConstant(target.expression) || usesConstant(part.right);
+          if (ts.isElementAccessExpression(target)) return usesConstant(target.expression) || usesConstant(target.argumentExpression) || usesConstant(part.right);
         }
         if (ts.isDeleteExpression(part)) {
           let target = part.expression;
