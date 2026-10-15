@@ -1188,7 +1188,14 @@ export class AnimationTools {
     )
     async animationEventEdit(args: { clipReference?: IInstanceReference, operation?: string, frame?: number, frames?: number[], destinationFrame?: number, offset?: number, functionName?: string, parameters?: string[], events?: unknown[] }): Promise<ISuccessIndicator & { result?: unknown }> {
         const operation = args?.operation;
-        if (operation === 'add') return applyToClip(args.clipReference, 'addEvent', [requireFrame(args?.frame), requireText(args?.functionName, 'functionName', 256), args?.parameters ?? []]);
+        if (operation === 'add') {
+            const parameters = args.parameters === undefined ? [] : args.parameters;
+            if (!Array.isArray(parameters) || parameters.length > 32) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'parameters must contain at most 32 strings of at most 1024 characters.' });
+            for (let index = 0; index < parameters.length; index++) {
+                if (!Object.prototype.hasOwnProperty.call(parameters, index) || typeof parameters[index] !== 'string' || parameters[index].length > 1024) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'parameters must be dense strings of at most 1024 characters.' });
+            }
+            return applyToClip(args.clipReference, 'addEvent', [requireFrame(args.frame), requireText(args.functionName, 'functionName', 256), [...parameters]]);
+        }
         if (operation === 'delete') return applyToClip(args.clipReference, 'deleteEvent', [requireFrames(args?.frames)]);
         if (operation === 'update') return applyToClip(args.clipReference, 'updateEvent', [requireFrames(args?.frames), Array.isArray(args?.events) ? args.events : (() => { throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'events must be an array.' }); })()]);
         if (operation === 'move') {
