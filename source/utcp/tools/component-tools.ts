@@ -23,23 +23,34 @@ export class ComponentTools {
             properties: {
                 includeInternal: { type: 'boolean', default: false, description: 'Whether to include internal engine components.' },
                 filter: { type: 'string', description: 'Optional filter string to match component types or categories (case-insensitive substring match).' },
-                limit: { type: 'number', minimum: 1, maximum: 1000, default: 200, description: 'Maximum component types to return.' }
+                limit: { type: 'integer', minimum: 1, maximum: 1000, default: 200, description: 'Maximum component types to return.' }
             }
         },
         { type: 'object', properties: { componentTypes: { type: 'array', items: { type: 'string' } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['componentTypes', 'total', 'truncated'] }, "GET",  ['scene', 'node', 'component', 'types', 'inspection']
     )
     async nodeGetAvailableComponentTypes(args: { includeInternal?: boolean, filter?: string, limit?: number } = {}): Promise<{ componentTypes: string[], total: number, truncated: boolean }> {
+        if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 1000)) throw new Error('Component discovery limit must be an integer from 1 to 1000.');
+        if (args.filter !== undefined && typeof args.filter !== 'string') throw new Error('Component discovery filter must be a string.');
+        if (args.includeInternal !== undefined && typeof args.includeInternal !== 'boolean') throw new Error('includeInternal must be a boolean.');
         const allComponents = await Editor.Message.request('scene', 'query-components');
 
         if (!Array.isArray(allComponents)) {
             throw new Error('Failed to retrieve component types');
+        }
+        for (const component of allComponents) {
+            if (!component || typeof component !== 'object' || Array.isArray(component)
+                || typeof component.name !== 'string' || !component.name.trim()
+                || ('type' in component && (typeof component.type !== 'string' || !component.type.trim()))
+                || (component.assetUuid !== undefined && component.assetUuid !== null && typeof component.assetUuid !== 'string')) {
+                throw new Error('Component registry contains malformed class metadata.');
+            }
         }
 
         const lowerFilter = args.filter ? args.filter.toLowerCase() : null;
         const filtered = allComponents.filter((comp: any) => {
             let matchesFilter = true;
             if (lowerFilter) {
-                matchesFilter = comp.type && comp.type.toLowerCase().includes(lowerFilter);
+                matchesFilter = (comp.type ?? comp.name).toLowerCase().includes(lowerFilter);
             }
             if (!args.includeInternal) {
                 matchesFilter = matchesFilter && comp.assetUuid && comp.assetUuid.length > 0;

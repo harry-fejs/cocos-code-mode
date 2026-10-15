@@ -144,6 +144,7 @@
 - Require the class-discovery argument object in public types to match the existing handler contract.
 - Refuse node component inspection when Creator omits or malforms the serialized component array instead of returning empty success.
 - Validate every serialized component UUID/type before filtering, refusing empty identities and malformed nonmatching entries rather than hiding inventory drift.
+- Reject invalid component registry limits/filters before IPC and refuse malformed class metadata without filtering it away; support native name/cid registry rows without requiring a type field.
 - Bind component inspection to the requested node UUID, cap serialized inventory at 10,000 entries and refuse duplicate component UUIDs before filtering.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
