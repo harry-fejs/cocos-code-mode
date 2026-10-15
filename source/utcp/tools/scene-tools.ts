@@ -963,9 +963,16 @@ export class SceneTools {
         if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > MAX_LIST_LIMIT)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `limit must be an integer from 1 to ${MAX_LIST_LIMIT}.` });
         const asset = await assetInfoForSceneUsage(scriptId);
         if (asset.isDirectory === true || !['typescript', 'javascript'].includes(String(asset.importer ?? ''))) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: 'Script usage lookup requires an imported TypeScript or JavaScript asset.' });
-        const classId = await Editor.Message.request('scene', 'query-script-cid', scriptId).catch(() => null);
+        let classId: unknown;
+        try { classId = await Editor.Message.request('scene', 'query-script-cid', scriptId); }
+        catch { throw new ToolError({ code: 'SCRIPT_METADATA_QUERY_FAILED', status: 502, message: 'Creator could not query the script class identity.' }); }
         if (typeof classId !== 'string' || !classId) throw new ToolError({ code: 'SCRIPT_METADATA_UNAVAILABLE', status: 422, message: `Creator did not expose a class ID for script ${scriptId}.` });
         const usage = await this.sceneScriptUsageInspect({ classId, limit: args.limit });
+        const current = await assetInfoForSceneUsage(scriptId);
+        let currentClassId: unknown;
+        try { currentClassId = await Editor.Message.request('scene', 'query-script-cid', scriptId); }
+        catch { throw new ToolError({ code: 'SCRIPT_METADATA_QUERY_FAILED', status: 502, message: 'Creator could not recheck the script class identity.' }); }
+        if (currentClassId !== classId || current.url !== asset.url || current.file !== asset.file || current.importer !== asset.importer || current.type !== asset.type || current.isDirectory !== asset.isDirectory) throw new ToolError({ code: 'SCRIPT_ASSET_CHANGED', status: 409, message: 'Script asset identity or class binding changed during usage inspection; no mixed result returned.' });
         return { scriptReference: { id: scriptId, type: typeof asset.type === 'string' && asset.type ? asset.type : 'cc.Script' }, classId, usages: usage.usages, total: usage.total, truncated: usage.truncated };
     }
     @utcpTool('scriptAssetSceneUsageBatchInspect', 'Inspect bounded scene usage for multiple imported script assets with per-script errors.', { type: 'object', additionalProperties: false, properties: { scriptReferences: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema }, limitPerScript: { type: 'integer', minimum: 1, maximum: MAX_LIST_LIMIT, default: DEFAULT_LIST_LIMIT } }, required: ['scriptReferences'] }, { type: 'object', additionalProperties: false, properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, partial: { type: 'boolean' } }, required: ['items', 'succeeded', 'failed', 'truncated', 'partial'] }, 'GET', ['scene', 'script', 'asset', 'usage', 'batch', 'inspect'])
