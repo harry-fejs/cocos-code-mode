@@ -174,6 +174,25 @@ declare namespace ccp3x {
         meta: unknown; dataBytes: number;
     } & ({ dataTruncated: true; data: string } | { dataTruncated: false; data: unknown });
 
+    /** Editor pipeline snapshot only; oversized complete responses throw instead of truncating. No runtime frame sampling. */
+    function renderPipelineInspect(args: { reference: InstanceReference; maxBytes?: number }): {
+        reference: InstanceReference; pipeline: unknown; bytes: number; truncated: false;
+    };
+    /** Validates native/importer response shape, not rendering correctness or persisted material state. */
+    function materialValidate(args: { reference: InstanceReference }): {
+        valid: boolean; reference: InstanceReference; importer: string; issues: Array<Record<string, unknown>>;
+        native: unknown; settings: Record<string, unknown>;
+    };
+    /** supported=false reports unavailable editor IPC. A successful inspection is not runtime sampling or render correctness. */
+    function renderDiagnosticsCollect(args: { reference: InstanceReference; maxBytes?: number }): {
+        reference: InstanceReference; supported: boolean; pipeline?: unknown;
+        diagnostics: Array<Record<string, unknown>>; runtimeSampling: false;
+    };
+    /** Applies 1–32 scene updates with immediate read-back. Not scene save/reopen proof; errors can leave ambiguous mutation state, so inspect before retry. */
+    function renderConfigurationApply(args: { updates: Array<{ reference: InstanceReference; path: string; value: unknown }> }): {
+        changed: string[]; readBack: Array<{ reference: InstanceReference; path: string; value: unknown }>; verified: true;
+    };
+
     /** Read bounded importer-specific settings, typed property descriptors, and explicit source identity for one asset. */
     function assetImportSettingsGet(args: { reference: InstanceReference }): AssetImportSettingsResult;
 
