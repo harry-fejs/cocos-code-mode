@@ -5,13 +5,15 @@ export interface RuntimeNodeObservation {
     position: { x: number; y: number; z: number };
     worldPosition: { x: number; y: number; z: number };
     scale: { x: number; y: number; z: number };
+    rotation: { x: number; y: number; z: number; w: number };
+    worldRotation: { x: number; y: number; z: number; w: number };
 }
 
 /** Serialized finite Game View reader. No component access, methods supplied by callers or mutation. */
 export function observeRuntimeNode(nodeUuid: string, expiresAt: number): RuntimeNodeObservation | { code: string; message: string } {
     try {
         const fail = (code: string, message: string): never => { throw { code, message }; };
-        type Node = { uuid: string; children: Node[]; parent: Node | null; active: boolean; activeInHierarchy: boolean; position: unknown; worldPosition: unknown; scale: unknown };
+        type Node = { uuid: string; children: Node[]; parent: Node | null; active: boolean; activeInHierarchy: boolean; position: unknown; worldPosition: unknown; scale: unknown; rotation: unknown; worldRotation: unknown };
         const cc = (globalThis as unknown as { cc?: { GAME_VIEW?: boolean; ENGINE_VERSION?: string; VERSION?: string; director?: { getScene(): Node | null }; isValid(value: unknown, strict?: boolean): boolean } }).cc;
         if (!cc || cc.GAME_VIEW !== true) fail('UNSUPPORTED_RUNTIME_TRANSPORT', 'Actual Game View required.');
         const engine = cc!;
@@ -44,8 +46,13 @@ export function observeRuntimeNode(nodeUuid: string, expiresAt: number): Runtime
             if (!row || [row.x, row.y, row.z].some(n => typeof n !== 'number' || !Number.isFinite(n))) fail('UNSUPPORTED_RUNTIME_METRIC', 'Finite native vector unavailable.');
             return { x: row!.x as number, y: row!.y as number, z: row!.z as number };
         };
+        const quaternion = (value: unknown) => {
+            const row = value as { x?: unknown; y?: unknown; z?: unknown; w?: unknown } | null;
+            if (!row || [row.x, row.y, row.z, row.w].some(n => typeof n !== 'number' || !Number.isFinite(n))) fail('UNSUPPORTED_RUNTIME_METRIC', 'Finite native quaternion unavailable.');
+            return { x: row!.x as number, y: row!.y as number, z: row!.z as number, w: row!.w as number };
+        };
         if (typeof node.active !== 'boolean' || typeof node.activeInHierarchy !== 'boolean') fail('UNSUPPORTED_RUNTIME_METRIC', 'Native activation state unavailable.');
-        const result = { nodeUuid, active: node.active, activeInHierarchy: node.activeInHierarchy, position: vector(node.position), worldPosition: vector(node.worldPosition), scale: vector(node.scale) };
+        const result = { nodeUuid, active: node.active, activeInHierarchy: node.activeInHierarchy, position: vector(node.position), worldPosition: vector(node.worldPosition), scale: vector(node.scale), rotation: quaternion(node.rotation), worldRotation: quaternion(node.worldRotation) };
         let ancestor: Node | null = node; let attached = false;
         for (let depth = 0; ancestor && depth <= 256; depth++, ancestor = ancestor.parent) if (ancestor === scene) { attached = true; break; }
         if (!attached || engine !== (globalThis as unknown as { cc?: unknown }).cc || engine.director?.getScene() !== scene || !engine.isValid(node, true) || node.uuid !== nodeUuid) fail('RUNTIME_TARGET_CHANGED', 'Runtime node or scene changed during observation.');

@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Mark direct/nested TypeScript object types opaque-object until their transfer schema is resolved; structured DTO fields are not reclassified as opaque.
+- Extend runtimeNodeObserve with finite local/world quaternion DTOs retained verbatim. No normalization/Euler conversion or sign-equivalence inference; absent/nonfinite quaternion metrics refuse instead of fabricated rotations.
 - Mark getter/setter-backed DTO properties semantic-adapter-required without invoking accessors; readonly data fields are not treated as accessors.
 - Extend scenario nodeAssert with immediate local/world position+tolerance predicates, AND-composed with activation. Retain observed mismatch evidence and stop subsequent actions; invalid metrics refuse, no polling or movement writes.
 - Recognize instantiated generic class references as class-instance semantic-adapter boundaries via their compiler target; generic interfaces remain unaffected.

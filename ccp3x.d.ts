@@ -1651,8 +1651,8 @@ declare namespace ccp3x {
     function runtimeResume(args?: { sessionId?: string; targetId?: string; timeoutMs?: number }): { success: true };
     function runtimeSetTimeScale(args: { scale: number }): { success: true; scale: number };
     function runtimeGetState(): { paused: boolean; timeScale: number | null; frameCount: number | null };
-    /** Exact attached Game View node read; local position/scale and world position only. No mutation or edit-scene substitution. */
-    function runtimeNodeObserve(args: { sessionId: string; nodeReference: { id: string }; timeoutMs?: number }): { sessionId: string; targetId: string; nodeUuid: string; active: boolean; activeInHierarchy: boolean; position: { x: number; y: number; z: number }; worldPosition: { x: number; y: number; z: number }; scale: { x: number; y: number; z: number }; writes: false };
+    /** Exact Game View node read with local/world quaternions retained verbatim; no normalization, Euler conversion or mutation. */
+    function runtimeNodeObserve(args: { sessionId: string; nodeReference: { id: string }; timeoutMs?: number }): { sessionId: string; targetId: string; nodeUuid: string; active: boolean; activeInHierarchy: boolean; position: { x: number; y: number; z: number }; worldPosition: { x: number; y: number; z: number }; scale: { x: number; y: number; z: number }; rotation: { x: number; y: number; z: number; w: number }; worldRotation: { x: number; y: number; z: number; w: number }; writes: false };
     /** Observe-only activation predicates; missing/destroyed nodes are errors, never inactive matches. In-flight reads may settle after deadline. */
     function runtimeNodeWaitForState(args: { sessionId: string; nodeReference: { id: string }; active?: boolean; activeInHierarchy?: boolean; position?: { space: 'local' | 'world'; x: number; y: number; z: number; tolerance: number }; timeoutMs?: number; pollMs?: number }): { matched: true; observations: number; observation: ReturnType<typeof runtimeNodeObserve> };
     /** reset releases a local handle only. It does not stop the preview. */
