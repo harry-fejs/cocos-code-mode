@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add integer component descriptors using native CCInteger for scalar/count arrays with safe-integer defaults, TypeScript number output, zero/empty omitted defaults and existing array/source caps; number remains finite float semantics.
 - Preserve explicit TypeScript this-receiver metadata, named dependencies and unresolved diagnostics independently from positional arguments; no receiver binding or invocation permission inferred.
 - Preserve generic constraint/default dependencies in signature references and include default-type unresolved diagnostics; existing related-type discovery consumes the signature references without a new catalog contract.
 - Add exact session/run scenario ownership inspection with current step, settled outcome count, cancellation and pending/caller-finished flags. Local read-only progress only; inactive is not success or native completion, no historical results retained.

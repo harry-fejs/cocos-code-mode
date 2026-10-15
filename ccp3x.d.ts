@@ -1043,6 +1043,7 @@ declare namespace ccp3x {
     function animationTimelineInspect(args: { nodeReference: InstanceReference; clipReference: InstanceReference; trackOffset?: number; trackLimit?: number; eventOffset?: number; eventLimit?: number; keyframeOffset?: number; keyframeLimit?: number; expectedRevision?: string; maxBytes?: number }): AnimationTimelineInspection;
     type ComponentPropertyDescriptor =
     | { name: string; type: 'number'; array?: false; default?: number }
+    | { name: string; type: 'integer'; array?: false; default?: number }
     | { name: string; type: 'string'; array?: false; default?: string }
     | { name: string; type: 'boolean'; array?: false; default?: boolean }
     | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }
@@ -1050,6 +1051,7 @@ declare namespace ccp3x {
     | { name: string; type: 'Color'; array?: false; default?: { r: number; g: number; b: number; a: number } }
     | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array?: false; default?: null }
     | { name: string; type: 'number'; array: true; default?: number[] }
+    | { name: string; type: 'integer'; array: true; default?: number[] }
     | { name: string; type: 'string'; array: true; default?: string[] }
     | { name: string; type: 'boolean'; array: true; default?: boolean[] }
     | { name: string; type: 'Vec2'; array: true; default?: { x: number; y: number }[] }

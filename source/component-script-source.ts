@@ -3,10 +3,11 @@ import path from 'path';
 import { createHash } from 'crypto';
 import { ToolError } from './utcp/tool-error';
 
-export const COMPONENT_PROPERTY_TYPES = ['number', 'string', 'boolean', 'Vec2', 'Vec3', 'Color', 'Node', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
+export const COMPONENT_PROPERTY_TYPES = ['integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Color', 'Node', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
 export type ComponentPropertyDescriptor =
     | { name: string; type: 'number'; array?: false; default?: number }
+    | { name: string; type: 'integer'; array?: false; default?: number }
     | { name: string; type: 'string'; array?: false; default?: string }
     | { name: string; type: 'boolean'; array?: false; default?: boolean }
     | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }
@@ -14,6 +15,7 @@ export type ComponentPropertyDescriptor =
     | { name: string; type: 'Color'; array?: false; default?: { r: number; g: number; b: number; a: number } }
     | { name: string; type: 'Node' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array?: false; default?: null }
     | { name: string; type: 'number'; array: true; default?: number[] }
+    | { name: string; type: 'integer'; array: true; default?: number[] }
     | { name: string; type: 'string'; array: true; default?: string[] }
     | { name: string; type: 'boolean'; array: true; default?: boolean[] }
     | { name: string; type: 'Vec2'; array: true; default?: { x: number; y: number }[] }
@@ -27,7 +29,7 @@ export interface ComponentScriptAsset { uuid: string; url: string; file: string;
 const MAX_SOURCE_BYTES = 64 * 1024;
 const RESERVED: Record<string, boolean> = Object.fromEntries(('abstract any as asserts async await bigint boolean break case catch class const constructor continue debugger declare default delete do else enum export extends false finally for from function get global if implements import in infer instanceof interface intrinsic is keyof let module namespace never new null number object of out override package private protected public readonly require return satisfies set static string super switch symbol this throw true try type typeof undefined unique unknown var void while with yield arguments eval _decorator Component Node AudioClip AnimationClip SpriteFrame CCFloat CCString CCBoolean ccclass property').split(' ').map(name => [name, true]));
 const COMPONENT_MEMBERS: Record<string, boolean> = Object.fromEntries(('name uuid node enabled enabledInHierarchy isValid hideFlags addComponent getComponent getComponents getComponentInChildren getComponentsInChildren destroy schedule scheduleOnce unschedule unscheduleAllCallbacks onLoad start update lateUpdate onEnable onDisable onDestroy resetInEditor onFocusInEditor onLostFocusInEditor onRestore toString toLocaleString valueOf hasOwnProperty isPrototypeOf propertyIsEnumerable').split(' ').map(name => [name, true]));
-const PROPERTY_IMPORTS: Record<ComponentPropertyType, string> = { number: 'CCFloat', string: 'CCString', boolean: 'CCBoolean', Vec2: 'Vec2', Vec3: 'Vec3', Color: 'Color', Node: 'Node', AudioClip: 'AudioClip', AnimationClip: 'AnimationClip', SpriteFrame: 'SpriteFrame', Prefab: 'Prefab', Material: 'Material', JsonAsset: 'JsonAsset' };
+const PROPERTY_IMPORTS: Record<ComponentPropertyType, string> = { integer: 'CCInteger', number: 'CCFloat', string: 'CCString', boolean: 'CCBoolean', Vec2: 'Vec2', Vec3: 'Vec3', Color: 'Color', Node: 'Node', AudioClip: 'AudioClip', AnimationClip: 'AnimationClip', SpriteFrame: 'SpriteFrame', Prefab: 'Prefab', Material: 'Material', JsonAsset: 'JsonAsset' };
 function invalid(message: string): never { throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message }); }
 export function assertComponentScriptInput(value: unknown, allowed: string[]): asserts value is Record<string, unknown> {
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key))) invalid('Component script input must be an object containing only supported fields.');
@@ -55,7 +57,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         if (row.array === true) {
             const values = hasDefault ? row.default : [];
             if (!Array.isArray(values) || values.length > 256) invalid('Array defaults must contain at most 256 entries.');
-            const primitive = type === 'number' || type === 'string' || type === 'boolean';
+            const primitive = type === 'integer' || type === 'number' || type === 'string' || type === 'boolean';
             const vector = type === 'Vec2' || type === 'Vec3' || type === 'Color';
             if (!primitive && !vector && values.length !== 0) invalid('Reference arrays must start empty; bind actual references separately in the Inspector.');
             const initializers: string[] = [];
@@ -69,13 +71,13 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
                     if (type === 'Color' && axes.some(axis => !Number.isInteger(value[axis]) || (value[axis] as number) < 0 || (value[axis] as number) > 255)) invalid('Color defaults require exactly r/g/b/a integer bytes from 0 to 255.');
                     initializers.push(`new ${type}(${axes.map(axis => literal(value[axis] as number)).join(', ')})`);
                 } else {
-                    if (typeof value !== type || type === 'number' && !Number.isFinite(value) || type === 'string' && value.length > 4096) invalid('Array defaults must be type-matched and bounded; numbers must be finite.');
+                    if (typeof value !== (type === 'integer' ? 'number' : type) || type === 'integer' && !Number.isSafeInteger(value) || type === 'number' && !Number.isFinite(value) || type === 'string' && value.length > 4096) invalid('Array defaults must be type-matched and bounded; numbers must be finite.');
                     initializers.push(literal(value));
                 }
             }
             names.add(row.name);
             imports.add(PROPERTY_IMPORTS[type]);
-            fields.push(`    @property([${PROPERTY_IMPORTS[type]}])`, `    ${row.name}: ${type}[] = [${initializers.join(', ')}];`, '');
+            fields.push(`    @property([${PROPERTY_IMPORTS[type]}])`, `    ${row.name}: ${type === 'integer' ? 'number' : type}[] = [${initializers.join(', ')}];`, '');
             continue;
         }
         let initial: string | number | boolean | null;
@@ -99,8 +101,9 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
             fields.push(`    @property(${type})`, `    ${row.name}: ${type} = new ${type}(${axes.map(axis => literal(value[axis] as number)).join(', ')});`, '');
             continue;
         }
-        if (type === 'number') {
+        if (type === 'number' || type === 'integer') {
             if (hasDefault && (typeof row.default !== 'number' || !Number.isFinite(row.default))) invalid('Number defaults must be finite numbers.');
+            if (type === 'integer' && hasDefault && !Number.isSafeInteger(row.default)) invalid('Integer defaults must be safe integers.');
             initial = hasDefault ? row.default as number : 0;
         } else if (type === 'string') {
             if (hasDefault && (typeof row.default !== 'string' || row.default.length > 4096)) invalid('String defaults must be strings of at most 4096 characters.');
@@ -114,7 +117,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         }
         names.add(row.name);
         imports.add(PROPERTY_IMPORTS[type]);
-        fields.push(`    @property(${PROPERTY_IMPORTS[type]})`, `    ${row.name}: ${initial === null ? `${type} | null` : type} = ${literal(initial)};`, '');
+        fields.push(`    @property(${PROPERTY_IMPORTS[type]})`, `    ${row.name}: ${initial === null ? `${type} | null` : type === 'integer' ? 'number' : type} = ${literal(initial)};`, '');
     }
     if (imports.has(input.className)) invalid('className must not shadow a generated cc import.');
     const source = [
