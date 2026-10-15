@@ -380,6 +380,13 @@ function constraints(node, context, checker) {
     while (ts.isParenthesizedExpression(expression)) expression = expression.expression;
     if (ts.isCallExpression(expression)) expression = expression.expression;
     while (ts.isParenthesizedExpression(expression)) expression = expression.expression;
+    if (checker && ts.isIdentifier(expression)) {
+      const symbol = checker.getSymbolAtLocation(expression);
+      if (symbol && symbol.flags & ts.SymbolFlags.Alias) {
+        const target = checker.getAliasedSymbol(symbol);
+        if (!checker.getTypeOnlyAliasDeclaration(symbol) && target?.declarations?.length && target.name === 'executeInEditMode') return true;
+      }
+    }
     if (ts.isElementAccessExpression(expression)) {
       const key = expression.argumentExpression;
       return key && (ts.isStringLiteral(key) || ts.isNoSubstitutionTemplateLiteral(key)) && key.text === 'executeInEditMode';

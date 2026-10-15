@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Recognize compiler-resolved value import aliases of executeInEditMode in decorator declaration metadata; no native module identity, execution or qualification inferred from the resolved target name.
 - Add disallowMultiple class metadata to scriptComponentCreate with explicit true/false/omitted behavior through the native decorator. Compose with requiredComponents; source declaration only, not immediate scene attachment/removal or a global singleton guarantee.
 - Add requiredComponents to scriptComponentCreate: up to8 unique allowlisted native UI/audio/animation dependencies emitted through @requireComponent. Source declaration only; no construction/attachment by this tool, dependency behavior applies when Creator later attaches the script.
 - Preserve simple assignment target read/write distinctions through transparent parentheses and erased TypeScript wrappers; retain computed-key/RHS reads and compound assignments without executing writes.
