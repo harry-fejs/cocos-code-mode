@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Snapshot validated animation wait session/node/component/clip identity and playing/paused/time/speed/duration predicates before asynchronous polling. Caller changes cannot redirect clip or match criteria; no playback mutation/replay added.
 - Preserve TypeScript in/out variance modifiers on signature type parameters alongside const/constraint/default metadata; no runtime variance enforcement inferred.
 - Snapshot validated particle wait session/node/component identity and playing/count predicates before asynchronous polling. Caller mutations cannot redirect the target or alter count matching; no playback mutation/replay added.
 - Preserve TypeScript const-generic type-parameter modifiers in signature metadata alongside constraint/default/provenance fields; no inference of runtime generic behavior.

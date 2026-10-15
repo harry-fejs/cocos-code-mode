@@ -120,6 +120,7 @@ export class ComponentRuntimeTools {
             || [args.minSpeed, args.maxSpeed].some(value => value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > 1000000)) || args.minSpeed !== undefined && args.maxSpeed !== undefined && args.minSpeed > args.maxSpeed
             || [args.minDuration, args.maxDuration].some(value => value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 86400)) || args.minDuration !== undefined && args.maxDuration !== undefined && args.minDuration > args.maxDuration
             || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000 || !Number.isInteger(pollMs) || pollMs < 25 || pollMs > 1000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide bounded state conditions, timeout and poll interval.' });
+        args = { ...args, nodeReference: { id: args.nodeReference!.id } };
         const deadline = Date.now() + timeoutMs; let observations = 0;
         for (;;) {
             const remaining = deadline - Date.now();
