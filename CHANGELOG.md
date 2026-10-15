@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Exclude erased TypeScript type nodes from execution-guard read provenance, avoiding typeof-import names inside casts/type arguments while preserving actual constant reads wrapped by casts.
 - Add optional exact native component selector to animationTimelineInspect.trackBinding, distinguishing same-node/property tracks by comp metadata. Omitted component preserves all matching components; no scene binding resolution or uniqueness inference.
 - Do not treat constants inside function-like/class-expression values as direct condition reads when extracting execution guards; nested bodies are not executed or analyzed for interprocedural reachability.
 - Add inclusive eventFrameRange(min/max native frames) to animationTimelineInspect, AND-composed with exact callback selection. Preserve matching-event paging/native indices and whole-dump diagnostics/revision; no runtime timing conversion or callback execution inferred.
