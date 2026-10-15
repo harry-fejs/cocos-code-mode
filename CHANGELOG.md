@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Correct zero-degree orientation comparisons using sign-aligned quaternion chord/sum atan2 distance instead of a rounded unit dot threshold. Identical/nontrivial q and -q match without widening tolerance; tiny distinct rotations still refuse at zero.
 - Label enum value entries with constant=true/false so compiler string constants remain distinguishable from identical-looking unevaluated initializer provenance; existing unresolved diagnostics remain authoritative.
 - Enforce one runtimeNodeObserve caller deadline across readiness inspection, serialized node read, session recheck and response processing. Reject late/hung phases without dispatching later reads; in-flight read may still settle, no mutation/replay.
 - Bound each enum dependency projection to256 declaration-ordered members with enum-budget incompleteness diagnostics beyond the exact cap; avoid unbounded member result allocation.

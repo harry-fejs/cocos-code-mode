@@ -13,6 +13,9 @@ export function unitQuaternion(q: { x: number; y: number; z: number; w: number }
 
 export function orientationMatches(observed: { x: number; y: number; z: number; w: number } | undefined, expectedUnit: number[], toleranceDegrees: number): boolean {
     const actual = unitQuaternion(observed, 'INVALID_RUNTIME_RESPONSE');
-    const dot = Math.min(1, Math.abs(actual[0] * expectedUnit[0] + actual[1] * expectedUnit[1] + actual[2] * expectedUnit[2] + actual[3] * expectedUnit[3]));
-    return toleranceDegrees === 180 || dot >= Math.cos(toleranceDegrees * Math.PI / 360);
+    const dot = actual[0] * expectedUnit[0] + actual[1] * expectedUnit[1] + actual[2] * expectedUnit[2] + actual[3] * expectedUnit[3];
+    const sign = dot < 0 ? -1 : 1;
+    const difference = Math.hypot(actual[0] - sign * expectedUnit[0], actual[1] - sign * expectedUnit[1], actual[2] - sign * expectedUnit[2], actual[3] - sign * expectedUnit[3]);
+    const sum = Math.hypot(actual[0] + sign * expectedUnit[0], actual[1] + sign * expectedUnit[1], actual[2] + sign * expectedUnit[2], actual[3] + sign * expectedUnit[3]);
+    return toleranceDegrees === 180 || 4 * Math.atan2(difference, sum) <= toleranceDegrees * Math.PI / 180;
 }
