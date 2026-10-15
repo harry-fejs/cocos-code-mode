@@ -102,7 +102,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     };
     const frameValid = (frame: unknown): frame is number => finite(frame) && frame >= 0;
     const timingHash = createHash('sha256');
-    const tracks = (curves ?? []).map((raw: unknown, index: number) => {
+    const tracks = Array.from(curves ?? [], (raw: unknown, index: number) => {
         const curve = timelineRecord(raw), location = `curves[${index}]`;
         const startIssues = diagnosticCount;
         if (!curve || typeof curve.nodePath !== 'string' || typeof curve.key !== 'string' || !curve.key) issue('UNSUPPORTED_TRACK_BINDING', location, true);
@@ -129,7 +129,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
             frameRange: first === null ? null : { first, last }, frameOverSampleRange: first === null || last === null || sample === null || !finite(first / sample) || !finite(last / sample) ? null : { first: first / sample, last: last / sample }, dataValid: diagnosticCount === startIssues };
         return row;
     });
-    const eventRows = (events ?? []).map((raw: unknown, index: number) => {
+    const eventRows = Array.from(events ?? [], (raw: unknown, index: number) => {
         const event = timelineRecord(raw), location = `events[${index}]`, startIssues = diagnosticCount;
         if (!event || !frameValid(event.frame)) issue('INVALID_EVENT_TIME', location);
         const params = event && Array.isArray(event.params) ? event.params : null;

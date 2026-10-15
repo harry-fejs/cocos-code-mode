@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Visit missing slots in sparse native timeline track/event collections and emit existing unsupported-data diagnostics instead of throwing untyped projection/hash errors. Off-page holes remain visible to source validation; empty collections remain valid.
 - Preserve heritage provenance from direct class-expression variable initializers while retaining property/constructor classification and existing non-permitted status; empty merged-owner sets fall back to the actual owner.
 - Diagnose sparse/non-string native timeline event parameter arrays as unsupported and expose params:null instead of claiming valid strings that serialize to null. Empty/dense string params remain supported; off-page malformed events still invalidate source diagnostics.
 - Preserve and deduplicate inheritance clauses from all merged class/interface owner declarations in catalog records and member context, including unresolved base diagnostics from later declarations.
