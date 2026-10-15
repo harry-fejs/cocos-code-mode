@@ -354,7 +354,14 @@ function constraints(node, context, checker) {
   scan(node);
   const overrides = (context.config?.moduleOverrides || []).filter(item => Object.keys(item.overrides || {}).some(file => file === context.path)).map(item => ({ test: item.test, replacement: item.overrides[context.path] }));
   const editModeDeclared = (ts.canHaveDecorators(node) ? ts.getDecorators(node) || [] : []).some(decorator => {
-    const expression = ts.isCallExpression(decorator.expression) ? decorator.expression.expression : decorator.expression;
+    let expression = decorator.expression;
+    while (ts.isParenthesizedExpression(expression)) expression = expression.expression;
+    if (ts.isCallExpression(expression)) expression = expression.expression;
+    while (ts.isParenthesizedExpression(expression)) expression = expression.expression;
+    if (ts.isElementAccessExpression(expression)) {
+      const key = expression.argumentExpression;
+      return key && (ts.isStringLiteral(key) || ts.isNoSubstitutionTemplateLiteral(key)) && key.text === 'executeInEditMode';
+    }
     return ts.isIdentifier(expression) ? expression.text === 'executeInEditMode' : ts.isPropertyAccessExpression(expression) && expression.name.text === 'executeInEditMode';
   });
   return { execution: context.namespace === 'engine-runtime' ? ['game-runtime'] : ['edit-scene'], targetAvailable: 'unknown',

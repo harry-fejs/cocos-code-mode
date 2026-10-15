@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Recognize parenthesized/literal element-access edit-mode decorator syntax while leaving dynamic keys unrecognized; exact syntax provenance still does not prove native decorator identity.
 - Compose animationEvents in runtimeScenarioRun through the exact-clip read-only event observer, with maxEvents1..100, whole-input preflight and existing scenario deadline/ownership. Capture starts at listener registration; no playback dispatch, prior history or guaranteed completion inferred.
 - Match exact decorator callee names for editModeDeclared metadata rather than text substrings, excluding unrelated decorators/string arguments while retaining direct and qualified syntax; no runtime identity/qualification inferred.
 - Reject sparse animation clipboard reference lists and invalid paste booleans before native dispatch; reject sparse/blank copy/paste response identities without replay. Preserve dense valid node order and native snapshot flow.
