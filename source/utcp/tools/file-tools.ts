@@ -129,6 +129,8 @@ export class FileTools {
     async projectWriteFile(args: { filePath: string, content: string, createDirs?: boolean }): Promise<{ success: boolean, bytesWritten: number }> {
         const root = projectRoot();
         if (typeof args.content !== 'string') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'content must be a string.' });
+        if (args.createDirs !== undefined && typeof args.createDirs !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'createDirs must be a boolean.' });
+        if (Buffer.byteLength(args.content, 'utf8') > MAX_WRITE_BYTES) throw new ToolError({ code: 'PAYLOAD_TOO_LARGE', status: 413, message: `File content exceeds the ${MAX_WRITE_BYTES} byte cap.` });
         const filePath = resolveSafePath(root, args.filePath);
         if (args.createDirs !== false) fs.mkdirSync(path.dirname(filePath), { recursive: true });
         const bytesWritten = atomicWriteVerified(filePath, args.content);
