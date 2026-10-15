@@ -185,9 +185,11 @@ export class ConsolidatedTools {
                 targetVersion: { type: 'string', enum: ['3.7.3', '3.8.8'] },
                 domain: { type: 'string', maxLength: 128 },
                 namespace: { type: 'string', enum: ['engine-runtime', 'engine-authoring', 'editor-ipc', 'bridge'] },
-                operation: { type: 'string', enum: ['records', 'list_domains', 'list_classes', 'list_namespaces', 'list_members', 'get_signature'] },
+                operation: { type: 'string', enum: ['records', 'list_domains', 'list_classes', 'list_namespaces', 'list_members', 'get_signature', 'compare_version'] },
                 filter: { type: 'string', maxLength: 256 },
                 recordId: { type: 'string', minLength: 1, maxLength: 1024 },
+                compareVersion: { type: 'string', enum: ['3.7.3', '3.8.8'] }, compareRecordId: { type: 'string', minLength: 1, maxLength: 1024 },
+                // Comparison remains catalog-only; no live dispatch selectors are inferred.
                 maxEntries: { type: 'integer', minimum: 1, maximum: 200 },
                 maxBytes: { type: 'integer', minimum: 1, maximum: 131072 },
                 cursor: { type: 'string', maxLength: 2048 }
@@ -202,7 +204,7 @@ export class ConsolidatedTools {
         { type: 'object', properties: { sceneMode: { type: 'string' }, ready: { type: 'boolean' }, values: { type: 'array', items: { type: 'object' } }, types: { type: 'array', items: { type: 'string' } }, scriptName: { type: 'string' }, scriptCid: { type: 'string' }, hasScript: { type: 'boolean' }, operation: { type: 'string' }, coverage: { type: 'object' }, version: { type: 'string' }, catalogHash: { type: 'string' }, records: { type: 'array' }, total: { type: 'integer' }, count: { type: 'integer' }, truncated: { type: 'boolean' }, nextCursor: { type: ['string', 'null'] }, live: { type: 'object' }, runtimeVerified: { type: 'boolean' }, qualified: { type: 'boolean' } } }, 'GET',
         ['editor', 'introspect', 'query', 'consolidated', 'programming', 'plugin']
     )
-    async editorQuery(args: { category: string, operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature', namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge', enumPath?: string, className?: string, reference?: IInstanceReference, targetVersion?: string, domain?: string, filter?: string, recordId?: string, maxEntries?: number, maxBytes?: number, cursor?: string }): Promise<unknown> {
+    async editorQuery(args: { category: string, operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'compare_version', namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge', enumPath?: string, className?: string, reference?: IInstanceReference, targetVersion?: string, domain?: string, filter?: string, recordId?: string, compareVersion?: string, compareRecordId?: string, maxEntries?: number, maxBytes?: number, cursor?: string }): Promise<unknown> {
         if (args.category === 'engine_api' || args.category === 'component_schema') {
             return discoverEngineApi(args);
         }

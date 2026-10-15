@@ -10,9 +10,9 @@ import { openExternalApiCatalog } from './external-api-catalog';
 
 export interface EngineDiscoveryArgs {
     category?: string; className?: string; targetVersion?: string; domain?: string;
-    operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature';
+    operation?: 'records' | 'list_domains' | 'list_classes' | 'list_namespaces' | 'list_members' | 'get_signature' | 'compare_version';
     namespace?: 'engine-runtime' | 'engine-authoring' | 'editor-ipc' | 'bridge';
-    filter?: string; recordId?: string; reference?: IInstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string;
+    filter?: string; recordId?: string; compareVersion?: string; compareRecordId?: string; reference?: IInstanceReference; maxEntries?: number; maxBytes?: number; cursor?: string;
 }
 const ApiRecordSchema = z.object({ id: z.string().min(1), className: z.string().nullable().optional(), namespace: z.string(), member: z.string().nullable().optional(), name: z.string().optional(), kind: z.string().optional(), signatures: z.array(z.unknown()).optional() }).passthrough();
 type ApiRecord = InferSchema<typeof ApiRecordSchema>;
@@ -37,7 +37,31 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
     if (!Object.prototype.hasOwnProperty.call(VERSIONS, version)) throw new ToolError({ code: 'UNSUPPORTED_VERSION', status: 422, message: 'Only catalogued versions 3.7.3 and 3.8.8 are available.' });
     if (args.category === 'component_schema' && !args.className) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'component_schema requires className.' });
     const operation = args.operation ?? 'records';
-    if (!['records', 'list_domains', 'list_classes', 'list_namespaces', 'list_members', 'get_signature'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Unknown catalog discovery operation.' });
+    if (!['records', 'list_domains', 'list_classes', 'list_namespaces', 'list_members', 'get_signature', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Unknown catalog discovery operation.' });
+    if (operation === 'compare_version') {
+        if (!args.compareVersion || args.compareVersion === version || !Object.prototype.hasOwnProperty.call(VERSIONS, args.compareVersion)
+            || typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024
+            || typeof args.compareRecordId !== 'string' || !args.compareRecordId || args.compareRecordId.length > 1024
+            || args.reference || args.className || args.domain || args.namespace || args.filter || args.cursor || args.category === 'component_schema') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'compare_version requires distinct catalog versions and two exact record IDs without live targets, filters or cursors.' });
+        limit(args.maxEntries, 50, 200);
+        const maxBytes = limit(args.maxBytes, 32768, 131072);
+        const before = await discoverEngineApi({ targetVersion: version, recordId: args.recordId, maxEntries: 1, maxBytes: 131072 });
+        const after = await discoverEngineApi({ targetVersion: args.compareVersion, recordId: args.compareRecordId, maxEntries: 1, maxBytes: 131072 });
+        const left = (before.records as ApiRecord[])[0], right = (after.records as ApiRecord[])[0];
+        if (typeof left.semanticKey !== 'string' || !left.semanticKey || left.semanticKey !== right.semanticKey) throw new ToolError({ code: 'CATALOG_IDENTITY_MISMATCH', status: 409, message: 'Selected records do not prove the same version-independent semantic identity.' });
+        const compareHash = (field: string): 'unchanged' | 'changed' | 'unknown' => {
+            const a = left[field], b = right[field];
+            return typeof a === 'string' && /^[a-f0-9]{64}$/.test(a) && typeof b === 'string' && /^[a-f0-9]{64}$/.test(b) ? a === b ? 'unchanged' : 'changed' : 'unknown';
+        };
+        const result = { version, operation, semanticKey: left.semanticKey,
+            before: { version, recordId: left.id, catalogHash: before.catalogHash, coverage: before.coverage },
+            after: { version: args.compareVersion, recordId: right.id, catalogHash: after.catalogHash, coverage: after.coverage },
+            comparison: { signatures: compareHash('signatureHash'), metadata: compareHash('metadataHash'), resolution: compareHash('resolutionHash') },
+            permitted: false, mutationAuthorized: false, runtimeVerified: false, qualified: false };
+        if (Buffer.byteLength(JSON.stringify(result)) > maxBytes) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'Exact catalog comparison exceeds maxBytes.' });
+        return result;
+    }
+    if (args.compareVersion !== undefined || args.compareRecordId !== undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Comparison selectors require compare_version.' });
     if (operation !== 'records' && operation !== 'get_signature' && (args.reference || args.recordId || args.category === 'component_schema' || args.className && !['list_members'].includes(operation))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Catalog navigation does not accept an instance, record or class schema target.' });
     if (operation === 'get_signature' && (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'get_signature requires a bounded exact recordId.' });
     if (args.recordId !== undefined && (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024 || !['records', 'get_signature'].includes(operation))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'recordId requires records or get_signature operation and a bounded nonempty identity.' });
