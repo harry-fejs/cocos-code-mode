@@ -1044,6 +1044,7 @@ declare namespace ccp3x {
     type ComponentPropertyDescriptor =
     | { name: string; type: 'number'; array?: false; default?: number }
     | { name: string; type: 'integer'; array?: false; default?: number }
+    | { name: string; type: 'enum'; array?: false; entries: Array<{ name: string; value: number }>; default: number }
     | { name: string; type: 'string'; array?: false; default?: string }
     | { name: string; type: 'boolean'; array?: false; default?: boolean }
     | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }

@@ -3,11 +3,12 @@ import path from 'path';
 import { createHash } from 'crypto';
 import { ToolError } from './utcp/tool-error';
 
-export const COMPONENT_PROPERTY_TYPES = ['integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Color', 'Node', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
+export const COMPONENT_PROPERTY_TYPES = ['enum', 'integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Color', 'Node', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset'] as const;
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
 export type ComponentPropertyDescriptor =
     | { name: string; type: 'number'; array?: false; default?: number }
     | { name: string; type: 'integer'; array?: false; default?: number }
+    | { name: string; type: 'enum'; array?: false; entries: Array<{ name: string; value: number }>; default: number }
     | { name: string; type: 'string'; array?: false; default?: string }
     | { name: string; type: 'boolean'; array?: false; default?: boolean }
     | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }
@@ -29,7 +30,7 @@ export interface ComponentScriptAsset { uuid: string; url: string; file: string;
 const MAX_SOURCE_BYTES = 64 * 1024;
 const RESERVED: Record<string, boolean> = Object.fromEntries(('abstract any as asserts async await bigint boolean break case catch class const constructor continue debugger declare default delete do else enum export extends false finally for from function get global if implements import in infer instanceof interface intrinsic is keyof let module namespace never new null number object of out override package private protected public readonly require return satisfies set static string super switch symbol this throw true try type typeof undefined unique unknown var void while with yield arguments eval _decorator Component Node AudioClip AnimationClip SpriteFrame CCFloat CCString CCBoolean ccclass property').split(' ').map(name => [name, true]));
 const COMPONENT_MEMBERS: Record<string, boolean> = Object.fromEntries(('name uuid node enabled enabledInHierarchy isValid hideFlags addComponent getComponent getComponents getComponentInChildren getComponentsInChildren destroy schedule scheduleOnce unschedule unscheduleAllCallbacks onLoad start update lateUpdate onEnable onDisable onDestroy resetInEditor onFocusInEditor onLostFocusInEditor onRestore toString toLocaleString valueOf hasOwnProperty isPrototypeOf propertyIsEnumerable').split(' ').map(name => [name, true]));
-const PROPERTY_IMPORTS: Record<ComponentPropertyType, string> = { integer: 'CCInteger', number: 'CCFloat', string: 'CCString', boolean: 'CCBoolean', Vec2: 'Vec2', Vec3: 'Vec3', Color: 'Color', Node: 'Node', AudioClip: 'AudioClip', AnimationClip: 'AnimationClip', SpriteFrame: 'SpriteFrame', Prefab: 'Prefab', Material: 'Material', JsonAsset: 'JsonAsset' };
+const PROPERTY_IMPORTS: Record<ComponentPropertyType, string> = { enum: 'Enum', integer: 'CCInteger', number: 'CCFloat', string: 'CCString', boolean: 'CCBoolean', Vec2: 'Vec2', Vec3: 'Vec3', Color: 'Color', Node: 'Node', AudioClip: 'AudioClip', AnimationClip: 'AnimationClip', SpriteFrame: 'SpriteFrame', Prefab: 'Prefab', Material: 'Material', JsonAsset: 'JsonAsset' };
 function invalid(message: string): never { throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message }); }
 export function assertComponentScriptInput(value: unknown, allowed: string[]): asserts value is Record<string, unknown> {
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key))) invalid('Component script input must be an object containing only supported fields.');
@@ -48,12 +49,26 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
     const names = new Set<string>();
     const fields: string[] = [];
     for (const row of rows) {
-        assertComponentScriptInput(row, ['name', 'type', 'array', 'default']);
+        assertComponentScriptInput(row, ['name', 'type', 'array', 'default', 'entries']);
         if (!identifier(row.name) || COMPONENT_MEMBERS[row.name] === true || names.has(row.name)) invalid('Property names must be unique safe identifiers and must not shadow Component members or lifecycle methods.');
         if (typeof row.type !== 'string' || !COMPONENT_PROPERTY_TYPES.includes(row.type as ComponentPropertyType)) invalid('Unsupported property type.');
         const type = row.type as ComponentPropertyType;
         const hasDefault = Object.prototype.hasOwnProperty.call(row, 'default');
         if (row.array !== undefined && typeof row.array !== 'boolean') invalid('array must be a boolean when provided.');
+        if (type === 'enum') {
+            if (row.array === true || !Array.isArray(row.entries) || row.entries.length < 1 || row.entries.length > 64) invalid('Scalar enum requires 1..64 explicit entries.');
+            const labels = new Set<string>(), values = new Set<number>(), entries: string[] = [];
+            for (const entry of row.entries) {
+                assertComponentScriptInput(entry, ['name', 'value']);
+                if (!identifier(entry.name) || entry.name === '__enums__' || labels.has(entry.name) || typeof entry.value !== 'number' || !Number.isSafeInteger(entry.value) || entry.value < 0 || entry.value > 2147483647 || values.has(entry.value)) invalid('Enum labels and nonnegative int32 values must be safe and unique; automatic -1 values are not supported.');
+                labels.add(entry.name); values.add(entry.value); entries.push(`${literal(entry.name)}: ${literal(entry.value)}`);
+            }
+            if (typeof row.default !== 'number' || !values.has(row.default)) invalid('Enum default must explicitly select one declared value.');
+            names.add(row.name); imports.add('Enum');
+            fields.push(`    @property({ type: Enum({ ${entries.join(', ')} }) })`, `    ${row.name}: number = ${literal(row.default)};`, '');
+            continue;
+        }
+        if (row.entries !== undefined) invalid('entries is supported only for enum fields.');
         if (row.array === true) {
             const values = hasDefault ? row.default : [];
             if (!Array.isArray(values) || values.length > 256) invalid('Array defaults must contain at most 256 entries.');

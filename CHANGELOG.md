@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add scalar enum component descriptors with1..64 unique named nonnegative int32 entries and explicit member default, using native Enum property metadata. Refuse automatic -1, duplicate names/values, unknown defaults and enum arrays; no gameplay execution or native Inspector qualification.
 - Retain operand dependencies and unresolved keyof diagnostics for generic key spaces; compiler-resolved key unions are not marked unresolved.
 - Retain object/key dependencies and explicit unresolved diagnostics for generic indexed-access types; compiler-resolved property accesses retain their normal resolved metadata.
 - Add immediate graphObserve/graphAssert scenario checkpoints through existing inspect-only adapter: exact graph identity, single typed variable comparison, retained mismatch evidence and stop-before-next-action behavior. No polling/mutation or graph-transition validity inference.
