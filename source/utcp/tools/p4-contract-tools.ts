@@ -85,6 +85,7 @@ export class P4ContractTools {
         }
         args = { ...args, nodeReference: { id: args.nodeReference.id } };
         const deadline = Date.now() + timeoutMs; let observations = 0;
+        let targetId: string | undefined;
         for (;;) {
             assertActive?.();
             const remaining = deadline - Date.now();
@@ -96,6 +97,9 @@ export class P4ContractTools {
             } finally { clearTimeout(timer); }
             assertActive?.();
             if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Particle state read completed after caller deadline; no playback mutation dispatched.' });
+            if (typeof result.targetId !== 'string' || !result.targetId) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Particle observation target identity is unavailable.' });
+            if (targetId !== undefined && result.targetId !== targetId) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Particle target changed during state wait.' });
+            targetId = result.targetId;
             observations++;
             const state = result.state as { playing?: unknown; particleCount?: unknown } | undefined;
             if (!state || typeof state.playing !== 'boolean') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Particle inspect returned no valid state.' });

@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Pin Game View targetId across particleWaitForState observations, refusing replacement-target checkpoint success while preserving read-only playing/count predicates and cooperative cancellation.
 - Extend internal scenario cancellation guards to particle/node/session state waits before each observation and after read settlement. Pending reads are not aborted; no further polling is dispatched after cancellation is observed.
 - Preserve callable/constructable constructor parameter-property visibility and semantic-adapter requirements, matching equivalent property declarations without treating ordinary parameters as fields.
 - Apply scenario cooperative cancellation to audioWait before each read and after observation settlement. Pending native observation remains owned; cancellation does not stop sound playback or dispatch another read.
