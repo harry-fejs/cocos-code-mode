@@ -38,6 +38,10 @@ function typeInfo(checker, type, node) {
       unresolved.push({ kind: 'keyof', reference: canonicalType(checker.typeToString(current, node, ts.TypeFormatFlags.NoTruncation)) });
       visit(current.type);
     }
+    if (current.flags & ts.TypeFlags.TemplateLiteral) {
+      unresolved.push({ kind: 'template-literal', reference: canonicalType(checker.typeToString(current, node, ts.TypeFormatFlags.NoTruncation)) });
+      current.types.forEach(visit);
+    }
     if (current.isUnionOrIntersection?.()) current.types.forEach(visit);
     if (checker.isArrayType(current) || checker.isTupleType(current)) {
       checker.getTypeArguments(current).forEach(visit);
