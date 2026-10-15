@@ -56,6 +56,10 @@ function typeInfo(checker, type, node) {
       }
     }
     if (current.flags & ts.TypeFlags.Object && (current.objectFlags & ts.ObjectFlags.Anonymous || declaration)) {
+      for (const index of checker.getIndexInfosOfType(current)) {
+        visit(index.keyType);
+        visit(index.type);
+      }
       for (const property of checker.getPropertiesOfType(current)) {
         const propertyDeclaration = property.valueDeclaration || property.declarations?.[0];
         if (propertyDeclaration) visit(checker.getTypeOfSymbolAtLocation(property, propertyDeclaration));
