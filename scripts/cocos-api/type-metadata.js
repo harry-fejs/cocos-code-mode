@@ -28,6 +28,7 @@ function typeInfo(checker, type, node) {
     try {
     if (current.flags & ts.TypeFlags.Any) unresolved.push({ kind: 'any', reference: current.aliasSymbol?.name || current.intrinsicName || 'any' });
     if (current.flags & ts.TypeFlags.Unknown) unresolved.push({ kind: 'unknown', reference: 'unknown' });
+    if (current.flags & ts.TypeFlags.NonPrimitive) unresolved.push({ kind: 'opaque-object', reference: 'object' });
     if (current.flags & ts.TypeFlags.BigIntLike) unresolved.push({ kind: 'semantic-adapter-required', reference: 'bigint-type' });
     if (current.flags & ts.TypeFlags.ESSymbolLike) unresolved.push({ kind: 'semantic-adapter-required', reference: 'symbol-type' });
     if (current.flags & ts.TypeFlags.TypeParameter) visit(checker.getBaseConstraintOfType(current));
