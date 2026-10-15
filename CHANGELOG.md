@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Route runtimeScenarioAssert through continuity-checked session inspection and preflight boolean/finite integer predicates before readiness IPC. Reset during pending assertions refuses stale passes; no mutation/replay added.
 - Preserve owning variable declaration/statement JSDoc and restrictive tags on nested destructuring bindings while retaining binding readonly semantics and own-documentation precedence.
 - Preserve readonly binding metadata for nested object/array destructuring const exports by resolving the owning declaration list; let/parameter bindings are not marked const and no deep immutability is inferred.
 - Route runtime state observation/wait reads through lifecycle-continuity inspection; reset during pending reads refuses stale state. Wait keeps one deadline across polling and checks session generation/target before accepting a match; no runtime mutation/replay added.

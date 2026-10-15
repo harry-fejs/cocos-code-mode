@@ -891,6 +891,8 @@ export class RuntimeSessionTools {
         ['runtime', 'scenario', 'assert', 'state'],
     )
     async runtimeScenarioAssert(args: { sessionId: string, paused?: boolean, minFrameCount?: number }): Promise<{ success: true, sessionId: string, passed: boolean, state: RuntimeState, issues: string[] }> {
+        if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64 || args.paused === undefined && args.minFrameCount === undefined
+            || args.paused !== undefined && typeof args.paused !== 'boolean' || args.minFrameCount !== undefined && (!Number.isSafeInteger(args.minFrameCount) || args.minFrameCount < 0 || args.minFrameCount > 1000000000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide exact session and typed paused/minFrameCount assertion predicates.' });
         let session: RuntimeSession;
         try {
             session = store.inspect(args.sessionId);
@@ -900,8 +902,9 @@ export class RuntimeSessionTools {
         }
         if (session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: `Runtime session is stopped: ${session.sessionId}`, recovery: 'Attach a new game-view session before asserting runtime state.' });
         if (session.targetKind !== 'game-view') throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: `Runtime target ${session.targetKind} has no verified transport.` });
-        if (args.paused === undefined && args.minFrameCount === undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'runtimeScenarioAssert requires paused or minFrameCount.' });
-        const state = await this.readState(session.targetId);
+        const observed = await this.inspect({ operation: 'inspect', sessionId: session.sessionId });
+        if (!observed.state || !observed.ready) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'Runtime assertion state unavailable.' });
+        const state = observed.state;
         const issues: string[] = [];
         if (args.paused !== undefined && state.paused !== args.paused) issues.push(`paused expected ${args.paused} but was ${state.paused}`);
         if (args.minFrameCount !== undefined && state.frameCount === null) throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_METRIC', status: 422, message: 'Game-view frame count is unavailable.' });
