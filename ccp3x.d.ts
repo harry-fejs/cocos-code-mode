@@ -836,8 +836,8 @@ declare namespace ccp3x {
     };
 
     interface SceneScriptUsage {
-        /** Node UUID is forwarded from native hierarchy metadata; inspect the node before mutation. */
-        nodeReference: { id: unknown; type: 'cc.Node' };
+        /** Validated non-empty native hierarchy UUID; re-read the node before mutation because scene state may drift. */
+        nodeReference: { id: string; type: 'cc.Node' };
         nodePath: unknown;
         componentReference: InstanceReference | null;
         classId: string;

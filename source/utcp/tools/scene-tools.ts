@@ -940,9 +940,11 @@ export class SceneTools {
                 if (!component || typeof component !== 'object' || Array.isArray(component)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script usage contains an invalid component entry.' });
                 const classId = componentClassId(component);
                 const componentId = componentUuid(component);
+                if (classId !== undefined && typeof classId !== 'string') throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script usage component class identity must be a string.' });
                 if (!classId || classId.startsWith('cc.') || (args.classId && classId !== args.classId)) continue;
+                const nodeId = nodeUuidFromSceneUsage(node, 'script usage hierarchy');
                 total++;
-                if (usages.length < limit) usages.push({ nodeReference: { id: node.uuid, type: 'cc.Node' }, nodePath, componentReference: componentId ? { id: componentId, type: classId } : null, classId });
+                if (usages.length < limit) usages.push({ nodeReference: { id: nodeId, type: 'cc.Node' }, nodePath, componentReference: componentId ? { id: componentId, type: classId } : null, classId });
             }
             const children = node.children ?? [];
             if (!Array.isArray(children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Script usage hierarchy children must be an array.' });
