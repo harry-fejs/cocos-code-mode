@@ -31,7 +31,10 @@ function typeInfo(checker, type, node) {
     if (current.flags & ts.TypeFlags.NonPrimitive) unresolved.push({ kind: 'opaque-object', reference: 'object' });
     if (current.flags & ts.TypeFlags.BigIntLike) unresolved.push({ kind: 'semantic-adapter-required', reference: 'bigint-type' });
     if (current.flags & ts.TypeFlags.ESSymbolLike) unresolved.push({ kind: 'semantic-adapter-required', reference: 'symbol-type' });
-    if (current.flags & ts.TypeFlags.TypeParameter) visit(checker.getBaseConstraintOfType(current));
+    if (current.flags & ts.TypeFlags.TypeParameter) {
+      unresolved.push({ kind: 'type-parameter', reference: current.symbol?.name || checker.typeToString(current) });
+      visit(checker.getBaseConstraintOfType(current));
+    }
     if (current.flags & ts.TypeFlags.IndexedAccess) {
       unresolved.push({ kind: 'indexed-access', reference: canonicalType(checker.typeToString(current, node, ts.TypeFormatFlags.NoTruncation)) });
       visit(current.objectType);

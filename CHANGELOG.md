@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Mark free/constrained generic type parameters unresolved until instantiated; constraint dependencies remain available but never count as a complete selected argument schema.
 - Add local/world quaternion orientation conditions to runtime node waits with normalized comparison, q/-q equivalence and inclusive angular tolerance0..180 degrees. Zero/nonfinite quaternions refuse; raw snapshots remain unchanged, no rotation writes.
 - Retain setter input dependencies separately from accessor read types, including asymmetric getter/setter DTO declarations; semantic-adapter requirements remain unchanged and accessors are never executed.
 - Mark direct/nested TypeScript object types opaque-object until their transfer schema is resolved; structured DTO fields are not reclassified as opaque.
