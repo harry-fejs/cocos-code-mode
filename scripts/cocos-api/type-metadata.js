@@ -245,7 +245,8 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
       const alternatives = restType.isUnion?.() ? restType.types : [restType];
       let requiredLength = Infinity;
       for (const alternative of alternatives) {
-        requiredLength = Math.min(requiredLength, checker.isTupleType(alternative) ? alternative.target.minLength : 0);
+        const constrained = alternative.flags & ts.TypeFlags.TypeParameter ? checker.getBaseConstraintOfType(alternative) || alternative : alternative;
+        requiredLength = Math.min(requiredLength, checker.isTupleType(constrained) ? constrained.target.minLength : 0);
         if (requiredLength === 0) break;
       }
       if (requiredLength > 0) minArgumentCount = Math.max(minArgumentCount, position + requiredLength);

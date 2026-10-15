@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve lower arity bounds from constrained generic alternatives inside rest unions, retaining generic unresolved diagnostics rather than treating constraints as complete selected schemas.
 - Bind animationClipInventory pages to bounded parsed identity snapshots before issuing revisions, checking slot order, null slots and collection-wide name uniqueness. Stable pages share revisions; changes outside the requested page still invalidate expectedRevision.
 - Validate animationClipInventory returned count/offset/page length/continuation and dense typed clip slots before granting a revision. Preserve null empty slots, first/tail/end pages and native identity metadata; malformed pages refuse without playback or auto-pagination.
 - Preserve required lower arity bounds from compiler base constraints on generic rest parameters while retaining unresolved generic type metadata and original annotation provenance.
