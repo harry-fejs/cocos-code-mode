@@ -28,6 +28,11 @@ async function queryAssetsCompat(options: { pattern?: string, [k: string]: any }
     if (Array.isArray(result)) assetQueryMemo.set(cacheKey, result);
     return Array.isArray(result) ? result : [];
 }
+function boundedUtf8Preview(text: string, maxBytes: number): string {
+    const bytes = Buffer.allocUnsafe(maxBytes);
+    const written = bytes.write(text, 'utf8');
+    return bytes.toString('utf8', 0, written);
+}
 async function sha256File(filePath: string, maxBytes = Infinity): Promise<string> {
     const hash = createHash('sha256');
     // Keep executor form for Creator 3.7's older Node runtime.
@@ -1130,18 +1135,15 @@ export class AssetTools {
         const info = await readBackAsset(identifier, 'assetInspect');
         const meta = await Editor.Message.request('asset-db', 'query-asset-meta', info.uuid).catch(() => null);
         const rawData = await Editor.Message.request('asset-db', 'query-asset-data', info.uuid).catch(() => null);
-        const serializedData = JSON.stringify(rawData ?? null);
+        let serializedData: string;
+        try { serializedData = JSON.stringify(rawData ?? null); }
+        catch { throw new ToolError({ code: 'ASSET_DATA_UNSERIALIZABLE', status: 502, message: 'Asset data could not be serialized within the bounded inspection contract.' }); }
         const maxDataBytes = typeof args.maxDataBytes === 'number' && Number.isInteger(args.maxDataBytes) && args.maxDataBytes > 0
             ? Math.min(args.maxDataBytes, 1048576)
             : 524288;
         const dataBytes = Buffer.byteLength(serializedData, 'utf8');
         const dataTruncated = dataBytes > maxDataBytes;
-        let data = rawData;
-        if (dataTruncated) {
-            const preview = Buffer.allocUnsafe(maxDataBytes);
-            const written = preview.write(serializedData, 'utf8');
-            data = preview.toString('utf8', 0, written);
-        }
+        const data = dataTruncated ? boundedUtf8Preview(serializedData, maxDataBytes) : rawData;
         return {
             uuid: info.uuid,
             url: typeof info.url === 'string' ? info.url : '',

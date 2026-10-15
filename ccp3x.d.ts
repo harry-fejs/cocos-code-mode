@@ -168,7 +168,7 @@ declare namespace ccp3x {
         name?: string; pattern?: string; ccType?: string; importer?: string; extname?: string; isBundle?: boolean; limit?: number;
     }> }): { results: Array<ReturnType<typeof assetQuery>> };
 
-    /** dataBytes is full serialized JSON size. Truncated data is a UTF-8-bounded text prefix, not necessarily valid JSON; meta is not byte-capped. Native query failures may appear as null data/meta. */
+    /** dataBytes is full serialized JSON size. Truncated data is a UTF-8-bounded text prefix ending on a code-point boundary, not necessarily valid JSON; unserializable native data throws ASSET_DATA_UNSERIALIZABLE; meta is not byte-capped. */
     function assetInspect(args: { reference?: InstanceReference; assetPath?: string; maxDataBytes?: number }): {
         uuid: string; url: string; type: string; file: string; isDirectory: boolean; importer: string;
         meta: unknown; dataBytes: number;
