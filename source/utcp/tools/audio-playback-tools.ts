@@ -201,6 +201,12 @@ export class AudioPlaybackTools {
                 || state.volume !== null && (typeof state.volume !== 'number' || !Number.isFinite(state.volume) || state.volume < 0 || state.volume > 1) || state.loop !== null && typeof state.loop !== 'boolean'
                 || !['active', 'inactive', 'unknown'].includes(state.userActivation) || state.activationRequirement !== 'unknown') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Audio success contains unavailable or inconsistent state metrics.', details: { mutationDispatched: operation !== 'observe', pendingMayComplete: operation !== 'observe', retrySafe: false }, recovery: 'Inspect the exact audio target before further control; no automatic replay.' });
             const uncertainty = { mutationDispatched: operation !== 'observe', pendingMayComplete: operation !== 'observe', retrySafe: false };
+            const confirmed = operation === 'observe'
+                || state.loaded && state.duration > 0 && (operation === 'play' ? result.started && (state.playing || result.ended)
+                    : operation === 'pause' ? state.playbackState === 'paused' && !state.playing
+                        : operation === 'stop' ? state.playbackState === 'stopped' && !state.playing && state.currentTime <= 0.001
+                            : time !== undefined && time <= state.duration && Math.abs(state.currentTime - time) <= 0.05);
+            if (!confirmed) throw new ToolError({ code: 'AUDIO_READBACK_MISMATCH', status: 502, message: 'Audio success does not satisfy the requested playback postcondition.', details: { ...uncertainty, state }, recovery: 'Observe the exact source before further control; no automatic playback replay.' });
             let after: Awaited<ReturnType<RuntimeSessionTools['runtimeSessionLifecycle']>>;
             try { after = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId }); }
             catch (error) { throw new ToolError({ code: 'AUDIO_SESSION_RECHECK_FAILED', status: 502, message: 'Audio operation settled but session continuity could not be confirmed.', details: { ...uncertainty, cause: error instanceof ToolError ? error.code : 'SESSION_INSPECTION_FAILED' }, recovery: 'Reconcile the exact session and audio target before further control; no replay.' }); }
