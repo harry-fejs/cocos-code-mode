@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Use compiler symbol names for enum member keys and diagnostics, decoding quoted source member names instead of exposing literal source quotes as part of runtime identity.
 - Scan interface heritage clauses and base expressions under the annotation budget, retaining unresolved base-type names and nested generic argument provenance.
 - Add maxTime inclusive playback-time bounds to audio waits and scenario audioAssert/audioWait, composable with minTime and state predicates. Reject reversed/nonfinite/out-of-cap0..3600 intervals before dispatch; no audible-output/natural-ended inference.
 - Scan all merged interface annotation roots under one shared256-node admission budget, retaining invalid references in later declarations instead of false signatureResolved evidence.

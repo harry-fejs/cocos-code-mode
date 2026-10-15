@@ -117,9 +117,10 @@ function typeInfo(checker, type, node) {
             break enumMembers;
           }
           const value = checker.getConstantValue(member);
+          const name = checker.getSymbolAtLocation(member.name)?.name || member.name.getText();
           const resolved = value !== undefined && (typeof value !== 'number' || Number.isFinite(value));
-          if (!resolved) unresolved.push({ kind: 'enum-value', reference: `${symbol.name}.${member.name.getText()}` });
-          enumValues.push({ name: member.name.getText(), value: resolved ? value : compact(member.initializer), constant: resolved });
+          if (!resolved) unresolved.push({ kind: 'enum-value', reference: `${symbol.name}.${name}` });
+          enumValues.push({ name, value: resolved ? value : compact(member.initializer), constant: resolved });
         }
       }
       references.set(symbol.name, { name: symbol.name, resolution: symbol.declarations?.length ? 'resolved' : 'unknown',
