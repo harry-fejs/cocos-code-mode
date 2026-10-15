@@ -1260,10 +1260,10 @@ declare namespace ccp3x {
 
     /** Bounded UTF-8 project text. Missing files return exists=false; containment and size errors still throw. bytes measures decoded UTF-8 content. */
     function readProjectInstruction(args: { filePath: string; verbose?: boolean }):
-        { exists: false; content: ''; bytes: 0; filePath: string } |
-        { exists: true; content: string; bytes: number; filePath: string };
-    /** Uses the shared bounded atomic writer and filesystem read-back; asset refresh is best-effort. Inspect ambiguous failures before retry. */
-    function writeProjectInstruction(args: { filePath: string; content: string }): { success: true; filePath: string; bytesWritten: number };
+        { exists: false; content: ''; bytes: 0; filePath: string; sha256: null } |
+        { exists: true; content: string; bytes: number; filePath: string; sha256: string };
+    /** Shared guarded writer; expectedSha256 is an optimistic decoded-text precondition, not atomic compare-and-set. Asset refresh is best-effort. Inspect ambiguous failures before retry. */
+    function writeProjectInstruction(args: { filePath: string; content: string; expectedSha256?: string }): { success: true; filePath: string; bytesWritten: number };
 
     interface SceneSnapshotNode {
         reference: InstanceReference; children: SceneSnapshotNode[];
