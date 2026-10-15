@@ -43,6 +43,18 @@ function componentCandidates(componentType: any): string[] {
         .filter((value): value is string => typeof value === 'string' && value.length > 0);
 }
 
+function scriptHealthRegisteredClasses(value: unknown): Set<string> {
+    if (!Array.isArray(value)) throw new ToolError({ code: 'SCRIPT_HEALTH_QUERY_FAILED', status: 502, message: 'Creator did not return a component registry array.' });
+    const registered = new Set<string>();
+    for (const candidate of value) {
+        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) throw new ToolError({ code: 'SCRIPT_HEALTH_QUERY_FAILED', status: 502, message: 'Creator returned an invalid component registry entry.' });
+        const identities = componentCandidates(candidate);
+        if (!identities.length) throw new ToolError({ code: 'SCRIPT_HEALTH_QUERY_FAILED', status: 502, message: 'Component registry entry has no supported identity.' });
+        for (const identity of identities) registered.add(identity);
+    }
+    return registered;
+}
+
 function findComponentType(componentTypes: any[], requested: string): any | undefined {
     return componentTypes.find((candidate) => componentCandidates(candidate).includes(requested));
 }
@@ -857,8 +869,7 @@ export class SceneTools {
         const tree = await Editor.Message.request('scene', 'query-node-tree');
         if (!tree) throw new Error('sceneScriptHealthScan: no open scene or prefab');
         const componentTypes = await Editor.Message.request('scene', 'query-components');
-        if (!Array.isArray(componentTypes)) throw new Error('sceneScriptHealthScan: failed to query registered component types');
-        const registered = new Set(componentTypes.flatMap((candidate: unknown) => componentCandidates(candidate)));
+        const registered = scriptHealthRegisteredClasses(componentTypes);
         const findings: Array<Record<string, unknown>> = [];
         const rootName = typeof tree.name === 'string'
             ? tree.name
@@ -908,8 +919,7 @@ export class SceneTools {
         if (args.limitPerRoot !== undefined && (!Number.isInteger(args.limitPerRoot) || args.limitPerRoot < 1 || args.limitPerRoot > MAX_LIST_LIMIT)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `limitPerRoot must be an integer from 1 to ${MAX_LIST_LIMIT}.` });
         const limit = boundedListLimit(args.limitPerRoot);
         const componentTypes = await Editor.Message.request('scene', 'query-components');
-        if (!Array.isArray(componentTypes)) throw new ToolError({ code: 'SCRIPT_HEALTH_QUERY_FAILED', status: 502, message: 'Creator did not return registered component types.' });
-        const registered = new Set(componentTypes.flatMap((candidate: unknown) => componentCandidates(candidate)));
+        const registered = scriptHealthRegisteredClasses(componentTypes);
         const items: Array<Record<string, unknown>> = [];
         for (const [index, nodeReference] of args.nodeReferences.entries()) {
             try {

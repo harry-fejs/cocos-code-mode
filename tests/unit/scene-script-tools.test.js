@@ -34,6 +34,28 @@ describe('scene script health tools', () => {
     } finally { if (previous === undefined) delete global.Editor; else global.Editor = previous; }
   });
 
+  it('refuses corrupt registration data rather than labelling registered scripts missing', async () => {
+    const previous = global.Editor;
+    let registry;
+    global.Editor = { Message: { request: async (_module, message) => {
+      if (message === 'query-node-tree') return { uuid: 'root', components: [{ type: 'Hero', uuid: 'hero' }] };
+      if (message === 'query-components') return registry;
+      if (message === 'query-current-scene') return 'root';
+      throw new Error(`unexpected ${message}`);
+    } } };
+    try {
+      for (registry of [null, {}, [null], [7], [[]], [{}], new Array(1)]) {
+        await assert.rejects(new SceneTools().sceneScriptHealthScan(), error => error.code === 'SCRIPT_HEALTH_QUERY_FAILED');
+        await assert.rejects(new SceneTools().sceneScriptHealthBatchScan({ nodeReferences: [{ id: 'root' }] }), error => error.code === 'SCRIPT_HEALTH_QUERY_FAILED');
+      }
+      registry = [{ name: 'Hero', cid: 'hero-cid' }];
+      assert.equal((await new SceneTools().sceneScriptHealthScan()).total, 0);
+      assert.equal((await new SceneTools().sceneScriptHealthBatchScan({ nodeReferences: [{ id: 'root' }] })).items[0].total, 0);
+      registry = [];
+      assert.equal((await new SceneTools().sceneScriptHealthScan()).total, 1);
+    } finally { if (previous === undefined) delete global.Editor; else global.Editor = previous; }
+  });
+
   it('does not remove components or claim restoration after lost attachment response', async () => {
     const previous = global.Editor;
     const mutations = [];
