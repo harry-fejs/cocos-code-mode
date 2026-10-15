@@ -9,13 +9,19 @@ import { createHash } from 'crypto';
 
 export interface AssetBundleRuntimeValidateArgs {
     sessionId: string; bundlePath: string; bundleName: string;
-    resource?: { path: string; type: BundleResourceType; expectedUuid?: string }; timeoutMs?: number;
+    resource?: { path: string; type: BundleResourceType; expectedUuid?: string }; timeoutMs?: number; expectedRevision?: string;
 }
 const resourceSchema: JsonSchema = {
     type: 'object', additionalProperties: false,
     properties: { path: { type: 'string', minLength: 1, maxLength: 256 }, type: { type: 'string', enum: [...BUNDLE_RESOURCE_TYPES] }, uuid: { type: 'string' }, loaded: { type: 'boolean', enum: [true] } },
     required: ['path', 'type', 'uuid', 'loaded'],
 };
+
+function bundleArtifactIdentity(project: string, artifact: ReturnType<typeof resolveBundleArtifact>) {
+    const files = [{ name: artifact.configFile, bytes: artifact.config.length, sha256: createHash('sha256').update(artifact.config).digest('hex') }, { name: artifact.indexFile, bytes: artifact.index.length, sha256: createHash('sha256').update(artifact.index).digest('hex') }];
+    const revision = createHash('sha256').update(JSON.stringify([project, artifact.root, artifact.name, artifact.version, files])).digest('hex');
+    return { files, revision };
+}
 
 export class AssetBundleRuntimeTools {
     @utcpTool('assetBundleArtifactInspect', 'Read-only preflight of an explicit project-local built data bundle using the runtime resolver. Hashes config/index and reports bounded resource paths; does not serve, load, execute scripts or infer resource-file/runtime validity.', {
@@ -31,8 +37,7 @@ export class AssetBundleRuntimeTools {
         const project = typeof Editor.Project?.path === 'string' ? Editor.Project.path : '';
         if (!project) throw new ToolError({ code: 'PROJECT_UNAVAILABLE', status: 503, message: 'An active Creator project is required.' });
         const artifact = resolveBundleArtifact(project, args.bundlePath, args.bundleName);
-        const files = [{ name: artifact.configFile, bytes: artifact.config.length, sha256: createHash('sha256').update(artifact.config).digest('hex') }, { name: artifact.indexFile, bytes: artifact.index.length, sha256: createHash('sha256').update(artifact.index).digest('hex') }];
-        const revision = createHash('sha256').update(JSON.stringify([project, artifact.root, artifact.name, artifact.version, files])).digest('hex');
+        const { files, revision } = bundleArtifactIdentity(project, artifact);
         if (args.expectedRevision !== undefined && args.expectedRevision !== revision) throw new ToolError({ code: 'BUNDLE_ARTIFACT_CHANGED', status: 409, message: 'Bundle identity/config/index revision changed; restart resource paging.' });
         const config = JSON.parse(artifact.config.toString('utf8')) as { paths: Record<string, unknown[]>; types?: string[]; uuids: string[]; debug?: boolean };
         const entries = Object.entries(config.paths);
@@ -58,6 +63,7 @@ export class AssetBundleRuntimeTools {
             bundleName: { type: 'string', minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9_-]+$' },
             resource: { type: 'object', additionalProperties: false, properties: { path: { type: 'string', minLength: 1, maxLength: 256 }, type: { type: 'string', enum: [...BUNDLE_RESOURCE_TYPES] }, expectedUuid: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['path', 'type'] },
             timeoutMs: { type: 'integer', minimum: 100, maximum: 5000 },
+            expectedRevision: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'Optional revision from assetBundleArtifactInspect; mismatches refuse before serving or runtime dispatch. Does not freeze resource payload files.' },
         }, required: ['sessionId', 'bundlePath', 'bundleName'],
     }, {
         type: 'object', additionalProperties: false,
@@ -73,11 +79,13 @@ export class AssetBundleRuntimeTools {
         if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64) invalid('sessionId must contain 1..64 characters.');
         const timeoutMs = args.timeoutMs ?? 3000;
         if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 5000) invalid('timeoutMs must be an integer from 100 to 5000.');
+        if (args.expectedRevision !== undefined && (typeof args.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedRevision))) invalid('expectedRevision must be a lowercase SHA-256 revision.');
         if (args.resource !== undefined && (!args.resource || typeof args.resource.path !== 'string' || args.resource.path.length > 256 || !args.resource.path || args.resource.path.includes('\\') || args.resource.path.includes(':') || args.resource.path.includes('\0') || args.resource.path.split('/').some(part => !part || part === '.' || part === '..') || !BUNDLE_RESOURCE_TYPES.includes(args.resource.type))) invalid('resource must identify one relative forward-slash path and an allowlisted data asset type.');
         if (args.resource?.expectedUuid !== undefined && (typeof args.resource.expectedUuid !== 'string' || !args.resource.expectedUuid || args.resource.expectedUuid.length > 256 || /[\s\u0000-\u001f\u007f]/.test(args.resource.expectedUuid))) invalid('resource.expectedUuid must be a bounded exact runtime UUID token.');
         const project = typeof Editor.Project?.path === 'string' ? Editor.Project.path : '';
         if (!project) throw new ToolError({ code: 'PROJECT_UNAVAILABLE', status: 503, message: 'An active Creator project is required.' });
         const artifact = resolveBundleArtifact(project, args.bundlePath, args.bundleName);
+        if (args.expectedRevision !== undefined && args.expectedRevision !== bundleArtifactIdentity(project, artifact).revision) throw new ToolError({ code: 'BUNDLE_ARTIFACT_CHANGED', status: 409, message: 'Bundle config/index revision differs from the inspected precondition; no serving or runtime dispatch.' });
         const runtime = new RuntimeSessionTools();
         const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, timeoutMs });
         const session = inspected.session;
