@@ -73,7 +73,7 @@ export class P4ContractTools {
         type: 'object', additionalProperties: false,
         properties: { sessionId: { type: 'string', minLength: 1, maxLength: 64 }, nodeReference: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['id'] }, componentId: { type: 'string', minLength: 1, maxLength: 256 }, playing: { type: 'boolean' }, minParticleCount: { type: 'integer', minimum: 0, maximum: 1000000 }, maxParticleCount: { type: 'integer', minimum: 0, maximum: 1000000 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 10000, default: 3000 }, pollMs: { type: 'integer', minimum: 25, maximum: 1000, default: 100 } }, required: ['sessionId', 'nodeReference', 'componentId'],
     }, { type: 'object', properties: { matched: { type: 'boolean' }, timedOut: { type: 'boolean' }, observations: { type: 'integer' }, state: { type: 'object' } }, required: ['matched', 'timedOut', 'observations', 'state'] }, 'POST', ['particle', 'runtime', 'wait', 'read-only'])
-    async particleWaitForState(args: { sessionId: string; nodeReference: { id: string }; componentId: string; playing?: boolean; minParticleCount?: number; maxParticleCount?: number; timeoutMs?: number; pollMs?: number }) {
+    async particleWaitForState(args: { sessionId: string; nodeReference: { id: string }; componentId: string; playing?: boolean; minParticleCount?: number; maxParticleCount?: number; timeoutMs?: number; pollMs?: number }, assertActive?: () => void) {
         requireText(args?.sessionId, 'sessionId', 64); requireText(args?.nodeReference?.id, 'nodeReference.id'); requireText(args?.componentId, 'componentId');
         const timeoutMs = args.timeoutMs ?? 3000; const pollMs = args.pollMs ?? 100;
         if (args.playing === undefined && args.minParticleCount === undefined && args.maxParticleCount === undefined || args.playing !== undefined && typeof args.playing !== 'boolean'
@@ -86,6 +86,7 @@ export class P4ContractTools {
         args = { ...args, nodeReference: { id: args.nodeReference.id } };
         const deadline = Date.now() + timeoutMs; let observations = 0;
         for (;;) {
+            assertActive?.();
             const remaining = deadline - Date.now();
             if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Particle observation deadline expired before a fresh read.' });
             let timer: NodeJS.Timeout | undefined;
@@ -93,6 +94,7 @@ export class P4ContractTools {
             try {
                 result = await Promise.race([executeComponentOperation({ kind: 'particle', operation: 'inspect', sessionId: args.sessionId, nodeReference: args.nodeReference, componentId: args.componentId, timeoutMs: Math.min(remaining, 1000) }), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Particle state read exceeded caller deadline; no playback mutation dispatched.' })), remaining); })]);
             } finally { clearTimeout(timer); }
+            assertActive?.();
             if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Particle state read completed after caller deadline; no playback mutation dispatched.' });
             observations++;
             const state = result.state as { playing?: unknown; particleCount?: unknown } | undefined;

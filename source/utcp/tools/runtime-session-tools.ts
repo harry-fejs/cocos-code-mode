@@ -461,7 +461,7 @@ export class RuntimeSessionTools {
         'POST',
         ['runtime', 'state', 'wait', 'condition'],
     )
-    async runtimeWaitForState(args: { sessionId: string, paused?: boolean, maxFrameCount?: number; minFrameCount?: number, timeoutMs?: number }): Promise<{ success: true, sessionId: string, state: RuntimeState, elapsedMs: number }> {
+    async runtimeWaitForState(args: { sessionId: string, paused?: boolean, maxFrameCount?: number; minFrameCount?: number, timeoutMs?: number }, assertActive?: () => void): Promise<{ success: true, sessionId: string, state: RuntimeState, elapsedMs: number }> {
         if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64 || args.paused === undefined && args.minFrameCount === undefined && args.maxFrameCount === undefined
             || args.maxFrameCount !== undefined && (!Number.isSafeInteger(args.maxFrameCount) || args.maxFrameCount < 0 || args.maxFrameCount > 1000000000 || args.minFrameCount !== undefined && args.minFrameCount > args.maxFrameCount)
             || args.paused !== undefined && typeof args.paused !== 'boolean' || args.minFrameCount !== undefined && (!Number.isSafeInteger(args.minFrameCount) || args.minFrameCount < 0 || args.minFrameCount > 1000000000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide exact session and typed paused/minFrameCount wait predicates.' });
@@ -480,9 +480,11 @@ export class RuntimeSessionTools {
         const started = Date.now();
         const deadline = started + timeoutMs;
         const observe = async (): Promise<RuntimeState> => {
+            assertActive?.();
             const remaining = deadline - Date.now();
             if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Runtime state wait deadline expired before observation.' });
             const observed = await withRuntimeStateTimeout(this.inspect({ operation: 'inspect', sessionId: session.sessionId, timeoutMs: Math.max(100, remaining) }), deadline);
+            assertActive?.();
             if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Runtime state observation settled after wait deadline.' });
             if (!observed.state || !observed.ready || observed.session.createdAt !== session.createdAt || observed.session.targetId !== session.targetId || observed.session.targetKind !== session.targetKind) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Runtime wait session identity changed.' });
             return observed.state;
@@ -740,7 +742,7 @@ export class RuntimeSessionTools {
                     return { durationMs: step.durationMs, elapsedMs: Date.now() - start, timingScope: 'wall-clock', runtimeVerified: false };
                 };
                 const pending = step.operation === 'delay' ? delay() : step.operation === 'wait'
-                    ? this.runtimeWaitForState({ sessionId: args.sessionId, paused: step.paused, maxFrameCount: step.maxFrameCount, minFrameCount: step.minFrameCount, timeoutMs: Math.min(step.timeoutMs ?? 10000, remaining) })
+                    ? this.runtimeWaitForState({ sessionId: args.sessionId, paused: step.paused, maxFrameCount: step.maxFrameCount, minFrameCount: step.minFrameCount, timeoutMs: Math.min(step.timeoutMs ?? 10000, remaining) }, assertActive)
                     : step.operation === 'assert'
                         ? this.runtimeScenarioAssert({ sessionId: args.sessionId, paused: step.paused, maxFrameCount: step.maxFrameCount, minFrameCount: step.minFrameCount })
                         : step.operation === 'observe'
@@ -752,7 +754,7 @@ export class RuntimeSessionTools {
                                     if (timeoutMs < 100) throw new ToolError({ code: 'RUNTIME_SCENARIO_TIMEOUT', status: 409, message: 'Node checkpoint deadline elapsed before dispatch.' });
                                     const nodes = new RuntimeTools();
                                     const target = { sessionId: args.sessionId, nodeReference: step.nodeReference!, timeoutMs };
-                                    if (step.operation === 'nodeWait') return nodes.runtimeNodeWaitForState({ ...target, siblingIndex: step.siblingIndex, minChildCount: step.minChildCount, maxChildCount: step.maxChildCount, parentUuid: step.parentUuid, scale: step.scale, rotation: step.rotation, position: step.position, active: step.active, activeInHierarchy: step.activeInHierarchy });
+                                    if (step.operation === 'nodeWait') return nodes.runtimeNodeWaitForState({ ...target, siblingIndex: step.siblingIndex, minChildCount: step.minChildCount, maxChildCount: step.maxChildCount, parentUuid: step.parentUuid, scale: step.scale, rotation: step.rotation, position: step.position, active: step.active, activeInHierarchy: step.activeInHierarchy }, assertActive);
                                     const observation = await nodes.runtimeNodeObserve(target);
                                     if (step.operation === 'nodeObserve') return observation;
                                     if (typeof observation.active !== 'boolean' || typeof observation.activeInHierarchy !== 'boolean') throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Node activation metrics unavailable.' });
@@ -798,7 +800,7 @@ export class RuntimeSessionTools {
                                     const particles = new P4ContractTools();
                                     const target = { sessionId: args.sessionId, nodeReference: step.nodeReference!, componentId: step.componentId!, timeoutMs };
                                     if (step.operation === 'particleWait') {
-                                        const result = await particles.particleWaitForState({ ...target, playing: step.playing, minParticleCount: step.minParticleCount, maxParticleCount: step.maxParticleCount });
+                                        const result = await particles.particleWaitForState({ ...target, playing: step.playing, minParticleCount: step.minParticleCount, maxParticleCount: step.maxParticleCount }, assertActive);
                                         return { ...result, passed: result.matched === true };
                                     }
                                     const result = await particles.particlePlayback({ ...target, operation: step.operation === 'particleControl' ? step.particleOperation! : 'inspect' });

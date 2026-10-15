@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Extend internal scenario cancellation guards to particle/node/session state waits before each observation and after read settlement. Pending reads are not aborted; no further polling is dispatched after cancellation is observed.
 - Preserve callable/constructable constructor parameter-property visibility and semantic-adapter requirements, matching equivalent property declarations without treating ordinary parameters as fields.
 - Apply scenario cooperative cancellation to audioWait before each read and after observation settlement. Pending native observation remains owned; cancellation does not stop sound playback or dispatch another read.
 - Stop scenario animationWait/graphWait polling after cancellation using an internal guard before dispatch and after read settlement. Caller cancellation retains ownership of the pending primitive; no native read abort or public JSON cancellation token.
