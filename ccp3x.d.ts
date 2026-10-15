@@ -1057,7 +1057,7 @@ declare namespace ccp3x {
     /** Native cc.Quat data, finite xyzw preserved without normalization; omitted scalar is identity. */
     | { name: string; type: 'Quat'; array?: false; default?: { x: number; y: number; z: number; w: number } }
     | { name: string; type: 'Color'; array?: false; default?: { r: number; g: number; b: number; a: number } }
-    | { name: string; type: 'Node' | 'UITransform' | 'Layout' | 'Widget' | 'Mask' | 'Canvas' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'ParticleSystem2D' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array?: false; default?: null }
+    | { name: string; type: 'Node' | 'UITransform' | 'Layout' | 'Widget' | 'Mask' | 'Canvas' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'Camera' | 'MeshRenderer' | 'SkinnedMeshRenderer' | 'ParticleSystem' | 'ParticleSystem2D' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array?: false; default?: null }
     | { name: string; type: 'number'; array: true; default?: number[] }
     | { name: string; type: 'integer'; array: true; default?: number[] }
     | { name: string; type: 'string'; array: true; default?: string[] }
@@ -1069,8 +1069,8 @@ declare namespace ccp3x {
     | { name: string; type: 'Rect'; array: true; default?: { x: number; y: number; width: number; height: number }[] }
     | { name: string; type: 'Quat'; array: true; default?: { x: number; y: number; z: number; w: number }[] }
     | { name: string; type: 'Color'; array: true; default?: { r: number; g: number; b: number; a: number }[] }
-    | { name: string; type: 'Node' | 'UITransform' | 'Layout' | 'Widget' | 'Mask' | 'Canvas' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'ParticleSystem2D' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] });
-    type RequiredComponentType = 'UITransform' | 'Layout' | 'Widget' | 'Mask' | 'Canvas' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'ParticleSystem2D' | 'SkeletalAnimation';
+    | { name: string; type: 'Node' | 'UITransform' | 'Layout' | 'Widget' | 'Mask' | 'Canvas' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'Camera' | 'MeshRenderer' | 'SkinnedMeshRenderer' | 'ParticleSystem' | 'ParticleSystem2D' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] });
+    type RequiredComponentType = 'UITransform' | 'Layout' | 'Widget' | 'Mask' | 'Canvas' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'Camera' | 'MeshRenderer' | 'SkinnedMeshRenderer' | 'ParticleSystem' | 'ParticleSystem2D' | 'SkeletalAnimation';
     function scriptComponentCreate(args: { assetUrl: string; className: string; menu?: string; executionOrder?: number; disallowMultiple?: boolean; requiredComponents?: RequiredComponentType[]; properties?: ComponentPropertyDescriptor[]; write: boolean }): { assetUrl: string; className: string; source: string; sha256: string; bytes: number; sourceCreated: boolean; uuid: string | null; classRegistration: 'unknown' | 'pending'; attached: false; runtimeVerified: false; sceneSaved: false };
 
     /** Manage auxiliary animation curves and keys. */
