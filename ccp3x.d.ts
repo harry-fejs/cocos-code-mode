@@ -1320,6 +1320,11 @@ declare namespace ccp3x {
     function uiCreateInputForm(args: { label: string; placeholder?: string; name?: string; parentReference?: InstanceReference }): {
         reference: InstanceReference; label: InstanceReference; input: InstanceReference; submit: InstanceReference; focusOrder: string[];
     };
+    /** Creates a form and rule metadata only. No runtime validator, submit interception or gameplay callback is installed. */
+    function uiFormValidationBind(args: { label: string; placeholder?: string; required?: boolean; minLength?: number; name?: string; parentReference?: InstanceReference }): {
+        form: { reference: InstanceReference; label: InstanceReference; input: InstanceReference; submit: InstanceReference; focusOrder: string[] };
+        rules: { required: boolean; minLength: number; inputReference: InstanceReference }; focusOrder: string[]; runtimeValidationBound: false;
+    };
     /** Read-only bounded live 2D UI layout diagnostics. Optional overlay returns a transient bounded PNG payload and never mutates scene state. */
     function uiLayoutReport(args: {
         root?: InstanceReference,

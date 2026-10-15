@@ -71,14 +71,19 @@ export class PortfolioCompletionTools {
         },
         required: ['label'],
     }, {
-        type: 'object', properties: { form: { type: 'object' }, rules: { type: 'object' }, focusOrder: { type: 'array' } },
-        required: ['form', 'rules', 'focusOrder'],
+        type: 'object', properties: { form: { type: 'object' }, rules: { type: 'object' }, focusOrder: { type: 'array' }, runtimeValidationBound: { type: 'boolean', const: false } },
+        required: ['form', 'rules', 'focusOrder', 'runtimeValidationBound'],
     }, 'POST', ['ui', 'form', 'validation', 'bind'])
     async uiFormValidationBind(args: { label: string, placeholder?: string, required?: boolean, minLength?: number, name?: string, parentReference?: IInstanceReference }): Promise<Record<string, unknown>> {
+        if (!args || typeof args.label !== 'string' || args.label.length < 1 || args.label.length > 128
+            || args.placeholder !== undefined && (typeof args.placeholder !== 'string' || args.placeholder.length > 256)
+            || args.name !== undefined && (typeof args.name !== 'string' || args.name.length < 1 || args.name.length > 128)
+            || args.required !== undefined && typeof args.required !== 'boolean'
+            || args.minLength !== undefined && (!Number.isInteger(args.minLength) || args.minLength < 0 || args.minLength > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Provide schema-bounded form text, boolean required and integer minLength0..256.' });
         const required = args.required ?? true;
         const minLength = args.minLength ?? 0;
         if (minLength > 0 && !required) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'minLength requires required=true.' });
         const form = await new UiTools().uiCreateInputForm({ label: args.label, placeholder: args.placeholder, name: args.name, parentReference: args.parentReference });
-        return { form, rules: { required, minLength, inputReference: form.input }, focusOrder: form.focusOrder };
+        return { form, rules: { required, minLength, inputReference: form.input }, focusOrder: form.focusOrder, runtimeValidationBound: false };
     }
 }
