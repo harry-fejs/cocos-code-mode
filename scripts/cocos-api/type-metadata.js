@@ -312,9 +312,11 @@ function constraints(node, context, checker) {
   const namespaceNames = new Set();
   const namespaceSymbols = new Set();
   for (const statement of sf.statements) {
+    if (ts.isImportDeclaration(statement) && statement.importClause?.isTypeOnly) continue;
     if (ts.isImportDeclaration(statement) && statement.moduleSpecifier.text === 'internal:constants' && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings)) {
-      constants.push(...statement.importClause.namedBindings.elements.map(item => item.name.text));
-      if (checker) for (const item of statement.importClause.namedBindings.elements) {
+      const bindings = statement.importClause.namedBindings.elements.filter(item => !item.isTypeOnly);
+      constants.push(...bindings.map(item => item.name.text));
+      if (checker) for (const item of bindings) {
         const symbol = checker.getSymbolAtLocation(item.name);
         if (symbol) constantSymbols.add(symbol);
       }
