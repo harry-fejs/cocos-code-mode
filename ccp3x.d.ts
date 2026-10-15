@@ -1205,7 +1205,7 @@ declare namespace ccp3x {
     /** Reads a line window (radius 0–50) through the same bounded stable reader. Beyond-EOF line requests throw INVALID_ARGUMENT; no truncation field is exposed. */
     function projectFileSnippet(args: { filePath: string; line: number; radius?: number }): { snippet: string; startLine: number; endLine: number };
 
-    /** Glob-like project-relative path search. total counts returned matches only; truncated indicates the result cap was reached, not an exact remaining count. Streams directory entries; traversal beyond 100000 entries throws PROJECT_SEARCH_LIMIT. Directory read errors throw PROJECT_SEARCH_FAILED; excluded directories remain outside search coverage. */
+    /** Glob-like regular-file search; symlink/special entries are omitted and links are not traversed. limit must be integer1..500 (verbose:1000). total counts returned matches only; truncated indicates cap reached, not remaining count. Streams entries; beyond100000 throws PROJECT_SEARCH_LIMIT. Read errors throw PROJECT_SEARCH_FAILED. Excluded directories remain outside coverage; concurrent entry replacement is not prevented. */
     function projectSearchFiles(args: { pattern: string; directory?: string; limit?: number; verbose?: boolean }): { files: string[]; total: number; truncated: boolean };
 
     /** Writes UTF-8 text and verifies filesystem read-back. Asset refresh is best-effort, not importer completion proof. Inspect after ambiguous errors before retry. */

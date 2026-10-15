@@ -144,13 +144,14 @@ export class FileTools {
         type: 'object', properties: { pattern: { type: 'string' }, directory: { type: 'string' }, limit: { type: 'number' }, verbose: { type: 'boolean' } }, required: ['pattern'],
     }, { type: 'object', properties: { files: { type: 'array', items: { type: 'string' } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['files', 'total', 'truncated'] }, 'GET', ['file', 'search', 'find', 'project'])
     async projectSearchFiles(args: { pattern: string, directory?: string, limit?: number, verbose?: boolean }): Promise<{ files: string[], total: number, truncated: boolean }> {
+        const maximum = args.verbose === true ? VERBOSE_SEARCH_LIMIT : 500;
+        if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > maximum)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Search limit must be an integer from 1 to ${maximum}.` });
         const root = projectRoot();
         if (typeof args.pattern !== 'string' || !args.pattern || args.pattern.length > MAX_SEARCH_PATTERN_LENGTH || /[\u0000\r\n]/.test(args.pattern)) {
             throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'pattern must be a bounded non-empty string.' });
         }
         const scope = resolveSafePath(root, args.directory ?? '.');
         if (!fs.existsSync(scope) || !fs.statSync(scope).isDirectory()) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Directory not found: ${args.directory ?? '.'}` });
-        const maximum = args.verbose === true ? VERBOSE_SEARCH_LIMIT : 500;
         const limit = boundedPositive(args.limit, args.verbose === true ? VERBOSE_SEARCH_LIMIT : MAX_SEARCH_RESULTS, maximum);
         const regexText = args.pattern
             .replace(/[.+^${}()|[\]\\]/g, '\\$&')
@@ -187,7 +188,7 @@ export class FileTools {
                     if (stack.length >= 128) throw new ToolError({ code: 'PROJECT_SEARCH_LIMIT', status: 413, message: 'Project search exceeded the 128-directory nesting limit.', recovery: 'Select a narrower directory before searching again.' });
                     stack.push({ directory: fullPath, handle: await openDirectory(fullPath) });
                 }
-                else if (regex.test(relative) || (args.directory && regex.test(path.relative(scope, fullPath).replace(/\\/g, '/')))) files.push(relative);
+                else if (entry.isFile() && (regex.test(relative) || (args.directory && regex.test(path.relative(scope, fullPath).replace(/\\/g, '/'))))) files.push(relative);
             }
             return { files, total: files.length, truncated: files.length >= limit };
         } finally {
