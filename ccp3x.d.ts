@@ -154,6 +154,7 @@ declare namespace ccp3x {
 
     /** Search the asset database with filters (glob pattern, ccType, importer, extname, isBundle). At least one filter required. */
     function assetQuery(args: {
+        name?: string,
         pattern?: string,
         ccType?: string,
         importer?: string,
@@ -161,6 +162,11 @@ declare namespace ccp3x {
         isBundle?: boolean,
         limit?: number
     }): { assets: { uuid: string, name: string, url: string, type: string, importer?: string, isDirectory: boolean }[], total: number, truncated: boolean };
+
+    /** Queries 1–100 filter sets in input order; explicit limits are capped at 200 per query. Any query failure rejects the batch, not a per-item outcome. Native scans are not an atomic snapshot. */
+    function assetBatchQuery(args: { queries: Array<{
+        pattern?: string; ccType?: string; importer?: string; extname?: string; isBundle?: boolean; limit?: number;
+    }> }): { results: Array<ReturnType<typeof assetQuery>> };
 
     /** Read bounded importer-specific settings, typed property descriptors, and explicit source identity for one asset. */
     function assetImportSettingsGet(args: { reference: InstanceReference }): AssetImportSettingsResult;

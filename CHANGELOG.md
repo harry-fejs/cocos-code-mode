@@ -124,6 +124,7 @@
 - Reuse bounded real-path-checked project reads for instruction text, preserve missing-file responses, and declare both instruction APIs.
 - Declare scene snapshots and independent batch reads with recursive hierarchy, truncation reasons, unknown native fields, and per-entry errors.
 - Require exact Asset DB UUID/type/URL metadata before experimental preview start-scene profile writes; remove extension-substring type bypass.
+- Declare ordered fail-fast asset batch queries and expose the existing single-query name filter in public types.
 
 ## 2.2.0 — 2026-09-05 — Cocos Graph v4 + Typed Recovery Errors + 3x Baseline Consolidation
 
