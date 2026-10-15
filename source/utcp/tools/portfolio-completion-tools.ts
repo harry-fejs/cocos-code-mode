@@ -48,6 +48,7 @@ export class PortfolioCompletionTools {
     async uiVirtualListCreate(args: { name?: string, parentReference?: IInstanceReference, itemCount: number, visibleItems: number, startIndex?: number }): Promise<Record<string, unknown>> {
         if (!args || !Number.isInteger(args.itemCount) || args.itemCount < 0 || args.itemCount > 100000
             || !Number.isInteger(args.visibleItems) || args.visibleItems < 1 || args.visibleItems > MAX_VISIBLE_ITEMS) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `itemCount must be an integer from 0 to 100000 and visibleItems from 1 to ${MAX_VISIBLE_ITEMS}.` });
+        if (args.name !== undefined && (typeof args.name !== 'string' || args.name.length < 1 || args.name.length > 128)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'List name must be a string from 1 to 128 characters.' });
         const startIndex = args.startIndex ?? 0;
         if (!Number.isInteger(startIndex) || startIndex < 0 || startIndex > args.itemCount) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'startIndex must be an integer within 0..itemCount.' });
         const ui = new UiTools();
@@ -68,6 +69,9 @@ export class PortfolioCompletionTools {
             await Editor.Message.request('scene', 'snapshot');
             const content = await Editor.Message.request('scene', 'query-node', list.content.id) as unknown;
             if (!content || typeof content !== 'object' || !('children' in content) || !Array.isArray(content.children)) throw new Error('List content children were not confirmed.');
+            const uuid = 'uuid' in content ? content.uuid : undefined;
+            const contentId = typeof uuid === 'string' ? uuid : uuid && typeof uuid === 'object' && 'value' in uuid ? uuid.value : undefined;
+            if (contentId !== list.content.id) throw new Error('List content read-back identity does not match the bound content.');
             const children = content.children.map((child: unknown) => {
                 if (!child || typeof child !== 'object') return undefined;
                 if ('uuid' in child && typeof child.uuid === 'string') return child.uuid;
