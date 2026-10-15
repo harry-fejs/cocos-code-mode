@@ -33,7 +33,7 @@ export type ComponentPropertyDescriptor = { tooltip?: string; displayName?: stri
     | { name: string; type: 'Quat'; array: true; default?: { x: number; y: number; z: number; w: number }[] }
     | { name: string; type: 'Color'; array: true; default?: { r: number; g: number; b: number; a: number }[] }
     | { name: string; type: 'Node' | 'Label' | 'Sprite' | 'Button' | 'EditBox' | 'ScrollView' | 'Slider' | 'Toggle' | 'ProgressBar' | 'AudioSource' | 'Animation' | 'SkeletalAnimation' | 'AudioClip' | 'AnimationClip' | 'SpriteFrame' | 'Prefab' | 'Material' | 'JsonAsset'; array: true; default?: [] });
-export interface ComponentScriptDescriptor { className: string; properties?: ComponentPropertyDescriptor[]; requiredComponents?: RequiredComponentType[] }
+export interface ComponentScriptDescriptor { className: string; disallowMultiple?: boolean; properties?: ComponentPropertyDescriptor[]; requiredComponents?: RequiredComponentType[] }
 export interface ComponentScriptSource { source: string; sha256: string; bytes: number; className: string }
 export interface ComponentScriptPath { assetUrl: string; file: string; parentUrl: string; parent: string }
 export interface ComponentScriptAsset { uuid: string; url: string; file: string; isDirectory?: boolean }
@@ -51,8 +51,9 @@ export function componentScriptHash(value: string | Buffer): string { return cre
 
 /** Deterministic data-component authoring only; never evaluates source or invokes lifecycle methods. */
 export function generateComponentScriptSource(input: unknown): ComponentScriptSource {
-    assertComponentScriptInput(input, ['className', 'properties', 'requiredComponents']);
+    assertComponentScriptInput(input, ['className', 'properties', 'requiredComponents', 'disallowMultiple']);
     if (!identifier(input.className)) invalid('className must be a non-reserved ASCII identifier of 1 to 64 characters beginning with a letter.');
+    if (input.disallowMultiple !== undefined && typeof input.disallowMultiple !== 'boolean') invalid('disallowMultiple must be a boolean.');
     const rows = input.properties === undefined ? [] : input.properties;
     if (!Array.isArray(rows) || rows.length > 64) invalid('properties must contain at most 64 typed field descriptors.');
     const imports = new Set<string>(['_decorator', 'Component']);
@@ -170,13 +171,14 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         imports.add(PROPERTY_IMPORTS[type]);
         fields.push(tooltip || numericOptions ? `    @property({ type: ${PROPERTY_IMPORTS[type]}${tooltip}${numericOptions} })` : `    @property(${PROPERTY_IMPORTS[type]})`, `    ${row.name}: ${initial === null ? `${type} | null` : type === 'integer' ? 'number' : type} = ${literal(initial)};`, '');
     }
-    if (imports.has(input.className) || dependencies.size > 0 && input.className === 'requireComponent') invalid('className must not shadow a generated cc import or decorator.');
+    if (imports.has(input.className) || dependencies.size > 0 && input.className === 'requireComponent' || input.disallowMultiple !== undefined && input.className === 'disallowMultiple') invalid('className must not shadow a generated cc import or decorator.');
     const source = [
         '// Project-owned Creator 3.7 data component; serialized fields only, no gameplay or lifecycle behavior.',
         `import { ${[...imports].join(', ')} } from 'cc';`,
-        `const { ccclass${fields.length ? ', property' : ''}${dependencies.size ? ', requireComponent' : ''} } = _decorator;`,
+        `const { ccclass${fields.length ? ', property' : ''}${dependencies.size ? ', requireComponent' : ''}${input.disallowMultiple !== undefined ? ', disallowMultiple' : ''} } = _decorator;`,
         `@ccclass(${literal(input.className)})`,
         ...(dependencies.size ? [`@requireComponent([${[...dependencies].join(', ')}])`] : []),
+        ...(input.disallowMultiple === undefined ? [] : [`@disallowMultiple(${literal(input.disallowMultiple as boolean)})`]),
         `export class ${input.className} extends Component {`,
         ...fields,
         '}', '',

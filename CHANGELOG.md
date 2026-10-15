@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add disallowMultiple class metadata to scriptComponentCreate with explicit true/false/omitted behavior through the native decorator. Compose with requiredComponents; source declaration only, not immediate scene attachment/removal or a global singleton guarantee.
 - Add requiredComponents to scriptComponentCreate: up to8 unique allowlisted native UI/audio/animation dependencies emitted through @requireComponent. Source declaration only; no construction/attachment by this tool, dependency behavior applies when Creator later attaches the script.
 - Preserve simple assignment target read/write distinctions through transparent parentheses and erased TypeScript wrappers; retain computed-key/RHS reads and compound assignments without executing writes.
 - Add inclusive minDuration/maxDuration0..86400 seconds to regular/skeletal animation waits and scenario animationAssert/animationWait. Compose with time/speed/playing/paused, reject invalid ranges before reads and refuse unavailable selected metrics; no clip/playback writes or completion inference.
