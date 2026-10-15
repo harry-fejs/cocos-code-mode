@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve owner abstract metadata on extracted callable/construct signatures, distinguishing abstract class constructors from concrete subclasses even when the compiler reuses base constructor declarations; no invocation permission granted.
 - Pin the validated runtimeScenarioRun envelope before acquiring session ownership. Caller session/run changes during a pending step cannot redirect later cues, corrupt result identity or leave the original session lock retained; existing pending-request ownership remains unchanged.
 - Traverse unary/typeof/void/await guard operand chains iteratively alongside erased wrappers, avoiding unary-depth recursive stack growth while retaining operand read provenance.
 - Pin validated audio execution session/node and expected source/clip guards before readiness awaits. Caller changes cannot redirect observe/control targets or alter response identity checks mid-request; no playback replay.

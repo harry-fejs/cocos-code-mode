@@ -286,6 +286,7 @@ function signatures(checker, symbol, declaration) {
   if (calls.length || constructs.length) return [...calls, ...constructs].map((sig, i) => {
     const row = signatureInfo(checker, sig, sig.getDeclaration() || declaration, i);
     if (i >= calls.length) row.kind = 'construct';
+    row.abstract = metadata(declaration).abstract;
     if (ts.isPropertyDeclaration(declaration) || ts.isPropertySignature(declaration)) row.unresolved.push({ kind: 'semantic-adapter-required', reference: i < calls.length ? 'callable-property' : 'constructable-property' });
     return row;
   });
