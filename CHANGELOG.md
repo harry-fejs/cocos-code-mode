@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Measure animation event/envelope elapsedMs with renderer performance.now instead of wall-clock subtraction. System clock rollback cannot produce negative capture elapsed; missing monotonic clock refuses before listener registration. Absolute deadlines remain unchanged.
 - Treat parentheses around explicit decorator element keys transparently in both AST-only and compiler namespace paths; dynamic keys remain unrecognized and value/type-only export checks remain intact.
 - Require finite nonnegative nondecreasing elapsedMs in scenario animation event checkpoints before sequence/count matching. Equal timestamps remain valid; malformed capture timing cannot grant checkpoint success.
 - Add optional animatable property metadata to scriptComponentCreate descriptors/schema/public types. Preserves defaults and initialization; metadata alone does not create timeline tracks or prove binding/interpolation/runtime support.
