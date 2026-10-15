@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add exact trackBinding(nodePath/property) selection to animationTimelineInspect, with root-path support, matching-track offsets/counts and original native indices. Whole retrieved dump validation/revision and source counts remain intact; selected-query completeness is not scene binding or playable validation.
 - Include switch discriminants in execution-guard provenance with existing compiler-symbol shadowing checks; no case-selection or runtime reachability inference.
 - Add Label/Sprite/Button/EditBox/ScrollView/Slider/Toggle/ProgressBar typed scalar/array references to scriptComponentCreate for HUD/menu/form data authoring. Native decorators, null/empty defaults and separate Inspector assignment; no UI creation, lookup, callback installation or automatic binding.
 - Include while/do/for condition operands in execution-guard provenance, preserving alias/symbol matching and safely ignoring absent for-loop conditions; no runtime reachability inference.
