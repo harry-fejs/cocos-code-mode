@@ -9,7 +9,7 @@ export type ComponentPropertyDescriptor = { tooltip?: string; displayName?: stri
     | { name: string; type: 'number'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
     | { name: string; type: 'integer'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
     | { name: string; type: 'enum'; array?: false; entries: Array<{ name: string; value: number }>; default: number }
-    | { name: string; type: 'string'; array?: false; default?: string }
+    | { name: string; type: 'string'; array?: false; default?: string; multiline?: boolean }
     | { name: string; type: 'boolean'; array?: false; default?: boolean }
     | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }
     | { name: string; type: 'Vec3'; array?: false; default?: { x: number; y: number; z: number } }
@@ -51,7 +51,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
     const names = new Set<string>();
     const fields: string[] = [];
     for (const row of rows) {
-        assertComponentScriptInput(row, ['name', 'type', 'array', 'default', 'entries', 'tooltip', 'displayName', 'range', 'group', 'visible', 'readOnly', 'displayOrder']);
+        assertComponentScriptInput(row, ['name', 'type', 'array', 'default', 'entries', 'tooltip', 'displayName', 'range', 'group', 'visible', 'readOnly', 'displayOrder', 'multiline']);
         if (!identifier(row.name) || COMPONENT_MEMBERS[row.name] === true || names.has(row.name)) invalid('Property names must be unique safe identifiers and must not shadow Component members or lifecycle methods.');
         if (typeof row.type !== 'string' || !COMPONENT_PROPERTY_TYPES.includes(row.type as ComponentPropertyType)) invalid('Unsupported property type.');
         const type = row.type as ComponentPropertyType;
@@ -62,7 +62,8 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         if (row.group !== undefined && (typeof row.group !== 'string' || !row.group.trim() || row.group.length > 256)) invalid('group must be a nonblank string of at most 256 characters.');
         for (const key of ['visible', 'readOnly']) if (row[key] !== undefined && typeof row[key] !== 'boolean') invalid(`${key} must be a boolean.`);
         if (row.displayOrder !== undefined && (typeof row.displayOrder !== 'number' || !Number.isFinite(row.displayOrder))) invalid('displayOrder must be a finite number.');
-        const tooltip = (row.tooltip === undefined ? '' : `, tooltip: ${literal(row.tooltip as string)}`) + (row.displayName === undefined ? '' : `, displayName: ${literal(row.displayName as string)}`) + (row.group === undefined ? '' : `, group: ${literal(row.group as string)}`) + (row.visible === undefined ? '' : `, visible: ${literal(row.visible as boolean)}`) + (row.readOnly === undefined ? '' : `, readonly: ${literal(row.readOnly as boolean)}`) + (row.displayOrder === undefined ? '' : `, displayOrder: ${literal(row.displayOrder as number)}`);
+        if (row.multiline !== undefined && (type !== 'string' || row.array === true || typeof row.multiline !== 'boolean')) invalid('multiline must be a boolean on scalar string fields only.');
+        const tooltip = (row.tooltip === undefined ? '' : `, tooltip: ${literal(row.tooltip as string)}`) + (row.displayName === undefined ? '' : `, displayName: ${literal(row.displayName as string)}`) + (row.group === undefined ? '' : `, group: ${literal(row.group as string)}`) + (row.visible === undefined ? '' : `, visible: ${literal(row.visible as boolean)}`) + (row.readOnly === undefined ? '' : `, readonly: ${literal(row.readOnly as boolean)}`) + (row.displayOrder === undefined ? '' : `, displayOrder: ${literal(row.displayOrder as number)}`) + (row.multiline === undefined ? '' : `, multiline: ${literal(row.multiline as boolean)}`);
         let numericOptions = '';
         if (row.range !== undefined) {
             if (row.array === true || type !== 'number' && type !== 'integer') invalid('range is supported only on scalar number/integer fields.');

@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add multiline Inspector editing metadata for scalar string fields in scriptComponentCreate. Preserve exact escaped content/defaults and true/false/omitted behavior; reject arrays/non-string fields and invalid option types. No localization/runtime text binding.
 - Add visible/readOnly/displayOrder Inspector metadata across scriptComponentCreate fields, preserving serialized defaults/keys. Strict booleans and finite display order; readOnly maps to native readonly, not TypeScript or runtime immutability.
 - Require resolved declared value targets for named constant guard aliases when compiler symbols are available; unresolved imports remain listed as import provenance but do not earn guard-read credit.
 - Add range.slider to generated scalar numeric fields, emitting native Inspector slide metadata with true/false/omitted preserved. Enabled sliders require a nondegenerate range; defaults/range validation remain, with no runtime clamp.
