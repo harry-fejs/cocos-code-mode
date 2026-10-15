@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Compose variableRange numeric inclusive intervals in scenario graphWait/graphAssert, exclusive with exact variableValue. Whole-input preflight rejects graphSet ranges, boolean/malformed intervals and fractional integer bounds; copies nested range before dispatch, no graph writes added.
 - Unwrap transparent parentheses/erased TypeScript wrappers iteratively during guard-read inspection, avoiding wrapper-depth recursion while excluding type-only annotations and retaining underlying value semantics.
 - Add inclusive numeric range conditions to animationGraphWaitForVariable, exclusive with exact value. Reject boolean ranges and noninteger integer bounds before observation; preserve exact-value compatibility, graph identity/type/deadline guards and writes:false. No transition/playability inference.
 - Traverse outer execution-guard AST iteratively in source order, avoiding recursive call-stack overflow on deeply nested statements; expression-level analysis/resource budgets remain separate.
