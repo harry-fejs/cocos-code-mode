@@ -819,13 +819,14 @@ export class SceneTools {
                 relativeTo: InstanceReferenceSchema,
                 pathUnique: { type: 'boolean' },
                 matchingNodeCount: { type: 'integer', minimum: 1 },
+                ancestors: { type: 'array', items: InstanceReferenceSchema },
             },
-            required: ['reference', 'path', 'segments', 'pathUnique', 'matchingNodeCount'],
+            required: ['reference', 'path', 'segments', 'pathUnique', 'matchingNodeCount', 'ancestors'],
         },
         'GET',
         ['scene', 'node', 'path', 'hierarchy', 'reverse', 'lookup']
     )
-    async nodeGetPath(args: { reference: IInstanceReference, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean }): Promise<{ reference: IInstanceReference, path: string, segments: string[], relativeTo?: IInstanceReference, pathUnique: boolean, matchingNodeCount: number }> {
+    async nodeGetPath(args: { reference: IInstanceReference, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean }): Promise<{ reference: IInstanceReference, path: string, segments: string[], relativeTo?: IInstanceReference, pathUnique: boolean, matchingNodeCount: number, ancestors: IInstanceReference[] }> {
         for (const reference of [args.reference, ...(args.relativeTo !== undefined ? [args.relativeTo] : [])]) {
             if (typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path lookup requires bounded exact node UUIDs.' });
         }
@@ -851,6 +852,7 @@ export class SceneTools {
         const root = args.relativeTo ? nodes.get(args.relativeTo.id) : ((await this.findPrefabEditRoot(tree)) as SceneTreeNode | null) ?? tree;
         if (!root) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'Relative root not found.' });
         const paths = new Map<string, number>();
+        const parents = new Map<string, string>();
         const stack: Array<{ node: SceneTreeNode, segments: string[] }> = [{ node: root, segments: [sceneTreeNodeName(root)] }];
         let selected: string[] | undefined;
         while (stack.length) {
@@ -859,13 +861,19 @@ export class SceneTools {
             const path = outputSegments.join('/');
             paths.set(path, (paths.get(path) ?? 0) + 1);
             if (node.uuid === args.reference.id) selected = outputSegments;
-            for (const child of node.children ?? []) stack.push({ node: child, segments: [...segments, sceneTreeNodeName(child)] });
+            for (const child of node.children ?? []) {
+                parents.set(child.uuid!, node.uuid!);
+                stack.push({ node: child, segments: [...segments, sceneTreeNodeName(child)] });
+            }
         }
         if (!selected) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'Node is not inside the requested hierarchy.' });
         const path = selected.join('/');
         const matchingNodeCount = paths.get(path)!;
         if (args.requireUnique && matchingNodeCount !== 1) throw new ToolError({ code: 'NODE_PATH_AMBIGUOUS', status: 409, message: 'Multiple nodes share the requested hierarchy path; use UUID identity or a narrower root.', details: { path, matchingNodeCount, nodeId: args.reference.id } });
-        return { reference: { id: args.reference.id, type: 'cc.Node' }, path, segments: selected, pathUnique: matchingNodeCount === 1, matchingNodeCount, ...(args.relativeTo ? { relativeTo: args.relativeTo } : {}) };
+        const ancestors: IInstanceReference[] = [];
+        for (let parent = parents.get(args.reference.id); parent !== undefined; parent = parents.get(parent)) ancestors.push({ id: parent, type: 'cc.Node' });
+        ancestors.reverse();
+        return { reference: { id: args.reference.id, type: 'cc.Node' }, path, segments: selected, pathUnique: matchingNodeCount === 1, matchingNodeCount, ancestors, ...(args.relativeTo ? { relativeTo: args.relativeTo } : {}) };
     }
 
     @utcpTool(
