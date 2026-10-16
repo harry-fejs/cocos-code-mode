@@ -445,6 +445,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         if (version !== '3.7.3') throw new ToolError({ code: 'VERSION_CONTEXT_MISMATCH', status: 422, message: 'Comparison catalog cannot be mapped to the Creator3.7 target.' });
         if (args.namespace !== undefined && args.namespace !== 'engine-runtime' || matchedCatalogTarget && !engineClassTarget) throw new ToolError({ code: 'VERSION_CONTEXT_MISMATCH', status: 422, message: 'Inspector instances cannot be mapped to nonengine or mixed catalog namespaces.' });
         if (args.recordId !== undefined && (typeof exactRecordClass !== 'string' || !exactRecordClass.trim())) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: 'Exact catalog record has no owning class for Inspector instance mapping.' });
+        if (exactRecordClass && args.reference.type !== undefined && exactRecordClass.replace(/^cc\./, '') !== args.reference.type.replace(/^cc\./, '')) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: 'Exact catalog record owner and reference type disagree.' });
         // Re-read every request: project script recompilation cannot leave a persistent path cache.
         const info = await observeWithinDeadline(() => ToolsUtils.inspectInstance(args.reference!.id, false));
         if (!info?.props) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Target has no authoritative Inspector dump.' });
