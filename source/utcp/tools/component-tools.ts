@@ -82,9 +82,9 @@ export class ComponentTools {
             },
             required: ['reference']
         },
-        { type: 'object', properties: { references: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, type: { type: 'string' }, componentIndex: { type: 'integer', minimum: 0 }, enabled: { type: 'boolean' } }, required: ['id', 'componentIndex'] } }, inventorySummary: { type: 'object', properties: { total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' } }, required: ['total', 'enabled', 'disabled', 'unknownEnabled'] }, total: { type: 'integer' }, offset: { type: 'integer' }, nextOffset: { type: ['integer', 'null'] }, truncated: { type: 'boolean' }, revision: { type: 'string' } }, required: ['references', 'inventorySummary', 'total', 'offset', 'nextOffset', 'truncated', 'revision'] }, 'GET', ['scene', 'node', 'component', 'get', 'inspection']
+        { type: 'object', properties: { references: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, type: { type: 'string' }, componentIndex: { type: 'integer', minimum: 0 }, enabled: { type: 'boolean' } }, required: ['id', 'componentIndex'] } }, inventorySummary: { type: 'object', properties: { total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' }, classCounts: { type: 'object', additionalProperties: { type: 'integer', minimum: 1 } } }, required: ['total', 'enabled', 'disabled', 'unknownEnabled', 'classCounts'] }, total: { type: 'integer' }, offset: { type: 'integer' }, nextOffset: { type: ['integer', 'null'] }, truncated: { type: 'boolean' }, revision: { type: 'string' } }, required: ['references', 'inventorySummary', 'total', 'offset', 'nextOffset', 'truncated', 'revision'] }, 'GET', ['scene', 'node', 'component', 'get', 'inspection']
     )
-    async nodeComponentsGet(args: { reference: IInstanceReference, componentType?: string, componentTypes?: string[], enabled?: boolean, offset?: number, limit?: number, expectedRevision?: string }): Promise<{ references: Array<IInstanceReference & { componentIndex: number, enabled?: boolean }>, inventorySummary: { total: number, enabled: number, disabled: number, unknownEnabled: number }, total: number, offset: number, nextOffset: number | null, truncated: boolean, revision: string }> {
+    async nodeComponentsGet(args: { reference: IInstanceReference, componentType?: string, componentTypes?: string[], enabled?: boolean, offset?: number, limit?: number, expectedRevision?: string }): Promise<{ references: Array<IInstanceReference & { componentIndex: number, enabled?: boolean }>, inventorySummary: { total: number, enabled: number, disabled: number, unknownEnabled: number, classCounts: Record<string, number> }, total: number, offset: number, nextOffset: number | null, truncated: boolean, revision: string }> {
         if (args.expectedRevision !== undefined && (typeof args.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedRevision))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedRevision requires a SHA256 revision token.' });
         if (args.componentType !== undefined && args.componentTypes !== undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Choose componentType or componentTypes, not both.' });
         const types = args.componentTypes ?? (args.componentType !== undefined ? [args.componentType] : undefined);
@@ -105,7 +105,7 @@ export class ComponentTools {
         const identities = new Set<string>();
         const foundComponents: Array<IInstanceReference & { componentIndex: number, enabled?: boolean }> = [];
         const inventory: Array<{ id: string, type: string, enabled?: boolean }> = [];
-        const inventorySummary = { total: components.length, enabled: 0, disabled: 0, unknownEnabled: 0 };
+        const inventorySummary = { total: components.length, enabled: 0, disabled: 0, unknownEnabled: 0, classCounts: Object.create(null) as Record<string, number> };
         for (const [componentIndex, comp] of components.entries()) {
             const value = field(comp, 'value');
             const uuidValue = field(value, 'uuid');
@@ -122,6 +122,7 @@ export class ComponentTools {
             }
             if (identities.has(compUuid)) throw new Error('nodeComponentsGet: duplicate component UUID in serialized inventory');
             identities.add(compUuid);
+            inventorySummary.classCounts[declaredType] = (inventorySummary.classCounts[declaredType] ?? 0) + 1;
             const enabledField = field(comp, 'enabled') ?? field(value, 'enabled');
             const rawEnabled = typeof enabledField === 'boolean' ? enabledField : field(enabledField, 'value');
             if (rawEnabled === true) inventorySummary.enabled++;
