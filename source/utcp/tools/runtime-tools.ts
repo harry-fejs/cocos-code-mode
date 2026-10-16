@@ -20,7 +20,7 @@ export class RuntimeTools {
     @utcpTool('runtimeNodeObserve', 'Read exact Game View node activation/local position/world position/local scale/local and world quaternions without edit-scene fallback or mutation. Bounded10000-node/256-depth traversal; Creator3.7.x only.', {
         type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string', minLength: 1, maxLength: 64 }, nodeReference: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['id'] }, expectedHierarchyRevision: { type: 'string', pattern: '^[a-f0-9]{64}$' }, childOffset: { type: 'integer', minimum: 0, maximum: 9999, default: 0 }, timeoutMs: { type: 'integer', minimum: 100, maximum: 3000 } }, required: ['sessionId', 'nodeReference'],
     }, { type: 'object', properties: { sessionId: { type: 'string' }, targetId: { type: 'string' }, nodeUuid: { type: 'string' }, siblingIndex: { type: ['integer', 'null'], minimum: 0 }, parentUuid: { type: ['string', 'null'] }, childUuids: { type: 'array', maxItems: 128, items: { type: 'string' } }, childCount: { type: 'integer', minimum: 0 }, hierarchyRevision: { type: 'string' }, childOffset: { type: 'integer' }, nextChildOffset: { type: ['integer', 'null'] }, childrenTruncated: { type: 'boolean' }, active: { type: 'boolean' }, activeInHierarchy: { type: 'boolean' }, position: { type: 'object' }, worldPosition: { type: 'object' }, scale: { type: 'object' }, rotation: { type: 'object', properties: { x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' }, w: { type: 'number' } }, required: ['x', 'y', 'z', 'w'] }, worldRotation: { type: 'object', properties: { x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' }, w: { type: 'number' } }, required: ['x', 'y', 'z', 'w'] }, writes: { type: 'boolean', const: false } }, required: ['sessionId', 'targetId', 'nodeUuid', 'parentUuid', 'siblingIndex', 'childUuids', 'childCount', 'hierarchyRevision', 'childOffset', 'nextChildOffset', 'childrenTruncated', 'active', 'activeInHierarchy', 'position', 'worldPosition', 'scale', 'rotation', 'worldRotation', 'writes'] }, 'GET', ['node', 'runtime', 'observe', 'read-only'])
-    async runtimeNodeObserve(args: { sessionId: string; nodeReference: { id: string }; expectedHierarchyRevision?: string; childOffset?: number; timeoutMs?: number }) {
+    async runtimeNodeObserve(args: { sessionId: string; nodeReference: { id: string }; expectedHierarchyRevision?: string; childOffset?: number; timeoutMs?: number }, assertActive?: () => void) {
         const timeoutMs = args?.timeoutMs ?? 1000;
         if (!args || typeof args.sessionId !== 'string' || !args.sessionId.trim() || args.sessionId.length > 64 || typeof args.nodeReference?.id !== 'string' || !args.nodeReference.id.trim() || args.nodeReference.id.length > 256 || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 3000) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Exact bounded session/node and timeout100..3000 required.' });
         const childOffset = args.childOffset ?? 0;
@@ -29,11 +29,13 @@ export class RuntimeTools {
         args = { ...args, nodeReference: { id: args.nodeReference.id } };
         const deadline = Date.now() + timeoutMs;
         const phase = async <T>(operation: () => Promise<T>): Promise<T> => {
+            assertActive?.();
             const remaining = deadline - Date.now();
-            if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation caller deadline elapsed before next phase.' });
+            if (remaining < 100) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation has insufficient remaining time for a bounded phase.' });
             let timer: NodeJS.Timeout | undefined;
             try {
                 const value = await Promise.race([operation(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation caller deadline elapsed; in-flight read may settle later.' })), remaining); })]);
+                assertActive?.();
                 if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation phase settled after caller deadline.' });
                 return value;
             } finally { clearTimeout(timer); }
@@ -89,7 +91,7 @@ export class RuntimeTools {
             let timer: NodeJS.Timeout | undefined;
             let observation: Awaited<ReturnType<RuntimeTools['runtimeNodeObserve']>>;
             try {
-                observation = await Promise.race([this.runtimeNodeObserve({ sessionId: args.sessionId, nodeReference: { id: args.nodeReference.id }, timeoutMs: Math.max(100, Math.min(remaining, 1000)) }), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation exceeded caller deadline; in-flight read may settle later.' })), remaining); })]);
+                observation = await Promise.race([this.runtimeNodeObserve({ sessionId: args.sessionId, nodeReference: { id: args.nodeReference.id }, timeoutMs: Math.max(100, Math.min(remaining, 1000)) }, assertActive), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation exceeded caller deadline; in-flight read may settle later.' })), remaining); })]);
             } finally { clearTimeout(timer); }
             assertActive?.();
             if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node observation completed after deadline.' });

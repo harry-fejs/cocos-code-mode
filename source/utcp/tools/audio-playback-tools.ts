@@ -113,8 +113,8 @@ export class AudioPlaybackTools {
     @utcpTool('audioPlaybackObserve', 'Observe one validated AudioSource in the attached Creator 3.7.3 Game View with truthful readback.', {
         type: 'object', additionalProperties: false, properties: targetProperties, required: ['sessionId', 'nodeReference'],
     }, outputSchema, 'POST', ['audio', 'playback', 'runtime', 'observe'])
-    async audioPlaybackObserve(args: AudioPlaybackObserveArgs, deadline?: number): Promise<AudioPlaybackSuccess> {
-        return this.execute(args, 'observe', undefined, undefined, deadline);
+    async audioPlaybackObserve(args: AudioPlaybackObserveArgs, deadline?: number, assertActive?: () => void): Promise<AudioPlaybackSuccess> {
+        return this.execute(args, 'observe', undefined, undefined, deadline, assertActive);
     }
 
     @utcpTool('audioPlaybackWaitForState', 'Wait for observed AudioSource playing/loaded/time conditions in one attached Game View target. Read-only polling; stopped is not proof of natural completion. No playback dispatch or event listeners.', {
@@ -151,7 +151,7 @@ export class AudioPlaybackTools {
             let timer: NodeJS.Timeout | undefined;
             let observation: AudioPlaybackSuccess;
             try {
-                observation = await Promise.race([this.audioPlaybackObserve({ sessionId: args.sessionId, nodeReference: { id: args.nodeReference.id }, expectedComponentUuid: args.expectedComponentUuid, expectedClipUuid: args.expectedClipUuid }, deadline), new Promise<never>((_, reject) => {
+                observation = await Promise.race([this.audioPlaybackObserve({ sessionId: args.sessionId, nodeReference: { id: args.nodeReference.id }, expectedComponentUuid: args.expectedComponentUuid, expectedClipUuid: args.expectedClipUuid }, deadline, assertActive), new Promise<never>((_, reject) => {
                     timer = setTimeout(() => reject(new ToolError({ code: 'AUDIO_STATE_TIMEOUT', status: 409, message: 'Audio read exceeded the caller deadline; in-flight observation may still settle.' })), remaining);
                 })]);
             } finally { clearTimeout(timer); }
@@ -182,7 +182,7 @@ export class AudioPlaybackTools {
         }
     }
 
-    private async execute(args: AudioPlaybackObserveArgs, operation: AudioPlaybackOperation, time?: number, timeoutMs?: number, deadline?: number): Promise<AudioPlaybackSuccess> {
+    private async execute(args: AudioPlaybackObserveArgs, operation: AudioPlaybackOperation, time?: number, timeoutMs?: number, deadline?: number, assertActive?: () => void): Promise<AudioPlaybackSuccess> {
         validate(args, operation, time, timeoutMs);
         args = { ...args, nodeReference: { id: args.nodeReference.id } };
         try {
@@ -192,6 +192,7 @@ export class AudioPlaybackTools {
             if (session && 'status' in session && session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: 'The runtime session is stopped.' });
             if (!inspected.success || !inspected.ready || !session || !('targetId' in session) || session.sessionId !== args.sessionId) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'The attached runtime session is not ready.' });
             if (session.targetKind !== 'game-view') throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: 'Audio supports the Creator Game View transport only.' });
+            assertActive?.();
             const request = { sessionId: args.sessionId, targetId: session.targetId, nodeUuid: args.nodeReference.id, expectedComponentUuid: args.expectedComponentUuid, expectedClipUuid: args.expectedClipUuid, operation, ...(time === undefined ? {} : { time }), ...(timeoutMs === undefined ? {} : { timeoutMs }) };
             const remaining = deadline === undefined ? undefined : deadline - Date.now();
             if (remaining !== undefined && remaining < 100) throw new ToolError({ code: 'AUDIO_STATE_TIMEOUT', status: 409, message: 'Audio wait deadline exhausted during session inspection; no read dispatched.' });

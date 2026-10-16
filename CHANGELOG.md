@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Forward internal audio/node wait cancellation through readiness, refusing native observation dispatch after cancellation. Node observation phases also require at least100ms remaining; public JSON contracts remain unchanged.
 - Retain unique JSDoc blocks from merged/overloaded symbol declarations in record documentation rather than only the representative declaration; published signatures and permission state remain unchanged.
 - Forward internal animation/graph/particle wait cancellation guards into shared component transport readiness checks. Cancellation during session inspection now refuses before native observation dispatch, not only after the read settles.
 - Support enum arrays in scriptComponentCreate with native array-of-Enum metadata, dense declared-value defaults capped256, and independent empty defaults when omitted. Preserve scalar enum requirements; no bitmask or gameplay/state-machine inference.
