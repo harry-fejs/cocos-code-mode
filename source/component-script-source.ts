@@ -5,7 +5,7 @@ import { ToolError } from './utcp/tool-error';
 
 export const COMPONENT_PROPERTY_TYPES = ['enum', 'integer', 'number', 'string', 'boolean', 'Vec2', 'Vec3', 'Vec4', 'Size', 'Rect', 'Quat', 'Color', 'Node', 'UITransform', 'Layout', 'Widget', 'Mask', 'Canvas', 'Label', 'Sprite', 'Button', 'EditBox', 'ScrollView', 'Slider', 'Toggle', 'ProgressBar', 'AudioSource', 'Animation', 'Camera', 'MeshRenderer', 'SkinnedMeshRenderer', 'ParticleSystem', 'ParticleSystem2D', 'SkeletalAnimation', 'AudioClip', 'AnimationClip', 'SpriteFrame', 'Prefab', 'Material', 'JsonAsset', 'TextAsset', 'Texture2D', 'Font', 'TTFFont', 'BitmapFont', 'SpriteAtlas', 'SceneAsset', 'Mesh', 'Skeleton', 'RigidBody', 'Collider', 'RigidBody2D', 'Collider2D', 'BoxCollider', 'SphereCollider', 'CapsuleCollider', 'MeshCollider', 'BoxCollider2D', 'CircleCollider2D', 'PolygonCollider2D', 'UIOpacity', 'RichText', 'ToggleContainer', 'PageView', 'PageViewIndicator', 'ScrollBar', 'SafeArea', 'BlockInputEvents', 'UICoordinateTracker', 'HingeConstraint', 'FixedConstraint', 'PointToPointConstraint', 'DistanceJoint2D', 'SpringJoint2D', 'FixedJoint2D', 'HingeJoint2D', 'MouseJoint2D', 'RelativeJoint2D', 'SliderJoint2D', 'WheelJoint2D', 'ImageAsset', 'TextureCube', 'EffectAsset', 'PhysicsMaterial', 'DirectionalLight', 'SphereLight', 'SpotLight', 'RenderTexture', 'LabelOutline', 'LabelShadow', 'Graphics', 'TiledMap', 'TiledLayer', 'TiledObjectGroup', 'TiledMapAsset', 'AnimationController'] as const;
 export type ComponentPropertyType = typeof COMPONENT_PROPERTY_TYPES[number];
-export const REQUIRED_COMPONENT_TYPES = ['UITransform', 'Layout', 'Widget', 'Mask', 'Canvas', 'Label', 'Sprite', 'Button', 'EditBox', 'ScrollView', 'Slider', 'Toggle', 'ProgressBar', 'AudioSource', 'Animation', 'Camera', 'MeshRenderer', 'SkinnedMeshRenderer', 'ParticleSystem', 'ParticleSystem2D', 'SkeletalAnimation', 'UIOpacity', 'RichText', 'ToggleContainer', 'PageView', 'PageViewIndicator', 'ScrollBar', 'SafeArea', 'BlockInputEvents', 'UICoordinateTracker', 'RigidBody', 'RigidBody2D', 'BoxCollider', 'SphereCollider', 'CapsuleCollider', 'MeshCollider', 'BoxCollider2D', 'CircleCollider2D', 'PolygonCollider2D', 'DirectionalLight', 'SphereLight', 'SpotLight', 'LabelOutline', 'LabelShadow', 'Graphics'] as const;
+export const REQUIRED_COMPONENT_TYPES = ['UITransform', 'Layout', 'Widget', 'Mask', 'Canvas', 'Label', 'Sprite', 'Button', 'EditBox', 'ScrollView', 'Slider', 'Toggle', 'ProgressBar', 'AudioSource', 'Animation', 'Camera', 'MeshRenderer', 'SkinnedMeshRenderer', 'ParticleSystem', 'ParticleSystem2D', 'SkeletalAnimation', 'UIOpacity', 'RichText', 'ToggleContainer', 'PageView', 'PageViewIndicator', 'ScrollBar', 'SafeArea', 'BlockInputEvents', 'UICoordinateTracker', 'RigidBody', 'RigidBody2D', 'BoxCollider', 'SphereCollider', 'CapsuleCollider', 'MeshCollider', 'BoxCollider2D', 'CircleCollider2D', 'PolygonCollider2D', 'DirectionalLight', 'SphereLight', 'SpotLight', 'LabelOutline', 'LabelShadow', 'Graphics', 'AnimationController'] as const;
 export type RequiredComponentType = typeof REQUIRED_COMPONENT_TYPES[number];
 export type ComponentPropertyDescriptor = { animatable?: boolean; editorOnly?: boolean; serializable?: boolean; formerlySerializedAs?: string; tooltip?: string; displayName?: string; group?: string; visible?: boolean; readOnly?: boolean; displayOrder?: number } & (
     | { name: string; type: 'number'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
@@ -65,7 +65,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
     const dependencies = new Set<string>();
     for (const name of required) {
         if (typeof name !== 'string' || !REQUIRED_COMPONENT_TYPES.includes(name as RequiredComponentType) || dependencies.has(name)) invalid('requiredComponents must be dense, unique supported native component types.');
-        dependencies.add(name); imports.add(name);
+        dependencies.add(name); imports.add(name === 'AnimationController' ? 'animation' : name);
     }
     const names = new Set<string>();
     const fields: string[] = [];
@@ -199,7 +199,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
         `import { ${[...imports].join(', ')} } from 'cc';`,
         `const { ccclass${fields.length ? ', property' : ''}${dependencies.size ? ', requireComponent' : ''}${input.disallowMultiple !== undefined ? ', disallowMultiple' : ''}${input.menu !== undefined ? ', menu' : ''}${input.executionOrder !== undefined ? ', executionOrder' : ''} } = _decorator;`,
         `@ccclass(${literal(input.className)})`,
-        ...(dependencies.size ? [`@requireComponent([${[...dependencies].join(', ')}])`] : []),
+        ...(dependencies.size ? [`@requireComponent([${[...dependencies].map(name => name === 'AnimationController' ? 'animation.AnimationController' : name).join(', ')}])`] : []),
         ...(input.disallowMultiple === undefined ? [] : [`@disallowMultiple(${literal(input.disallowMultiple as boolean)})`]),
         ...(input.menu === undefined ? [] : [`@menu(${literal(input.menu as string)})`]),
         ...(input.executionOrder === undefined ? [] : [`@executionOrder(${literal(input.executionOrder as number)})`]),
