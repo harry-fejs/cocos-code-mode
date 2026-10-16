@@ -139,6 +139,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     };
     const frameValid = (frame: unknown): frame is number => finite(frame) && frame >= 0;
     const timingHash = createHash('sha256');
+    let invalidTracks = 0;
     const tracks = Array.from(curves ?? [], (raw: unknown, index: number) => {
         const curve = timelineRecord(raw), location = `curves[${index}]`;
         const startIssues = diagnosticCount;
@@ -180,6 +181,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
             keyframeLimit: bounds.keyframeLimit, keyframesComplete: keys !== null && bounds.keyframeOffset === 0 && keyframes.length === matchedKeyframes,
             keyframesTruncated: keys === null || bounds.keyframeOffset > 0 || keyframes.length < matchedKeyframes,
             frameRange: first === null ? null : { first, last }, frameOverSampleRange: first === null || last === null || sample === null || !finite(first / sample) || !finite(last / sample) ? null : { first: first / sample, last: last / sample }, dataValid: diagnosticCount === startIssues };
+        if (!row.dataValid) invalidTracks++;
         return row;
     });
     let eventParameterCount = 0;
@@ -231,6 +233,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         matchedTracks: curves ? selectedTracks.length : null, trackBinding: options.trackBinding ? { ...options.trackBinding } : null,
         matchedEvents: events ? selectedEvents.length : null, eventCallback: options.eventCallback ?? null,
         invalidEvents: events === null ? null : invalidEvents,
+        invalidTracks: curves === null ? null : invalidTracks,
         eventFrameRange: options.eventFrameRange ? { ...options.eventFrameRange } : null,
         keyframeFrameRange: options.keyframeFrameRange ? { ...options.keyframeFrameRange } : null,
         trackOffset: bounds.trackOffset, trackLimit: bounds.trackLimit, eventOffset: bounds.eventOffset, eventLimit: bounds.eventLimit,
