@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Apply the same get_signature projection to external and installed catalogs, retaining separate declaration evidence without returning unrelated full-record payloads or bypassing signature response byte limits.
 - Expose signature receiver and type-predicate dependency roles in get_related_types for both source and declaration evidence, retaining signature indexes, bounded paging and malformed nested metadata refusal. Catalog evidence does not authorize invocation.
 - Support UIOpacity/RichText/ToggleContainer scalar/array script references using native Inspector types and null/independent empty defaults. No UI construction, callback binding, fade or radio-group behavior is executed.
 - Retain direct parameter JSDoc on callable signature parameter rows without mixing overload documentation or inferring docs from function-level tags; types, optionality and arity remain unchanged.

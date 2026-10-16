@@ -304,9 +304,9 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         records.splice(0, records.length, ...[...members.values()].sort((a, b) => a.id.localeCompare(b.id)));
     }
     if (operation === 'get_signature') {
-        const record = records[0] as ApiRecord | undefined;
+        const record = external && records[0] ? ApiRecordSchema.parse({ ...readPage(() => external.readRecord(records[0].id)), permitted: false }) : records[0] as ApiRecord | undefined;
         if (!record) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record signature is absent from the selected catalog scope/version/filters.' });
-        records.splice(0, records.length, { id: record.id, namespace: record.namespace, className: record.className, member: record.member, name: record.name, kind: record.kind, signatures: record.signatures ?? [], permitted: false, evidenceStatus: record.evidenceStatus ?? null });
+        records.splice(0, records.length, { id: record.id, namespace: record.namespace, className: record.className, member: record.member, name: record.name, kind: record.kind, signatures: record.signatures ?? [], declarationEvidence: record.declarationEvidence ?? null, permitted: false, evidenceStatus: record.evidenceStatus ?? null });
     }
     if (offset > records.length) throw new ToolError({ code: 'STALE_CURSOR', status: 409, message: 'Catalog cursor offset exceeds this result set.' });
     if (args.className && records.length === 0 && operation !== 'get_related_types') throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Class ${args.className} is absent from the ${version} catalog.` });
@@ -334,7 +334,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     if (Buffer.byteLength(JSON.stringify(result())) > maxBytes) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'Required catalog metadata exceeds maxBytes.' });
     for (const record of records.slice(offset, offset + maxEntries)) {
         checkDeadline();
-        selected.push(external && ['records', 'get_signature'].includes(operation) ? ApiRecordSchema.parse({ ...readPage(() => external.readRecord(record.id)), permitted: false, writablePath: null }) : record);
+        selected.push(external && operation === 'records' ? ApiRecordSchema.parse({ ...readPage(() => external.readRecord(record.id)), permitted: false, writablePath: null }) : record);
         if (Buffer.byteLength(JSON.stringify(result())) > maxBytes) { selected.pop(); break; }
     }
     if (offset < records.length && selected.length === 0) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'One catalog record cannot fit maxBytes; narrow the query or increase its explicit bound.' });
