@@ -9,6 +9,7 @@ export interface TimelineInspectOptions {
     trackBinding?: { nodePath: string; component?: string; parentProperty?: string; property: string };
     invalidTracksOnly?: boolean;
     invalidEventsOnly?: boolean;
+    invalidKeyframesOnly?: boolean;
     eventCallback?: string;
     eventFrameRange?: { min: number; max: number };
     keyframeFrameRange?: { min: number; max: number };
@@ -36,6 +37,7 @@ export function timelineInspectBounds(options: TimelineInspectOptions) {
     if (options.expectedRevision !== undefined && (typeof options.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(options.expectedRevision))) fail('INVALID_ARGUMENT', 'expectedRevision must be a lowercase SHA-256 revision.');
     if (options.invalidTracksOnly !== undefined && typeof options.invalidTracksOnly !== 'boolean') fail('INVALID_ARGUMENT', 'invalidTracksOnly must be a boolean.');
     if (options.invalidEventsOnly !== undefined && typeof options.invalidEventsOnly !== 'boolean') fail('INVALID_ARGUMENT', 'invalidEventsOnly must be a boolean.');
+    if (options.invalidKeyframesOnly !== undefined && typeof options.invalidKeyframesOnly !== 'boolean') fail('INVALID_ARGUMENT', 'invalidKeyframesOnly must be a boolean.');
     const binding = options.trackBinding;
     if (binding !== undefined && (!timelineRecord(binding) || Object.keys(binding).some(key => !['nodePath', 'property', 'component', 'parentProperty'].includes(key)) || typeof binding.nodePath !== 'string' || binding.nodePath.length > 1024 || binding.component !== undefined && (typeof binding.component !== 'string' || !binding.component || binding.component.length > 256) || binding.parentProperty !== undefined && (typeof binding.parentProperty !== 'string' || binding.parentProperty.length > 256) || typeof binding.property !== 'string' || !binding.property || binding.property.length > 256)) fail('INVALID_ARGUMENT', 'trackBinding requires exact nodePath (empty root allowed) and nonempty property.');
     if (options.eventCallback !== undefined && (typeof options.eventCallback !== 'string' || !options.eventCallback || options.eventCallback.length > 256)) fail('INVALID_ARGUMENT', 'eventCallback must be an exact nonempty callback name of at most 256 characters.');
@@ -171,7 +173,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
             if (!key || !('dump' in key) || !finiteTree(key)) issue('INVALID_KEYFRAME_DATA', keyLocation);
             if (diagnosticCount !== keyIssues) invalidKeyframes++;
             timingHash.update(JSON.stringify([index, keyIndex, frame, diagnosticCount === keyIssues]));
-            if (matchesFrame) {
+            if (matchesFrame && (!options.invalidKeyframesOnly || diagnosticCount !== keyIssues)) {
                 if (matchedKeyframes >= bounds.keyframeOffset && matchedKeyframes < bounds.keyframeOffset + bounds.keyframeLimit) keyframes.push({ index: keyIndex, frame, frameOverSample: frame !== null && sample !== null && finite(frame / sample) ? frame / sample : null, dataValid: diagnosticCount === keyIssues });
                 matchedKeyframes++;
             }
@@ -240,6 +242,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         invalidTracks: curves === null ? null : invalidTracks,
         invalidTracksOnly: options.invalidTracksOnly ?? false,
         invalidEventsOnly: options.invalidEventsOnly ?? false,
+        invalidKeyframesOnly: options.invalidKeyframesOnly ?? false,
         eventFrameRange: options.eventFrameRange ? { ...options.eventFrameRange } : null,
         keyframeFrameRange: options.keyframeFrameRange ? { ...options.keyframeFrameRange } : null,
         trackOffset: bounds.trackOffset, trackLimit: bounds.trackLimit, eventOffset: bounds.eventOffset, eventLimit: bounds.eventLimit,

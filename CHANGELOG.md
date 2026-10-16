@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Bind exact catalog record instance mapping to its recorded owning class even without className/reference.type selectors, retaining that identity across signature/related-type projection before Inspector readback.
+- Add invalidKeyframesOnly timeline timing-page filtering per track, AND-composed with native frame range. Matching offsets preserve native indices; whole-source diagnostics/totals and filter-independent revision remain, without opaque value output or clip mutation.
 - Validate record static metadata as boolean/null/absent at discovery schema boundaries, refusing string/number/object forms rather than normalizing corrupt identity metadata to unknown.
 - Add invalidEventsOnly timeline filtering with matching-event pagination/native indices, AND-composed with callback/frame selectors. Whole-dump diagnostics/error totals and filter-independent revision remain; no callback execution or binding inference.
 - Refuse Inspector instance mapping to nonengine or mixed catalog namespaces before native inspection; engine-runtime mapping remains read-only and does not authorize mutation.

@@ -18,6 +18,7 @@ export class AnimationTimelineTools {
             nodeReference: InstanceReferenceSchema, clipReference: InstanceReferenceSchema,
             invalidTracksOnly: { type: 'boolean', description: 'Page invalid retrieved tracks only; AND-composed with binding selector. All retrieved data still validates and contributes to revision.' },
             invalidEventsOnly: { type: 'boolean', description: 'Page invalid retrieved events only; AND-composed with callback/frame selectors. Whole-source diagnostics and revision retained.' },
+            invalidKeyframesOnly: { type: 'boolean', description: 'Page invalid keys per retrieved track, AND-composed with frame range. Off-page/full-source diagnostics and revision retained.' },
             trackBinding: { type: 'object', additionalProperties: false, properties: { parentProperty: { type: 'string', maxLength: 256, description: 'Exact native parentPropKey; empty string allowed, omitted matches any.' }, component: { type: 'string', minLength: 1, maxLength: 256 }, nodePath: { type: 'string', maxLength: 1024 }, property: { type: 'string', minLength: 1, maxLength: 256 } }, required: ['nodePath', 'property'], description: 'Exact retrieved binding filter; optional component matches native comp metadata, omitted matches any component. Empty nodePath selects root. Track offsets address matching tracks; original native indices and whole-dump diagnostics remain. Not scene binding validation.' },
             eventCallback: { type: 'string', minLength: 1, maxLength: 256, description: 'Exact callback metadata filter; event offsets address matching events, native indices retained. No callback lookup/execution or runtime event history.' },
             eventFrameRange: { type: 'object', additionalProperties: false, properties: { min: { type: 'number', minimum: 0 }, max: { type: 'number', minimum: 0 } }, required: ['min', 'max'], description: 'Inclusive native frame interval, AND-composed with eventCallback. No seconds/runtime timing inference. Off-window events still validate and affect revision.' },
@@ -46,6 +47,7 @@ export class AnimationTimelineTools {
             invalidTracks: { type: ['integer', 'null'], minimum: 0 },
             invalidTracksOnly: { type: 'boolean' },
             invalidEventsOnly: { type: 'boolean' },
+            invalidKeyframesOnly: { type: 'boolean' },
             eventFrameRange: { type: ['object', 'null'], properties: { min: { type: 'number' }, max: { type: 'number' } }, required: ['min', 'max'] },
             keyframeFrameRange: { type: ['object', 'null'], properties: { min: { type: 'number' }, max: { type: 'number' } }, required: ['min', 'max'] },
             trackOffset: { type: 'integer' }, trackLimit: { type: 'integer' }, eventOffset: { type: 'integer' }, eventLimit: { type: 'integer' },
@@ -67,7 +69,7 @@ export class AnimationTimelineTools {
             diagnostics: { type: 'array', maxItems: 64, items: { type: 'object', properties: { code: { type: 'string' }, location: { type: 'string' } }, required: ['code', 'location'] } },
             diagnosticCount: { type: 'integer' }, diagnosticsTruncated: { type: 'boolean' },
             runtimeVerified: { type: 'boolean', const: false }, sceneSaved: { type: 'boolean', const: false }, callbackExistenceVerified: { type: 'boolean', const: false },
-        }, required: ['invalidEventsOnly', 'invalidTracksOnly', 'invalidTracks', 'invalidEvents', 'keyframeFrameRange', 'eventFrameRange', 'matchedEvents', 'eventCallback', 'matchedTracks', 'trackBinding', 'revision', 'revisionScope', 'nodeReference', 'clipReference', 'identity', 'clip', 'sourceScope', 'timingUnit', 'validityScope', 'valid', 'sourceComplete', 'complete', 'truncated', 'totalTracks', 'retrievedTracks', 'totalEvents', 'inspectedKeyframes', 'trackOffset', 'trackLimit', 'eventOffset', 'eventLimit', 'nextTrackOffset', 'nextEventOffset', 'tracks', 'events', 'diagnostics', 'diagnosticCount', 'diagnosticsTruncated', 'runtimeVerified', 'sceneSaved', 'callbackExistenceVerified'],
+        }, required: ['invalidKeyframesOnly', 'invalidEventsOnly', 'invalidTracksOnly', 'invalidTracks', 'invalidEvents', 'keyframeFrameRange', 'eventFrameRange', 'matchedEvents', 'eventCallback', 'matchedTracks', 'trackBinding', 'revision', 'revisionScope', 'nodeReference', 'clipReference', 'identity', 'clip', 'sourceScope', 'timingUnit', 'validityScope', 'valid', 'sourceComplete', 'complete', 'truncated', 'totalTracks', 'retrievedTracks', 'totalEvents', 'inspectedKeyframes', 'trackOffset', 'trackLimit', 'eventOffset', 'eventLimit', 'nextTrackOffset', 'nextEventOffset', 'tracks', 'events', 'diagnostics', 'diagnosticCount', 'diagnosticsTruncated', 'runtimeVerified', 'sceneSaved', 'callbackExistenceVerified'],
     }, 'GET', ['animation', 'timeline', 'inspect', 'read-only'])
     async animationTimelineInspect(args: TimelineInspectOptions) {
         const nodeReference = exactReference(args?.nodeReference, 'nodeReference');
