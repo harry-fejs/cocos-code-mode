@@ -43,6 +43,8 @@ export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Reco
         return await discoverWithinDeadline(args, Date.now() + timeoutMs, { remaining: limit(args.maxPages, 256, 1000), recordsRemaining: 100000, bytesRemaining: 32 * 1024 * 1024 });
     } catch (error: unknown) {
         if (error instanceof z.ZodError) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Catalog metadata does not match its required schema.' });
+        if (!(error instanceof ToolError) && error && typeof error === 'object' && 'code' in error
+            && ['ENOENT', 'ENOTDIR', 'EACCES', 'EPERM', 'EIO', 'EMFILE', 'ENFILE', 'ELOOP', 'ENAMETOOLONG', 'EBUSY'].includes(String(error.code))) throw new ToolError({ code: 'CATALOG_READ_FAILED', status: 502, message: 'Catalog input could not be read; verify the installed files and approved catalog configuration.' });
         throw error;
     }
 }
