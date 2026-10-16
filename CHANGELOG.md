@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve matched catalog target presence before navigation projection so list_members on an existing memberless class returns an empty terminal page; truly absent classes still refuse TARGET_NOT_FOUND.
 - Exclude native/validator messages from optional class availability failure metadata, reporting a fixed reason and typed unavailableCode instead; discovery deadline errors still propagate without fallback success.
 - Recheck internal cancellation after component/audio observation session verification settles, preventing cancelled reads from returning success when cancellation arrives during the final inspection. Mutation verification remains unchanged.
 - Refuse sparse parameter and saved-declaration signature arrays in get_signature instead of allowing hole-skipping validation to serialize invalid null entries; existing dense/absent metadata and traversal bounds remain.
