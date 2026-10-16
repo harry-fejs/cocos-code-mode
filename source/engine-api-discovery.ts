@@ -377,17 +377,32 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     if (operation === 'get_signature') {
         const record = external && records[0] ? ApiRecordSchema.parse({ ...readPage(() => external.readRecord(records[0].id)), permitted: false }) : records[0] as ApiRecord | undefined;
         if (!record) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record signature is absent from the selected catalog scope/version/filters.' });
+        let signatureContainersRemaining = 10000;
+        const reserveSignatureContainers = (count: number) => {
+            checkDeadline();
+            if (count > signatureContainersRemaining) throw new ToolError({ code: 'CATALOG_SIGNATURE_LIMIT', status: 413, message: 'Signature metadata exceeds 10000 signature/parameter containers.' });
+            signatureContainersRemaining -= count;
+        };
         const invalidSignature = (signature: unknown): boolean => {
+            checkDeadline();
             if (!signature || typeof signature !== 'object' || Array.isArray(signature)) return true;
             const parameters = (signature as Record<string, unknown>).parameters;
-            return parameters !== undefined && (!Array.isArray(parameters) || parameters.some(parameter => !parameter || typeof parameter !== 'object' || Array.isArray(parameter)));
+            if (parameters === undefined) return false;
+            if (!Array.isArray(parameters)) return true;
+            reserveSignatureContainers(parameters.length);
+            return parameters.some(parameter => { checkDeadline(); return !parameter || typeof parameter !== 'object' || Array.isArray(parameter); });
         };
+        reserveSignatureContainers(record.signatures?.length ?? 0);
         if (record.signatures?.some(invalidSignature)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signature metadata is malformed.' });
         const declaration = record.declarationEvidence;
         if (declaration !== undefined && declaration !== null) {
             if (typeof declaration !== 'object' || Array.isArray(declaration)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration evidence metadata is malformed.' });
             const signatures = (declaration as Record<string, unknown>).signatures;
-            if (signatures !== undefined && (!Array.isArray(signatures) || signatures.some(invalidSignature))) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signature metadata is malformed.' });
+            if (signatures !== undefined) {
+                if (!Array.isArray(signatures)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signature metadata is malformed.' });
+                reserveSignatureContainers(signatures.length);
+                if (signatures.some(invalidSignature)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signature metadata is malformed.' });
+            }
         }
         records.splice(0, records.length, { id: record.id, namespace: record.namespace, className: record.className, member: record.member, name: record.name, kind: record.kind, static: typeof record.static === 'boolean' ? record.static : null, signatures: record.signatures ?? [], declarationEvidence: record.declarationEvidence ?? null, permitted: false, evidenceStatus: record.evidenceStatus ?? null });
     }
