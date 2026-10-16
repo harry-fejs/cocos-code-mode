@@ -673,6 +673,7 @@ export class SceneTools {
                 nameMatch: { type: 'string', enum: ['contains', 'exact'], default: 'contains' },
                 pathContains: { type: 'string', minLength: 1, maxLength: 512 },
                 active: { type: 'boolean', description: 'Exact local active flag only; not visibility or activeInHierarchy.' },
+                hierarchyActive: { type: 'boolean', description: 'Tri-state AND of local active flags from the observed hierarchy root; not runtime activeInHierarchy or visibility.' },
                 minComponents: { type: 'integer', minimum: 0, maximum: 10000 },
                 maxComponents: { type: 'integer', minimum: 0, maximum: 10000 },
                 siblingIndex: { type: 'integer', minimum: 0, maximum: 10000 },
@@ -702,12 +703,13 @@ export class SceneTools {
                 { required: ['siblingIndex'] },
                 { required: ['minSiblingIndex'] },
                 { required: ['maxSiblingIndex'] },
-                { required: ['excludeComponentTypes'] }
+                { required: ['excludeComponentTypes'] },
+                { required: ['hierarchyActive'] }
             ],
         },
-        { type: 'object', properties: { nodes: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, parentReference: { type: ['object', 'null'] }, name: { type: 'string' }, path: { type: 'string' }, depth: { type: 'integer' }, componentCount: { type: 'integer' }, childCount: { type: 'integer' }, siblingIndex: { type: ['integer', 'null'] }, active: { type: ['boolean', 'null'] } } } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['nodes', 'total'] }, "GET", ['scene', 'node', 'find', 'search', 'name', 'component', 'filter']
+        { type: 'object', properties: { nodes: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, parentReference: { type: ['object', 'null'] }, name: { type: 'string' }, path: { type: 'string' }, depth: { type: 'integer' }, componentCount: { type: 'integer' }, childCount: { type: 'integer' }, siblingIndex: { type: ['integer', 'null'] }, active: { type: ['boolean', 'null'] }, hierarchyActive: { type: ['boolean', 'null'] } } } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['nodes', 'total'] }, "GET", ['scene', 'node', 'find', 'search', 'name', 'component', 'filter']
     )
-    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], excludeComponentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, active?: boolean, minComponents?: number, maxComponents?: number, parentReference?: IInstanceReference, minChildren?: number, maxChildren?: number, siblingIndex?: number, minSiblingIndex?: number, maxSiblingIndex?: number, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, childCount: number, siblingIndex: number | null, active: boolean | null }>, total: number, truncated: boolean }> {
+    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], excludeComponentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, active?: boolean, hierarchyActive?: boolean, minComponents?: number, maxComponents?: number, parentReference?: IInstanceReference, minChildren?: number, maxChildren?: number, siblingIndex?: number, minSiblingIndex?: number, maxSiblingIndex?: number, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, childCount: number, siblingIndex: number | null, active: boolean | null, hierarchyActive: boolean | null }>, total: number, truncated: boolean }> {
         for (const [key, maximum] of [['name', 256], ['componentType', 256], ['pathContains', 512]] as const) {
             const value = args[key];
             if (value !== undefined && (typeof value !== 'string' || !value.trim() || value.length > maximum)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `${key} must be a bounded nonempty string.` });
@@ -729,18 +731,19 @@ export class SceneTools {
         const unseenExclusions = new Set(excludedIds);
         if (args.minDepth !== undefined && (!Number.isInteger(args.minDepth) || args.minDepth < 0 || args.minDepth > 99) || args.maxDepth !== undefined && (!Number.isInteger(args.maxDepth) || args.maxDepth < 0 || args.maxDepth > 99) || args.minDepth !== undefined && args.maxDepth !== undefined && args.minDepth > args.maxDepth) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Depth filters must be integers0..99 with minDepth<=maxDepth.' });
         if (args.active !== undefined && typeof args.active !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'active must be a boolean local-state selector.' });
+        if (args.hierarchyActive !== undefined && typeof args.hierarchyActive !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'hierarchyActive must be boolean.' });
         if (args.minComponents !== undefined && (!Number.isInteger(args.minComponents) || args.minComponents < 0 || args.minComponents > 10000) || args.maxComponents !== undefined && (!Number.isInteger(args.maxComponents) || args.maxComponents < 0 || args.maxComponents > 10000) || args.minComponents !== undefined && args.maxComponents !== undefined && args.minComponents > args.maxComponents) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component count filters must be integers0..10000 with minComponents<=maxComponents.' });
-        if (!args.name && !types.length && !absentTypes.length && !args.pathContains && !args.rootReference && !args.parentReference && args.active === undefined && args.minComponents === undefined && args.maxComponents === undefined && args.minChildren === undefined && args.maxChildren === undefined && args.siblingIndex === undefined && args.minSiblingIndex === undefined && args.maxSiblingIndex === undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'At least one node selector is required.' });
+        if (!args.name && !types.length && !absentTypes.length && !args.pathContains && !args.rootReference && !args.parentReference && args.active === undefined && args.hierarchyActive === undefined && args.minComponents === undefined && args.maxComponents === undefined && args.minChildren === undefined && args.maxChildren === undefined && args.siblingIndex === undefined && args.minSiblingIndex === undefined && args.maxSiblingIndex === undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'At least one node selector is required.' });
         const limit = boundedListLimit(args.maxResults);
         const queried = await Editor.Message.request('scene', 'query-node-tree');
         if (!queried) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'No open hierarchy.' });
         const root = (await this.findPrefabEditRoot(queried)) ?? queried;
-        const hits: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, childCount: number, siblingIndex: number | null, active: boolean | null }> = [];
-        const stack = [{ node: root, path: sceneTreeNodeName(root), depth: 0, parentReference: null as IInstanceReference | null, siblingIndex: 0, inScope: !args.rootReference, excluded: false }];
+        const hits: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, childCount: number, siblingIndex: number | null, active: boolean | null, hierarchyActive: boolean | null }> = [];
+        const stack = [{ node: root, path: sceneTreeNodeName(root), depth: 0, parentReference: null as IInstanceReference | null, siblingIndex: 0, ancestorActive: true as boolean | null, inScope: !args.rootReference, excluded: false }];
         const visited = new Set<object>();
         let scheduled = 1, total = 0, rootFound = !args.rootReference;
         while (stack.length) {
-            const { node, path: nodePath, depth, parentReference, siblingIndex, inScope, excluded } = stack.pop()!;
+            const { node, path: nodePath, depth, parentReference, siblingIndex, ancestorActive, inScope, excluded } = stack.pop()!;
             if (!node || typeof node !== 'object' || visited.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed or cyclic scene hierarchy.' });
             visited.add(node);
             const id = nodeUuidFromSceneUsage(node, 'node search');
@@ -766,22 +769,24 @@ export class SceneTools {
             const depthOk = (args.minDepth === undefined || relativeDepth >= args.minDepth) && (args.maxDepth === undefined || relativeDepth <= args.maxDepth);
             const rawActive = node.active;
             const active = typeof rawActive === 'boolean' ? rawActive : rawActive?.value;
+            const hierarchyActive: boolean | null = ancestorActive === false || active === false ? false : ancestorActive === true && active === true ? true : null;
             const children = node.children ?? [];
             if (!Array.isArray(children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed hierarchy children.' });
             const childCountOk = (args.minChildren === undefined || children.length >= args.minChildren) && (args.maxChildren === undefined || children.length <= args.maxChildren);
             const parentOk = args.parentReference === undefined || parentReference?.id === args.parentReference.id;
             if (args.active !== undefined && scoped && !branchExcluded && depthOk && nameOk && compOk && componentCountOk && childCountOk && parentOk && (!args.pathContains || nodePath.toLowerCase().includes(args.pathContains.toLowerCase())) && typeof active !== 'boolean') throw new ToolError({ code: 'NODE_STATE_UNAVAILABLE', status: 422, message: 'Local active metadata is unavailable; no complete activity-filtered result returned.' });
             const siblingOk = (args.siblingIndex === undefined || siblingIndex === args.siblingIndex) && (args.minSiblingIndex === undefined || siblingIndex >= args.minSiblingIndex) && (args.maxSiblingIndex === undefined || siblingIndex <= args.maxSiblingIndex);
-            if (scoped && !branchExcluded && depthOk && nameOk && compOk && componentCountOk && childCountOk && parentOk && siblingOk && (args.active === undefined || active === args.active) && (!args.pathContains || nodePath.toLowerCase().includes(args.pathContains.toLowerCase()))) {
+            if (args.hierarchyActive !== undefined && scoped && !branchExcluded && depthOk && nameOk && compOk && componentCountOk && childCountOk && parentOk && siblingOk && (args.active === undefined || active === args.active) && (!args.pathContains || nodePath.toLowerCase().includes(args.pathContains.toLowerCase())) && hierarchyActive === null) throw new ToolError({ code: 'NODE_STATE_UNAVAILABLE', status: 422, message: 'Ancestor activity is unknown; no complete filtered result returned.' });
+            if (scoped && !branchExcluded && depthOk && nameOk && compOk && componentCountOk && childCountOk && parentOk && siblingOk && (args.active === undefined || active === args.active) && (args.hierarchyActive === undefined || hierarchyActive === args.hierarchyActive) && (!args.pathContains || nodePath.toLowerCase().includes(args.pathContains.toLowerCase()))) {
                 total++;
-                if (hits.length < limit) hits.push({ reference: { id, type: 'cc.Node' }, parentReference, name, path: nodePath, depth: relativeDepth, componentCount: components.length, childCount: children.length, siblingIndex: parentReference ? siblingIndex : null, active: typeof active === 'boolean' ? active : null });
+                if (hits.length < limit) hits.push({ reference: { id, type: 'cc.Node' }, parentReference, name, path: nodePath, depth: relativeDepth, componentCount: components.length, childCount: children.length, siblingIndex: parentReference ? siblingIndex : null, active: typeof active === 'boolean' ? active : null, hierarchyActive });
             }
             scheduled += children.length;
             if (scheduled > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Node search exceeds 10000 hierarchy nodes; no complete result returned.' });
             for (let index = children.length - 1; index >= 0; index--) {
                 const child = children[index];
                 if (!child || typeof child !== 'object' || Array.isArray(child)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed hierarchy child.' });
-                stack.push({ node: child, path: `${nodePath}/${sceneTreeNodeName(child)}`, depth: relativeDepth + 1, parentReference: { id, type: 'cc.Node' }, siblingIndex: index, inScope: scoped, excluded: branchExcluded });
+                stack.push({ node: child, path: `${nodePath}/${sceneTreeNodeName(child)}`, depth: relativeDepth + 1, parentReference: { id, type: 'cc.Node' }, siblingIndex: index, ancestorActive: hierarchyActive, inScope: scoped, excluded: branchExcluded });
             }
         }
         if (!rootFound) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Search subtree UUID is absent from the open hierarchy.' });
