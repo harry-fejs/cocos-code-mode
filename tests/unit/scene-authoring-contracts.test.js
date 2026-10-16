@@ -444,10 +444,10 @@ describe('scene upgrade read-back contracts', () => {
       throw new Error(`unexpected ${message}`);
     } } };
     assert.deepEqual((await new ComponentTools().nodeComponentsGet({ reference: { id: 'node-1' }, componentType: 'cc.Label' })).references, [
-      { id: 'label-1', type: 'cc.Label' },
+      { id: 'label-1', type: 'cc.Label', componentIndex: 0 },
     ]);
     assert.deepEqual((await new ComponentTools().nodeComponentsGet({ reference: { id: 'node-1' } })).references, [
-      { id: 'label-1', type: 'cc.Label' }, { id: 'script-1', type: 'GameController' },
+      { id: 'label-1', type: 'cc.Label', componentIndex: 0 }, { id: 'script-1', type: 'GameController', componentIndex: 1 },
     ]);
   });
 
