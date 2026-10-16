@@ -807,6 +807,7 @@ export class SceneTools {
                 includeRoot: { type: 'boolean', default: true },
                 requireUnique: { type: 'boolean', default: false, description: 'Refuse ambiguous slash-joined paths rather than returning collision metadata.' },
                 expectedPath: { type: 'string', maxLength: 4096, description: 'Exact formatted path from a prior observation using the same relativeTo/includeRoot options.' },
+                expectedAncestors: { type: 'array', maxItems: 9999, items: InstanceReferenceSchema, description: 'Exact ordered ancestor UUID chain from a prior lookup with the same relativeTo scope; target excluded.' },
             },
             required: ['reference'],
         },
@@ -827,13 +828,15 @@ export class SceneTools {
         'GET',
         ['scene', 'node', 'path', 'hierarchy', 'reverse', 'lookup']
     )
-    async nodeGetPath(args: { reference: IInstanceReference, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean, expectedPath?: string }): Promise<{ reference: IInstanceReference, path: string, segments: string[], relativeTo?: IInstanceReference, pathUnique: boolean, matchingNodeCount: number, ancestors: IInstanceReference[] }> {
+    async nodeGetPath(args: { reference: IInstanceReference, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean, expectedPath?: string, expectedAncestors?: IInstanceReference[] }): Promise<{ reference: IInstanceReference, path: string, segments: string[], relativeTo?: IInstanceReference, pathUnique: boolean, matchingNodeCount: number, ancestors: IInstanceReference[] }> {
         for (const reference of [args.reference, ...(args.relativeTo !== undefined ? [args.relativeTo] : [])]) {
             if (typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path lookup requires bounded exact node UUIDs.' });
         }
         if (args.includeRoot !== undefined && typeof args.includeRoot !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'includeRoot must be boolean.' });
         if (args.requireUnique !== undefined && typeof args.requireUnique !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireUnique must be boolean.' });
         if (args.expectedPath !== undefined && (typeof args.expectedPath !== 'string' || args.expectedPath.length > 4096)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedPath must be a string of at most4096 characters.' });
+        if (args.expectedAncestors !== undefined && (!Array.isArray(args.expectedAncestors) || args.expectedAncestors.length > 9999 || args.expectedAncestors.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedAncestors requires an ordered bounded UUID chain, at most9999 entries.' });
+        const expectedAncestorIds = args.expectedAncestors?.map(reference => reference.id);
         const tree = await Editor.Message.request('scene', 'query-node-tree') as unknown as SceneTreeNode | null;
         if (!tree) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'No open scene or prefab hierarchy.' });
         const nodes = new Map<string, SceneTreeNode>();
@@ -876,6 +879,7 @@ export class SceneTools {
         const ancestors: IInstanceReference[] = [];
         for (let parent = parents.get(args.reference.id); parent !== undefined; parent = parents.get(parent)) ancestors.push({ id: parent, type: 'cc.Node' });
         ancestors.reverse();
+        if (expectedAncestorIds !== undefined && (expectedAncestorIds.length !== ancestors.length || expectedAncestorIds.some((id, index) => id !== ancestors[index].id))) throw new ToolError({ code: 'NODE_ANCESTRY_CHANGED', status: 409, message: 'Observed ancestor identity differs from the expected chain.', details: { nodeId: args.reference.id }, recovery: 'Inspect the exact target UUID and ancestor chain before any mutation.' });
         return { reference: { id: args.reference.id, type: 'cc.Node' }, path, segments: selected, pathUnique: matchingNodeCount === 1, matchingNodeCount, ancestors, ...(args.relativeTo ? { relativeTo: args.relativeTo } : {}) };
     }
 
