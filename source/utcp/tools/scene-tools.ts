@@ -911,6 +911,7 @@ export class SceneTools {
             references: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema },
             expectedPaths: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, path: { type: 'string', maxLength: 4096 } }, required: ['reference', 'path'] }, description: 'Optional exact paths keyed by requested target UUID; omitted targets are unguarded.' },
             expectedAncestors: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, ancestors: { type: 'array', maxItems: 9999, items: InstanceReferenceSchema } }, required: ['reference', 'ancestors'] }, description: 'Optional ordered ancestor UUID chains keyed by requested target; same relativeTo scope required.' },
+            expectedSiblingIndices: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, siblingIndex: { type: ['integer', 'null'], minimum: 0, maximum: 9999 } }, required: ['reference', 'siblingIndex'] }, description: 'Optional scoped sibling positions keyed by requested UUID; null requires scope root.' },
             relativeTo: InstanceReferenceSchema, includeRoot: { type: 'boolean', default: true }, requireUnique: { type: 'boolean', default: false },
             requireAll: { type: 'boolean', default: false, description: 'Refuse partial target resolution after collecting every item result; no mutation or rollback.' },
             requireDisjoint: { type: 'boolean', default: false, description: 'Reject duplicate requested UUIDs and ancestor/descendant overlaps among successfully resolved targets. Does not imply requireAll.' },
@@ -919,7 +920,7 @@ export class SceneTools {
         { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, selectionRoots: { type: 'array', items: InstanceReferenceSchema }, selectionCoverage: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, selectionRoot: InstanceReferenceSchema }, required: ['reference', 'selectionRoot'] } }, commonAncestor: { type: ['object', 'null'], properties: { id: { type: 'string' }, type: { type: 'string' } } } }, required: ['items', 'succeeded', 'failed', 'commonAncestor', 'selectionRoots', 'selectionCoverage'] },
         'GET', ['scene', 'node', 'path', 'batch', 'ancestors']
     )
-    async nodeGetPaths(args: { references: IInstanceReference[], expectedPaths?: Array<{ reference: IInstanceReference, path: string }>, expectedAncestors?: Array<{ reference: IInstanceReference, ancestors: IInstanceReference[] }>, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean, requireAll?: boolean, requireDisjoint?: boolean, requireSameParent?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, commonAncestor: IInstanceReference | null, selectionRoots: IInstanceReference[], selectionCoverage: Array<{ reference: IInstanceReference, selectionRoot: IInstanceReference }> }> {
+    async nodeGetPaths(args: { references: IInstanceReference[], expectedPaths?: Array<{ reference: IInstanceReference, path: string }>, expectedAncestors?: Array<{ reference: IInstanceReference, ancestors: IInstanceReference[] }>, expectedSiblingIndices?: Array<{ reference: IInstanceReference, siblingIndex: number | null }>, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean, requireAll?: boolean, requireDisjoint?: boolean, requireSameParent?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, commonAncestor: IInstanceReference | null, selectionRoots: IInstanceReference[], selectionCoverage: Array<{ reference: IInstanceReference, selectionRoot: IInstanceReference }> }> {
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
         if (args.relativeTo !== undefined && (typeof args.relativeTo?.id !== 'string' || !args.relativeTo.id.trim() || args.relativeTo.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'relativeTo requires a bounded node UUID.' });
         if (args.includeRoot !== undefined && typeof args.includeRoot !== 'boolean' || args.requireUnique !== undefined && typeof args.requireUnique !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path projection flags must be boolean.' });
@@ -947,6 +948,15 @@ export class SceneTools {
                 expectedAncestors.set(id, entry.ancestors.map(reference => reference.id));
             }
         }
+        const expectedSiblingIndices = new Map<string, number | null>();
+        if (args.expectedSiblingIndices !== undefined) {
+            if (!Array.isArray(args.expectedSiblingIndices) || args.expectedSiblingIndices.length > 32) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedSiblingIndices accepts at most32 target-bound positions.' });
+            for (const entry of args.expectedSiblingIndices) {
+                const id = entry?.reference?.id;
+                if (typeof id !== 'string' || !requestedIds.has(id) || expectedSiblingIndices.has(id) || entry.siblingIndex !== null && (!Number.isInteger(entry.siblingIndex) || entry.siblingIndex < 0 || entry.siblingIndex > 9999)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Sibling guards require unique requested UUIDs and null or integer0..9999 positions.' });
+                expectedSiblingIndices.set(id, entry.siblingIndex);
+            }
+        }
         const relativeTo = args.relativeTo ? { id: args.relativeTo.id } : undefined;
         const includeRoot = args.includeRoot, requireUnique = args.requireUnique;
         const items: Array<Record<string, unknown>> = [];
@@ -959,7 +969,7 @@ export class SceneTools {
         const resolvePath = this.prepareObservedNodePaths(tree, defaultRoot, relativeTo, includeRoot);
         for (const [index, reference] of references.entries()) {
             try {
-                const result = resolvePath({ reference, requireUnique, expectedPath: expectedPaths.get(reference.id) }, expectedAncestors.get(reference.id));
+                const result = resolvePath({ reference, requireUnique, expectedPath: expectedPaths.get(reference.id), expectedSiblingIndex: expectedSiblingIndices.get(reference.id) }, expectedAncestors.get(reference.id));
                 items.push({ index, ok: true, reference, result });
                 succeeded++;
                 resolved.set(result.reference.id, result);
