@@ -825,13 +825,15 @@ export class SceneTools {
                 pathUnique: { type: 'boolean' },
                 matchingNodeCount: { type: 'integer', minimum: 1 },
                 ancestors: { type: 'array', items: InstanceReferenceSchema },
+                parentReference: { type: ['object', 'null'], properties: { id: { type: 'string' }, type: { type: 'string' } } },
+                siblingIndex: { type: ['integer', 'null'], minimum: 0 },
             },
-            required: ['reference', 'path', 'segments', 'pathUnique', 'matchingNodeCount', 'ancestors'],
+            required: ['reference', 'path', 'segments', 'pathUnique', 'matchingNodeCount', 'ancestors', 'parentReference', 'siblingIndex'],
         },
         'GET',
         ['scene', 'node', 'path', 'hierarchy', 'reverse', 'lookup']
     )
-    async nodeGetPath(args: { reference: IInstanceReference, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean, expectedPath?: string, expectedAncestors?: IInstanceReference[] }): Promise<{ reference: IInstanceReference, path: string, segments: string[], relativeTo?: IInstanceReference, pathUnique: boolean, matchingNodeCount: number, ancestors: IInstanceReference[] }> {
+    async nodeGetPath(args: { reference: IInstanceReference, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean, expectedPath?: string, expectedAncestors?: IInstanceReference[] }): Promise<{ reference: IInstanceReference, path: string, segments: string[], relativeTo?: IInstanceReference, pathUnique: boolean, matchingNodeCount: number, ancestors: IInstanceReference[], parentReference: IInstanceReference | null, siblingIndex: number | null }> {
         for (const reference of [args.reference, ...(args.relativeTo !== undefined ? [args.relativeTo] : [])]) {
             if (typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path lookup requires bounded exact node UUIDs.' });
         }
@@ -866,6 +868,7 @@ export class SceneTools {
         if (!root) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'Relative root not found.' });
         const paths = new Map<string, number>();
         const parents = new Map<string, string>();
+        const siblingIndices = new Map<string, number>();
         const stack: Array<{ node: SceneTreeNode, segments: string[] }> = [{ node: root, segments: [sceneTreeNodeName(root)] }];
         const segmentsById = new Map<string, string[]>();
         while (stack.length) {
@@ -874,8 +877,10 @@ export class SceneTools {
             const path = outputSegments.join('/');
             paths.set(path, (paths.get(path) ?? 0) + 1);
             segmentsById.set(node.uuid!, outputSegments);
-            for (const child of node.children ?? []) {
+            const children = node.children ?? [];
+            for (const [index, child] of children.entries()) {
                 parents.set(child.uuid!, node.uuid!);
+                siblingIndices.set(child.uuid!, index);
                 stack.push({ node: child, segments: [...segments, sceneTreeNodeName(child)] });
             }
         }
@@ -890,7 +895,8 @@ export class SceneTools {
         for (let parent = parents.get(args.reference.id); parent !== undefined; parent = parents.get(parent)) ancestors.push({ id: parent, type: 'cc.Node' });
         ancestors.reverse();
         if (expectedAncestorIds !== undefined && (expectedAncestorIds.length !== ancestors.length || expectedAncestorIds.some((id, index) => id !== ancestors[index].id))) throw new ToolError({ code: 'NODE_ANCESTRY_CHANGED', status: 409, message: 'Observed ancestor identity differs from the expected chain.', details: { nodeId: args.reference.id }, recovery: 'Inspect the exact target UUID and ancestor chain before any mutation.' });
-        return { reference: { id: args.reference.id, type: 'cc.Node' }, path, segments: selected, pathUnique: matchingNodeCount === 1, matchingNodeCount, ancestors, ...(relativeTo ? { relativeTo } : {}) };
+        const parentId = parents.get(args.reference.id);
+        return { reference: { id: args.reference.id, type: 'cc.Node' }, path, segments: selected, pathUnique: matchingNodeCount === 1, matchingNodeCount, ancestors, parentReference: parentId === undefined ? null : { id: parentId, type: 'cc.Node' }, siblingIndex: siblingIndices.get(args.reference.id) ?? null, ...(relativeTo ? { relativeTo } : {}) };
         };
     }
 
