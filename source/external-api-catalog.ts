@@ -106,7 +106,7 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
             const execution = record.contextConstraints && typeof record.contextConstraints === 'object' ? (record.contextConstraints as Record<string, unknown>).execution ?? null : null;
             if (entry.contexts !== undefined && JSON.stringify(execution) !== JSON.stringify(entry.contexts)) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed execution contexts differ from verified record metadata.' });
             if (entry.evidenceState !== undefined && (record.evidenceStatus ?? null) !== entry.evidenceState) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed evidence state differs from verified record metadata.' });
-            return { ...record };
+            return JSON.parse(JSON.stringify(record)) as Record<string, unknown>;
         },
     };
 }
