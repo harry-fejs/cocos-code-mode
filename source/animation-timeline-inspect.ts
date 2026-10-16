@@ -156,7 +156,6 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
             const key = timelineRecord(rawKey), keyLocation = `${location}.keyframes[${keyIndex}]`;
             const keyIssues = diagnosticCount;
             const frame = key && frameValid(key.frame) ? key.frame : null;
-            timingHash.update(JSON.stringify([index, keyIndex, frame]));
             if (frame !== null) {
                 if (previousFrame !== null && frame < previousFrame) issue('UNSORTED_KEYFRAME_TIME', keyLocation);
                 previousFrame = frame;
@@ -164,6 +163,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
             const matchesFrame = options.keyframeFrameRange === undefined || frame !== null && frame >= options.keyframeFrameRange.min && frame <= options.keyframeFrameRange.max;
             if (!key || !frameValid(key.frame)) issue('INVALID_KEYFRAME_TIME', keyLocation);
             if (!key || !('dump' in key) || !finiteTree(key)) issue('INVALID_KEYFRAME_DATA', keyLocation);
+            timingHash.update(JSON.stringify([index, keyIndex, frame, diagnosticCount === keyIssues]));
             if (matchesFrame) {
                 if (matchedKeyframes >= bounds.keyframeOffset && matchedKeyframes < bounds.keyframeOffset + bounds.keyframeLimit) keyframes.push({ index: keyIndex, frame, frameOverSample: frame !== null && sample !== null && finite(frame / sample) ? frame / sample : null, dataValid: diagnosticCount === keyIssues });
                 matchedKeyframes++;
@@ -215,7 +215,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     const selectedEvents = options.eventCallback === undefined && options.eventFrameRange === undefined ? eventRows : eventRows.filter(event => (options.eventCallback === undefined || event.callback === options.eventCallback) && (options.eventFrameRange === undefined || event.frame !== null && event.frame >= options.eventFrameRange.min && event.frame <= options.eventFrameRange.max));
     const result = {
         nodeReference: options.nodeReference, clipReference: options.clipReference,
-        revision, revisionScope: 'Retrieved timeline projection including all retrieved keyframe indices/times, clip metadata, track bindings/counts/ranges, events and diagnostics. Excludes opaque keyframe values, unretrieved native tracks, callback binding and runtime state. Not an atomic scene snapshot.',
+        revision, revisionScope: 'Retrieved timeline projection including all retrieved keyframe indices/times/dataValid, clip metadata, track bindings/counts/ranges, events and diagnostics. Excludes opaque keyframe values, unretrieved native tracks, callback binding and runtime state. Not an atomic scene snapshot.',
         identity: { node: readback?.nodeUuid === options.nodeReference.id ? 'query-node-verified' : 'requested-reference', clip: readback?.clipUuid === options.clipReference.id ? 'asset-db-verified' : 'requested-reference', dumpClipUuidExposed: !!dump && ('uuid' in dump || 'clipUuid' in dump), dumpNodeUuidExposed: !!dump && 'nodeUuid' in dump },
         clip: { name: text(dump?.name), sample, duration, speed: finite(dump?.speed) ? dump.speed : null, wrapMode: finite(dump?.wrapMode) ? dump.wrapMode : null },
         sourceScope: 'Creator scene query-animation-clip editor dump via animationQuery(includeCurves:true,maxCurves:1000). Node/clip readbacks establish identity only, not dump binding. Property curves/events only; auxiliary curves, embedded players, binding resolution and callback existence are outside scope.',
