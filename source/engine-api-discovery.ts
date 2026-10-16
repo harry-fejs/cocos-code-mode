@@ -30,7 +30,7 @@ function jsonFile(file: string): unknown {
     return JSON.parse(readBounded(root, path.basename(file), MAX_CATALOG_FILE).toString('utf8'));
 }
 function limit(value: number | undefined, fallback: number, maximum: number): number {
-    const selected = value ?? fallback;
+    const selected = value === undefined ? fallback : value;
     if (!Number.isInteger(selected) || selected < 1 || selected > maximum) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `Catalog limit must be an integer from 1 to ${maximum}.` });
     return selected;
 }

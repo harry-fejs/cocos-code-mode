@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Default discovery numeric limits only when omitted; explicit null timeoutMs/maxPages/maxEntries/maxBytes now refuse INVALID_ARGUMENT rather than silently selecting defaults.
 - Allow RigidBody/RigidBody2D and supported concrete box/sphere/capsule/mesh/2D colliders in scriptComponentCreate requiredComponents. Abstract collider bases remain reference-only; max8/unique limits and source-only generation remain unchanged.
 - Refuse null/array/primitive catalog discovery argument envelopes with INVALID_ARGUMENT before reading limits or opening catalogs; empty object retains the default bounded query.
 - Refuse unknown or malformed catalog categories before discovery instead of silently treating them as general engine_api; omitted category still selects the existing default scope.
