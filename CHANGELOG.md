@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Bind installed catalog cursors to SHA-256 of the same bounded index bytes used for parsing; manifest changes invalidate continuation even if catalogHash stays unchanged. This does not snapshot mutable shard bytes.
 - Bind external discovery cursors to a hashed project/version/resolved-root/approved-lookup snapshot identity; changing lookup revision or configured roots invalidates continuation even when catalogHash remains unchanged. Paths are not exposed by the digest.
 - Support RenderTexture scalar/array script references with native asset metadata and null/independent empty defaults. No GPU target creation, resize/reset or automatic camera binding.
 - Bind discovery cursors to catalog source coverage/provenance as well as catalog hash and selectors; switching installed pilot versus operator external catalog refuses STALE_CURSOR even when catalog hashes match.

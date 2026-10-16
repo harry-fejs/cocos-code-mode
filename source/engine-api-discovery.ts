@@ -156,14 +156,16 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     if (external && external.entries.some(entry => args.context !== undefined && entry.contexts === undefined || args.evidenceState !== undefined && entry.evidenceState === undefined)) throw new ToolError({ code: 'CATALOG_INDEX_UPGRADE_REQUIRED', status: 409, message: 'Regenerate lookup context/evidence metadata and explicitly update its configured hash before filtering.' });
     const indexPath = path.join(CATALOG_ROOT, version, 'index.json');
     if (!external && !fs.existsSync(indexPath)) throw new ToolError({ code: 'CATALOG_UNAVAILABLE', status: 422, message: `No installed catalog for ${version}.` });
-    const index = external ?? CatalogIndexSchema.parse(jsonFile(indexPath));
+    const indexBytes = external ? null : readBounded(fs.realpathSync(path.dirname(indexPath)), path.basename(indexPath), MAX_CATALOG_FILE);
+    const index = external ?? CatalogIndexSchema.parse(JSON.parse(indexBytes!.toString('utf8')));
+    const snapshotHash = external ? external.snapshotHash : crypto.createHash('sha256').update(indexBytes!).digest('hex');
     if (!external && 'version' in index && index.version !== version) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed catalog identity is invalid.' });
     const provenancePath = path.join(CATALOG_ROOT, version, 'provenance.json');
     const provenance = !external && fs.existsSync(provenancePath) ? z.object({ scope: z.string().optional(), originalCatalogHash: z.string().nullable().optional() }).passthrough().parse(jsonFile(provenancePath)) : null;
     const coverage = { scope: external ? 'operator-configured-full-catalog' : provenance?.scope ?? 'installed-catalog-scope-unverified', fullCatalogLoaded: external !== null, originalCatalogHash: external?.catalogHash ?? provenance?.originalCatalogHash ?? null };
     const selector = JSON.stringify({ version, operation, namespace: args.namespace ?? '', domain: args.domain ?? '', filter: args.filter ?? '', className: args.className ?? '', recordId: args.recordId ?? '', kind: args.kind ?? '', module: args.module ?? '', visibility: args.visibility ?? '', context: args.context ?? '', evidenceState: args.evidenceState ?? '', member: args.member ?? '', reference: args.reference ? { id: args.reference.id, type: args.reference.type ?? null } : null });
     const categoryScope = args.category === 'component_schema' ? 'component_schema' : 'engine_api';
-    const selectorHash = crypto.createHash('sha256').update(JSON.stringify([categoryScope, coverage, external?.snapshotHash ?? null, selector])).digest('hex');
+    const selectorHash = crypto.createHash('sha256').update(JSON.stringify([categoryScope, coverage, snapshotHash, selector])).digest('hex');
     let offset = 0;
     if (args.cursor) {
         try {
