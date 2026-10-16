@@ -157,13 +157,15 @@ export class ComponentTools {
             references: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema },
             componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
             enabled: { type: 'boolean', description: 'Exact serialized enabled selector shared by every node.' },
+            requireSingle: { type: 'boolean', default: false, description: 'Require exactly one filtered match on each node; cardinality failures remain per-item.' },
             limitPerNode: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
         }, required: ['references'] },
         { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, inventorySummary: { type: 'object', properties: { observedNodes: { type: 'integer' }, failedNodes: { type: 'integer' }, total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' } }, required: ['observedNodes', 'failedNodes', 'total', 'enabled', 'disabled', 'unknownEnabled'] } }, required: ['items', 'succeeded', 'failed', 'truncated', 'inventorySummary'] },
         'GET', ['scene', 'node', 'component', 'batch', 'inspection']
     )
-    async nodeComponentsBatchGet(args: { references: IInstanceReference[], componentTypes?: string[], enabled?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, total: number, enabled: number, disabled: number, unknownEnabled: number } }> {
+    async nodeComponentsBatchGet(args: { references: IInstanceReference[], componentTypes?: string[], enabled?: boolean, requireSingle?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, total: number, enabled: number, disabled: number, unknownEnabled: number } }> {
         if (args.enabled !== undefined && typeof args.enabled !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'enabled must be a boolean serialized component selector.' });
+        if (args.requireSingle !== undefined && typeof args.requireSingle !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireSingle must be boolean.' });
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
         if (args.componentTypes !== undefined && (!Array.isArray(args.componentTypes) || args.componentTypes.length < 1 || args.componentTypes.length > 32 || args.componentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentTypes requires1..32 bounded class names.' });
         const limit = args.limitPerNode ?? 50;
@@ -176,7 +178,7 @@ export class ComponentTools {
         const inventorySummary = { observedNodes: 0, failedNodes: 0, total: 0, enabled: 0, disabled: 0, unknownEnabled: 0 };
         for (const [index, reference] of references.entries()) {
             try {
-                const result = await this.nodeComponentsGet({ reference, componentTypes, enabled: args.enabled, limit });
+                const result = await this.nodeComponentsGet({ reference, componentTypes, enabled: args.enabled, requireSingle: args.requireSingle, limit });
                 items.push({ index, ok: true, reference, result });
                 succeeded++;
                 truncated ||= result.truncated;
