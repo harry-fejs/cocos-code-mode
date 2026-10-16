@@ -340,7 +340,7 @@ function metadata(node) {
   const constantBinding = ts.isVariableDeclaration(binding) && ts.isVariableDeclarationList(binding.parent) && !!(binding.parent.flags & ts.NodeFlags.Const);
   return { decorators, visibility, optional: !!node.questionToken, static: modifiers.includes('static'), readonly: constantBinding || modifiers.includes('readonly') || ts.isGetAccessorDeclaration(node) && !node.symbol?.declarations?.some(ts.isSetAccessorDeclaration),
     internal: tags.includes('internal') || tags.includes('engineInternal') || tags.includes('private') || !!declaredName?.startsWith('__'), deprecated: tags.includes('deprecated'),
-    async: modifiers.includes('async'), abstract: modifiers.includes('abstract'), jsdoc: documentation.map(doc => doc.getText()).join('\n') || null };
+    generator: !!node.asteriskToken, async: modifiers.includes('async'), abstract: modifiers.includes('abstract'), jsdoc: documentation.map(doc => doc.getText()).join('\n') || null };
 }
 function constraints(node, context, checker) {
   const sf = node.getSourceFile();
