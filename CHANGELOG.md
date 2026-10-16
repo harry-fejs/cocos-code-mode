@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Support TiledMap/TiledLayer/TiledObjectGroup/TiledMapAsset scalar/array script references with native types and null/independent empty defaults. Generated layers stay reference-only; no TMX import, layer creation/deletion or level mutation.
 - Verify installed record version and version/namespace ID prefix against the selected catalog before filtering, refusing foreign-version or conflicting namespaced identities with CATALOG_INVALID.
 - Reject duplicate installed shard filenames (including case-only collisions) before navigation or shard reads, avoiding duplicate summary counts and ambiguous filesystem identities.
 - Support Graphics scalar/array script references and requiredComponents using native Inspector/dependency metadata. Null/empty defaults only; source generation does not draw, create UI resources or attach components.
