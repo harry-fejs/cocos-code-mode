@@ -1023,8 +1023,9 @@ export class SceneTools {
             depthCounts: { type: 'object', additionalProperties: { type: 'integer', minimum: 1 } },
             leafNodes: { type: 'integer' }, containerNodes: { type: 'integer' }, unknownChildrenNodes: { type: 'integer' },
             nodesWithComponents: { type: 'integer' }, nodesWithoutComponents: { type: 'integer' }, unknownComponentsNodes: { type: 'integer' },
+            siblingNameCollisions: { type: 'array', items: { type: 'object', properties: { parentReference: InstanceReferenceSchema, name: { type: 'string' }, references: { type: 'array', items: InstanceReferenceSchema } }, required: ['parentReference', 'name', 'references'] } },
             activeNodes: { type: 'integer' }, inactiveNodes: { type: 'integer' }, unknownActiveNodes: { type: 'integer' }, componentCounts: { type: 'object' }, duplicateNames: { type: 'array' }, unknownComponentCount: { type: 'integer' }, issues: { type: 'array' },
-        }, required: ['checkedNodes', 'maxDepth', 'depthCounts', 'leafNodes', 'containerNodes', 'unknownChildrenNodes', 'nodesWithComponents', 'nodesWithoutComponents', 'unknownComponentsNodes', 'truncated', 'activeNodes', 'inactiveNodes', 'unknownActiveNodes', 'componentCounts', 'duplicateNames', 'unknownComponentCount', 'issues'] },
+        }, required: ['checkedNodes', 'maxDepth', 'depthCounts', 'leafNodes', 'containerNodes', 'unknownChildrenNodes', 'nodesWithComponents', 'nodesWithoutComponents', 'unknownComponentsNodes', 'truncated', 'activeNodes', 'inactiveNodes', 'unknownActiveNodes', 'componentCounts', 'duplicateNames', 'siblingNameCollisions', 'unknownComponentCount', 'issues'] },
         'GET', ['scene', 'hierarchy', 'analyze', 'component', 'summary', 'qa']
     )
     async sceneHierarchyAnalyze(args: { rootReference?: IInstanceReference, limit?: number } = {}): Promise<Record<string, unknown>> {
@@ -1058,19 +1059,31 @@ export class SceneTools {
         const nameCounts = new Map<string, number>();
         const issues: string[] = [];
         const visited = new Set<object>();
-        const stack: Array<{ node: any, depth: number }> = [{ node: root, depth: 0 }];
+        const siblingGroups = new Map<object, { parentReference: IInstanceReference, names: Map<string, IInstanceReference[]> }>();
+        const stack: Array<{ node: any, depth: number, parent: any | null }> = [{ node: root, depth: 0, parent: null }];
         let checkedNodes = 0, maxDepth = 0, activeNodes = 0, inactiveNodes = 0, unknownComponentCount = 0, truncated = false;
         let unknownActiveNodes = 0, scheduled = 1, componentTotal = 0;
         let leafNodes = 0, containerNodes = 0, unknownChildrenNodes = 0;
         let nodesWithComponents = 0, nodesWithoutComponents = 0, unknownComponentsNodes = 0;
         while (stack.length) {
             if (checkedNodes >= limit) { truncated = true; break; }
-            const { node, depth } = stack.pop()!;
+            const { node, depth, parent } = stack.pop()!;
             if (!node || typeof node !== 'object' || Array.isArray(node)) { issues.push('invalid node encountered'); continue; }
             if (visited.has(node)) { issues.push(`cycle or repeated node at depth ${depth}`); continue; }
             visited.add(node); checkedNodes++; maxDepth = Math.max(maxDepth, depth);
             depthCounts[depth] = (depthCounts[depth] ?? 0) + 1;
             const name = sceneTreeNodeName(node); nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
+            if (parent !== null) {
+                const parentId = parent.uuid, id = node.uuid;
+                const explicitName = typeof node.name === 'string' ? node.name : node.name?.value;
+                if (typeof parentId === 'string' && parentId.trim() && typeof id === 'string' && id.trim() && typeof explicitName === 'string') {
+                    let group = siblingGroups.get(parent);
+                    if (!group) { group = { parentReference: { id: parentId, type: 'cc.Node' }, names: new Map() }; siblingGroups.set(parent, group); }
+                    const references = group.names.get(explicitName);
+                    const reference = { id, type: 'cc.Node' };
+                    if (references) references.push(reference); else group.names.set(explicitName, [reference]);
+                } else issues.push('sibling collision identity or name unavailable');
+            }
             const rawActive = node.active;
             const active = typeof rawActive === 'boolean' ? rawActive : rawActive?.value;
             if (active === false) inactiveNodes++; else if (active === true) activeNodes++; else unknownActiveNodes++;
@@ -1095,10 +1108,12 @@ export class SceneTools {
             if (!Array.isArray(children)) { issues.push(`malformed children on ${name}`); continue; }
             scheduled += children.length;
             if (scheduled > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Analysis scheduled-node budget exceeded.' });
-            for (let index = children.length - 1; index >= 0; index--) stack.push({ node: children[index], depth: depth + 1 });
+            for (let index = children.length - 1; index >= 0; index--) stack.push({ node: children[index], depth: depth + 1, parent: node });
         }
+        const siblingNameCollisions: Array<{ parentReference: IInstanceReference, name: string, references: IInstanceReference[] }> = [];
+        for (const group of siblingGroups.values()) for (const [name, references] of group.names) if (references.length > 1) siblingNameCollisions.push({ parentReference: group.parentReference, name, references });
         return { ...(args.rootReference ? { rootReference: args.rootReference } : {}), checkedNodes, maxDepth, depthCounts, leafNodes, containerNodes, unknownChildrenNodes, nodesWithComponents, nodesWithoutComponents, unknownComponentsNodes, truncated, activeNodes, inactiveNodes, unknownActiveNodes,
-            componentCounts, duplicateNames: [...nameCounts].filter(([, count]) => count > 1).map(([name, count]) => ({ name, count })), unknownComponentCount, issues };
+            componentCounts, duplicateNames: [...nameCounts].filter(([, count]) => count > 1).map(([name, count]) => ({ name, count })), siblingNameCollisions, unknownComponentCount, issues };
     }
 
     @utcpTool(
