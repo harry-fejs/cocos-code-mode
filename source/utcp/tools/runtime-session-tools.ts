@@ -482,8 +482,8 @@ export class RuntimeSessionTools {
         const observe = async (): Promise<RuntimeState> => {
             assertActive?.();
             const remaining = deadline - Date.now();
-            if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Runtime state wait deadline expired before observation.' });
-            const observed = await withRuntimeStateTimeout(this.inspect({ operation: 'inspect', sessionId: session.sessionId, timeoutMs: Math.max(100, remaining) }), deadline);
+            if (remaining < 100) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Runtime wait has insufficient remaining time for a bounded observation; no next inspection dispatched.' });
+            const observed = await withRuntimeStateTimeout(this.inspect({ operation: 'inspect', sessionId: session.sessionId, timeoutMs: remaining }), deadline);
             assertActive?.();
             if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Runtime state observation settled after wait deadline.' });
             if (!observed.state || !observed.ready || observed.session.createdAt !== session.createdAt || observed.session.targetId !== session.targetId || observed.session.targetKind !== session.targetKind) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Runtime wait session identity changed.' });
