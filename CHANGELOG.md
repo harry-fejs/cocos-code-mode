@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve callable/constructable property owner JSDoc when nested signature declarations lack docs, retaining signature-specific docs when present and reusing one declaration metadata read across overloads.
 - Report UNSORTED_KEYFRAME_TIME for decreasing native keyframe frames during timeline inspection, including off-page/filtered keys. Preserve original order and equal-time keys; do not sort, mutate or infer interpolation validity.
 - Check internal cancellation before component/audio readiness and before post-read session reinspection. Cancelled observations dispatch no new inspection phases; mutation verification and event listener teardown remain intact.
 - Preserve documentation on data/variable and collector-created named type value signatures, matching callable/accessor JSDoc contract while retaining non-permitted discovery semantics.

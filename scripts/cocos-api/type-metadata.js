@@ -313,18 +313,19 @@ function signatures(checker, symbol, declaration) {
   const type = checker.getTypeOfSymbolAtLocation(symbol, declaration);
   const calls = checker.getSignaturesOfType(type, ts.SignatureKind.Call);
   const constructs = checker.getSignaturesOfType(type, ts.SignatureKind.Construct);
+  const declarationMetadata = metadata(declaration);
   if (calls.length || constructs.length) return [...calls, ...constructs].map((sig, i) => {
     const row = signatureInfo(checker, sig, sig.getDeclaration() || declaration, i);
     if (i >= calls.length) row.kind = 'construct';
-    row.abstract = metadata(declaration).abstract || !!(sig.flags & ts.SignatureFlags.Abstract);
+    row.abstract = declarationMetadata.abstract || !!(sig.flags & ts.SignatureFlags.Abstract);
     if (ts.isPropertyDeclaration(declaration) || ts.isPropertySignature(declaration) || ts.isParameter(declaration) && ts.isConstructorDeclaration(declaration.parent) && !!(ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.ParameterPropertyModifier)) {
-      row.visibility = metadata(declaration).visibility;
+      row.visibility = declarationMetadata.visibility;
+      row.jsdoc = row.jsdoc || declarationMetadata.jsdoc;
       row.unresolved.push({ kind: 'semantic-adapter-required', reference: i < calls.length ? 'callable-property' : 'constructable-property' });
     }
     return row;
   });
   const info = typeInfo(checker, type, declaration.type);
-  const declarationMetadata = metadata(declaration);
   return [{ overload: 0, visibility: declarationMetadata.visibility, jsdoc: declarationMetadata.jsdoc, kind: 'value', type: info.type, declaredType: info.declaredType, references: info.references,
     defaultExpression: compact(declaration.initializer), unresolved: info.unresolved }];
 }
