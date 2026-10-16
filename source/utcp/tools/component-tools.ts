@@ -163,14 +163,16 @@ export class ComponentTools {
             excludeComponentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
             enabled: { type: 'boolean', description: 'Exact serialized enabled selector shared by every node.' },
             requireSingle: { type: 'boolean', default: false, description: 'Require exactly one filtered match on each node; cardinality failures remain per-item.' },
+            summaryOnly: { type: 'boolean', default: false, description: 'Omit component reference pages; retain full summaries, filtered totals, revisions and per-node errors.' },
             limitPerNode: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
         }, required: ['references'] },
         { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, inventorySummary: { type: 'object', properties: { observedNodes: { type: 'integer' }, failedNodes: { type: 'integer' }, total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' }, classDistribution: { type: 'object', additionalProperties: { type: 'object', properties: { instances: { type: 'integer', minimum: 1 }, nodes: { type: 'integer', minimum: 1 } }, required: ['instances', 'nodes'] } } }, required: ['observedNodes', 'failedNodes', 'total', 'enabled', 'disabled', 'unknownEnabled', 'classDistribution'] } }, required: ['items', 'succeeded', 'failed', 'truncated', 'inventorySummary'] },
         'GET', ['scene', 'node', 'component', 'batch', 'inspection']
     )
-    async nodeComponentsBatchGet(args: { references: IInstanceReference[], expectedRevisions?: Array<{ reference: IInstanceReference, revision: string }>, componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, total: number, enabled: number, disabled: number, unknownEnabled: number, classDistribution: Record<string, { instances: number, nodes: number }> } }> {
+    async nodeComponentsBatchGet(args: { references: IInstanceReference[], expectedRevisions?: Array<{ reference: IInstanceReference, revision: string }>, componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, summaryOnly?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, total: number, enabled: number, disabled: number, unknownEnabled: number, classDistribution: Record<string, { instances: number, nodes: number }> } }> {
         if (args.enabled !== undefined && typeof args.enabled !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'enabled must be a boolean serialized component selector.' });
         if (args.requireSingle !== undefined && typeof args.requireSingle !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireSingle must be boolean.' });
+        if (args.summaryOnly !== undefined && typeof args.summaryOnly !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'summaryOnly must be boolean.' });
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
         if (args.componentTypes !== undefined && (!Array.isArray(args.componentTypes) || args.componentTypes.length < 1 || args.componentTypes.length > 32 || args.componentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentTypes requires1..32 bounded class names.' });
         if (args.excludeComponentTypes !== undefined && (!Array.isArray(args.excludeComponentTypes) || args.excludeComponentTypes.length < 1 || args.excludeComponentTypes.length > 32 || args.excludeComponentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'excludeComponentTypes requires1..32 bounded class names.' });
@@ -196,9 +198,9 @@ export class ComponentTools {
         for (const [index, reference] of references.entries()) {
             try {
                 const result = await this.nodeComponentsGet({ reference, expectedRevision: expectedRevisions.get(reference.id), componentTypes, excludeComponentTypes, enabled: args.enabled, requireSingle: args.requireSingle, limit });
-                items.push({ index, ok: true, reference, result });
+                items.push({ index, ok: true, reference, result: args.summaryOnly ? { inventorySummary: result.inventorySummary, total: result.total, revision: result.revision, detailsOmitted: true } : result });
                 succeeded++;
-                truncated ||= result.truncated;
+                if (!args.summaryOnly) truncated ||= result.truncated;
                 inventorySummary.observedNodes++;
                 inventorySummary.total += result.inventorySummary.total;
                 inventorySummary.enabled += result.inventorySummary.enabled;
