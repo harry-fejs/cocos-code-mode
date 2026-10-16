@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Bound get_related_types dependency-entry traversal to10000 across all collected relations, including duplicates before deduplication; excess refuses CATALOG_RELATED_LIMIT rather than returning partial completeness.
 - Expose invalidTracks across all retrieved timeline tracks, independent of binding filters and pages. Tracks with multiple local diagnostics count once; absent native curves report null, empty arrays zero. No playable/binding validity inferred.
 - Validate version:namespace prefixes for all external lookup entries before exposing lookup-only discovery, not only during shard hydration; malformed navigation identities refuse CATALOG_INVALID.
 - Validate external hydrated record IDs against version:namespace prefixes before parsed-shard caching, matching generator/installed identity rules and refusing inconsistent but hash-pinned metadata.

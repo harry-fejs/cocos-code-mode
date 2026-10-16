@@ -260,9 +260,12 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         if (!source) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record related types are absent from the selected catalog scope.' });
         const related: Array<Record<string, unknown>> = [];
         const seen = new Set<string>();
+        let relatedEntriesRemaining = 10000;
         const collect = (value: unknown, field: string, location: { signatureIndex?: number, parameterIndex?: number } = {}) => {
             if (value === undefined || value === null) return;
             if (!Array.isArray(value)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: `Record ${field} metadata is not an array.` });
+            if (value.length > relatedEntriesRemaining) throw new ToolError({ code: 'CATALOG_RELATED_LIMIT', status: 413, message: 'Related-type metadata exceeds 10000 entries; no complete dependency result returned.' });
+            relatedEntriesRemaining -= value.length;
             for (const item of value) {
                 checkDeadline();
                 if (!item || typeof item !== 'object' || Array.isArray(item)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: `Record ${field} contains malformed related-type metadata.` });
