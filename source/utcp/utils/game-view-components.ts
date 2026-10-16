@@ -260,6 +260,7 @@ export async function executeComponentOperation(args: ComponentOperation, assert
     assertActive?.();
     const mutation = args.kind !== 'events' && !['inspect', 'observe'].includes(args.operation);
     const captureToken = args.kind === 'events' && assertActive ? randomUUID() : undefined;
+    const captureDeadline = Date.now() + (args.timeoutMs ?? 1000);
     let cancellationPoll: NodeJS.Timeout | undefined; let signalling = false; let signalAttempts = 0;
     let pendingSignal: Promise<unknown> | undefined;
     let result: Record<string, unknown> | null;
@@ -267,10 +268,12 @@ export async function executeComponentOperation(args: ComponentOperation, assert
         const pending = executeGameViewOperation(session.targetId, createComponentOperationSource({ ...args, captureToken }), (args.timeoutMs ?? 1000) + 2000, mutation);
         if (captureToken !== undefined) cancellationPoll = setInterval(() => {
             if (signalling || signalAttempts >= 3) return;
+            const remaining = captureDeadline - Date.now();
+            if (remaining < 100) return;
             try { assertActive?.(); return; } catch { /* Signal only this owned capture; never stop playback. */ }
             signalling = true; signalAttempts++;
             const source = `(() => { const captures = globalThis[Symbol.for('ccp3x.animationCaptures')]; const token = ${JSON.stringify(captureToken)}; if (captures instanceof Map && captures.has(token)) { captures.set(token, true); return true; } return false; })()`;
-            pendingSignal = executeGameViewOperation(session.targetId, source, 1000, false).then(ack => { if (ack === true) signalAttempts = 3; }, () => undefined).finally(() => { signalling = false; });
+            pendingSignal = executeGameViewOperation(session.targetId, source, Math.min(1000, remaining), false).then(ack => { if (ack === true) signalAttempts = 3; }, () => undefined).finally(() => { signalling = false; });
         }, 25);
         result = await pending as Record<string, unknown> | null;
     } finally { clearInterval(cancellationPoll); await pendingSignal; }

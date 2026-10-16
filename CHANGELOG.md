@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Bound cancellation signal transport timeouts/retries by the capture's original deadline. Under100ms remaining, skip signalling and retain existing deadline cleanup rather than extending the request budget.
 - Retain event-capture primitive ownership until an already-dispatched cancellation signal settles, even if capture completes first. Polling is cleared before awaiting the signal; no additional requests are started during teardown.
 - Preserve explicit async implementation syntax across merged overload declarations in catalog metadata without changing published overload signatures or inferring async from Promise return types.
 - Require the native SkeletalAnimation constructor for skeletalAnimationEvents via an internal event selector. Regular Animation cannot satisfy the skeletal API; general animation event capture remains unchanged.
