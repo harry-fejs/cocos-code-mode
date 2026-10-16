@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Reject external catalog lookup name/member selectors that disagree with verified shard record metadata, including warmed-cache reads; pinned file hashes alone do not establish cross-file selector consistency.
 - Reuse the bounded descriptor catalog reader for installed discovery JSON, refusing oversized/growing or replaced inputs with descriptor cleanup instead of unbounded readFileSync after stat. This is not an atomic filesystem snapshot or hard synchronous deadline guarantee.
 - Apply the same get_signature projection to external and installed catalogs, retaining separate declaration evidence without returning unrelated full-record payloads or bypassing signature response byte limits.
 - Expose signature receiver and type-predicate dependency roles in get_related_types for both source and declaration evidence, retaining signature indexes, bounded paging and malformed nested metadata refusal. Catalog evidence does not authorize invocation.
