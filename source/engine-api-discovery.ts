@@ -341,6 +341,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         const info = await observeWithinDeadline(() => ToolsUtils.inspectInstance(args.reference!.id, false));
         if (!info?.props) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Target has no authoritative Inspector dump.' });
         if (args.className && info.type.replace(/^cc\./, '') !== args.className.replace(/^cc\./, '')) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: 'Target class does not match requested catalog class.' });
+        if (args.reference.type !== undefined && info.type.replace(/^cc\./, '') !== args.reference.type.replace(/^cc\./, '')) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: 'Target class does not match requested reference type.' });
         live = { checked: true, context: 'edit-scene', available: true, type: info.type, writablePaths: Object.entries(info.props).filter(([, value]) => value && typeof value === 'object' && !Array.isArray(value) && 'readonly' in value && value.readonly === false).map(([key]) => key), mutationAuthorized: false, pathEvidence: 'authoritative-inspector-dump' };
     }
     const selected: ApiRecord[] = [];

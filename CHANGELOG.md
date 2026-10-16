@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Verify optional discovery reference.type against the authoritative Inspector class using existing cc. prefix normalization; mismatches refuse TYPE_MISMATCH even when no className selector is supplied.
 - Bind discovery cursor identity to component_schema versus general engine_api result scope; switching categories refuses STALE_CURSOR instead of skipping entries in a differently filtered result set.
 - Support SafeArea/BlockInputEvents/UICoordinateTracker scalar/array script references with native property types and null/independent empty defaults. No input blocking, layout/camera tracking or automatic component attachment is executed.
 - Bind catalog discovery cursors to requested instance reference id/type; changed live targets refuse STALE_CURSOR before Inspector observation instead of reusing another instance's continuation.
