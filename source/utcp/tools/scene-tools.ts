@@ -806,6 +806,7 @@ export class SceneTools {
                 relativeTo: InstanceReferenceSchema,
                 includeRoot: { type: 'boolean', default: true },
                 requireUnique: { type: 'boolean', default: false, description: 'Refuse ambiguous slash-joined paths rather than returning collision metadata.' },
+                expectedPath: { type: 'string', maxLength: 4096, description: 'Exact formatted path from a prior observation using the same relativeTo/includeRoot options.' },
             },
             required: ['reference'],
         },
@@ -826,12 +827,13 @@ export class SceneTools {
         'GET',
         ['scene', 'node', 'path', 'hierarchy', 'reverse', 'lookup']
     )
-    async nodeGetPath(args: { reference: IInstanceReference, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean }): Promise<{ reference: IInstanceReference, path: string, segments: string[], relativeTo?: IInstanceReference, pathUnique: boolean, matchingNodeCount: number, ancestors: IInstanceReference[] }> {
+    async nodeGetPath(args: { reference: IInstanceReference, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean, expectedPath?: string }): Promise<{ reference: IInstanceReference, path: string, segments: string[], relativeTo?: IInstanceReference, pathUnique: boolean, matchingNodeCount: number, ancestors: IInstanceReference[] }> {
         for (const reference of [args.reference, ...(args.relativeTo !== undefined ? [args.relativeTo] : [])]) {
             if (typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path lookup requires bounded exact node UUIDs.' });
         }
         if (args.includeRoot !== undefined && typeof args.includeRoot !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'includeRoot must be boolean.' });
         if (args.requireUnique !== undefined && typeof args.requireUnique !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireUnique must be boolean.' });
+        if (args.expectedPath !== undefined && (typeof args.expectedPath !== 'string' || args.expectedPath.length > 4096)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedPath must be a string of at most4096 characters.' });
         const tree = await Editor.Message.request('scene', 'query-node-tree') as unknown as SceneTreeNode | null;
         if (!tree) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'No open scene or prefab hierarchy.' });
         const nodes = new Map<string, SceneTreeNode>();
@@ -868,6 +870,7 @@ export class SceneTools {
         }
         if (!selected) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'Node is not inside the requested hierarchy.' });
         const path = selected.join('/');
+        if (args.expectedPath !== undefined && args.expectedPath !== path) throw new ToolError({ code: 'NODE_PATH_CHANGED', status: 409, message: 'The target hierarchy path differs from the expected observation.', details: { nodeId: args.reference.id, expectedPath: args.expectedPath, path }, recovery: 'Inspect the target by UUID before any mutation; do not resolve a different object using the old path.' });
         const matchingNodeCount = paths.get(path)!;
         if (args.requireUnique && matchingNodeCount !== 1) throw new ToolError({ code: 'NODE_PATH_AMBIGUOUS', status: 409, message: 'Multiple nodes share the requested hierarchy path; use UUID identity or a narrower root.', details: { path, matchingNodeCount, nodeId: args.reference.id } });
         const ancestors: IInstanceReference[] = [];
