@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Cap get_related_types source/declaration signature and parameter containers at10000 combined before iteration, with cooperative deadline checks even for empty metadata; excess refuses CATALOG_RELATED_LIMIT.
 - Bound get_related_types dependency-entry traversal to10000 across all collected relations, including duplicates before deduplication; excess refuses CATALOG_RELATED_LIMIT rather than returning partial completeness.
 - Expose invalidTracks across all retrieved timeline tracks, independent of binding filters and pages. Tracks with multiple local diagnostics count once; absent native curves report null, empty arrays zero. No playable/binding validity inferred.
 - Validate version:namespace prefixes for all external lookup entries before exposing lookup-only discovery, not only during shard hydration; malformed navigation identities refuse CATALOG_INVALID.
