@@ -44,6 +44,7 @@ export function readBounded(root: string, basename: string, maximum: number, exp
 
 export interface ExternalApiCatalog {
     catalogHash: string;
+    snapshotHash: string;
     entries: ExternalApiEntry[];
     domains: Array<{ name: string; file: string; count: number }>;
     readRecord(id: string): Record<string, unknown>;
@@ -83,6 +84,7 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
     }
     if (lookup.shards.some((shard, index) => shard.count !== indexedCounts[index])) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Lookup entry counts differ from declared shard counts.' });
     return {
+        snapshotHash: crypto.createHash('sha256').update(JSON.stringify([project, version, root, lookupRoot, selected.lookupSha256])).digest('hex'),
         catalogHash: lookup.catalogHash, entries: lookup.entries.map(entry => ({ ...entry, ...(entry.contexts ? { contexts: [...entry.contexts] } : {}) })),
         domains: lookup.shards.map(shard => ({ name: shard.domain, file: shard.file, count: shard.count })),
         readRecord(id) {

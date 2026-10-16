@@ -163,7 +163,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     const coverage = { scope: external ? 'operator-configured-full-catalog' : provenance?.scope ?? 'installed-catalog-scope-unverified', fullCatalogLoaded: external !== null, originalCatalogHash: external?.catalogHash ?? provenance?.originalCatalogHash ?? null };
     const selector = JSON.stringify({ version, operation, namespace: args.namespace ?? '', domain: args.domain ?? '', filter: args.filter ?? '', className: args.className ?? '', recordId: args.recordId ?? '', kind: args.kind ?? '', module: args.module ?? '', visibility: args.visibility ?? '', context: args.context ?? '', evidenceState: args.evidenceState ?? '', member: args.member ?? '', reference: args.reference ? { id: args.reference.id, type: args.reference.type ?? null } : null });
     const categoryScope = args.category === 'component_schema' ? 'component_schema' : 'engine_api';
-    const selectorHash = crypto.createHash('sha256').update(JSON.stringify([categoryScope, coverage, selector])).digest('hex');
+    const selectorHash = crypto.createHash('sha256').update(JSON.stringify([categoryScope, coverage, external?.snapshotHash ?? null, selector])).digest('hex');
     let offset = 0;
     if (args.cursor) {
         try {
