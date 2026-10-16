@@ -903,10 +903,10 @@ export class SceneTools {
             expectedAncestors: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, ancestors: { type: 'array', maxItems: 9999, items: InstanceReferenceSchema } }, required: ['reference', 'ancestors'] }, description: 'Optional ordered ancestor UUID chains keyed by requested target; same relativeTo scope required.' },
             relativeTo: InstanceReferenceSchema, includeRoot: { type: 'boolean', default: true }, requireUnique: { type: 'boolean', default: false },
         }, required: ['references'] },
-        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' } }, required: ['items', 'succeeded', 'failed'] },
+        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, commonAncestor: { type: ['object', 'null'], properties: { id: { type: 'string' }, type: { type: 'string' } } } }, required: ['items', 'succeeded', 'failed', 'commonAncestor'] },
         'GET', ['scene', 'node', 'path', 'batch', 'ancestors']
     )
-    async nodeGetPaths(args: { references: IInstanceReference[], expectedPaths?: Array<{ reference: IInstanceReference, path: string }>, expectedAncestors?: Array<{ reference: IInstanceReference, ancestors: IInstanceReference[] }>, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number }> {
+    async nodeGetPaths(args: { references: IInstanceReference[], expectedPaths?: Array<{ reference: IInstanceReference, path: string }>, expectedAncestors?: Array<{ reference: IInstanceReference, ancestors: IInstanceReference[] }>, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, commonAncestor: IInstanceReference | null }> {
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
         if (args.relativeTo !== undefined && (typeof args.relativeTo?.id !== 'string' || !args.relativeTo.id.trim() || args.relativeTo.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'relativeTo requires a bounded node UUID.' });
         if (args.includeRoot !== undefined && typeof args.includeRoot !== 'boolean' || args.requireUnique !== undefined && typeof args.requireUnique !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path projection flags must be boolean.' });
@@ -934,6 +934,7 @@ export class SceneTools {
         const includeRoot = args.includeRoot, requireUnique = args.requireUnique;
         const items: Array<Record<string, unknown>> = [];
         let succeeded = 0;
+        let commonChain: IInstanceReference[] | undefined;
         const tree = await Editor.Message.request('scene', 'query-node-tree') as unknown as SceneTreeNode | null;
         if (!tree) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'No open scene or prefab hierarchy.' });
         const defaultRoot = relativeTo ? tree : ((await this.findPrefabEditRoot(tree)) as SceneTreeNode | null) ?? tree;
@@ -943,11 +944,18 @@ export class SceneTools {
                 const result = resolvePath({ reference, requireUnique, expectedPath: expectedPaths.get(reference.id) }, expectedAncestors.get(reference.id));
                 items.push({ index, ok: true, reference, result });
                 succeeded++;
+                const chain = [...result.ancestors, result.reference];
+                if (commonChain === undefined) commonChain = chain;
+                else {
+                    let shared = 0;
+                    while (shared < commonChain.length && shared < chain.length && commonChain[shared].id === chain[shared].id) shared++;
+                    commonChain.length = shared;
+                }
             } catch (error) {
                 items.push({ index, ok: false, reference, error: { code: error instanceof ToolError ? error.code : 'NODE_PATH_QUERY_FAILED', message: (error instanceof Error ? error.message : String(error)).slice(0, 512) } });
             }
         }
-        return { items, succeeded, failed: references.length - succeeded };
+        return { items, succeeded, failed: references.length - succeeded, commonAncestor: commonChain?.length ? commonChain[commonChain.length - 1] : null };
     }
 
     @utcpTool(
