@@ -73,7 +73,7 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
         entriesById.set(entry.id, entry);
     }
     return {
-        catalogHash: lookup.catalogHash, entries: lookup.entries,
+        catalogHash: lookup.catalogHash, entries: lookup.entries.map(entry => ({ ...entry, ...(entry.contexts ? { contexts: [...entry.contexts] } : {}) })),
         domains: lookup.shards.map(shard => ({ name: shard.domain, file: shard.file, count: shard.count })),
         readRecord(id) {
             const entry = entriesById.get(id);

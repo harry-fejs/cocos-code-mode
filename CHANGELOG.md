@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Isolate public external lookup entry objects and context arrays from internal readRecord routing/validation state; consumer edits no longer alter verified lookup selectors or shard selection.
 - Bind parsed external catalog shard cache keys to the selected version so warmed records cannot bypass version validation when another version references identical root/catalog/shard hashes.
 - Revalidate shard record counts against each selected external lookup on warmed-cache reads, refusing changed lookup counts even when cached shard bytes and hashes remain identical.
 - Return independent JSON snapshots of external catalog records so caller edits to nested signatures/metadata cannot poison verified parsed-shard cache entries on later reads.
