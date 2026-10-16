@@ -249,7 +249,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         for (const record of records) {
             checkDeadline();
             if (!record.className) continue;
-            const key = `${record.namespace}:${record.className}`;
+            const key = JSON.stringify([record.namespace, record.className]);
             const existing = classes.get(key);
             if (existing) existing.recordCount = Number(existing.recordCount) + 1;
             else classes.set(key, { id: `${version}:class-index:${key}`, namespace: record.namespace, className: record.className, name: record.className, kind: 'class-summary', recordCount: 1, permitted: false });

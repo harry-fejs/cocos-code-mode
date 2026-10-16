@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Encode namespace/class summary identities as tuples in list_classes, preventing delimiter-bearing source names from collapsing distinct class groups while retaining duplicate-view counts.
 - Distinguish active traversal backedges from shared acyclic objects in opaque timeline keyframe data. Repeated shared objects are revalidated within existing work/text budgets; actual object/array cycles remain invalid.
 - Report truncationReason maxEntries/maxBytes/null on bounded discovery pages, preserving continuation at the first omitted record and including reason metadata in the whole-response byte budget.
 - Traverse opaque keyframe own enumerable keys without a full Object.values allocation, counting aggregate key text up to1MiB UTF-8 and refusing work-queue overflow before enqueue. Existing dense/sparse value validation remains unchanged.
