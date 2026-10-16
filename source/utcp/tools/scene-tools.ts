@@ -668,6 +668,7 @@ export class SceneTools {
                 name: { type: 'string', description: 'Substring match on node name (case-insensitive).' },
                 componentType: { type: 'string', description: 'Exact component class, e.g. cc.Sprite, cc.Label.' },
                 componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
+                excludeComponentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 }, description: 'Require absence of every listed class, AND-combined with presence predicates.' },
                 componentMatch: { type: 'string', enum: ['all', 'any', 'none'], default: 'all' },
                 nameMatch: { type: 'string', enum: ['contains', 'exact'], default: 'contains' },
                 pathContains: { type: 'string', minLength: 1, maxLength: 512 },
@@ -700,12 +701,13 @@ export class SceneTools {
                 { required: ['maxChildren'] },
                 { required: ['siblingIndex'] },
                 { required: ['minSiblingIndex'] },
-                { required: ['maxSiblingIndex'] }
+                { required: ['maxSiblingIndex'] },
+                { required: ['excludeComponentTypes'] }
             ],
         },
         { type: 'object', properties: { nodes: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, parentReference: { type: ['object', 'null'] }, name: { type: 'string' }, path: { type: 'string' }, depth: { type: 'integer' }, componentCount: { type: 'integer' }, active: { type: ['boolean', 'null'] } } } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['nodes', 'total'] }, "GET", ['scene', 'node', 'find', 'search', 'name', 'component', 'filter']
     )
-    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, active?: boolean, minComponents?: number, maxComponents?: number, parentReference?: IInstanceReference, minChildren?: number, maxChildren?: number, siblingIndex?: number, minSiblingIndex?: number, maxSiblingIndex?: number, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, active: boolean | null }>, total: number, truncated: boolean }> {
+    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], excludeComponentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, active?: boolean, minComponents?: number, maxComponents?: number, parentReference?: IInstanceReference, minChildren?: number, maxChildren?: number, siblingIndex?: number, minSiblingIndex?: number, maxSiblingIndex?: number, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, active: boolean | null }>, total: number, truncated: boolean }> {
         for (const [key, maximum] of [['name', 256], ['componentType', 256], ['pathContains', 512]] as const) {
             const value = args[key];
             if (value !== undefined && (typeof value !== 'string' || !value.trim() || value.length > maximum)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `${key} must be a bounded nonempty string.` });
@@ -715,6 +717,8 @@ export class SceneTools {
         if (args.componentTypes !== undefined && (!Array.isArray(args.componentTypes) || args.componentTypes.length < 1 || args.componentTypes.length > 32 || args.componentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentTypes requires1..32 bounded class names.' });
         if (args.componentMatch !== undefined && (!args.componentTypes || !['all', 'any', 'none'].includes(args.componentMatch))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentMatch requires componentTypes and all/any/none.' });
         const types = [...new Set((args.componentTypes ?? (args.componentType ? [args.componentType] : [])).map(type => type.replace(/^cc\./, '')))];
+        if (args.excludeComponentTypes !== undefined && (!Array.isArray(args.excludeComponentTypes) || args.excludeComponentTypes.length < 1 || args.excludeComponentTypes.length > 32 || args.excludeComponentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'excludeComponentTypes requires1..32 bounded class names.' });
+        const absentTypes = [...new Set(args.excludeComponentTypes?.map(type => type.replace(/^cc\./, '')))];
         if (args.rootReference !== undefined && (typeof args.rootReference?.id !== 'string' || !args.rootReference.id.trim() || args.rootReference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'rootReference requires a bounded node UUID.' });
         if (args.parentReference !== undefined && (typeof args.parentReference?.id !== 'string' || !args.parentReference.id.trim() || args.parentReference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'parentReference requires a bounded node UUID.' });
         if (args.minChildren !== undefined && (!Number.isInteger(args.minChildren) || args.minChildren < 0 || args.minChildren > 10000) || args.maxChildren !== undefined && (!Number.isInteger(args.maxChildren) || args.maxChildren < 0 || args.maxChildren > 10000) || args.minChildren !== undefined && args.maxChildren !== undefined && args.minChildren > args.maxChildren) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Child count filters must be integers0..10000 with minChildren<=maxChildren.' });
@@ -726,7 +730,7 @@ export class SceneTools {
         if (args.minDepth !== undefined && (!Number.isInteger(args.minDepth) || args.minDepth < 0 || args.minDepth > 99) || args.maxDepth !== undefined && (!Number.isInteger(args.maxDepth) || args.maxDepth < 0 || args.maxDepth > 99) || args.minDepth !== undefined && args.maxDepth !== undefined && args.minDepth > args.maxDepth) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Depth filters must be integers0..99 with minDepth<=maxDepth.' });
         if (args.active !== undefined && typeof args.active !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'active must be a boolean local-state selector.' });
         if (args.minComponents !== undefined && (!Number.isInteger(args.minComponents) || args.minComponents < 0 || args.minComponents > 10000) || args.maxComponents !== undefined && (!Number.isInteger(args.maxComponents) || args.maxComponents < 0 || args.maxComponents > 10000) || args.minComponents !== undefined && args.maxComponents !== undefined && args.minComponents > args.maxComponents) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component count filters must be integers0..10000 with minComponents<=maxComponents.' });
-        if (!args.name && !types.length && !args.pathContains && !args.rootReference && !args.parentReference && args.active === undefined && args.minComponents === undefined && args.maxComponents === undefined && args.minChildren === undefined && args.maxChildren === undefined && args.siblingIndex === undefined && args.minSiblingIndex === undefined && args.maxSiblingIndex === undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'At least one node selector is required.' });
+        if (!args.name && !types.length && !absentTypes.length && !args.pathContains && !args.rootReference && !args.parentReference && args.active === undefined && args.minComponents === undefined && args.maxComponents === undefined && args.minChildren === undefined && args.maxChildren === undefined && args.siblingIndex === undefined && args.minSiblingIndex === undefined && args.maxSiblingIndex === undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'At least one node selector is required.' });
         const limit = boundedListLimit(args.maxResults);
         const queried = await Editor.Message.request('scene', 'query-node-tree');
         if (!queried) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'No open hierarchy.' });
@@ -751,13 +755,13 @@ export class SceneTools {
             const components = node.components ?? [];
             if (!Array.isArray(components)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed component inventory.' });
             const attachedTypes = new Set<string>();
-            if (types.length) for (const component of components) {
+            if (types.length || absentTypes.length) for (const component of components) {
                 const candidates = [...componentCandidates(component), component?.__type__, componentClassId(component)].filter((type): type is string => typeof type === 'string' && !!type.trim());
                 if (!candidates.length) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Component class identity is unavailable; presence/absence cannot be determined.' });
                 for (const type of candidates) attachedTypes.add(type.replace(/^cc\./, ''));
             }
             const matched = types.filter(type => attachedTypes.has(type)).length;
-            const compOk = !types.length || (args.componentMatch === 'any' ? matched > 0 : args.componentMatch === 'none' ? matched === 0 : matched === types.length);
+            const compOk = (!types.length || (args.componentMatch === 'any' ? matched > 0 : args.componentMatch === 'none' ? matched === 0 : matched === types.length)) && !absentTypes.some(type => attachedTypes.has(type));
             const componentCountOk = (args.minComponents === undefined || components.length >= args.minComponents) && (args.maxComponents === undefined || components.length <= args.maxComponents);
             const depthOk = (args.minDepth === undefined || relativeDepth >= args.minDepth) && (args.maxDepth === undefined || relativeDepth <= args.maxDepth);
             const rawActive = node.active;
