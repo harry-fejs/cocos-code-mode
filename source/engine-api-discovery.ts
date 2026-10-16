@@ -65,6 +65,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     };
     const version = args.targetVersion ?? '3.7.3';
     if (!Object.prototype.hasOwnProperty.call(VERSIONS, version)) throw new ToolError({ code: 'UNSUPPORTED_VERSION', status: 422, message: 'Only catalogued versions 3.7.3 and 3.8.8 are available.' });
+    if (args.category !== undefined && args.category !== 'engine_api' && args.category !== 'component_schema') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Catalog category must be engine_api or component_schema.' });
     if (args.cursor !== undefined && (typeof args.cursor !== 'string' || !/^[A-Za-z0-9_-]{1,2048}$/.test(args.cursor))) throw new ToolError({ code: 'STALE_CURSOR', status: 409, message: 'Catalog cursor must be a bounded nonempty base64url token.' });
     for (const [field, maximum] of [['className', 256], ['domain', 256], ['filter', 1024]] as const) {
         const value = args[field];
