@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Verify installed record version and version/namespace ID prefix against the selected catalog before filtering, refusing foreign-version or conflicting namespaced identities with CATALOG_INVALID.
 - Reject duplicate installed shard filenames (including case-only collisions) before navigation or shard reads, avoiding duplicate summary counts and ambiguous filesystem identities.
 - Support Graphics scalar/array script references and requiredComponents using native Inspector/dependency metadata. Null/empty defaults only; source generation does not draw, create UI resources or attach components.
 - Reject duplicate record IDs across scanned installed catalog shards before filtering, preventing ambiguous exact-record lookup and duplicate pagination results. Unread shards are not independently verified.

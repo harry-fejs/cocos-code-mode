@@ -204,6 +204,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         if (shard.records.length !== domain.count) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed shard record count differs from its index.' });
         for (const record of shard.records) {
             checkDeadline();
+            if (record.version !== version || !record.id.startsWith(`${version}:${record.namespace}:`)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed record version or namespaced identity differs from its catalog.' });
             if (installedRecordIds.has(record.id)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed catalog contains duplicate record IDs.' });
             installedRecordIds.add(record.id);
             if (args.recordId !== undefined && record.id !== args.recordId) continue;
