@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-16",
+  "provider": "ccp3x_50756",
+  "projectPath": "G:/_ws/cc-30-fw-sync/cc30-kproject-c99",
+  "instanceId": "3ef20475afa6577395a1a71139efe2f2",
+  "creatorVersion": "3.7.3",
+  "artifact": {"commit": "48efc38b", "dirty": false, "builtAt": "2026-10-16T02:03:09.013Z", "mode": "readable"},
+  "connection": {"manualAvailable": true, "registered": true, "handshakeProjectMatches": true, "sceneProbe": "responsive"},
+  "sceneBefore": {"uuid": "80dddede-15e3-4d8e-8f37-0f1263a0867c", "dirty": false, "nodeCount": 546},
+  "passed": [
+    "Live manual exposes runtimeScenarioRun expanded typed operations and runtimeScenarioCancel requiring sessionId/runId",
+    "Real Code Mode editorQuery list_namespaces identifies installed reviewed-seven-class pilot with fullCatalogLoaded:false",
+    "Real Code Mode get_related_types Button._getRenderScene returns RenderScene signature.returnReferences with metadata.signatureIndex:0 and permitted:false",
+    "Direct live HTTP delay25ms returns success with exact runId, wall-clock timing and runtimeVerified:false",
+    "Direct live HTTP overlapping run refuses RUNTIME_SCENARIO_BUSY",
+    "Direct live HTTP stale cancellation refuses RUNTIME_SCENARIO_IDENTITY_MISMATCH",
+    "Direct live HTTP matching cancellation acknowledges nativeWorkCancelled:false; running delay fails RUNTIME_SCENARIO_CANCELLED with pendingMayComplete:true",
+    "Ownership remains active immediately after cancellation and becomes inactive after pending delay settles",
+    "Negative later audio seek rejected400 at HTTP schema before dispatch",
+    "Audio assertion missing condition rejects INVALID_ARGUMENT at step1",
+    "Observe without session rejects SESSION_NOT_FOUND with runId/failedStep/outcomes",
+    "Delay exceeding total deadline rejects RUNTIME_SCENARIO_TIMEOUT with runId/failedStep/outcomes"
+  ],
+  "blocked": {
+    "runtimePositive": "Preview state stop, platform browser, no attached Game View session. No project preference changes or gameplay start performed.",
+    "fullCatalog": "Owner project has pilot only; full catalog declaration evidence and external loader require explicitly adopted config. No owner config modified.",
+    "offlineGenerators": "Type metadata cycle/collection/callable diagnostics and ledger grouping are offline generators, not Creator routes. Historical compiler/source smoke is not this live verification."
+  },
+  "transportLimitation": "First multi-call Code Mode negative/concurrent chain returned success:true with ERROR logs and no intermediate results; treated as failure. Creator notification sent, then negative/concurrency tests executed against exact live provider HTTP to preserve statuses/results.",
+  "mutations": {"sceneAssets": false, "playback": false, "preferences": false, "ephemeralScenarioHandlesOnly": true, "notificationOpenedAgentInbox": true},
+  "qualificationPromoted": false,
+  "cleanup": "Pending test delays settled; inactive cancellation confirmed. Final scene and provider identity checked separately."
+}

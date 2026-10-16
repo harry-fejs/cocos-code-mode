@@ -661,57 +661,70 @@ export class SceneTools {
 
     @utcpTool(
         'findNodes',
-        'Find nodes by name and/or component type. In-memory walk of query-node-tree; substring match on name, exact match on component class.',
+        'Find nodes with AND-combined name/component/path filters, optionally inside an exact subtree UUID. Read-only bounded hierarchy traversal; paths remain relative to the open scene/prefab root.',
         {
             type: 'object',
             properties: {
                 name: { type: 'string', description: 'Substring match on node name (case-insensitive).' },
                 componentType: { type: 'string', description: 'Exact component class, e.g. cc.Sprite, cc.Label.' },
+                nameMatch: { type: 'string', enum: ['contains', 'exact'], default: 'contains' },
+                pathContains: { type: 'string', minLength: 1, maxLength: 512 },
+                rootReference: InstanceReferenceSchema,
                 maxResults: { type: 'number', minimum: 1, maximum: MAX_LIST_LIMIT, default: DEFAULT_LIST_LIMIT, description: 'Cap results.' }
             },
             anyOf: [
                 { required: ['name'] },
-                { required: ['componentType'] }
+                { required: ['componentType'] },
+                { required: ['pathContains'] },
+                { required: ['rootReference'] }
             ],
         },
         { type: 'object', properties: { nodes: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, name: { type: 'string' }, path: { type: 'string' } } } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['nodes', 'total'] }, "GET", ['scene', 'node', 'find', 'search', 'name', 'component', 'filter']
     )
-    async findNodes(args: { name?: string, componentType?: string, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, name: string, path: string }>, total: number, truncated: boolean }> {
-        if (!args.name && !args.componentType) throw new Error('findNodes requires at least one of name or componentType');
-        let treeBase: any = await Editor.Message.request('scene', 'query-node-tree');
-        if (!treeBase) throw new Error('Scene is empty or could not retrieve scene tree.');
-        treeBase = (await this.findPrefabEditRoot(treeBase)) ?? treeBase;
-        const nameNeedle = args.name ? args.name.toLowerCase() : null;
-        const compNeedle = args.componentType || null;
+    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, pathContains?: string, rootReference?: IInstanceReference, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, name: string, path: string }>, total: number, truncated: boolean }> {
+        for (const [key, maximum] of [['name', 256], ['componentType', 256], ['pathContains', 512]] as const) {
+            const value = args[key];
+            if (value !== undefined && (typeof value !== 'string' || !value.trim() || value.length > maximum)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `${key} must be a bounded nonempty string.` });
+        }
+        if (args.nameMatch !== undefined && (!args.name || !['contains', 'exact'].includes(args.nameMatch))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'nameMatch requires name and contains/exact.' });
+        if (args.rootReference !== undefined && (typeof args.rootReference?.id !== 'string' || !args.rootReference.id.trim() || args.rootReference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'rootReference requires a bounded node UUID.' });
+        if (!args.name && !args.componentType && !args.pathContains && !args.rootReference) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'At least one node selector is required.' });
         const limit = boundedListLimit(args.maxResults);
+        const queried = await Editor.Message.request('scene', 'query-node-tree');
+        if (!queried) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'No open hierarchy.' });
+        const root = (await this.findPrefabEditRoot(queried)) ?? queried;
         const hits: Array<{ reference: IInstanceReference, name: string, path: string }> = [];
-        let total = 0;
-        const stack: Array<{ node: any, path: string }> = [{ node: treeBase, path: treeBase.name || '' }];
+        const stack = [{ node: root, path: sceneTreeNodeName(root), inScope: !args.rootReference }];
+        const visited = new Set<object>();
+        let scheduled = 1, total = 0, rootFound = !args.rootReference;
         while (stack.length) {
-            const { node, path: curPath } = stack.pop()!;
-            const nodeName: string = node.name || '';
-            const comps: any[] = node.components || [];
-            const nameOk = !nameNeedle || nodeName.toLowerCase().includes(nameNeedle);
-            // docs §1 bug class, second site: the dump's component type is inconsistent
-            // and user scripts may carry it as __type__/cid. Match with the same tolerance
-            // nodeComponentsGet uses rather than a bare equality.
-            const compOk = !compNeedle || comps.some((c: any) => {
-                const declared: string | undefined = c?.type ?? c?.__type__ ?? c?.cid;
-                if (!declared) return false;
-                return declared === compNeedle || declared === `cc.${compNeedle}` || declared.replace(/^cc\./, '') === compNeedle.replace(/^cc\./, '');
-            });
-            if (nameOk && compOk) {
+            const { node, path: nodePath, inScope } = stack.pop()!;
+            if (!node || typeof node !== 'object' || visited.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed or cyclic scene hierarchy.' });
+            visited.add(node);
+            const id = nodeUuidFromSceneUsage(node, 'node search');
+            const scoped = inScope || id === args.rootReference?.id;
+            if (id === args.rootReference?.id) rootFound = true;
+            const name = sceneTreeNodeName(node);
+            const nameOk = !args.name || (args.nameMatch === 'exact' ? name.toLowerCase() === args.name.toLowerCase() : name.toLowerCase().includes(args.name.toLowerCase()));
+            const components = node.components ?? [];
+            if (!Array.isArray(components)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed component inventory.' });
+            const compOk = !args.componentType || components.some((component: any) => [...componentCandidates(component), component?.__type__, componentClassId(component)].some(type => typeof type === 'string' && type.replace(/^cc\./, '') === args.componentType!.replace(/^cc\./, '')));
+            if (scoped && nameOk && compOk && (!args.pathContains || nodePath.toLowerCase().includes(args.pathContains.toLowerCase()))) {
                 total++;
-                if (hits.length < limit) hits.push({ reference: { id: node.uuid, type: 'cc.Node' }, name: nodeName, path: curPath });
+                if (hits.length < limit) hits.push({ reference: { id, type: 'cc.Node' }, name, path: nodePath });
             }
-            const children: any[] = node.children || [];
-            for (let i = children.length - 1; i >= 0; i--) {
-                const ch = children[i];
-                const childPath = curPath ? `${curPath}/${ch.name || ''}` : (ch.name || '');
-                stack.push({ node: ch, path: childPath });
+            const children = node.children ?? [];
+            if (!Array.isArray(children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed hierarchy children.' });
+            scheduled += children.length;
+            if (scheduled > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Node search exceeds 10000 hierarchy nodes; no complete result returned.' });
+            for (let index = children.length - 1; index >= 0; index--) {
+                const child = children[index];
+                if (!child || typeof child !== 'object' || Array.isArray(child)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed hierarchy child.' });
+                stack.push({ node: child, path: `${nodePath}/${sceneTreeNodeName(child)}`, inScope: scoped });
             }
         }
-        return { nodes: hits, total, truncated: total > limit };
+        if (!rootFound) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Search subtree UUID is absent from the open hierarchy.' });
+        return { nodes: hits, total, truncated: total > hits.length };
     }
 
     @utcpTool(

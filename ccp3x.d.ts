@@ -815,6 +815,9 @@ declare namespace ccp3x {
     /** Find all nodes in the current scene that reference the given asset uuid (reverse-reference / impact analysis). */
     function findNodesByAsset(args: { reference: InstanceReference }): { references: InstanceReference[] };
 
+    /** Read-only AND filters; case-insensitive names/path, exact component class; subtree includes its root. Max10000 traversed nodes, no implicit mutation. */
+    function findNodes(args: { name?: string; nameMatch?: 'contains' | 'exact'; componentType?: string; pathContains?: string; rootReference?: InstanceReference; maxResults?: number }): { nodes: Array<{ reference: InstanceReference; name: string; path: string }>; total: number; truncated: boolean };
+
     /** Find all nodes whose asset references are missing/broken. QA/health check for scene integrity. */
     function findNodesWithMissingAssets(): { references: InstanceReference[] };
 

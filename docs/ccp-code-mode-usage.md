@@ -180,6 +180,8 @@ CCP controls Cocos Creator 3.x through tools for scenes, nodes, components, insp
 4. `inspectorSet` or `nodeBatchSet` for the mutation (C3: snapshot for undo).
 5. Read the changed field again when the task needs confirmation.
 
+Use `findNodes({rootReference:{id},name:'Play',nameMatch:'exact',componentType:'cc.Button',pathContains:'HUD',maxResults:50})` for AND-combined read-only searches. Names/path substrings are case-insensitive; component class matching is exact with optional cc. prefix. Subtree scope includes its root, while returned paths retain the open scene/prefab root. Omit other filters to list the selected subtree. Results report full match total and truncation; traversal over10000 nodes refuses rather than returning a misleading partial total. Search results are candidates, not bulk edit/delete authorization; re-read exact UUIDs before mutation.
+
 ### Assets and prefabs
 
 - Discover with `assetQuery`, `assetGetTree`, or `assetGetAtPath`.
