@@ -88,7 +88,7 @@ export class ComponentScriptTools {
             throw new ToolError({ code: 'SOURCE_CREATE_OUTCOME_UNKNOWN', status: 502, message: 'Asset DB creation did not return a confirmed outcome. Source may exist; inspect the exact path before any further action. No retry or deletion was attempted.', details: { assetUrl: source.assetUrl, expectedSha256: generated.sha256, sourceCreated: null, classRegistration: 'unknown', attached: false, runtimeVerified: false, sceneSaved: false } });
         }
         invalidateAfterWrite();
-        if (!created || typeof created !== 'object' || !('uuid' in created) || typeof created.uuid !== 'string' || !created.uuid) throw new ToolError({ code: 'SOURCE_CREATE_OUTCOME_UNKNOWN', status: 502, message: 'Asset DB did not acknowledge source identity. Source may exist; no retry or deletion was attempted.', details: { assetUrl: source.assetUrl, expectedSha256: generated.sha256, sourceCreated: null, classRegistration: 'unknown', attached: false, runtimeVerified: false, sceneSaved: false } });
+        if (!created || typeof created !== 'object' || Array.isArray(created) || !('uuid' in created) || typeof created.uuid !== 'string' || !created.uuid.trim() || created.uuid.length > 256) throw new ToolError({ code: 'SOURCE_CREATE_OUTCOME_UNKNOWN', status: 502, message: 'Asset DB did not acknowledge source identity. Source may exist; no retry or deletion was attempted.', details: { assetUrl: source.assetUrl, expectedSha256: generated.sha256, sourceCreated: null, classRegistration: 'unknown', attached: false, runtimeVerified: false, sceneSaved: false } });
         await readComponentScriptSource(source, created.uuid, generated);
         return { ...result, sourceCreated: true, uuid: created.uuid, classRegistration: 'pending' };
     }

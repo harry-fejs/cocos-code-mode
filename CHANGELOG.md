@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Require nonarray source-creation acknowledgement records with nonblank bounded UUIDs before readback. Malformed acknowledgements retain SOURCE_CREATE_OUTCOME_UNKNOWN and never trigger automatic create retry/deletion.
 - Refuse contradictory discovery className/reference.type selectors before catalog access or Inspector dispatch, using existing cc. prefix normalization and TYPE_MISMATCH rather than waiting for live observation.
 - Reuse manifest aggregation for unfiltered external list_namespaces, avoiding a second full lookup-entry iteration after loader validation; record-level filters retain entry-based counts and cursor semantics.
 - Recheck created-script file-handle and current-path dev/inode/size/mtime/ctime after Asset DB readback, refusing observed content/path replacement drift without create retries or deletion. Optimistic metadata checks are not atomic snapshot or ABA protection.
