@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Reject null/primitive/array source signature entries in get_signature with CATALOG_INVALID, matching declaration-signature entry shape checks while preserving valid metadata and non-permitted discovery semantics.
+- Support DirectionalLight/SphereLight/SpotLight scalar/array script references using Creator3.7 native types. Null/independent empty defaults only; no light construction, baking or pipeline mutation. PointLight is not inferred from other Creator versions.
 - Refuse malformed declaration-evidence/signature collection shapes in get_signature while preserving absent and source-only evidence; saved declaration provenance remains separate and non-permitted.
 - Support ImageAsset/TextureCube/EffectAsset/PhysicsMaterial scalar/array script references with null/independent empty defaults. No image/texture load, shader compilation, physics material assignment or automatic asset binding.
 - Default discovery operation/version only when omitted; explicit null operation refuses INVALID_ARGUMENT and null/nonstring targetVersion refuses UNSUPPORTED_VERSION before catalog access.
