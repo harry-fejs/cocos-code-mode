@@ -38,7 +38,12 @@ function limit(value: number | undefined, fallback: number, maximum: number): nu
 export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Record<string, unknown>> {
     if (!args || typeof args !== 'object' || Array.isArray(args)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Catalog discovery requires an argument object.' });
     const timeoutMs = limit(args.timeoutMs, 5000, 30000);
-    return discoverWithinDeadline(args, Date.now() + timeoutMs, { remaining: limit(args.maxPages, 256, 1000), recordsRemaining: 100000, bytesRemaining: 32 * 1024 * 1024 });
+    try {
+        return await discoverWithinDeadline(args, Date.now() + timeoutMs, { remaining: limit(args.maxPages, 256, 1000), recordsRemaining: 100000, bytesRemaining: 32 * 1024 * 1024 });
+    } catch (error: unknown) {
+        if (error instanceof z.ZodError) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Catalog metadata does not match its required schema.' });
+        throw error;
+    }
 }
 
 async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: number, pages: { remaining: number; recordsRemaining: number; bytesRemaining: number }): Promise<Record<string, unknown>> {
