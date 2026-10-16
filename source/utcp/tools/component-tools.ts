@@ -73,6 +73,7 @@ export class ComponentTools {
             type: 'object',
             properties: {
                 reference: InstanceReferenceSchema,
+                componentReference: InstanceReferenceSchema,
                 componentType: { type: 'string', minLength: 1, maxLength: 256 },
                 componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
                 offset: { type: 'integer', minimum: 0, maximum: 10000 },
@@ -84,8 +85,9 @@ export class ComponentTools {
         },
         { type: 'object', properties: { references: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, type: { type: 'string' }, componentIndex: { type: 'integer', minimum: 0 }, enabled: { type: 'boolean' } }, required: ['id', 'componentIndex'] } }, inventorySummary: { type: 'object', properties: { total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' }, classCounts: { type: 'object', additionalProperties: { type: 'integer', minimum: 1 } } }, required: ['total', 'enabled', 'disabled', 'unknownEnabled', 'classCounts'] }, total: { type: 'integer' }, offset: { type: 'integer' }, nextOffset: { type: ['integer', 'null'] }, truncated: { type: 'boolean' }, revision: { type: 'string' } }, required: ['references', 'inventorySummary', 'total', 'offset', 'nextOffset', 'truncated', 'revision'] }, 'GET', ['scene', 'node', 'component', 'get', 'inspection']
     )
-    async nodeComponentsGet(args: { reference: IInstanceReference, componentType?: string, componentTypes?: string[], enabled?: boolean, offset?: number, limit?: number, expectedRevision?: string }): Promise<{ references: Array<IInstanceReference & { componentIndex: number, enabled?: boolean }>, inventorySummary: { total: number, enabled: number, disabled: number, unknownEnabled: number, classCounts: Record<string, number> }, total: number, offset: number, nextOffset: number | null, truncated: boolean, revision: string }> {
+    async nodeComponentsGet(args: { reference: IInstanceReference, componentReference?: IInstanceReference, componentType?: string, componentTypes?: string[], enabled?: boolean, offset?: number, limit?: number, expectedRevision?: string }): Promise<{ references: Array<IInstanceReference & { componentIndex: number, enabled?: boolean }>, inventorySummary: { total: number, enabled: number, disabled: number, unknownEnabled: number, classCounts: Record<string, number> }, total: number, offset: number, nextOffset: number | null, truncated: boolean, revision: string }> {
         if (args.expectedRevision !== undefined && (typeof args.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedRevision))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedRevision requires a SHA256 revision token.' });
+        if (args.componentReference !== undefined && (typeof args.componentReference?.id !== 'string' || !args.componentReference.id.trim() || args.componentReference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentReference requires a bounded exact component UUID.' });
         if (args.componentType !== undefined && args.componentTypes !== undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Choose componentType or componentTypes, not both.' });
         const types = args.componentTypes ?? (args.componentType !== undefined ? [args.componentType] : undefined);
         if (types !== undefined && (!Array.isArray(types) || types.length < 1 || types.length > 32 || types.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component class selectors require1..32 bounded names.' });
@@ -130,13 +132,14 @@ export class ComponentTools {
             else inventorySummary.unknownEnabled++;
             if (args.enabled !== undefined && typeof rawEnabled !== 'boolean') throw new ToolError({ code: 'COMPONENT_STATE_UNAVAILABLE', status: 422, message: 'Serialized enabled state is unavailable; no enabled-filtered result returned.' });
             inventory.push({ id: compUuid, type: declaredType, ...(typeof rawEnabled === 'boolean' ? { enabled: rawEnabled } : {}) });
-            if ((!selectedTypes || selectedTypes.has(declaredType.replace(/^cc\./, ''))) && (args.enabled === undefined || rawEnabled === args.enabled)) {
+            if ((args.componentReference === undefined || compUuid === args.componentReference.id) && (!selectedTypes || selectedTypes.has(declaredType.replace(/^cc\./, ''))) && (args.enabled === undefined || rawEnabled === args.enabled)) {
                 foundComponents.push({ id: compUuid, type: declaredType, componentIndex, ...(typeof rawEnabled === 'boolean' ? { enabled: rawEnabled } : {}) });
             }
         }
 
-        const revision = createHash('sha256').update(JSON.stringify({ node: args.reference.id, inventory, selector: { types: args.componentType !== undefined ? ['single', args.componentType.replace(/^cc\./, '')] : selectedTypes ? ['multi', [...selectedTypes].sort()] : ['all'], enabled: args.enabled ?? null } })).digest('hex');
+        const revision = createHash('sha256').update(JSON.stringify({ node: args.reference.id, inventory, selector: { componentId: args.componentReference?.id ?? null, types: args.componentType !== undefined ? ['single', args.componentType.replace(/^cc\./, '')] : selectedTypes ? ['multi', [...selectedTypes].sort()] : ['all'], enabled: args.enabled ?? null } })).digest('hex');
         if (args.expectedRevision !== undefined && args.expectedRevision !== revision) throw new ToolError({ code: 'COMPONENT_INVENTORY_CHANGED', status: 409, message: 'Component inventory or selector changed; restart pagination from a fresh observation.' });
+        if (args.componentReference !== undefined && !identities.has(args.componentReference.id)) throw new ToolError({ code: 'COMPONENT_NOT_ATTACHED', status: 404, message: 'The exact component UUID is not attached to the requested node.' });
         if (!foundComponents.length && args.componentType) throw new Error(`Components of type ${args.componentType} not found on node ${args.reference.id}`);
         if (offset > foundComponents.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offset exceeds the observed filtered inventory.' });
         const references = foundComponents.slice(offset, args.limit === undefined ? undefined : offset + args.limit);
