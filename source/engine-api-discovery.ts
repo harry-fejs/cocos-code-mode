@@ -187,6 +187,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         } catch { throw new ToolError({ code: 'STALE_CURSOR', status: 409, message: 'Catalog cursor does not match this version/filter/snapshot.' }); }
     }
     const records: ApiRecord[] = [];
+    const manifestNamespaces = operation === 'list_namespaces' && !external && [args.filter, args.kind, args.module, args.visibility, args.context, args.evidenceState, args.member].every(value => value === undefined);
     if (external && operation !== 'list_domains') {
         for (const entry of external.entries) {
             checkDeadline();
@@ -206,7 +207,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         }
     }
     const installedRecordIds = new Set<string>();
-    for (const domain of operation === 'list_domains' || external ? [] : index.domains) {
+    for (const domain of operation === 'list_domains' || external || manifestNamespaces ? [] : index.domains) {
         checkDeadline();
         if (args.domain && domain.name !== args.domain) continue;
         if (args.namespace && !domain.name.startsWith(`${args.namespace}.`)) continue;
@@ -360,7 +361,14 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         records.splice(0, records.length, ...related.map((item, index) => ({ id: `${version}:related:${source.id}:${index}`, namespace: source.namespace, kind: 'related-type', name: typeof item.name === 'string' ? item.name : undefined, relation: item.relation, metadata: item, permitted: false })));
     } else if (operation === 'list_namespaces') {
         const namespaces = new Map<string, number>();
-        for (const record of records) namespaces.set(record.namespace, (namespaces.get(record.namespace) ?? 0) + 1);
+        if (manifestNamespaces) {
+            for (const domain of index.domains) {
+                checkDeadline();
+                const namespace = domain.name.split('.')[0];
+                if (args.domain && domain.name !== args.domain || args.namespace && namespace !== args.namespace || domain.count === 0) continue;
+                namespaces.set(namespace, (namespaces.get(namespace) ?? 0) + domain.count);
+            }
+        } else for (const record of records) namespaces.set(record.namespace, (namespaces.get(record.namespace) ?? 0) + 1);
         records.splice(0, records.length, ...[...namespaces].sort(([a], [b]) => a.localeCompare(b)).map(([namespace, recordCount]) => ({ id: `${version}:namespace:${namespace}`, namespace, name: namespace, kind: 'namespace-summary', recordCount, permitted: false })));
     } else if (operation === 'list_members') {
         const members = new Map<string, ApiRecord>();

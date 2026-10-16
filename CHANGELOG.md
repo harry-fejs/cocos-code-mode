@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Aggregate unfiltered installed list_namespaces counts from manifest domains without shard hydration; record-level selectors retain the existing bounded scan. Manifest counts are catalog metadata, not independently verified shard evidence.
 - Recheck created script Asset DB UUID/path and project-owned source path after bounded content readback. Identity drift refuses SOURCE_READBACK_UNCONFIRMED without retrying creation or deleting the uncertain source.
 - Preserve matched catalog target presence before navigation projection so list_members on an existing memberless class returns an empty terminal page; truly absent classes still refuse TARGET_NOT_FOUND.
 - Exclude native/validator messages from optional class availability failure metadata, reporting a fixed reason and typed unavailableCode instead; discovery deadline errors still propagate without fallback success.
