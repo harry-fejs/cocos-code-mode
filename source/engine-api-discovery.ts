@@ -44,6 +44,18 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     const checkDeadline = () => {
         if (Date.now() >= deadline) throw new ToolError({ code: 'CATALOG_QUERY_TIMEOUT', status: 409, message: 'Catalog discovery exceeded its cooperative deadline; no complete result returned.' });
     };
+    const observeWithinDeadline = async <T>(observe: () => Promise<T>): Promise<T> => {
+        checkDeadline();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+            const expired = new Promise<never>((_resolve, reject) => {
+                timer = setTimeout(() => reject(new ToolError({ code: 'CATALOG_QUERY_TIMEOUT', status: 409, message: 'Catalog observation exceeded the caller deadline; native read was not cancelled.' })), Math.max(0, deadline - Date.now()));
+            });
+            const result = await Promise.race([observe(), expired]);
+            checkDeadline();
+            return result;
+        } finally { clearTimeout(timer); }
+    };
     checkDeadline();
     const readPage = <T>(read: () => T): T => {
         checkDeadline();
@@ -313,11 +325,12 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     let live: Record<string, unknown> = { checked: false, context: 'edit-scene', available: null, writablePaths: [], mutationAuthorized: false };
     if (args.className && version === '3.7.3' && !args.reference) {
         try {
-            const availability = z.object({ available: z.boolean(), className: z.string(), engineVersion: z.string().nullable(), context: z.literal('edit-scene') }).parse(await Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'engineApiClassAvailability', args: [{ className: args.className }] }));
+            const availability = z.object({ available: z.boolean(), className: z.string(), engineVersion: z.string().nullable(), context: z.literal('edit-scene') }).parse(await observeWithinDeadline(() => Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'engineApiClassAvailability', args: [{ className: args.className }] })));
             if (availability.className.replace(/^cc\./, '') !== args.className.replace(/^cc\./, '')) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: 'Availability probe returned a different class identity.' });
             if (availability.engineVersion !== version) throw new ToolError({ code: 'VERSION_CONTEXT_MISMATCH', status: 422, message: 'Availability probe engine version does not match the selected catalog.' });
             live = { ...live, ...availability, checked: true, versionMatches: availability.engineVersion === version };
         } catch (error: unknown) {
+            if (error instanceof ToolError && error.code === 'CATALOG_QUERY_TIMEOUT') throw error;
             live = { ...live, unavailableReason: error instanceof Error ? error.message.slice(0, 256) : 'Class availability probe unavailable' };
         }
     }
