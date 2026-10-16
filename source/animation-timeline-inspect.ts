@@ -74,9 +74,11 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     const diagnostics: Array<{ code: string; location: string }> = [];
     let diagnosticCount = 0, supported = true;
     let matchedDiagnostics = 0;
+    const diagnosticCounts = new Map<string, number>();
     const diagnosticHash = createHash('sha256');
     const issue = (code: string, location: string, unsupported = false): void => {
         diagnosticHash.update(JSON.stringify([code, location]));
+        diagnosticCounts.set(code, (diagnosticCounts.get(code) ?? 0) + 1);
         if (options.diagnosticCode === undefined || options.diagnosticCode === code) {
             if (matchedDiagnostics >= bounds.diagnosticOffset && diagnostics.length < bounds.diagnosticLimit) diagnostics.push({ code, location });
             matchedDiagnostics++;
@@ -261,6 +263,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         nextTrackOffset: null as number | null, nextEventOffset: null as number | null,
         tracks: selectedTracks.slice(bounds.trackOffset, bounds.trackOffset + bounds.trackLimit), events: selectedEvents.slice(bounds.eventOffset, bounds.eventOffset + bounds.eventLimit),
         diagnostics, diagnosticCount,
+        diagnosticSummary: Array.from(diagnosticCounts, ([code, count]) => ({ code, count })),
         diagnosticCode: options.diagnosticCode ?? null, matchedDiagnostics,
         diagnosticOffset: bounds.diagnosticOffset, diagnosticLimit: bounds.diagnosticLimit,
         nextDiagnosticOffset: bounds.diagnosticOffset + diagnostics.length < matchedDiagnostics ? bounds.diagnosticOffset + diagnostics.length : null,
