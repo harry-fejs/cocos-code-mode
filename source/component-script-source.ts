@@ -11,6 +11,7 @@ export type ComponentPropertyDescriptor = { animatable?: boolean; editorOnly?: b
     | { name: string; type: 'number'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
     | { name: string; type: 'integer'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
     | { name: string; type: 'enum'; array?: false; entries: Array<{ name: string; value: number }>; default: number }
+    | { name: string; type: 'enum'; array: true; entries: Array<{ name: string; value: number }>; default?: number[] }
     | { name: string; type: 'string'; array?: false; default?: string; multiline?: boolean }
     | { name: string; type: 'boolean'; array?: false; default?: boolean }
     | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }
@@ -106,12 +107,20 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
             numericOptions = `, min: ${literal(min)}, max: ${literal(max)}` + (step === undefined ? '' : `, step: ${literal(step as number)}`) + (slider === undefined ? '' : `, slide: ${literal(slider as boolean)}`);
         }
         if (type === 'enum') {
-            if (row.array === true || !Array.isArray(row.entries) || row.entries.length < 1 || row.entries.length > 64) invalid('Scalar enum requires 1..64 explicit entries.');
+            if (!Array.isArray(row.entries) || row.entries.length < 1 || row.entries.length > 64) invalid('Enum requires 1..64 explicit entries.');
             const labels = new Set<string>(), values = new Set<number>(), entries: string[] = [];
             for (const entry of row.entries) {
                 assertComponentScriptInput(entry, ['name', 'value']);
                 if (!identifier(entry.name) || entry.name === '__enums__' || labels.has(entry.name) || typeof entry.value !== 'number' || !Number.isSafeInteger(entry.value) || entry.value < 0 || entry.value > 2147483647 || values.has(entry.value)) invalid('Enum labels and nonnegative int32 values must be safe and unique; automatic -1 values are not supported.');
                 labels.add(entry.name); values.add(entry.value); entries.push(`${literal(entry.name)}: ${literal(entry.value)}`);
+            }
+            if (row.array === true) {
+                const defaults = hasDefault ? row.default : [];
+                if (!Array.isArray(defaults) || defaults.length > 256) invalid('Enum array defaults must contain at most 256 declared values.');
+                for (let index = 0; index < defaults.length; index++) if (!Object.prototype.hasOwnProperty.call(defaults, index) || typeof defaults[index] !== 'number' || !values.has(defaults[index])) invalid('Enum array defaults must be dense and select declared values.');
+                names.add(row.name); imports.add('Enum');
+                fields.push(`    @property({ type: [Enum({ ${entries.join(', ')} })]${tooltip} })`, `    ${row.name}: number[] = [${defaults.map(value => literal(value)).join(', ')}];`, '');
+                continue;
             }
             if (typeof row.default !== 'number' || !values.has(row.default)) invalid('Enum default must explicitly select one declared value.');
             names.add(row.name); imports.add('Enum');

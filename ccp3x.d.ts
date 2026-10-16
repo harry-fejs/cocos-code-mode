@@ -1048,6 +1048,7 @@ declare namespace ccp3x {
     | { name: string; type: 'number'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
     | { name: string; type: 'integer'; array?: false; default?: number; range?: { min: number; max: number; slider?: boolean; step?: number } }
     | { name: string; type: 'enum'; array?: false; entries: Array<{ name: string; value: number }>; default: number }
+    | { name: string; type: 'enum'; array: true; entries: Array<{ name: string; value: number }>; default?: number[] }
     | { name: string; type: 'string'; array?: false; default?: string; multiline?: boolean }
     | { name: string; type: 'boolean'; array?: false; default?: boolean }
     | { name: string; type: 'Vec2'; array?: false; default?: { x: number; y: number } }
