@@ -904,10 +904,10 @@ export class SceneTools {
             relativeTo: InstanceReferenceSchema, includeRoot: { type: 'boolean', default: true }, requireUnique: { type: 'boolean', default: false },
             requireAll: { type: 'boolean', default: false, description: 'Refuse partial target resolution after collecting every item result; no mutation or rollback.' },
         }, required: ['references'] },
-        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, commonAncestor: { type: ['object', 'null'], properties: { id: { type: 'string' }, type: { type: 'string' } } } }, required: ['items', 'succeeded', 'failed', 'commonAncestor'] },
+        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, selectionRoots: { type: 'array', items: InstanceReferenceSchema }, commonAncestor: { type: ['object', 'null'], properties: { id: { type: 'string' }, type: { type: 'string' } } } }, required: ['items', 'succeeded', 'failed', 'commonAncestor', 'selectionRoots'] },
         'GET', ['scene', 'node', 'path', 'batch', 'ancestors']
     )
-    async nodeGetPaths(args: { references: IInstanceReference[], expectedPaths?: Array<{ reference: IInstanceReference, path: string }>, expectedAncestors?: Array<{ reference: IInstanceReference, ancestors: IInstanceReference[] }>, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean, requireAll?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, commonAncestor: IInstanceReference | null }> {
+    async nodeGetPaths(args: { references: IInstanceReference[], expectedPaths?: Array<{ reference: IInstanceReference, path: string }>, expectedAncestors?: Array<{ reference: IInstanceReference, ancestors: IInstanceReference[] }>, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean, requireAll?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, commonAncestor: IInstanceReference | null, selectionRoots: IInstanceReference[] }> {
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
         if (args.relativeTo !== undefined && (typeof args.relativeTo?.id !== 'string' || !args.relativeTo.id.trim() || args.relativeTo.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'relativeTo requires a bounded node UUID.' });
         if (args.includeRoot !== undefined && typeof args.includeRoot !== 'boolean' || args.requireUnique !== undefined && typeof args.requireUnique !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path projection flags must be boolean.' });
@@ -937,6 +937,7 @@ export class SceneTools {
         const items: Array<Record<string, unknown>> = [];
         let succeeded = 0;
         let commonChain: IInstanceReference[] | undefined;
+        const resolved = new Map<string, { reference: IInstanceReference, ancestors: IInstanceReference[] }>();
         const tree = await Editor.Message.request('scene', 'query-node-tree') as unknown as SceneTreeNode | null;
         if (!tree) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'No open scene or prefab hierarchy.' });
         const defaultRoot = relativeTo ? tree : ((await this.findPrefabEditRoot(tree)) as SceneTreeNode | null) ?? tree;
@@ -946,6 +947,7 @@ export class SceneTools {
                 const result = resolvePath({ reference, requireUnique, expectedPath: expectedPaths.get(reference.id) }, expectedAncestors.get(reference.id));
                 items.push({ index, ok: true, reference, result });
                 succeeded++;
+                resolved.set(result.reference.id, result);
                 const chain = [...result.ancestors, result.reference];
                 if (commonChain === undefined) commonChain = chain;
                 else {
@@ -957,7 +959,9 @@ export class SceneTools {
                 items.push({ index, ok: false, reference, error: { code: error instanceof ToolError ? error.code : 'NODE_PATH_QUERY_FAILED', message: (error instanceof Error ? error.message : String(error)).slice(0, 512) } });
             }
         }
-        const result = { items, succeeded, failed: references.length - succeeded, commonAncestor: commonChain?.length ? commonChain[commonChain.length - 1] : null };
+        const selectionRoots: IInstanceReference[] = [];
+        for (const target of resolved.values()) if (!target.ancestors.some(ancestor => resolved.has(ancestor.id))) selectionRoots.push(target.reference);
+        const result = { items, succeeded, failed: references.length - succeeded, commonAncestor: commonChain?.length ? commonChain[commonChain.length - 1] : null, selectionRoots };
         if (args.requireAll && result.failed) throw new ToolError({ code: 'NODE_GROUP_INCOMPLETE', status: 409, message: 'Not every requested node resolved; partial results must not be used as a complete group.', details: result });
         return result;
     }
