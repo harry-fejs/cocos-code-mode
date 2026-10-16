@@ -150,10 +150,13 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
             frameRange: first === null ? null : { first, last }, frameOverSampleRange: first === null || last === null || sample === null || !finite(first / sample) || !finite(last / sample) ? null : { first: first / sample, last: last / sample }, dataValid: diagnosticCount === startIssues };
         return row;
     });
+    let eventParameterCount = 0;
     const eventRows = Array.from(events ?? [], (raw: unknown, index: number) => {
         const event = timelineRecord(raw), location = `events[${index}]`, startIssues = diagnosticCount;
         if (!event || !frameValid(event.frame)) issue('INVALID_EVENT_TIME', location);
         const params = event && Array.isArray(event.params) ? event.params : null;
+        eventParameterCount += params?.length ?? 0;
+        if (eventParameterCount > 100000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native dump exceeds 100000 event parameters.');
         let paramsValid = params !== null;
         if (params) for (let i = 0; i < params.length; i++) if (!Object.prototype.hasOwnProperty.call(params, i) || typeof params[i] !== 'string') { paramsValid = false; break; }
         if (!event || typeof event.func !== 'string' || !event.func || !paramsValid) issue('UNSUPPORTED_EVENT_DATA', location, true);
