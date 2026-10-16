@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Retain memberKind in list_members identity and summaries, keeping same-name methods/properties/unknown kinds separate while aggregating duplicate views of the same kind/static identity. Tuple-encoded keys avoid delimiter collisions.
+- Bound aggregate opaque keyframe string values to1MiB UTF-8 during timeline validation. Exact boundary remains supported; excess refuses without truncation, schema interpretation or clip mutation.
 - Preserve static/instance/unknown member identity through generated lookup, verified loader and list_members summaries. Older lookups retain unknown identity rather than inferring instance members; catalog regeneration/hash adoption remains explicit.
 - Diagnose sparse arrays in opaque timeline keyframe data instead of accepting hole-skipping Object.values output. Dense/null/empty arrays retain existing behavior; oversized array length refuses before index scanning.
 - Bound cumulative installed shard bytes to32MiB per discovery scan, passing residual capacity into the existing descriptor reader before allocation; exhausted/oversized reads refuse without partial completeness. This is not a decoded-heap cap.

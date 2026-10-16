@@ -101,6 +101,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     if (dump?.truncated === true) sourceComplete = false;
     if (!sourceComplete && curves && events) issue('NATIVE_DUMP_TRUNCATED', 'clip.curves');
     let scannedValues = 0, keyframeCount = 0;
+    let opaqueTextBytes = 0;
     // Validate opaque property dumps for non-finite numeric values without interpreting their schema.
     const finiteTree = (root: unknown): boolean => {
         const pending: Array<{ value: unknown; depth: number }> = [{ value: root, depth: 0 }];
@@ -109,6 +110,11 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
             const entry = pending.pop()!;
             if (++scannedValues > 1000000 || entry.depth > 32) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native value scan exceeds 1000000 values or 32 levels.');
             if (typeof entry.value === 'number' && !Number.isFinite(entry.value)) return false;
+            if (typeof entry.value === 'string') {
+                if (entry.value.length > 1048576 - opaqueTextBytes) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Opaque keyframe text exceeds 1 MiB UTF-8.');
+                opaqueTextBytes += Buffer.byteLength(entry.value, 'utf8');
+                if (opaqueTextBytes > 1048576) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Opaque keyframe text exceeds 1 MiB UTF-8.');
+            }
             if (entry.value && typeof entry.value === 'object') {
                 if (seen.has(entry.value)) return false;
                 seen.add(entry.value);
