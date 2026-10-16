@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Refuse malformed discovery instance references before catalog access or Inspector dispatch: id is nonempty/bounded1024 and optional type nonempty/bounded256; null/array/nonstring identities return INVALID_ARGUMENT.
 - Support HingeConstraint/FixedConstraint/PointToPointConstraint and DistanceJoint2D/SpringJoint2D/FixedJoint2D/HingeJoint2D scalar/array script references. Null/empty defaults only; no joint construction, connected-body assignment or physics simulation mutation.
 - Verify optional discovery reference.type against the authoritative Inspector class using existing cc. prefix normalization; mismatches refuse TYPE_MISMATCH even when no className selector is supplied.
 - Bind discovery cursor identity to component_schema versus general engine_api result scope; switching categories refuses STALE_CURSOR instead of skipping entries in a differently filtered result set.

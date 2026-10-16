@@ -65,6 +65,9 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     };
     const version = args.targetVersion ?? '3.7.3';
     if (!Object.prototype.hasOwnProperty.call(VERSIONS, version)) throw new ToolError({ code: 'UNSUPPORTED_VERSION', status: 422, message: 'Only catalogued versions 3.7.3 and 3.8.8 are available.' });
+    if (args.reference !== undefined && (!args.reference || typeof args.reference !== 'object' || Array.isArray(args.reference)
+        || typeof args.reference.id !== 'string' || !args.reference.id.trim() || args.reference.id.length > 1024
+        || args.reference.type !== undefined && (typeof args.reference.type !== 'string' || !args.reference.type.trim() || args.reference.type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'reference requires a bounded nonempty id and optional nonempty type.' });
     if (args.category === 'component_schema' && !args.className) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'component_schema requires className.' });
     const operation = args.operation ?? 'records';
     if (operation === 'explain_bridge_route') {
