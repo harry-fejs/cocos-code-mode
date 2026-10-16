@@ -258,6 +258,7 @@ export async function preflightComponentScriptPath(assetUrl: string): Promise<Co
 }
 export async function readComponentScriptSource(source: ComponentScriptPath, uuid: string, expected: ComponentScriptSource): Promise<void> {
     let fd: number | undefined;
+    let readbackFailed = false;
     try {
         const info = await queryComponentScriptAsset(source.assetUrl);
         const current = resolveComponentScriptPath(source.assetUrl);
@@ -282,6 +283,14 @@ export async function readComponentScriptSource(source: ComponentScriptPath, uui
             if (!observed.isFile() || observed.dev !== stat.dev || observed.ino !== stat.ino || observed.size !== stat.size || observed.mtimeMs !== stat.mtimeMs || observed.ctimeMs !== stat.ctimeMs) throw new Error('Source file changed during readback');
         }
     } catch {
+        readbackFailed = true;
         throw new ToolError({ code: 'SOURCE_READBACK_UNCONFIRMED', status: 502, message: 'Created source identity/content could not be confirmed. Source may exist; no retry or deletion was attempted.', details: { assetUrl: source.assetUrl, expectedSha256: expected.sha256, sourceCreated: null, classRegistration: 'unknown', attached: false, runtimeVerified: false, sceneSaved: false } });
-    } finally { if (fd !== undefined) fs.closeSync(fd); }
+    } finally {
+        if (fd !== undefined) {
+            try { fs.closeSync(fd); }
+            catch {
+                if (!readbackFailed) throw new ToolError({ code: 'SOURCE_READBACK_UNCONFIRMED', status: 502, message: 'Created source descriptor cleanup could not be confirmed. No retry or deletion was attempted.', details: { assetUrl: source.assetUrl, expectedSha256: expected.sha256, sourceCreated: null, classRegistration: 'unknown', attached: false, runtimeVerified: false, sceneSaved: false } });
+            }
+        }
+    }
 }

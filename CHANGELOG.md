@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve typed SOURCE_READBACK_UNCONFIRMED when descriptor close fails after a readback failure, and report close-only failure as typed uncertainty rather than raw filesystem errors. No automatic source retry or deletion.
 - Refuse exact-record Inspector mapping when catalog ownership has no nonblank class before native observation, while retaining ownerless declarations for catalog-only discovery.
 - Bind exact catalog record instance mapping to its recorded owning class even without className/reference.type selectors, retaining that identity across signature/related-type projection before Inspector readback.
 - Add invalidKeyframesOnly timeline timing-page filtering per track, AND-composed with native frame range. Matching offsets preserve native indices; whole-source diagnostics/totals and filter-independent revision remain, without opaque value output or clip mutation.
