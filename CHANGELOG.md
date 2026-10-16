@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve primary bounded catalog read/hash/limit failures if descriptor cleanup also throws; close-only failure returns sanitized CATALOG_READ_FAILED instead of raw filesystem content or successful bytes.
 - Pin acknowledged script UUID before asynchronous source readback and return that verified identity, preventing mutable native acknowledgement objects from substituting an unverified UUID during the await.
 - Validate static metadata on every hydrated external shard record before caching, even with older lookups lacking static projection; boolean/null/absent remain compatible and malformed values refuse CATALOG_INVALID.
 - Preserve typed SOURCE_READBACK_UNCONFIRMED when descriptor close fails after a readback failure, and report close-only failure as typed uncertainty rather than raw filesystem errors. No automatic source retry or deletion.

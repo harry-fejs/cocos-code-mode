@@ -28,6 +28,7 @@ export function readBounded(root: string, basename: string, maximum: number, exp
     const relative = path.relative(root, file);
     if (!relative || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Catalog file escapes its approved root.' });
     const fd = fs.openSync(file, 'r');
+    let readFailed = false;
     try {
         const before = fs.fstatSync(fd, { bigint: true });
         if (!before.isFile() || before.size > BigInt(maximum)) throw new ToolError({ code: 'CATALOG_LIMIT_EXCEEDED', status: 422, message: 'Catalog file exceeds its read bound.' });
@@ -45,7 +46,13 @@ export function readBounded(root: string, basename: string, maximum: number, exp
         const bytes = data.subarray(0, offset);
         if (expected && crypto.createHash('sha256').update(bytes).digest('hex') !== expected) throw new ToolError({ code: 'CATALOG_HASH_MISMATCH', status: 409, message: 'Catalog bytes do not match the approved identity.' });
         return bytes;
-    } finally { fs.closeSync(fd); }
+    } catch (error: unknown) {
+        readFailed = true;
+        throw error;
+    } finally {
+        try { fs.closeSync(fd); }
+        catch { if (!readFailed) throw new ToolError({ code: 'CATALOG_READ_FAILED', status: 502, message: 'Catalog descriptor cleanup could not be confirmed.' }); }
+    }
 }
 
 export interface ExternalApiCatalog {
