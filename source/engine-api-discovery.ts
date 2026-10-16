@@ -193,7 +193,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
             if (args.category === 'component_schema' && entry.namespace !== 'engine-runtime') continue;
             if (args.className && (entry.className ?? '').replace(/^cc\./, '') !== args.className.replace(/^cc\./, '')) continue;
             if (args.filter && !`${entry.className ?? ''}.${entry.member ?? entry.name}`.toLowerCase().includes(args.filter.toLowerCase())) continue;
-            records.push({ id: entry.id, namespace: entry.namespace, className: entry.className, member: entry.member, name: entry.name, kind: entry.kind });
+            records.push({ id: entry.id, namespace: entry.namespace, className: entry.className, member: entry.member, name: entry.name, kind: entry.kind, static: entry.static ?? null });
         }
     }
     const installedRecordIds = new Set<string>();
@@ -338,10 +338,11 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         const members = new Map<string, ApiRecord>();
         for (const record of records) {
             if (!record.className || !record.member) continue;
-            const key = `${record.namespace}:${record.className}:${record.member}`;
+            const staticIdentity = typeof record.static === 'boolean' ? record.static : null;
+            const key = `${record.namespace}:${record.className}:${record.member}:${staticIdentity === null ? 'unknown' : staticIdentity ? 'static' : 'instance'}`;
             const existing = members.get(key);
             if (existing) existing.recordCount = Number(existing.recordCount) + 1;
-            else members.set(key, { id: `${version}:member-index:${key}`, namespace: record.namespace, className: record.className, member: record.member, name: record.member, kind: 'member-summary', recordCount: 1, permitted: false });
+            else members.set(key, { id: `${version}:member-index:${key}`, namespace: record.namespace, className: record.className, member: record.member, name: record.member, static: staticIdentity, kind: 'member-summary', recordCount: 1, permitted: false });
         }
         records.splice(0, records.length, ...[...members.values()].sort((a, b) => a.id.localeCompare(b.id)));
     }

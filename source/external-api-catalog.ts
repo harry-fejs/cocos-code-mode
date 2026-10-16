@@ -7,11 +7,12 @@ import type { infer as InferSchema } from 'zod';
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const EntrySchema = z.object({ id: z.string().min(1), shard: z.number().int().nonnegative(), namespace: z.string(), className: z.string().nullable(), name: z.string(), member: z.string().nullable(), kind: z.string(), module: z.string().min(1).optional(), visibility: z.enum(['public', 'protected', 'private', 'internal']).nullable().optional(), contexts: z.array(z.string().min(1).max(128)).max(32).nullable().optional(), evidenceState: z.string().min(1).max(128).nullable().optional(), domain: z.string() });
-const LookupSchema = z.object({ schemaVersion: z.literal(1), version: z.string(), catalogHash: digest, sourceIndexSha256: digest, shards: z.array(z.object({ file: z.string(), sha256: digest, count: z.number().int().nonnegative(), domain: z.string() })).max(1000), entries: z.array(EntrySchema).max(100000) });
+const StaticEntrySchema = EntrySchema.extend({ static: z.boolean().nullable().optional() });
+const LookupSchema = z.object({ schemaVersion: z.literal(1), version: z.string(), catalogHash: digest, sourceIndexSha256: digest, shards: z.array(z.object({ file: z.string(), sha256: digest, count: z.number().int().nonnegative(), domain: z.string() })).max(1000), entries: z.array(StaticEntrySchema).max(100000) });
 const SourceIndexSchema = z.object({ schemaVersion: z.literal(1), version: z.string(), catalogHash: digest, recordCount: z.number().int().nonnegative().optional(), domains: z.array(z.object({ name: z.string(), file: z.string(), count: z.number().int().nonnegative() })).max(1000) });
 const ConfigSchema = z.object({ schemaVersion: z.literal(1), catalogs: z.array(z.object({ version: z.enum(['3.7.3', '3.8.8']), catalogRoot: z.string().min(1), lookupRoot: z.string().min(1), lookupSha256: digest, catalogHash: digest })).max(2) });
 type Lookup = InferSchema<typeof LookupSchema>;
-export type ExternalApiEntry = InferSchema<typeof EntrySchema>;
+export type ExternalApiEntry = InferSchema<typeof StaticEntrySchema>;
 const cache = new Map<string, { bytes: number; records: Map<string, Record<string, unknown>> }>();
 let cacheBytes = 0;
 const MAX_CACHE_BYTES = 32 * 1024 * 1024;
@@ -118,6 +119,7 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
             const recordDomain = record && (typeof record.domain === 'string' && record.domain || (record.domain == null || record.domain === '') && typeof record.module === 'string' && record.module.replace(/[^\w-]/g, '-'));
             if (!record || typeof recordDomain !== 'string' || !recordDomain || record.namespace !== entry.namespace || record.className !== entry.className || record.kind !== entry.kind || `${record.namespace}.${recordDomain}` !== entry.domain) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed record does not match its actual shard metadata.' });
             if (record.name !== entry.name || record.member !== entry.member) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed name/member differs from verified record metadata.' });
+            if (entry.static !== undefined && (record.static ?? null) !== entry.static) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed static identity differs from verified record metadata.' });
             if (entry.module !== undefined && record.module !== entry.module) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed module differs from verified record metadata.' });
             if (entry.visibility !== undefined && (record.visibility ?? null) !== entry.visibility) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed visibility differs from verified record metadata.' });
             const execution = record.contextConstraints && typeof record.contextConstraints === 'object' ? (record.contextConstraints as Record<string, unknown>).execution ?? null : null;
