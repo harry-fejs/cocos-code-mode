@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { TextDecoder } from 'util';
 import { ToolError } from './utcp/tool-error';
 import { IInstanceReference } from './utcp/schemas';
 import { ToolsUtils } from './utcp/utils/tools-utils';
@@ -25,9 +26,13 @@ const CursorSchema = z.object({ hash: z.string(), selector: z.string(), offset: 
 const CATALOG_ROOT = path.join(__dirname, 'engine-api-catalog');
 const VERSIONS: Record<string, true> = { '3.7.3': true, '3.8.8': true };
 const MAX_CATALOG_FILE = 8 * 1024 * 1024;
+function parseCatalogJson(bytes: Buffer): unknown {
+    try { return JSON.parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes)); }
+    catch { throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Catalog input is not valid UTF-8 JSON.' }); }
+}
 function jsonFile(file: string): unknown {
     const root = fs.realpathSync(path.dirname(file));
-    return JSON.parse(readBounded(root, path.basename(file), MAX_CATALOG_FILE).toString('utf8'));
+    return parseCatalogJson(readBounded(root, path.basename(file), MAX_CATALOG_FILE));
 }
 function limit(value: number | undefined, fallback: number, maximum: number): number {
     const selected = value === undefined ? fallback : value;
@@ -157,7 +162,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     const indexPath = path.join(CATALOG_ROOT, version, 'index.json');
     if (!external && !fs.existsSync(indexPath)) throw new ToolError({ code: 'CATALOG_UNAVAILABLE', status: 422, message: `No installed catalog for ${version}.` });
     const indexBytes = external ? null : readBounded(fs.realpathSync(path.dirname(indexPath)), path.basename(indexPath), MAX_CATALOG_FILE);
-    const index = external ?? CatalogIndexSchema.parse(JSON.parse(indexBytes!.toString('utf8')));
+    const index = external ?? CatalogIndexSchema.parse(parseCatalogJson(indexBytes!));
     const snapshotHash = external ? external.snapshotHash : crypto.createHash('sha256').update(indexBytes!).digest('hex');
     if (!external && 'version' in index && index.version !== version) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed catalog identity is invalid.' });
     if (!external && new Set(index.domains.map(domain => domain.file.toLowerCase())).size !== index.domains.length) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed catalog index contains duplicate shard filenames.' });
@@ -206,7 +211,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         if (pages.bytesRemaining === 0) throw new ToolError({ code: 'CATALOG_LIMIT_EXCEEDED', status: 413, message: 'Installed shard byte budget exhausted; narrow the namespace/domain.' });
         const bytes = readPage(() => readBounded(fs.realpathSync(path.join(CATALOG_ROOT, version)), domain.file, Math.min(MAX_CATALOG_FILE, pages.bytesRemaining)));
         pages.bytesRemaining -= bytes.length;
-        const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(JSON.parse(bytes.toString('utf8')));
+        const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(parseCatalogJson(bytes));
         if (shard.records.length !== domain.count) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed shard record count differs from its index.' });
         pages.recordsRemaining -= shard.records.length;
         for (const record of shard.records) {
