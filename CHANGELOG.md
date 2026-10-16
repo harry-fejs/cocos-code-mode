@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Probe engine class availability only for matched engine-runtime catalog scope, leaving bridge/editor/authoring or mixed-namespace class queries unchecked rather than attaching same-name cc class availability.
 - Validate script Asset DB query records as nonarrays with nonblank bounded UUID and nonblank URL/file; refuse nonboolean directory metadata rather than normalizing it to file ownership. Null remains authoritative absence.
 - Check the shared discovery deadline during member and filtered namespace summary aggregation, stopping expired loops before processing the next record rather than only refusing at final return.
 - Require nonarray source-creation acknowledgement records with nonblank bounded UUIDs before readback. Malformed acknowledgements retain SOURCE_CREATE_OUTCOME_UNKNOWN and never trigger automatic create retry/deletion.

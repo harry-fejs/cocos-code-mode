@@ -244,6 +244,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     }
     records.sort((a, b) => a.id.localeCompare(b.id));
     const matchedCatalogTarget = records.length > 0;
+    const engineClassTarget = records.length > 0 && records.every(record => record.namespace === 'engine-runtime');
     if (operation === 'list_domains') {
         const domains = new Map<string, number>();
         for (const shard of index.domains) {
@@ -428,7 +429,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     if (args.className && records.length === 0 && !matchedCatalogTarget && operation !== 'get_related_types') throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Class ${args.className} is absent from the ${version} catalog.` });
     if (args.recordId !== undefined && records.length === 0 && operation !== 'get_related_types') throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record is absent from the selected catalog scope/version/filters.' });
     let live: Record<string, unknown> = { checked: false, context: 'edit-scene', available: null, writablePaths: [], mutationAuthorized: false };
-    if (args.className && version === '3.7.3' && !args.reference) {
+    if (args.className && engineClassTarget && version === '3.7.3' && !args.reference) {
         try {
             const availability = z.object({ available: z.boolean(), className: z.string(), engineVersion: z.string().nullable(), context: z.literal('edit-scene') }).parse(await observeWithinDeadline(() => Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'engineApiClassAvailability', args: [{ className: args.className }] })));
             if (availability.className.replace(/^cc\./, '') !== args.className.replace(/^cc\./, '')) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: 'Availability probe returned a different class identity.' });
