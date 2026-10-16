@@ -686,6 +686,7 @@ export class SceneTools {
                 maxDepth: { type: 'integer', minimum: 0, maximum: 99 },
                 rootReference: InstanceReferenceSchema,
                 excludeReferences: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema },
+                requireSingle: { type: 'boolean', default: false, description: 'Require exactly one match over the complete bounded scope, independently of maxResults.' },
                 maxResults: { type: 'number', minimum: 1, maximum: MAX_LIST_LIMIT, default: DEFAULT_LIST_LIMIT, description: 'Cap results.' }
             },
             anyOf: [
@@ -709,7 +710,8 @@ export class SceneTools {
         },
         { type: 'object', properties: { nodes: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, parentReference: { type: ['object', 'null'] }, name: { type: 'string' }, path: { type: 'string' }, depth: { type: 'integer' }, componentCount: { type: 'integer' }, childCount: { type: 'integer' }, siblingIndex: { type: ['integer', 'null'] }, active: { type: ['boolean', 'null'] }, hierarchyActive: { type: ['boolean', 'null'] } } } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['nodes', 'total'] }, "GET", ['scene', 'node', 'find', 'search', 'name', 'component', 'filter']
     )
-    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], excludeComponentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, active?: boolean, hierarchyActive?: boolean, minComponents?: number, maxComponents?: number, parentReference?: IInstanceReference, minChildren?: number, maxChildren?: number, siblingIndex?: number, minSiblingIndex?: number, maxSiblingIndex?: number, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, childCount: number, siblingIndex: number | null, active: boolean | null, hierarchyActive: boolean | null }>, total: number, truncated: boolean }> {
+    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], excludeComponentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, active?: boolean, hierarchyActive?: boolean, minComponents?: number, maxComponents?: number, parentReference?: IInstanceReference, minChildren?: number, maxChildren?: number, siblingIndex?: number, minSiblingIndex?: number, maxSiblingIndex?: number, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number, requireSingle?: boolean }): Promise<{ nodes: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, childCount: number, siblingIndex: number | null, active: boolean | null, hierarchyActive: boolean | null }>, total: number, truncated: boolean }> {
+        if (args.requireSingle !== undefined && typeof args.requireSingle !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireSingle must be boolean.' });
         for (const [key, maximum] of [['name', 256], ['componentType', 256], ['pathContains', 512]] as const) {
             const value = args[key];
             if (value !== undefined && (typeof value !== 'string' || !value.trim() || value.length > maximum)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `${key} must be a bounded nonempty string.` });
@@ -792,6 +794,7 @@ export class SceneTools {
         if (!rootFound) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Search subtree UUID is absent from the open hierarchy.' });
         if (unseenParent.size) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'The parent selector UUID is absent from the open hierarchy.' });
         if (unseenExclusions.size) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'An excluded subtree UUID is absent from the open hierarchy.' });
+        if (args.requireSingle && total !== 1) throw new ToolError({ code: total ? 'NODE_MATCH_AMBIGUOUS' : 'NODE_MATCH_NOT_FOUND', status: total ? 409 : 404, message: 'Single-node lookup requires exactly one filtered match.', details: { matchCount: total } });
         return { nodes: hits, total, truncated: total > hits.length };
     }
 
