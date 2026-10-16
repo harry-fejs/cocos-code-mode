@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add invalidEventsOnly timeline filtering with matching-event pagination/native indices, AND-composed with callback/frame selectors. Whole-dump diagnostics/error totals and filter-independent revision remain; no callback execution or binding inference.
 - Refuse Inspector instance mapping to nonengine or mixed catalog namespaces before native inspection; engine-runtime mapping remains read-only and does not authorize mutation.
 - Add invalidTracksOnly timeline filtering with matching-track pagination and original native indices. Binding selectors compose with AND; whole-dump validation/error totals and filter-independent revision remain intact.
 - Probe engine class availability only for matched engine-runtime catalog scope, leaving bridge/editor/authoring or mixed-namespace class queries unchecked rather than attaching same-name cc class availability.
