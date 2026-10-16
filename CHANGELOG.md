@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Refuse sparse parameter and saved-declaration signature arrays in get_signature instead of allowing hole-skipping validation to serialize invalid null entries; existing dense/absent metadata and traversal bounds remain.
 - Bound combined source/declaration get_signature validation to10000 signature/parameter containers with deadline checks; excess refuses CATALOG_SIGNATURE_LIMIT before iterating the over-budget collection.
 - Reject malformed parameter collections/entries in source and saved-declaration get_signature metadata, preserving absent parameter metadata rather than inferring an empty callable contract.
 - Require compare_version comparison version to be an explicit supported string before opening either catalog, refusing arrays/coercible objects rather than partially reading the first catalog before failure.

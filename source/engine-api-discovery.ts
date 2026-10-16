@@ -390,7 +390,11 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
             if (parameters === undefined) return false;
             if (!Array.isArray(parameters)) return true;
             reserveSignatureContainers(parameters.length);
-            return parameters.some(parameter => { checkDeadline(); return !parameter || typeof parameter !== 'object' || Array.isArray(parameter); });
+            for (const parameter of parameters) {
+                checkDeadline();
+                if (!parameter || typeof parameter !== 'object' || Array.isArray(parameter)) return true;
+            }
+            return false;
         };
         reserveSignatureContainers(record.signatures?.length ?? 0);
         if (record.signatures?.some(invalidSignature)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signature metadata is malformed.' });
@@ -401,7 +405,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
             if (signatures !== undefined) {
                 if (!Array.isArray(signatures)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signature metadata is malformed.' });
                 reserveSignatureContainers(signatures.length);
-                if (signatures.some(invalidSignature)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signature metadata is malformed.' });
+                for (const signature of signatures) if (invalidSignature(signature)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signature metadata is malformed.' });
             }
         }
         records.splice(0, records.length, { id: record.id, namespace: record.namespace, className: record.className, member: record.member, name: record.name, kind: record.kind, static: typeof record.static === 'boolean' ? record.static : null, signatures: record.signatures ?? [], declarationEvidence: record.declarationEvidence ?? null, permitted: false, evidenceStatus: record.evidenceStatus ?? null });
