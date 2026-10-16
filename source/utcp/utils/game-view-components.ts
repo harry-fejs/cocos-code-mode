@@ -258,7 +258,7 @@ export async function executeComponentOperation(args: ComponentOperation, assert
     const boundedRead = args.kind !== 'events' && ['inspect', 'observe'].includes(args.operation);
     const readDeadline = Date.now() + (args.timeoutMs ?? 1000);
     assertActive?.();
-    const runtime = new RuntimeSessionTools(); const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId }); const session = inspected.session;
+    const runtime = new RuntimeSessionTools(); const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, ...(boundedRead ? { timeoutMs: args.timeoutMs ?? 1000 } : {}) }); const session = inspected.session;
     if (!session || !('status' in session) || !('targetId' in session) || !('targetKind' in session) || session.sessionId !== args.sessionId || session.status !== 'attached' || session.targetKind !== 'game-view' || typeof session.targetId !== 'string' || !inspected.ready) { if (session && 'status' in session && session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: 'The runtime session is stopped.' }); throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'The exact attached Game View session is not ready.' }); }
     assertActive?.();
     const mutation = args.kind !== 'events' && !['inspect', 'observe'].includes(args.operation);
@@ -290,7 +290,7 @@ export async function executeComponentOperation(args: ComponentOperation, assert
     if (!mutation) assertActive?.();
     if (boundedRead && readDeadline - Date.now() < 100) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Component observation has insufficient time for session verification; no recheck dispatched.' });
     let after: Awaited<ReturnType<RuntimeSessionTools['runtimeSessionLifecycle']>>;
-    try { after = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId }); }
+    try { after = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, ...(boundedRead ? { timeoutMs: readDeadline - Date.now() } : {}) }); }
     catch (error) { throw new ToolError({ code: 'RUNTIME_COMPONENT_SESSION_RECHECK_FAILED', status: 502, message: 'Component operation settled but session continuity could not be confirmed.', details: { mutationDispatched: mutation, retrySafe: !mutation, cause: error instanceof ToolError ? error.code : 'SESSION_INSPECTION_FAILED' }, recovery: 'Reconcile the exact session/component before further control; do not replay the prior mutation.' }); }
     const afterSession = after.session;
     if (!after.ready || !afterSession || !('status' in afterSession) || !('targetId' in afterSession) || !('targetKind' in afterSession) || afterSession.status !== 'attached' || afterSession.sessionId !== session.sessionId || afterSession.targetId !== session.targetId || afterSession.targetKind !== session.targetKind || afterSession.createdAt !== session.createdAt) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Runtime session identity changed during the component operation.', details: { mutationDispatched: mutation, retrySafe: !mutation } });
