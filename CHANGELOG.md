@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Align hydrated record domain identity with the lookup generator's sanitized module fallback for null/empty/absent domains, retaining exact namespace/domain equality and rejecting invalid domain shapes.
 - Bind external lookup shard files/domain names/counts and version/catalog identity to the hash-verified source index; reject omitted, substituted or duplicate manifest files and inconsistent optional total counts before discovery.
 - Validate hydrated shard record ID sets against the selected lookup on cold and warm reads, rejecting equal-count substituted/misassigned IDs before returning any record from that shard. Unread shards remain unqualified.
 - Require indexed entry counts to match every declared external shard count before exposing catalog discovery, refusing missing/excess lookup rows instead of reporting incomplete lookup results as complete.

@@ -113,7 +113,8 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
                 if (entriesById.get(recordId)?.shard !== entry.shard) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Shard record IDs differ from the selected lookup.' });
             }
             const record = cached.records.get(id);
-            if (!record || record.namespace !== entry.namespace || record.className !== entry.className || record.kind !== entry.kind || record.domain !== entry.domain.split('.').slice(1).join('.')) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed record does not match its actual shard metadata.' });
+            const recordDomain = record && (typeof record.domain === 'string' && record.domain || (record.domain == null || record.domain === '') && typeof record.module === 'string' && record.module.replace(/[^\w-]/g, '-'));
+            if (!record || typeof recordDomain !== 'string' || !recordDomain || record.namespace !== entry.namespace || record.className !== entry.className || record.kind !== entry.kind || `${record.namespace}.${recordDomain}` !== entry.domain) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed record does not match its actual shard metadata.' });
             if (record.name !== entry.name || record.member !== entry.member) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed name/member differs from verified record metadata.' });
             if (entry.module !== undefined && record.module !== entry.module) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed module differs from verified record metadata.' });
             if (entry.visibility !== undefined && (record.visibility ?? null) !== entry.visibility) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed visibility differs from verified record metadata.' });
