@@ -123,11 +123,16 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         if (keyframeCount > 100000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native dump exceeds 100000 keyframes.');
         let first: number | null = null, last: number | null = null;
         let matchedKeyframes = 0;
+        let previousFrame: number | null = null;
         const keyframes: Array<{ index: number; frame: number | null; frameOverSample: number | null }> = [];
         for (const [keyIndex, rawKey] of (keys ?? []).entries()) {
             const key = timelineRecord(rawKey), keyLocation = `${location}.keyframes[${keyIndex}]`;
             const frame = key && frameValid(key.frame) ? key.frame : null;
             timingHash.update(JSON.stringify([index, keyIndex, frame]));
+            if (frame !== null) {
+                if (previousFrame !== null && frame < previousFrame) issue('UNSORTED_KEYFRAME_TIME', keyLocation);
+                previousFrame = frame;
+            }
             if (options.keyframeFrameRange === undefined || frame !== null && frame >= options.keyframeFrameRange.min && frame <= options.keyframeFrameRange.max) {
                 if (matchedKeyframes >= bounds.keyframeOffset && matchedKeyframes < bounds.keyframeOffset + bounds.keyframeLimit) keyframes.push({ index: keyIndex, frame, frameOverSample: frame !== null && sample !== null && finite(frame / sample) ? frame / sample : null });
                 matchedKeyframes++;
