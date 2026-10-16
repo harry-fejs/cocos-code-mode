@@ -111,7 +111,7 @@ export function generateComponentScriptSource(input: unknown): ComponentScriptSo
             const labels = new Set<string>(), values = new Set<number>(), entries: string[] = [];
             for (const entry of row.entries) {
                 assertComponentScriptInput(entry, ['name', 'value']);
-                if (!identifier(entry.name) || entry.name === '__enums__' || labels.has(entry.name) || typeof entry.value !== 'number' || !Number.isSafeInteger(entry.value) || entry.value < 0 || entry.value > 2147483647 || values.has(entry.value)) invalid('Enum labels and nonnegative int32 values must be safe and unique; automatic -1 values are not supported.');
+                if (!identifier(entry.name) || entry.name === '__enums__' || entry.name === 'hasOwnProperty' || labels.has(entry.name) || typeof entry.value !== 'number' || !Number.isSafeInteger(entry.value) || entry.value < 0 || entry.value > 2147483647 || values.has(entry.value)) invalid('Enum labels and nonnegative int32 values must be safe and unique; automatic -1 values are not supported.');
                 labels.add(entry.name); values.add(entry.value); entries.push(`${literal(entry.name)}: ${literal(entry.value)}`);
             }
             if (row.array === true) {

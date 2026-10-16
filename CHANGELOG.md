@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Reject hasOwnProperty as a script enum label before generation, protecting Creator3.7 Enum ownership checks from numeric method shadowing for both scalar and array fields.
 - Reject external lookup entries whose domain belongs to a different namespace before exposing navigation, even when source-index and shard manifests agree on that incorrect domain.
 - Map catalog schema validation failures at the discovery boundary to CATALOG_INVALID without echoing validator issues; preserve existing typed catalog/hash/limit errors unchanged.
 - Add optional exact trackBinding.parentProperty matching native parentPropKey in timeline inspection, AND-composed with node/property/component selectors. Empty parent key is explicit; omitted remains any. Native indices, whole-dump diagnostics and revision scope remain unchanged.
