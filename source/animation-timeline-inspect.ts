@@ -66,6 +66,14 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         if (diagnostics.length < 64) diagnostics.push({ code, location });
         if (unsupported) supported = false;
     };
+    let metadataBytes = 0;
+    const countMetadata = (value: unknown): void => {
+        if (typeof value !== 'string') return;
+        if (value.length > 1048576 - metadataBytes) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native timeline metadata exceeds 1 MiB UTF-8.');
+        metadataBytes += Buffer.byteLength(value, 'utf8');
+        if (metadataBytes > 1048576) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native timeline metadata exceeds 1 MiB UTF-8.');
+    };
+    countMetadata(dump?.name);
     if (!dump) issue('UNSUPPORTED_NATIVE_DUMP', 'clip', true);
     // These identities are not required by the 3.7 dump type, but cannot be ignored if exposed.
     for (const [field, expected] of [['uuid', options.clipReference.id], ['clipUuid', options.clipReference.id], ['nodeUuid', options.nodeReference.id]]) {
@@ -116,6 +124,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     const tracks = Array.from(curves ?? [], (raw: unknown, index: number) => {
         const curve = timelineRecord(raw), location = `curves[${index}]`;
         const startIssues = diagnosticCount;
+        for (const field of ['nodePath', 'key', 'comp', 'parentPropKey', 'displayName']) countMetadata(curve?.[field]);
         if (!curve || typeof curve.nodePath !== 'string' || typeof curve.key !== 'string' || !curve.key) issue('UNSUPPORTED_TRACK_BINDING', location, true);
         const keys: unknown[] | null = curve && Array.isArray(curve.keyframes) ? curve.keyframes : null;
         if (!keys) issue('UNSUPPORTED_KEYFRAMES', `${location}.keyframes`, true);

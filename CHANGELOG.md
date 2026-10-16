@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Bound cumulative installed shard bytes to32MiB per discovery scan, passing residual capacity into the existing descriptor reader before allocation; exhausted/oversized reads refuse without partial completeness. This is not a decoded-heap cap.
+- Bound clip name and aggregate track binding/label metadata to1MiB UTF-8 before revision hashing, including off-page/filtered tracks. Oversized metadata refuses without truncation or clip mutation.
 - Cap aggregate installed discovery scans at100000 records before reading the next over-budget shard, including filtered-out records; CATALOG_RECORD_LIMIT refuses incomplete scans rather than returning partial completeness.
 - Prune installed shard reads by namespace and component_schema engine-runtime scope before spending maxPages; unrelated namespace shards are not hydrated or qualified by a scoped query.
 - Bound timeline inspection to100000 event parameters across the entire retrieved dump before parameter traversal, including off-page/filtered events. Oversized dense or sparse arrays refuse TIMELINE_SOURCE_BOUND_EXCEEDED rather than silently omitting work.
