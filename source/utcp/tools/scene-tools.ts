@@ -798,6 +798,81 @@ export class SceneTools {
     }
 
     @utcpTool(
+        'sceneHierarchyAnalyze',
+        'Summarize a bounded scene or subtree hierarchy: depth, active state, component counts, duplicate names and unknown component identities. Read-only; no serialized mutation or runtime inference.',
+        {
+            type: 'object', additionalProperties: false,
+            properties: { rootReference: InstanceReferenceSchema, limit: { type: 'integer', minimum: 1, maximum: MAX_LIST_LIMIT, default: MAX_LIST_LIMIT } },
+        },
+        { type: 'object', additionalProperties: false, properties: {
+            rootReference: InstanceReferenceSchema, checkedNodes: { type: 'integer' }, maxDepth: { type: 'integer' }, truncated: { type: 'boolean' },
+            activeNodes: { type: 'integer' }, inactiveNodes: { type: 'integer' }, unknownActiveNodes: { type: 'integer' }, componentCounts: { type: 'object' }, duplicateNames: { type: 'array' }, unknownComponentCount: { type: 'integer' }, issues: { type: 'array' },
+        }, required: ['checkedNodes', 'maxDepth', 'truncated', 'activeNodes', 'inactiveNodes', 'unknownActiveNodes', 'componentCounts', 'duplicateNames', 'unknownComponentCount', 'issues'] },
+        'GET', ['scene', 'hierarchy', 'analyze', 'component', 'summary', 'qa']
+    )
+    async sceneHierarchyAnalyze(args: { rootReference?: IInstanceReference, limit?: number } = {}): Promise<Record<string, unknown>> {
+        // Counts describe local active flags in the observed hierarchy, not runtime activation.
+        if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > MAX_LIST_LIMIT)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Invalid analysis limit.' });
+        if (args.rootReference !== undefined && (typeof args.rootReference?.id !== 'string' || !args.rootReference.id.trim() || args.rootReference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'A bounded root UUID is required.' });
+        const tree = await Editor.Message.request('scene', 'query-node-tree') as any;
+        if (!tree) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'No open scene or hierarchy.' });
+        let root = tree;
+        if (args.rootReference?.id) {
+            const pending = [tree];
+            const visited = new Set<object>();
+            let scheduled = 1;
+            root = undefined;
+            while (pending.length) {
+                const node = pending.pop();
+                if (!node || typeof node !== 'object' || visited.has(node)) continue;
+                visited.add(node);
+                if (node.uuid === args.rootReference.id) { root = node; break; }
+                const children = node.children ?? [];
+                if (!Array.isArray(children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed hierarchy children.' });
+                scheduled += children.length;
+                if (scheduled > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Subtree lookup exceeds10000 nodes.' });
+                for (const child of children) pending.push(child);
+            }
+            if (!root) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Hierarchy root ${args.rootReference.id} not found.` });
+        }
+        const limit = boundedListLimit(args.limit);
+        const componentCounts: Record<string, number> = Object.create(null);
+        const nameCounts = new Map<string, number>();
+        const issues: string[] = [];
+        const visited = new Set<object>();
+        const stack: Array<{ node: any, depth: number }> = [{ node: root, depth: 0 }];
+        let checkedNodes = 0, maxDepth = 0, activeNodes = 0, inactiveNodes = 0, unknownComponentCount = 0, truncated = false;
+        let unknownActiveNodes = 0, scheduled = 1, componentTotal = 0;
+        while (stack.length) {
+            if (checkedNodes >= limit) { truncated = true; break; }
+            const { node, depth } = stack.pop()!;
+            if (!node || typeof node !== 'object' || Array.isArray(node)) { issues.push('invalid node encountered'); continue; }
+            if (visited.has(node)) { issues.push(`cycle or repeated node at depth ${depth}`); continue; }
+            visited.add(node); checkedNodes++; maxDepth = Math.max(maxDepth, depth);
+            const name = sceneTreeNodeName(node); nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
+            const rawActive = node.active;
+            const active = typeof rawActive === 'boolean' ? rawActive : rawActive?.value;
+            if (active === false) inactiveNodes++; else if (active === true) activeNodes++; else unknownActiveNodes++;
+            const components = node.components ?? [];
+            if (!Array.isArray(components)) { issues.push(`malformed components on ${name}`); continue; }
+            componentTotal += components.length;
+            if (componentTotal > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Analysis component budget exceeded.' });
+            for (const component of components) {
+                const type = componentClassId(component) ?? componentCandidates(component)[0];
+                if (typeof type !== 'string' || !type.trim()) { unknownComponentCount++; continue; }
+                const normalized = type.replace(/^cc\./, ''); componentCounts[normalized] = (componentCounts[normalized] ?? 0) + 1;
+            }
+            const children = node.children ?? [];
+            if (!Array.isArray(children)) { issues.push(`malformed children on ${name}`); continue; }
+            scheduled += children.length;
+            if (scheduled > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Analysis scheduled-node budget exceeded.' });
+            for (let index = children.length - 1; index >= 0; index--) stack.push({ node: children[index], depth: depth + 1 });
+        }
+        return { ...(args.rootReference ? { rootReference: args.rootReference } : {}), checkedNodes, maxDepth, truncated, activeNodes, inactiveNodes, unknownActiveNodes,
+            componentCounts, duplicateNames: [...nameCounts].filter(([, count]) => count > 1).map(([name, count]) => ({ name, count })), unknownComponentCount, issues };
+    }
+
+    @utcpTool(
         'sceneHierarchyValidate',
         'Validate scene hierarchy identity, unique paths, and parent-child topology within bounded traversal.',
         {

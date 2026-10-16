@@ -817,6 +817,8 @@ declare namespace ccp3x {
 
     /** Read-only AND filters; componentTypes use componentMatch all/any/none, exact component classes; subtree includes root. */
     function findNodes(args: { name?: string; nameMatch?: 'contains' | 'exact'; componentType?: string; componentTypes?: string[]; componentMatch?: 'all' | 'any' | 'none'; pathContains?: string; rootReference?: InstanceReference; maxResults?: number }): { nodes: Array<{ reference: InstanceReference; name: string; path: string }>; total: number; truncated: boolean };
+    /** Read-only observed subtree summary. Root depth0; counts are partial when truncated. Local active flags, not runtime activation. Unknown classes do not prove missing scripts. */
+    function sceneHierarchyAnalyze(args?: { rootReference?: InstanceReference; limit?: number }): { rootReference?: InstanceReference; checkedNodes: number; maxDepth: number; truncated: boolean; activeNodes: number; inactiveNodes: number; unknownActiveNodes: number; componentCounts: Record<string, number>; duplicateNames: Array<{ name: string; count: number }>; unknownComponentCount: number; issues: string[] };
 
     /** Find all nodes whose asset references are missing/broken. QA/health check for scene integrity. */
     function findNodesWithMissingAssets(): { references: InstanceReference[] };
