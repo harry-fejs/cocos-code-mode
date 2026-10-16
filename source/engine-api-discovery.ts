@@ -327,11 +327,11 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     } else if (operation === 'list_members') {
         const members = new Map<string, ApiRecord>();
         for (const record of records) {
-            if (!record.className || !record.member && !record.name) continue;
-            const key = `${record.namespace}:${record.className}:${record.member ?? record.name}`;
+            if (!record.className || !record.member) continue;
+            const key = `${record.namespace}:${record.className}:${record.member}`;
             const existing = members.get(key);
             if (existing) existing.recordCount = Number(existing.recordCount) + 1;
-            else members.set(key, { id: `${version}:member-index:${key}`, namespace: record.namespace, className: record.className, member: record.member ?? record.name, name: record.member ?? record.name, kind: 'member-summary', recordCount: 1, permitted: false });
+            else members.set(key, { id: `${version}:member-index:${key}`, namespace: record.namespace, className: record.className, member: record.member, name: record.member, kind: 'member-summary', recordCount: 1, permitted: false });
         }
         records.splice(0, records.length, ...[...members.values()].sort((a, b) => a.id.localeCompare(b.id)));
     }
