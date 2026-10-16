@@ -811,39 +811,53 @@ export class SceneTools {
                 path: { type: 'string' },
                 segments: { type: 'array', items: { type: 'string' } },
                 relativeTo: InstanceReferenceSchema,
+                pathUnique: { type: 'boolean' },
+                matchingNodeCount: { type: 'integer', minimum: 1 },
             },
-            required: ['reference', 'path', 'segments'],
+            required: ['reference', 'path', 'segments', 'pathUnique', 'matchingNodeCount'],
         },
         'GET',
         ['scene', 'node', 'path', 'hierarchy', 'reverse', 'lookup']
     )
-    async nodeGetPath(args: { reference: IInstanceReference, relativeTo?: IInstanceReference, includeRoot?: boolean }): Promise<{ reference: IInstanceReference, path: string, segments: string[], relativeTo?: IInstanceReference }> {
-        const tree = await Editor.Message.request('scene', 'query-node-tree') as unknown as SceneTreeNode | null;
-        if (!tree) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'No open scene or prefab hierarchy' });
-        const root = args.relativeTo?.id
-            ? findSceneTreeNode(tree, args.relativeTo.id)
-            : ((await this.findPrefabEditRoot(tree)) as unknown as SceneTreeNode | null) ?? tree;
-        if (!root) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: `Relative root ${args.relativeTo?.id} not found` });
-
-        const stack: Array<{ node: SceneTreeNode, segments: string[] }> = [{ node: root, segments: [sceneTreeNodeName(root)] }];
-        while (stack.length) {
-            const current = stack.pop()!;
-            if (current.node.uuid === args.reference.id) {
-                const segments = args.includeRoot === false ? current.segments.slice(1) : current.segments;
-                return {
-                    reference: { id: args.reference.id, type: 'cc.Node' },
-                    path: segments.join('/'),
-                    segments,
-                    ...(args.relativeTo ? { relativeTo: args.relativeTo } : {}),
-                };
-            }
-            const children = current.node.children ?? [];
-            for (let index = children.length - 1; index >= 0; index--) {
-                const child = children[index];
-                stack.push({ node: child, segments: [...current.segments, sceneTreeNodeName(child)] });
-            }
+    async nodeGetPath(args: { reference: IInstanceReference, relativeTo?: IInstanceReference, includeRoot?: boolean }): Promise<{ reference: IInstanceReference, path: string, segments: string[], relativeTo?: IInstanceReference, pathUnique: boolean, matchingNodeCount: number }> {
+        for (const reference of [args.reference, ...(args.relativeTo !== undefined ? [args.relativeTo] : [])]) {
+            if (typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path lookup requires bounded exact node UUIDs.' });
         }
-        throw new ToolError({ code: 'NOT_FOUND', status: 404, message: `Node ${args.reference.id} is not inside the requested hierarchy` });
+        if (args.includeRoot !== undefined && typeof args.includeRoot !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'includeRoot must be boolean.' });
+        const tree = await Editor.Message.request('scene', 'query-node-tree') as unknown as SceneTreeNode | null;
+        if (!tree) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'No open scene or prefab hierarchy.' });
+        const nodes = new Map<string, SceneTreeNode>();
+        const pending = [tree];
+        let scheduled = 1;
+        while (pending.length) {
+            const node = pending.pop();
+            if (!node || typeof node !== 'object' || Array.isArray(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed hierarchy node.' });
+            const id = nodeUuidFromSceneUsage(node, 'path lookup');
+            if (nodes.has(id)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Duplicate UUID or cycle in hierarchy.' });
+            nodes.set(id, node);
+            const children = node.children ?? [];
+            if (!Array.isArray(children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed hierarchy children.' });
+            scheduled += children.length;
+            if (scheduled > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Path lookup exceeds10000 hierarchy nodes.' });
+            for (const child of children) pending.push(child);
+        }
+        const root = args.relativeTo ? nodes.get(args.relativeTo.id) : ((await this.findPrefabEditRoot(tree)) as SceneTreeNode | null) ?? tree;
+        if (!root) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'Relative root not found.' });
+        const paths = new Map<string, number>();
+        const stack: Array<{ node: SceneTreeNode, segments: string[] }> = [{ node: root, segments: [sceneTreeNodeName(root)] }];
+        let selected: string[] | undefined;
+        while (stack.length) {
+            const { node, segments } = stack.pop()!;
+            const outputSegments = args.includeRoot === false ? segments.slice(1) : segments;
+            const path = outputSegments.join('/');
+            paths.set(path, (paths.get(path) ?? 0) + 1);
+            if (node.uuid === args.reference.id) selected = outputSegments;
+            for (const child of node.children ?? []) stack.push({ node: child, segments: [...segments, sceneTreeNodeName(child)] });
+        }
+        if (!selected) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'Node is not inside the requested hierarchy.' });
+        const path = selected.join('/');
+        const matchingNodeCount = paths.get(path)!;
+        return { reference: { id: args.reference.id, type: 'cc.Node' }, path, segments: selected, pathUnique: matchingNodeCount === 1, matchingNodeCount, ...(args.relativeTo ? { relativeTo: args.relativeTo } : {}) };
     }
 
     @utcpTool(
