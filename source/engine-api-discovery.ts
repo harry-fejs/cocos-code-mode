@@ -36,6 +36,7 @@ function limit(value: number | undefined, fallback: number, maximum: number): nu
 }
 
 export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Record<string, unknown>> {
+    if (!args || typeof args !== 'object' || Array.isArray(args)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Catalog discovery requires an argument object.' });
     const timeoutMs = limit(args.timeoutMs, 5000, 30000);
     return discoverWithinDeadline(args, Date.now() + timeoutMs, { remaining: limit(args.maxPages, 256, 1000) });
 }

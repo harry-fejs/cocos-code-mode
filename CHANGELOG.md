@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Refuse null/array/primitive catalog discovery argument envelopes with INVALID_ARGUMENT before reading limits or opening catalogs; empty object retains the default bounded query.
 - Refuse unknown or malformed catalog categories before discovery instead of silently treating them as general engine_api; omitted category still selects the existing default scope.
 - Allow native UI dependency declarations for UIOpacity/RichText/ToggleContainer/PageView/PageViewIndicator/ScrollBar/SafeArea/BlockInputEvents/UICoordinateTracker in scriptComponentCreate. Existing max8/unique constraints remain; source generation never attaches components or configures their required references.
 - Reject explicit empty/nonstring/oversized or non-base64url discovery cursors before catalog access with STALE_CURSOR, rather than treating falsy malformed cursors as first-page requests.
