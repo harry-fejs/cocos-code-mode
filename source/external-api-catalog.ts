@@ -1,10 +1,15 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { TextDecoder } from 'util';
 import { z } from './schema-validator';
 import { ToolError } from './utcp/tool-error';
 import type { infer as InferSchema } from 'zod';
 
+export function parseCatalogJson(bytes: Buffer): unknown {
+    try { return JSON.parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes)); }
+    catch { throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Catalog input is not valid UTF-8 JSON.' }); }
+}
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const EntrySchema = z.object({ id: z.string().min(1), shard: z.number().int().nonnegative(), namespace: z.string(), className: z.string().nullable(), name: z.string(), member: z.string().nullable(), kind: z.string(), module: z.string().min(1).optional(), visibility: z.enum(['public', 'protected', 'private', 'internal']).nullable().optional(), contexts: z.array(z.string().min(1).max(128)).max(32).nullable().optional(), evidenceState: z.string().min(1).max(128).nullable().optional(), domain: z.string() });
 const StaticEntrySchema = EntrySchema.extend({ static: z.boolean().nullable().optional() });
@@ -61,15 +66,15 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
     const configReal = fs.realpathSync(configPath);
     const configRelative = path.relative(project, configReal);
     if (configRelative.startsWith(`..${path.sep}`) || path.isAbsolute(configRelative)) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Catalog configuration escapes the project.' });
-    const config = ConfigSchema.parse(JSON.parse(readBounded(path.dirname(configReal), path.basename(configReal), 16384).toString('utf8')));
+    const config = ConfigSchema.parse(parseCatalogJson(readBounded(path.dirname(configReal), path.basename(configReal), 16384)));
     if (new Set(config.catalogs.map(item => item.version)).size !== config.catalogs.length) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Duplicate catalog version configuration.' });
     const selected = config.catalogs.find(item => item.version === version);
     if (!selected) return null;
     if (!path.isAbsolute(selected.catalogRoot) || !path.isAbsolute(selected.lookupRoot)) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Configured catalog roots must be absolute operator-owned paths.' });
     const root = fs.realpathSync(selected.catalogRoot), lookupRoot = fs.realpathSync(selected.lookupRoot);
-    const lookup = LookupSchema.parse(JSON.parse(readBounded(lookupRoot, 'lookup.json', 32 * 1024 * 1024, selected.lookupSha256).toString('utf8')));
+    const lookup = LookupSchema.parse(parseCatalogJson(readBounded(lookupRoot, 'lookup.json', 32 * 1024 * 1024, selected.lookupSha256)));
     if (lookup.version !== version || lookup.catalogHash !== selected.catalogHash) throw new ToolError({ code: 'CATALOG_HASH_MISMATCH', status: 409, message: 'Lookup version/catalog identity differs from configuration.' });
-    const sourceIndex = SourceIndexSchema.parse(JSON.parse(readBounded(root, 'index.json', 1024 * 1024, lookup.sourceIndexSha256).toString('utf8')));
+    const sourceIndex = SourceIndexSchema.parse(parseCatalogJson(readBounded(root, 'index.json', 1024 * 1024, lookup.sourceIndexSha256)));
     if (sourceIndex.version !== version || sourceIndex.catalogHash !== lookup.catalogHash) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Source index version/catalog identity differs from lookup.' });
     const sourceDomains = new Map(sourceIndex.domains.map(domain => [domain.file, domain]));
     const lookupFiles = new Set(lookup.shards.map(shard => shard.file));
@@ -96,7 +101,7 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
             const key = `${root}:${version}:${lookup.catalogHash}:${shard.file}:${shard.sha256}`;
             let cached = cache.get(key);
             if (!cached) {
-                const parsed = z.object({ records: z.array(z.record(z.string(), z.unknown())).max(10000) }).parse(JSON.parse(bytes.toString('utf8')));
+                const parsed = z.object({ records: z.array(z.record(z.string(), z.unknown())).max(10000) }).parse(parseCatalogJson(bytes));
                 if (parsed.records.length !== shard.count) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Shard record count differs from lookup.' });
                 const records = new Map<string, Record<string, unknown>>();
                 for (const record of parsed.records) {

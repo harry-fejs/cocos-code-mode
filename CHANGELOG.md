@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Reuse fatal UTF-8/typed JSON parsing across external config/lookup/source-index/shards and installed discovery, preserving raw hash checks before parsing and rejecting corrupt encoded metadata without content echo.
 - Include every retrieved keyframe dataValid flag in timeline revision hashing, preventing off-page validity swaps from retaining revision after the diagnostic list reaches its cap. Opaque value-only changes remain outside revision scope.
 - Decode installed index/provenance/shard JSON with fatal UTF-8 validation and typed CATALOG_INVALID parsing failures, avoiding silent replacement characters or raw SyntaxError responses.
 - Expose dataValid on each timeline timing keyframe row, distinguishing malformed payload/time/order at that key from other track issues. Whole-dump diagnostics and filter/page-independent revision remain; opaque values are not returned.

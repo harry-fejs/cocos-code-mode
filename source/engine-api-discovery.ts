@@ -1,13 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { TextDecoder } from 'util';
 import { ToolError } from './utcp/tool-error';
 import { IInstanceReference } from './utcp/schemas';
 import { ToolsUtils } from './utcp/utils/tools-utils';
 import { z } from './schema-validator';
 import type { infer as InferSchema } from 'zod';
-import { openExternalApiCatalog, readBounded } from './external-api-catalog';
+import { openExternalApiCatalog, readBounded, parseCatalogJson } from './external-api-catalog';
 
 export interface EngineDiscoveryArgs {
     category?: string; className?: string; targetVersion?: string; domain?: string;
@@ -26,10 +25,6 @@ const CursorSchema = z.object({ hash: z.string(), selector: z.string(), offset: 
 const CATALOG_ROOT = path.join(__dirname, 'engine-api-catalog');
 const VERSIONS: Record<string, true> = { '3.7.3': true, '3.8.8': true };
 const MAX_CATALOG_FILE = 8 * 1024 * 1024;
-function parseCatalogJson(bytes: Buffer): unknown {
-    try { return JSON.parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes)); }
-    catch { throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Catalog input is not valid UTF-8 JSON.' }); }
-}
 function jsonFile(file: string): unknown {
     const root = fs.realpathSync(path.dirname(file));
     return parseCatalogJson(readBounded(root, path.basename(file), MAX_CATALOG_FILE));
