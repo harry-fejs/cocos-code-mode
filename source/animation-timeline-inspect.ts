@@ -105,10 +105,11 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     let opaqueKeyBytes = 0;
     // Validate opaque property dumps for non-finite numeric values without interpreting their schema.
     const finiteTree = (root: unknown): boolean => {
-        const pending: Array<{ value: unknown; depth: number }> = [{ value: root, depth: 0 }];
-        const seen = new Set<object>();
+        const pending: Array<{ value: unknown; depth: number; leaving?: boolean }> = [{ value: root, depth: 0 }];
+        const active = new Set<object>();
         while (pending.length) {
             const entry = pending.pop()!;
+            if (entry.leaving) { active.delete(entry.value as object); continue; }
             if (++scannedValues > 1000000 || entry.depth > 32) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native value scan exceeds 1000000 values or 32 levels.');
             if (typeof entry.value === 'number' && !Number.isFinite(entry.value)) return false;
             if (typeof entry.value === 'string') {
@@ -117,8 +118,9 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
                 if (opaqueTextBytes > 1048576) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Opaque keyframe text exceeds 1 MiB UTF-8.');
             }
             if (entry.value && typeof entry.value === 'object') {
-                if (seen.has(entry.value)) return false;
-                seen.add(entry.value);
+                if (active.has(entry.value)) return false;
+                active.add(entry.value);
+                pending.push({ value: entry.value, depth: entry.depth, leaving: true });
                 if (Array.isArray(entry.value)) {
                     if (entry.value.length + pending.length > 1000000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native value array exceeds the scan bound.');
                     for (let index = 0; index < entry.value.length; index++) if (!Object.prototype.hasOwnProperty.call(entry.value, index)) return false;
