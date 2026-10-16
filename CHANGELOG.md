@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Map known raw filesystem read failures at catalog discovery boundary to CATALOG_READ_FAILED without local-path/error-content echo; existing typed catalog/hash/limit errors remain unchanged.
+- Support TiledTile scalar/array script references with native Inspector metadata and null/independent empty defaults. Tile components remain reference-only; no tile creation, generated-layer edits or map mutation.
 - Snapshot discovery argument scalars and nested reference identity before asynchronous observation, preventing caller edits during Inspector waits from changing validated selectors or returned target mapping.
 - Reject hasOwnProperty as a script enum label before generation, protecting Creator3.7 Enum ownership checks from numeric method shadowing for both scalar and array fields.
 - Reject external lookup entries whose domain belongs to a different namespace before exposing navigation, even when source-index and shard manifests agree on that incorrect domain.
