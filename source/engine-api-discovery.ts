@@ -194,6 +194,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
             records.push({ id: entry.id, namespace: entry.namespace, className: entry.className, member: entry.member, name: entry.name, kind: entry.kind });
         }
     }
+    const installedRecordIds = new Set<string>();
     for (const domain of operation === 'list_domains' || external ? [] : index.domains) {
         checkDeadline();
         if (args.domain && domain.name !== args.domain) continue;
@@ -202,6 +203,8 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         if (shard.records.length !== domain.count) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed shard record count differs from its index.' });
         for (const record of shard.records) {
             checkDeadline();
+            if (installedRecordIds.has(record.id)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed catalog contains duplicate record IDs.' });
+            installedRecordIds.add(record.id);
             if (args.recordId !== undefined && record.id !== args.recordId) continue;
             if (args.member !== undefined && record.member !== args.member) continue;
             if (args.kind !== undefined && record.kind !== args.kind) continue;
