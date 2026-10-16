@@ -200,6 +200,8 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     for (const domain of operation === 'list_domains' || external ? [] : index.domains) {
         checkDeadline();
         if (args.domain && domain.name !== args.domain) continue;
+        if (args.namespace && !domain.name.startsWith(`${args.namespace}.`)) continue;
+        if (args.category === 'component_schema' && !domain.name.startsWith('engine-runtime.')) continue;
         const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(readPage(() => jsonFile(path.join(CATALOG_ROOT, version, domain.file))));
         if (shard.records.length !== domain.count) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed shard record count differs from its index.' });
         for (const record of shard.records) {

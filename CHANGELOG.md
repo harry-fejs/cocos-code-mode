@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Prune installed shard reads by namespace and component_schema engine-runtime scope before spending maxPages; unrelated namespace shards are not hydrated or qualified by a scoped query.
 - Bound timeline inspection to100000 event parameters across the entire retrieved dump before parameter traversal, including off-page/filtered events. Oversized dense or sparse arrays refuse TIMELINE_SOURCE_BOUND_EXCEEDED rather than silently omitting work.
 - Validate every installed shard basename before catalog navigation, including list_domains and filtered queries; refuse traversal, Windows path forms and non-JSON names without reading shards.
 - Verify exact installed record namespace/domain ownership using the generator's sanitized-module fallback, not namespace prefix alone; wrong-domain rows refuse CATALOG_INVALID before filtering.
