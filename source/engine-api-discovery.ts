@@ -65,6 +65,11 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     };
     const version = args.targetVersion ?? '3.7.3';
     if (!Object.prototype.hasOwnProperty.call(VERSIONS, version)) throw new ToolError({ code: 'UNSUPPORTED_VERSION', status: 422, message: 'Only catalogued versions 3.7.3 and 3.8.8 are available.' });
+    for (const [field, maximum] of [['className', 256], ['domain', 256], ['filter', 1024]] as const) {
+        const value = args[field];
+        if (value !== undefined && (typeof value !== 'string' || !value.trim() || value.length > maximum)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `${field} must be a nonempty string of at most ${maximum} characters.` });
+    }
+    if (args.namespace !== undefined && !['engine-runtime', 'engine-authoring', 'editor-ipc', 'bridge'].includes(args.namespace)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Unknown catalog namespace selector.' });
     if (args.reference !== undefined && (!args.reference || typeof args.reference !== 'object' || Array.isArray(args.reference)
         || typeof args.reference.id !== 'string' || !args.reference.id.trim() || args.reference.id.length > 1024
         || args.reference.type !== undefined && (typeof args.reference.type !== 'string' || !args.reference.type.trim() || args.reference.type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'reference requires a bounded nonempty id and optional nonempty type.' });

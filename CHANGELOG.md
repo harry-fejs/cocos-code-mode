@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Validate discovery className/domain/filter string bounds and namespace enum before catalog access, returning INVALID_ARGUMENT for malformed selectors instead of normalization errors or misleading empty results.
 - Support MouseJoint2D/RelativeJoint2D/SliderJoint2D/WheelJoint2D scalar/array script references with null/independent empty defaults. No joint creation, input registration, connected-body assignment or simulation mutation.
 - Refuse malformed Inspector type/property collections in live catalog discovery with INSPECTOR_RESPONSE_INVALID rather than reporting availability or throwing untyped class-normalization errors.
 - Refuse malformed discovery instance references before catalog access or Inspector dispatch: id is nonempty/bounded1024 and optional type nonempty/bounded256; null/array/nonstring identities return INVALID_ARGUMENT.
