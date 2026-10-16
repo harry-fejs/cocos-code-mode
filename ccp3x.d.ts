@@ -822,7 +822,7 @@ declare namespace ccp3x {
     function sceneHierarchyAnalyze(args?: { rootReference?: InstanceReference; limit?: number }): { rootReference?: InstanceReference; checkedNodes: number; maxDepth: number; truncated: boolean; activeNodes: number; inactiveNodes: number; unknownActiveNodes: number; componentCounts: Record<string, number>; duplicateNames: Array<{ name: string; count: number }>; unknownComponentCount: number; issues: string[] };
     /** Bounded path lookup with collision counts. pathUnique describes observed slash-joined paths, not future lookup stability; retain UUIDs for mutation. */
     function nodeGetPath(args: { reference: InstanceReference; relativeTo?: InstanceReference; includeRoot?: boolean; requireUnique?: boolean; expectedPath?: string; expectedAncestors?: InstanceReference[] }): { reference: InstanceReference; path: string; segments: string[]; relativeTo?: InstanceReference; pathUnique: boolean; matchingNodeCount: number; ancestors: InstanceReference[] };
-    /** Sequential scoped path observations for1..32 UUIDs; failures remain per-target, not an atomic hierarchy snapshot. */
+    /** Resolve1..32 UUIDs from one captured bounded hierarchy; target failures are isolated, common hierarchy errors fail the batch. Not an atomic editor transaction. */
     function nodeGetPaths(args: { references: InstanceReference[]; expectedPaths?: Array<{ reference: InstanceReference; path: string }>; relativeTo?: InstanceReference; includeRoot?: boolean; requireUnique?: boolean }): { items: Array<Record<string, unknown>>; succeeded: number; failed: number };
 
     /** Find all nodes whose asset references are missing/broken. QA/health check for scene integrity. */

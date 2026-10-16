@@ -842,6 +842,11 @@ export class SceneTools {
         const expectedAncestorIds = args.expectedAncestors?.map(reference => reference.id);
         const tree = await Editor.Message.request('scene', 'query-node-tree') as unknown as SceneTreeNode | null;
         if (!tree) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'No open scene or prefab hierarchy.' });
+        const defaultRoot = args.relativeTo ? tree : ((await this.findPrefabEditRoot(tree)) as SceneTreeNode | null) ?? tree;
+        return this.prepareObservedNodePaths(tree, defaultRoot, args.relativeTo, args.includeRoot)(args, expectedAncestorIds);
+    }
+
+    private prepareObservedNodePaths(tree: SceneTreeNode, defaultRoot: SceneTreeNode, relativeTo?: IInstanceReference, includeRoot?: boolean) {
         const nodes = new Map<string, SceneTreeNode>();
         const pending = [tree];
         let scheduled = 1;
@@ -857,23 +862,25 @@ export class SceneTools {
             if (scheduled > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Path lookup exceeds10000 hierarchy nodes.' });
             for (const child of children) pending.push(child);
         }
-        const root = args.relativeTo ? nodes.get(args.relativeTo.id) : ((await this.findPrefabEditRoot(tree)) as SceneTreeNode | null) ?? tree;
+        const root = relativeTo ? nodes.get(relativeTo.id) : defaultRoot;
         if (!root) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'Relative root not found.' });
         const paths = new Map<string, number>();
         const parents = new Map<string, string>();
         const stack: Array<{ node: SceneTreeNode, segments: string[] }> = [{ node: root, segments: [sceneTreeNodeName(root)] }];
-        let selected: string[] | undefined;
+        const segmentsById = new Map<string, string[]>();
         while (stack.length) {
             const { node, segments } = stack.pop()!;
-            const outputSegments = args.includeRoot === false ? segments.slice(1) : segments;
+            const outputSegments = includeRoot === false ? segments.slice(1) : segments;
             const path = outputSegments.join('/');
             paths.set(path, (paths.get(path) ?? 0) + 1);
-            if (node.uuid === args.reference.id) selected = outputSegments;
+            segmentsById.set(node.uuid!, outputSegments);
             for (const child of node.children ?? []) {
                 parents.set(child.uuid!, node.uuid!);
                 stack.push({ node: child, segments: [...segments, sceneTreeNodeName(child)] });
             }
         }
+        return (args: { reference: IInstanceReference, requireUnique?: boolean, expectedPath?: string }, expectedAncestorIds?: string[]) => {
+        const selected = segmentsById.get(args.reference.id);
         if (!selected) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'Node is not inside the requested hierarchy.' });
         const path = selected.join('/');
         if (args.expectedPath !== undefined && args.expectedPath !== path) throw new ToolError({ code: 'NODE_PATH_CHANGED', status: 409, message: 'The target hierarchy path differs from the expected observation.', details: { nodeId: args.reference.id, expectedPath: args.expectedPath, path }, recovery: 'Inspect the target by UUID before any mutation; do not resolve a different object using the old path.' });
@@ -883,12 +890,13 @@ export class SceneTools {
         for (let parent = parents.get(args.reference.id); parent !== undefined; parent = parents.get(parent)) ancestors.push({ id: parent, type: 'cc.Node' });
         ancestors.reverse();
         if (expectedAncestorIds !== undefined && (expectedAncestorIds.length !== ancestors.length || expectedAncestorIds.some((id, index) => id !== ancestors[index].id))) throw new ToolError({ code: 'NODE_ANCESTRY_CHANGED', status: 409, message: 'Observed ancestor identity differs from the expected chain.', details: { nodeId: args.reference.id }, recovery: 'Inspect the exact target UUID and ancestor chain before any mutation.' });
-        return { reference: { id: args.reference.id, type: 'cc.Node' }, path, segments: selected, pathUnique: matchingNodeCount === 1, matchingNodeCount, ancestors, ...(args.relativeTo ? { relativeTo: args.relativeTo } : {}) };
+        return { reference: { id: args.reference.id, type: 'cc.Node' }, path, segments: selected, pathUnique: matchingNodeCount === 1, matchingNodeCount, ancestors, ...(relativeTo ? { relativeTo } : {}) };
+        };
     }
 
     @utcpTool(
         'nodeGetPaths',
-        'Resolve1..32 exact node UUIDs sequentially to scoped hierarchy paths and ancestor chains with per-target errors. Each lookup observes a fresh bounded hierarchy; no atomic snapshot or mutation.',
+        'Resolve1..32 exact node UUIDs from one captured bounded hierarchy with per-target errors. No atomic editor snapshot or mutation.',
         { type: 'object', additionalProperties: false, properties: {
             references: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema },
             expectedPaths: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, path: { type: 'string', maxLength: 4096 } }, required: ['reference', 'path'] }, description: 'Optional exact paths keyed by requested target UUID; omitted targets are unguarded.' },
@@ -916,9 +924,13 @@ export class SceneTools {
         const includeRoot = args.includeRoot, requireUnique = args.requireUnique;
         const items: Array<Record<string, unknown>> = [];
         let succeeded = 0;
+        const tree = await Editor.Message.request('scene', 'query-node-tree') as unknown as SceneTreeNode | null;
+        if (!tree) throw new ToolError({ code: 'NOT_FOUND', status: 404, message: 'No open scene or prefab hierarchy.' });
+        const defaultRoot = relativeTo ? tree : ((await this.findPrefabEditRoot(tree)) as SceneTreeNode | null) ?? tree;
+        const resolvePath = this.prepareObservedNodePaths(tree, defaultRoot, relativeTo, includeRoot);
         for (const [index, reference] of references.entries()) {
             try {
-                const result = await this.nodeGetPath({ reference, relativeTo, includeRoot, requireUnique, expectedPath: expectedPaths.get(reference.id) });
+                const result = resolvePath({ reference, requireUnique, expectedPath: expectedPaths.get(reference.id) });
                 items.push({ index, ok: true, reference, result });
                 succeeded++;
             } catch (error) {
