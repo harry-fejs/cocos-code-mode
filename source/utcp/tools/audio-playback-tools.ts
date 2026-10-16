@@ -188,7 +188,9 @@ export class AudioPlaybackTools {
         try {
             const runtime = new RuntimeSessionTools();
             assertActive?.();
-            const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId });
+            const readinessRemaining = deadline === undefined ? undefined : deadline - Date.now();
+            if (readinessRemaining !== undefined && readinessRemaining < 100) throw new ToolError({ code: 'AUDIO_STATE_TIMEOUT', status: 409, message: 'Audio wait has insufficient time for readiness; no inspection dispatched.' });
+            const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, ...(readinessRemaining === undefined ? {} : { timeoutMs: Math.min(10000, readinessRemaining) }) });
             const session = inspected.session;
             if (session && 'status' in session && session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: 'The runtime session is stopped.' });
             if (!inspected.success || !inspected.ready || !session || !('targetId' in session) || session.sessionId !== args.sessionId) throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'The attached runtime session is not ready.' });
@@ -218,11 +220,14 @@ export class AudioPlaybackTools {
                             : time !== undefined && time <= state.duration && Math.abs(state.currentTime - time) <= 0.05);
             if (!confirmed) throw new ToolError({ code: 'AUDIO_READBACK_MISMATCH', status: 502, message: 'Audio success does not satisfy the requested playback postcondition.', details: { ...uncertainty, state }, recovery: 'Observe the exact source before further control; no automatic playback replay.' });
             if (operation === 'observe') assertActive?.();
+            const verificationRemaining = deadline === undefined ? undefined : deadline - Date.now();
+            if (verificationRemaining !== undefined && verificationRemaining < 100) throw new ToolError({ code: 'AUDIO_STATE_TIMEOUT', status: 409, message: 'Audio wait has insufficient time for verification; no recheck dispatched.' });
             let after: Awaited<ReturnType<RuntimeSessionTools['runtimeSessionLifecycle']>>;
-            try { after = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId }); }
+            try { after = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId, ...(verificationRemaining === undefined ? {} : { timeoutMs: Math.min(10000, verificationRemaining) }) }); }
             catch (error) { throw new ToolError({ code: 'AUDIO_SESSION_RECHECK_FAILED', status: 502, message: 'Audio operation settled but session continuity could not be confirmed.', details: { ...uncertainty, cause: error instanceof ToolError ? error.code : 'SESSION_INSPECTION_FAILED' }, recovery: 'Reconcile the exact session and audio target before further control; no replay.' }); }
             const current = after.session;
             if (!after.success || !after.ready || !current || !('status' in current) || current.status !== 'attached' || current.sessionId !== session.sessionId || current.targetId !== session.targetId || current.targetKind !== session.targetKind || current.createdAt !== session.createdAt) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Audio session identity/lifecycle changed during execution.', details: uncertainty, recovery: 'Inspect the current session; do not replay the prior audio action.' });
+            if (deadline !== undefined && Date.now() >= deadline) throw new ToolError({ code: 'AUDIO_STATE_TIMEOUT', status: 409, message: 'Audio observation verification settled after wait deadline.' });
             return result;
         } catch (error) {
             if (error instanceof ToolError) throw error;

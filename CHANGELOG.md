@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Propagate internal audio wait residual budgets to readiness/recheck inspection and refuse late verified success. Standalone observe/control defaults remain unchanged; insufficient verification budget skips the next inspection.
 - Preserve callable/constructable variable-binding owner JSDoc when nested signature declarations have no docs; signature-specific documentation remains authoritative and no callable permission is inferred.
 - Pass bounded component read budgets into readiness and residual post-read session inspection. Mutation/event inspection defaults remain unchanged; no native request cancellation is inferred from host deadlines.
 - Refuse component inspect/observe rechecks with under100ms remaining and refuse success after read deadline. Mutation/event verification remains unchanged; this does not abort readiness or native requests already dispatched.
