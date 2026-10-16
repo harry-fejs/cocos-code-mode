@@ -88,6 +88,7 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
     const entriesById = new Map<string, ExternalApiEntry>();
     const indexedCounts = lookup.shards.map(() => 0);
     for (const entry of lookup.entries) {
+        if (!entry.namespace || !entry.id.startsWith(`${version}:${entry.namespace}:`)) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Lookup record identity differs from its version/namespace.' });
         if (entriesById.has(entry.id) || !lookup.shards[entry.shard] || entry.domain !== lookup.shards[entry.shard].domain) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Catalog lookup identities are inconsistent.' });
         entriesById.set(entry.id, entry);
         indexedCounts[entry.shard]++;

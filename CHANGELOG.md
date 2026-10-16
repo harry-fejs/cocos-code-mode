@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Validate version:namespace prefixes for all external lookup entries before exposing lookup-only discovery, not only during shard hydration; malformed navigation identities refuse CATALOG_INVALID.
 - Validate external hydrated record IDs against version:namespace prefixes before parsed-shard caching, matching generator/installed identity rules and refusing inconsistent but hash-pinned metadata.
 - Derive timeline truncated from effective sourceComplete including unsupported native shapes, matching complete semantics. Missing keyframe data stays incomplete/truncated; complete-but-invalid finite-data diagnostics remain distinct from missing coverage.
 - Reject index.json/lookup.json/manifest.json (case-insensitive) as installed/external shard filenames before navigation, matching offline generator reserved-metadata ownership.
