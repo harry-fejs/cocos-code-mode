@@ -435,6 +435,7 @@ describe('scene upgrade read-back contracts', () => {
   it('nodeComponentsGet returns authoritative component references for the requested node', async () => {
     global.Editor = { Message: { request: async (_service, message) => {
       if (message === 'query-node') return {
+        uuid: 'node-1',
         __comps__: [
           { value: { uuid: { value: 'label-1' }, __type__: { value: 'cc.Label' } } },
           { uuid: 'script-1', type: 'GameController' },
@@ -444,9 +445,11 @@ describe('scene upgrade read-back contracts', () => {
     } } };
     assert.deepEqual(await new ComponentTools().nodeComponentsGet({ reference: { id: 'node-1' }, componentType: 'cc.Label' }), {
       references: [{ id: 'label-1', type: 'cc.Label' }],
+      total: 1, offset: 0, nextOffset: null, truncated: false,
     });
     assert.deepEqual(await new ComponentTools().nodeComponentsGet({ reference: { id: 'node-1' } }), {
       references: [{ id: 'label-1', type: 'cc.Label' }, { id: 'script-1', type: 'GameController' }],
+      total: 2, offset: 0, nextOffset: null, truncated: false,
     });
   });
 

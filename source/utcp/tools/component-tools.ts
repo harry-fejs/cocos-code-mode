@@ -67,18 +67,27 @@ export class ComponentTools {
 
     @utcpTool(
         'nodeComponentsGet',
-        'Get components of specific type on a node. If componentType is not provided, returns all components on the node.',
+        'Inspect exact component identities on one node; optional single class or OR class list and bounded offset/limit. Entire inventory validates before filtering/paging; pages are observations, not atomic snapshots.',
         {
             type: 'object',
             properties: {
                 reference: InstanceReferenceSchema,
-                componentType: { type: 'string' }
+                componentType: { type: 'string', minLength: 1, maxLength: 256 },
+                componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
+                offset: { type: 'integer', minimum: 0, maximum: 10000 },
+                limit: { type: 'integer', minimum: 1, maximum: 1000 },
             },
             required: ['reference']
         },
-        { type: 'object', properties: { references: { type: 'array', items: InstanceReferenceSchema } }, required: ['references'] }, "GET",  ['scene', 'node', 'component', 'get', 'inspection']
+        { type: 'object', properties: { references: { type: 'array', items: InstanceReferenceSchema }, total: { type: 'integer' }, offset: { type: 'integer' }, nextOffset: { type: ['integer', 'null'] }, truncated: { type: 'boolean' } }, required: ['references', 'total', 'offset', 'nextOffset', 'truncated'] }, 'GET', ['scene', 'node', 'component', 'get', 'inspection']
     )
-    async nodeComponentsGet(args: { reference: IInstanceReference, componentType?: string }): Promise<{ references: IInstanceReference[] }> {
+    async nodeComponentsGet(args: { reference: IInstanceReference, componentType?: string, componentTypes?: string[], offset?: number, limit?: number }): Promise<{ references: IInstanceReference[], total: number, offset: number, nextOffset: number | null, truncated: boolean }> {
+        if (args.componentType !== undefined && args.componentTypes !== undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Choose componentType or componentTypes, not both.' });
+        const types = args.componentTypes ?? (args.componentType !== undefined ? [args.componentType] : undefined);
+        if (types !== undefined && (!Array.isArray(types) || types.length < 1 || types.length > 32 || types.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component class selectors require 1..32 bounded nonempty names.' });
+        const offset = args.offset ?? 0;
+        if (!Number.isInteger(offset) || offset < 0 || offset > 10000 || args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 1000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offset must be0..10000 and limit1..1000.' });
+        const selectedTypes = types ? new Set(types.map(type => type.replace(/^cc\./, ''))) : undefined;
         if (!args.reference?.id) throw new Error('nodeComponentsGet requires reference.id');
         const node = await Editor.Message.request('scene', 'query-node', args.reference.id);
         if (!node) throw new Error(`Node ${args.reference.id} not found`);
@@ -107,17 +116,16 @@ export class ComponentTools {
             if (identities.has(compUuid)) throw new Error('nodeComponentsGet: duplicate component UUID in serialized inventory');
             identities.add(compUuid);
 
-            if (!args.componentType || (declaredType && (
-                declaredType === args.componentType
-                || declaredType === `cc.${args.componentType}`
-                || declaredType.replace(/^cc\\./, '') === args.componentType.replace(/^cc\\./, '')
-            ))) {
+            if (!selectedTypes || selectedTypes.has(declaredType.replace(/^cc\./, ''))) {
                 foundComponents.push({ id: compUuid, type: declaredType });
             }
         }
 
-        if (foundComponents.length > 0 || !args.componentType) return { references: foundComponents };
-        throw new Error(`Components of type ${args.componentType} not found on node ${args.reference.id}`);
+        if (!foundComponents.length && args.componentType) throw new Error(`Components of type ${args.componentType} not found on node ${args.reference.id}`);
+        if (offset > foundComponents.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offset exceeds the observed filtered inventory.' });
+        const references = foundComponents.slice(offset, args.limit === undefined ? undefined : offset + args.limit);
+        const next = offset + references.length;
+        return { references, total: foundComponents.length, offset, nextOffset: next < foundComponents.length ? next : null, truncated: next < foundComponents.length };
     }
 
     async nodeComponentRemove(args: { reference: IInstanceReference }): Promise<ISuccessIndicator> {
