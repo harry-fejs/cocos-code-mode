@@ -1079,14 +1079,18 @@ export class SceneTools {
             else if (children.length === 0) leafNodes++;
             else containerNodes++;
             const components = node.components ?? [];
-            if (!Array.isArray(components)) { unknownComponentsNodes++; issues.push(`malformed components on ${name}`); continue; }
-            if (components.length) nodesWithComponents++; else nodesWithoutComponents++;
-            componentTotal += components.length;
-            if (componentTotal > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Analysis component budget exceeded.' });
-            for (const component of components) {
-                const type = componentClassId(component) ?? componentCandidates(component)[0];
-                if (typeof type !== 'string' || !type.trim()) { unknownComponentCount++; continue; }
-                const normalized = type.replace(/^cc\./, ''); componentCounts[normalized] = (componentCounts[normalized] ?? 0) + 1;
+            if (!Array.isArray(components)) {
+                unknownComponentsNodes++;
+                issues.push(`malformed components on ${name}`);
+            } else {
+                if (components.length) nodesWithComponents++; else nodesWithoutComponents++;
+                componentTotal += components.length;
+                if (componentTotal > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Analysis component budget exceeded.' });
+                for (const component of components) {
+                    const type = componentClassId(component) ?? componentCandidates(component)[0];
+                    if (typeof type !== 'string' || !type.trim()) { unknownComponentCount++; continue; }
+                    const normalized = type.replace(/^cc\./, ''); componentCounts[normalized] = (componentCounts[normalized] ?? 0) + 1;
+                }
             }
             if (!Array.isArray(children)) { issues.push(`malformed children on ${name}`); continue; }
             scheduled += children.length;
