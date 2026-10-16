@@ -160,6 +160,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     const index = external ?? CatalogIndexSchema.parse(JSON.parse(indexBytes!.toString('utf8')));
     const snapshotHash = external ? external.snapshotHash : crypto.createHash('sha256').update(indexBytes!).digest('hex');
     if (!external && 'version' in index && index.version !== version) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed catalog identity is invalid.' });
+    if (!external && new Set(index.domains.map(domain => domain.file.toLowerCase())).size !== index.domains.length) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed catalog index contains duplicate shard filenames.' });
     const provenancePath = path.join(CATALOG_ROOT, version, 'provenance.json');
     const provenance = !external && fs.existsSync(provenancePath) ? z.object({ scope: z.string().optional(), originalCatalogHash: z.string().nullable().optional() }).passthrough().parse(jsonFile(provenancePath)) : null;
     const coverage = { scope: external ? 'operator-configured-full-catalog' : provenance?.scope ?? 'installed-catalog-scope-unverified', fullCatalogLoaded: external !== null, originalCatalogHash: external?.catalogHash ?? provenance?.originalCatalogHash ?? null };
