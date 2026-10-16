@@ -187,6 +187,7 @@ export class AudioPlaybackTools {
         args = { ...args, nodeReference: { id: args.nodeReference.id } };
         try {
             const runtime = new RuntimeSessionTools();
+            assertActive?.();
             const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId });
             const session = inspected.session;
             if (session && 'status' in session && session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: 'The runtime session is stopped.' });
@@ -216,6 +217,7 @@ export class AudioPlaybackTools {
                         : operation === 'stop' ? state.playbackState === 'stopped' && !state.playing && state.currentTime <= 0.001
                             : time !== undefined && time <= state.duration && Math.abs(state.currentTime - time) <= 0.05);
             if (!confirmed) throw new ToolError({ code: 'AUDIO_READBACK_MISMATCH', status: 502, message: 'Audio success does not satisfy the requested playback postcondition.', details: { ...uncertainty, state }, recovery: 'Observe the exact source before further control; no automatic playback replay.' });
+            if (operation === 'observe') assertActive?.();
             let after: Awaited<ReturnType<RuntimeSessionTools['runtimeSessionLifecycle']>>;
             try { after = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId }); }
             catch (error) { throw new ToolError({ code: 'AUDIO_SESSION_RECHECK_FAILED', status: 502, message: 'Audio operation settled but session continuity could not be confirmed.', details: { ...uncertainty, cause: error instanceof ToolError ? error.code : 'SESSION_INSPECTION_FAILED' }, recovery: 'Reconcile the exact session and audio target before further control; no replay.' }); }
