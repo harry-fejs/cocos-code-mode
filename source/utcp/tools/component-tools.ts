@@ -158,6 +158,7 @@ export class ComponentTools {
         'Inspect component inventories on1..32 exact nodes sequentially with per-item errors. Class selectors use OR; each result carries its own revision. No writes or atomic cross-node snapshot.',
         { type: 'object', additionalProperties: false, properties: {
             references: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema },
+            expectedRevisions: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, revision: { type: 'string', pattern: '^[a-f0-9]{64}$' } }, required: ['reference', 'revision'] }, description: 'Optional revisions keyed by exact requested node UUID; omitted nodes are unguarded.' },
             componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
             excludeComponentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
             enabled: { type: 'boolean', description: 'Exact serialized enabled selector shared by every node.' },
@@ -167,7 +168,7 @@ export class ComponentTools {
         { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, inventorySummary: { type: 'object', properties: { observedNodes: { type: 'integer' }, failedNodes: { type: 'integer' }, total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' } }, required: ['observedNodes', 'failedNodes', 'total', 'enabled', 'disabled', 'unknownEnabled'] } }, required: ['items', 'succeeded', 'failed', 'truncated', 'inventorySummary'] },
         'GET', ['scene', 'node', 'component', 'batch', 'inspection']
     )
-    async nodeComponentsBatchGet(args: { references: IInstanceReference[], componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, total: number, enabled: number, disabled: number, unknownEnabled: number } }> {
+    async nodeComponentsBatchGet(args: { references: IInstanceReference[], expectedRevisions?: Array<{ reference: IInstanceReference, revision: string }>, componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, total: number, enabled: number, disabled: number, unknownEnabled: number } }> {
         if (args.enabled !== undefined && typeof args.enabled !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'enabled must be a boolean serialized component selector.' });
         if (args.requireSingle !== undefined && typeof args.requireSingle !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireSingle must be boolean.' });
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
@@ -177,6 +178,16 @@ export class ComponentTools {
         if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'limitPerNode must be1..100.' });
         const references = args.references.map(reference => ({ id: reference.id }));
         if (new Set(references.map(reference => reference.id)).size !== references.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Batch node UUIDs must be unique to avoid double-counting inventory.' });
+        const expectedRevisions = new Map<string, string>();
+        const requestedIds = new Set(references.map(reference => reference.id));
+        if (args.expectedRevisions !== undefined) {
+            if (!Array.isArray(args.expectedRevisions) || args.expectedRevisions.length > 32) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedRevisions requires at most32 node-bound revisions.' });
+            for (const entry of args.expectedRevisions) {
+                const id = entry?.reference?.id;
+                if (typeof id !== 'string' || !requestedIds.has(id) || expectedRevisions.has(id) || typeof entry.revision !== 'string' || !/^[a-f0-9]{64}$/.test(entry.revision)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Revision entries must be unique, valid and bound to requested node UUIDs.' });
+                expectedRevisions.set(id, entry.revision);
+            }
+        }
         const componentTypes = args.componentTypes?.slice();
         const excludeComponentTypes = args.excludeComponentTypes?.slice();
         const items: Array<Record<string, unknown>> = [];
@@ -184,7 +195,7 @@ export class ComponentTools {
         const inventorySummary = { observedNodes: 0, failedNodes: 0, total: 0, enabled: 0, disabled: 0, unknownEnabled: 0 };
         for (const [index, reference] of references.entries()) {
             try {
-                const result = await this.nodeComponentsGet({ reference, componentTypes, excludeComponentTypes, enabled: args.enabled, requireSingle: args.requireSingle, limit });
+                const result = await this.nodeComponentsGet({ reference, expectedRevision: expectedRevisions.get(reference.id), componentTypes, excludeComponentTypes, enabled: args.enabled, requireSingle: args.requireSingle, limit });
                 items.push({ index, ok: true, reference, result });
                 succeeded++;
                 truncated ||= result.truncated;
