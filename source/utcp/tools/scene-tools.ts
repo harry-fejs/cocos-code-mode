@@ -1021,8 +1021,9 @@ export class SceneTools {
         { type: 'object', additionalProperties: false, properties: {
             rootReference: InstanceReferenceSchema, checkedNodes: { type: 'integer' }, maxDepth: { type: 'integer' }, truncated: { type: 'boolean' },
             depthCounts: { type: 'object', additionalProperties: { type: 'integer', minimum: 1 } },
+            leafNodes: { type: 'integer' }, containerNodes: { type: 'integer' }, unknownChildrenNodes: { type: 'integer' },
             activeNodes: { type: 'integer' }, inactiveNodes: { type: 'integer' }, unknownActiveNodes: { type: 'integer' }, componentCounts: { type: 'object' }, duplicateNames: { type: 'array' }, unknownComponentCount: { type: 'integer' }, issues: { type: 'array' },
-        }, required: ['checkedNodes', 'maxDepth', 'depthCounts', 'truncated', 'activeNodes', 'inactiveNodes', 'unknownActiveNodes', 'componentCounts', 'duplicateNames', 'unknownComponentCount', 'issues'] },
+        }, required: ['checkedNodes', 'maxDepth', 'depthCounts', 'leafNodes', 'containerNodes', 'unknownChildrenNodes', 'truncated', 'activeNodes', 'inactiveNodes', 'unknownActiveNodes', 'componentCounts', 'duplicateNames', 'unknownComponentCount', 'issues'] },
         'GET', ['scene', 'hierarchy', 'analyze', 'component', 'summary', 'qa']
     )
     async sceneHierarchyAnalyze(args: { rootReference?: IInstanceReference, limit?: number } = {}): Promise<Record<string, unknown>> {
@@ -1059,6 +1060,7 @@ export class SceneTools {
         const stack: Array<{ node: any, depth: number }> = [{ node: root, depth: 0 }];
         let checkedNodes = 0, maxDepth = 0, activeNodes = 0, inactiveNodes = 0, unknownComponentCount = 0, truncated = false;
         let unknownActiveNodes = 0, scheduled = 1, componentTotal = 0;
+        let leafNodes = 0, containerNodes = 0, unknownChildrenNodes = 0;
         while (stack.length) {
             if (checkedNodes >= limit) { truncated = true; break; }
             const { node, depth } = stack.pop()!;
@@ -1070,6 +1072,10 @@ export class SceneTools {
             const rawActive = node.active;
             const active = typeof rawActive === 'boolean' ? rawActive : rawActive?.value;
             if (active === false) inactiveNodes++; else if (active === true) activeNodes++; else unknownActiveNodes++;
+            const children = node.children ?? [];
+            if (!Array.isArray(children)) unknownChildrenNodes++;
+            else if (children.length === 0) leafNodes++;
+            else containerNodes++;
             const components = node.components ?? [];
             if (!Array.isArray(components)) { issues.push(`malformed components on ${name}`); continue; }
             componentTotal += components.length;
@@ -1079,13 +1085,12 @@ export class SceneTools {
                 if (typeof type !== 'string' || !type.trim()) { unknownComponentCount++; continue; }
                 const normalized = type.replace(/^cc\./, ''); componentCounts[normalized] = (componentCounts[normalized] ?? 0) + 1;
             }
-            const children = node.children ?? [];
             if (!Array.isArray(children)) { issues.push(`malformed children on ${name}`); continue; }
             scheduled += children.length;
             if (scheduled > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Analysis scheduled-node budget exceeded.' });
             for (let index = children.length - 1; index >= 0; index--) stack.push({ node: children[index], depth: depth + 1 });
         }
-        return { ...(args.rootReference ? { rootReference: args.rootReference } : {}), checkedNodes, maxDepth, depthCounts, truncated, activeNodes, inactiveNodes, unknownActiveNodes,
+        return { ...(args.rootReference ? { rootReference: args.rootReference } : {}), checkedNodes, maxDepth, depthCounts, leafNodes, containerNodes, unknownChildrenNodes, truncated, activeNodes, inactiveNodes, unknownActiveNodes,
             componentCounts, duplicateNames: [...nameCounts].filter(([, count]) => count > 1).map(([name, count]) => ({ name, count })), unknownComponentCount, issues };
     }
 
