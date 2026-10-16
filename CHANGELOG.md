@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Support ImageAsset/TextureCube/EffectAsset/PhysicsMaterial scalar/array script references with null/independent empty defaults. No image/texture load, shader compilation, physics material assignment or automatic asset binding.
 - Default discovery operation/version only when omitted; explicit null operation refuses INVALID_ARGUMENT and null/nonstring targetVersion refuses UNSUPPORTED_VERSION before catalog access.
 - Default discovery numeric limits only when omitted; explicit null timeoutMs/maxPages/maxEntries/maxBytes now refuse INVALID_ARGUMENT rather than silently selecting defaults.
 - Allow RigidBody/RigidBody2D and supported concrete box/sphere/capsule/mesh/2D colliders in scriptComponentCreate requiredComponents. Abstract collider bases remain reference-only; max8/unique limits and source-only generation remain unchanged.
