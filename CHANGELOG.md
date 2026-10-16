@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Expose dataValid on each timeline timing keyframe row, distinguishing malformed payload/time/order at that key from other track issues. Whole-dump diagnostics and filter/page-independent revision remain; opaque values are not returned.
 - Share installed record/byte scan budgets across recursive discovery operations and both compare_version sides; recursion no longer resets the100000-record/32MiB allowances.
 - Encode namespace/class summary identities as tuples in list_classes, preventing delimiter-bearing source names from collapsing distinct class groups while retaining duplicate-view counts.
 - Distinguish active traversal backedges from shared acyclic objects in opaque timeline keyframe data. Repeated shared objects are revalidated within existing work/text budgets; actual object/array cycles remain invalid.

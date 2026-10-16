@@ -151,21 +151,23 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         let first: number | null = null, last: number | null = null;
         let matchedKeyframes = 0;
         let previousFrame: number | null = null;
-        const keyframes: Array<{ index: number; frame: number | null; frameOverSample: number | null }> = [];
+        const keyframes: Array<{ index: number; frame: number | null; frameOverSample: number | null; dataValid: boolean }> = [];
         for (const [keyIndex, rawKey] of (keys ?? []).entries()) {
             const key = timelineRecord(rawKey), keyLocation = `${location}.keyframes[${keyIndex}]`;
+            const keyIssues = diagnosticCount;
             const frame = key && frameValid(key.frame) ? key.frame : null;
             timingHash.update(JSON.stringify([index, keyIndex, frame]));
             if (frame !== null) {
                 if (previousFrame !== null && frame < previousFrame) issue('UNSORTED_KEYFRAME_TIME', keyLocation);
                 previousFrame = frame;
             }
-            if (options.keyframeFrameRange === undefined || frame !== null && frame >= options.keyframeFrameRange.min && frame <= options.keyframeFrameRange.max) {
-                if (matchedKeyframes >= bounds.keyframeOffset && matchedKeyframes < bounds.keyframeOffset + bounds.keyframeLimit) keyframes.push({ index: keyIndex, frame, frameOverSample: frame !== null && sample !== null && finite(frame / sample) ? frame / sample : null });
-                matchedKeyframes++;
-            }
+            const matchesFrame = options.keyframeFrameRange === undefined || frame !== null && frame >= options.keyframeFrameRange.min && frame <= options.keyframeFrameRange.max;
             if (!key || !frameValid(key.frame)) issue('INVALID_KEYFRAME_TIME', keyLocation);
             if (!key || !('dump' in key) || !finiteTree(key)) issue('INVALID_KEYFRAME_DATA', keyLocation);
+            if (matchesFrame) {
+                if (matchedKeyframes >= bounds.keyframeOffset && matchedKeyframes < bounds.keyframeOffset + bounds.keyframeLimit) keyframes.push({ index: keyIndex, frame, frameOverSample: frame !== null && sample !== null && finite(frame / sample) ? frame / sample : null, dataValid: diagnosticCount === keyIssues });
+                matchedKeyframes++;
+            }
             if (key && finite(key.frame) && key.frame >= 0) { first = first === null ? key.frame : Math.min(first, key.frame); last = last === null ? key.frame : Math.max(last, key.frame); }
         }
         for (const field of ['comp', 'parentPropKey', 'displayName']) if (curve && field in curve && typeof curve[field] !== 'string') issue('UNSUPPORTED_TRACK_METADATA', `${location}.${field}`, true);

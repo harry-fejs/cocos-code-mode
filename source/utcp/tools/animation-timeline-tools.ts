@@ -50,7 +50,7 @@ export class AnimationTimelineTools {
                 matchedKeyframes: { type: ['integer', 'null'] },
                 keyframeOffset: { type: 'integer' }, nextKeyframeOffset: { type: ['integer', 'null'] },
                 keyframeLimit: { type: 'integer' }, keyframesComplete: { type: 'boolean' }, keyframesTruncated: { type: 'boolean' },
-                keyframes: { type: 'array', maxItems: 200, items: { type: 'object', properties: { index: { type: 'integer' }, frame: { type: ['number', 'null'] }, frameOverSample: { type: ['number', 'null'] } }, required: ['index', 'frame', 'frameOverSample'] } },
+                keyframes: { type: 'array', maxItems: 200, items: { type: 'object', properties: { dataValid: { type: 'boolean' }, index: { type: 'integer' }, frame: { type: ['number', 'null'] }, frameOverSample: { type: ['number', 'null'] } }, required: ['dataValid', 'index', 'frame', 'frameOverSample'] } },
                 frameRange: { type: ['object', 'null'], properties: { first: { type: 'number' }, last: { type: 'number' } }, required: ['first', 'last'] },
                 frameOverSampleRange: { type: ['object', 'null'], properties: { first: { type: 'number' }, last: { type: 'number' } }, required: ['first', 'last'] }, dataValid: { type: 'boolean' },
             }, required: ['matchedKeyframes', 'index', 'identity', 'component', 'parentProperty', 'displayName', 'keyframeCount', 'keyframeOffset', 'nextKeyframeOffset', 'keyframeLimit', 'keyframesComplete', 'keyframesTruncated', 'keyframes', 'frameRange', 'frameOverSampleRange', 'dataValid'] } },

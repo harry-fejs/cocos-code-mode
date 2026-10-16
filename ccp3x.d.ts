@@ -1047,7 +1047,7 @@ declare namespace ccp3x {
         parameters?: string[],
         events?: unknown[]
     }): { success: boolean, error?: string, result?: any };
-    interface AnimationTimelineKeyframe { index: number; frame: number | null; frameOverSample: number | null }
+    interface AnimationTimelineKeyframe { index: number; frame: number | null; frameOverSample: number | null; dataValid: boolean }
     interface AnimationTimelineTrack {
         index: number;
         identity: { nodePath: string | null; property: string | null };
