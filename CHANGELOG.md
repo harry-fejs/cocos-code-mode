@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Validate record static metadata as boolean/null/absent at discovery schema boundaries, refusing string/number/object forms rather than normalizing corrupt identity metadata to unknown.
 - Add invalidEventsOnly timeline filtering with matching-event pagination/native indices, AND-composed with callback/frame selectors. Whole-dump diagnostics/error totals and filter-independent revision remain; no callback execution or binding inference.
 - Refuse Inspector instance mapping to nonengine or mixed catalog namespaces before native inspection; engine-runtime mapping remains read-only and does not authorize mutation.
 - Add invalidTracksOnly timeline filtering with matching-track pagination and original native indices. Binding selectors compose with AND; whole-dump validation/error totals and filter-independent revision remain intact.
