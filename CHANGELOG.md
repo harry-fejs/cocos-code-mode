@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Reject explicit empty/nonstring/oversized or non-base64url discovery cursors before catalog access with STALE_CURSOR, rather than treating falsy malformed cursors as first-page requests.
 - Validate discovery className/domain/filter string bounds and namespace enum before catalog access, returning INVALID_ARGUMENT for malformed selectors instead of normalization errors or misleading empty results.
 - Support MouseJoint2D/RelativeJoint2D/SliderJoint2D/WheelJoint2D scalar/array script references with null/independent empty defaults. No joint creation, input registration, connected-body assignment or simulation mutation.
 - Refuse malformed Inspector type/property collections in live catalog discovery with INSPECTOR_RESPONSE_INVALID rather than reporting availability or throwing untyped class-normalization errors.
