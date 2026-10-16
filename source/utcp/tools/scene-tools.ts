@@ -1020,8 +1020,9 @@ export class SceneTools {
         },
         { type: 'object', additionalProperties: false, properties: {
             rootReference: InstanceReferenceSchema, checkedNodes: { type: 'integer' }, maxDepth: { type: 'integer' }, truncated: { type: 'boolean' },
+            depthCounts: { type: 'object', additionalProperties: { type: 'integer', minimum: 1 } },
             activeNodes: { type: 'integer' }, inactiveNodes: { type: 'integer' }, unknownActiveNodes: { type: 'integer' }, componentCounts: { type: 'object' }, duplicateNames: { type: 'array' }, unknownComponentCount: { type: 'integer' }, issues: { type: 'array' },
-        }, required: ['checkedNodes', 'maxDepth', 'truncated', 'activeNodes', 'inactiveNodes', 'unknownActiveNodes', 'componentCounts', 'duplicateNames', 'unknownComponentCount', 'issues'] },
+        }, required: ['checkedNodes', 'maxDepth', 'depthCounts', 'truncated', 'activeNodes', 'inactiveNodes', 'unknownActiveNodes', 'componentCounts', 'duplicateNames', 'unknownComponentCount', 'issues'] },
         'GET', ['scene', 'hierarchy', 'analyze', 'component', 'summary', 'qa']
     )
     async sceneHierarchyAnalyze(args: { rootReference?: IInstanceReference, limit?: number } = {}): Promise<Record<string, unknown>> {
@@ -1051,6 +1052,7 @@ export class SceneTools {
         }
         const limit = boundedListLimit(args.limit);
         const componentCounts: Record<string, number> = Object.create(null);
+        const depthCounts: Record<string, number> = Object.create(null);
         const nameCounts = new Map<string, number>();
         const issues: string[] = [];
         const visited = new Set<object>();
@@ -1063,6 +1065,7 @@ export class SceneTools {
             if (!node || typeof node !== 'object' || Array.isArray(node)) { issues.push('invalid node encountered'); continue; }
             if (visited.has(node)) { issues.push(`cycle or repeated node at depth ${depth}`); continue; }
             visited.add(node); checkedNodes++; maxDepth = Math.max(maxDepth, depth);
+            depthCounts[depth] = (depthCounts[depth] ?? 0) + 1;
             const name = sceneTreeNodeName(node); nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
             const rawActive = node.active;
             const active = typeof rawActive === 'boolean' ? rawActive : rawActive?.value;
@@ -1082,7 +1085,7 @@ export class SceneTools {
             if (scheduled > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Analysis scheduled-node budget exceeded.' });
             for (let index = children.length - 1; index >= 0; index--) stack.push({ node: children[index], depth: depth + 1 });
         }
-        return { ...(args.rootReference ? { rootReference: args.rootReference } : {}), checkedNodes, maxDepth, truncated, activeNodes, inactiveNodes, unknownActiveNodes,
+        return { ...(args.rootReference ? { rootReference: args.rootReference } : {}), checkedNodes, maxDepth, depthCounts, truncated, activeNodes, inactiveNodes, unknownActiveNodes,
             componentCounts, duplicateNames: [...nameCounts].filter(([, count]) => count > 1).map(([name, count]) => ({ name, count })), unknownComponentCount, issues };
     }
 
