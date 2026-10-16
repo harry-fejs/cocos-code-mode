@@ -261,6 +261,7 @@ export async function executeComponentOperation(args: ComponentOperation, assert
     const mutation = args.kind !== 'events' && !['inspect', 'observe'].includes(args.operation);
     const captureToken = args.kind === 'events' && assertActive ? randomUUID() : undefined;
     let cancellationPoll: NodeJS.Timeout | undefined; let signalling = false; let signalAttempts = 0;
+    let pendingSignal: Promise<unknown> | undefined;
     let result: Record<string, unknown> | null;
     try {
         const pending = executeGameViewOperation(session.targetId, createComponentOperationSource({ ...args, captureToken }), (args.timeoutMs ?? 1000) + 2000, mutation);
@@ -269,10 +270,10 @@ export async function executeComponentOperation(args: ComponentOperation, assert
             try { assertActive?.(); return; } catch { /* Signal only this owned capture; never stop playback. */ }
             signalling = true; signalAttempts++;
             const source = `(() => { const captures = globalThis[Symbol.for('ccp3x.animationCaptures')]; const token = ${JSON.stringify(captureToken)}; if (captures instanceof Map && captures.has(token)) { captures.set(token, true); return true; } return false; })()`;
-            void executeGameViewOperation(session.targetId, source, 1000, false).then(ack => { if (ack === true) signalAttempts = 3; }, () => undefined).finally(() => { signalling = false; });
+            pendingSignal = executeGameViewOperation(session.targetId, source, 1000, false).then(ack => { if (ack === true) signalAttempts = 3; }, () => undefined).finally(() => { signalling = false; });
         }, 25);
         result = await pending as Record<string, unknown> | null;
-    } finally { clearInterval(cancellationPoll); }
+    } finally { clearInterval(cancellationPoll); await pendingSignal; }
     if (!result || typeof result !== 'object' || Array.isArray(result)) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Component operation returned no typed runtime state.', details: { mutationDispatched: mutation, retrySafe: !mutation }, recovery: 'Inspect the exact component before further control; do not replay the prior mutation.' });
     if (typeof result.code === 'string') throw new ToolError({ code: result.code, status: /NOT_FOUND$/.test(result.code) ? 404 : result.code.startsWith('UNSUPPORTED') ? 422 : 409, message: typeof result.message === 'string' ? result.message : 'Component operation failed.', details: { mutationDispatched: !mutation ? false : typeof result.mutationDispatched === 'boolean' ? result.mutationDispatched : null, retrySafe: !mutation || result.mutationDispatched === false }, recovery: 'Reconcile the exact component outcome before further control; never replay an unknown mutation.' });
     if ('success' in result && result.success !== true) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Component response contains a failure or malformed success flag.', details: { mutationDispatched: mutation, retrySafe: !mutation }, recovery: 'Inspect the exact component outcome before further control; do not replay the prior mutation.' });
