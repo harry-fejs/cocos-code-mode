@@ -377,12 +377,17 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     if (operation === 'get_signature') {
         const record = external && records[0] ? ApiRecordSchema.parse({ ...readPage(() => external.readRecord(records[0].id)), permitted: false }) : records[0] as ApiRecord | undefined;
         if (!record) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Record signature is absent from the selected catalog scope/version/filters.' });
-        if (record.signatures?.some(signature => !signature || typeof signature !== 'object' || Array.isArray(signature))) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signature metadata is malformed.' });
+        const invalidSignature = (signature: unknown): boolean => {
+            if (!signature || typeof signature !== 'object' || Array.isArray(signature)) return true;
+            const parameters = (signature as Record<string, unknown>).parameters;
+            return parameters !== undefined && (!Array.isArray(parameters) || parameters.some(parameter => !parameter || typeof parameter !== 'object' || Array.isArray(parameter)));
+        };
+        if (record.signatures?.some(invalidSignature)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signature metadata is malformed.' });
         const declaration = record.declarationEvidence;
         if (declaration !== undefined && declaration !== null) {
             if (typeof declaration !== 'object' || Array.isArray(declaration)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration evidence metadata is malformed.' });
             const signatures = (declaration as Record<string, unknown>).signatures;
-            if (signatures !== undefined && (!Array.isArray(signatures) || signatures.some(signature => !signature || typeof signature !== 'object' || Array.isArray(signature)))) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signature metadata is malformed.' });
+            if (signatures !== undefined && (!Array.isArray(signatures) || signatures.some(invalidSignature))) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signature metadata is malformed.' });
         }
         records.splice(0, records.length, { id: record.id, namespace: record.namespace, className: record.className, member: record.member, name: record.name, kind: record.kind, static: typeof record.static === 'boolean' ? record.static : null, signatures: record.signatures ?? [], declarationEvidence: record.declarationEvidence ?? null, permitted: false, evidenceStatus: record.evidenceStatus ?? null });
     }
