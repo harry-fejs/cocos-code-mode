@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Bind discovery cursors to catalog source coverage/provenance as well as catalog hash and selectors; switching installed pilot versus operator external catalog refuses STALE_CURSOR even when catalog hashes match.
 - Reject null/primitive/array source signature entries in get_signature with CATALOG_INVALID, matching declaration-signature entry shape checks while preserving valid metadata and non-permitted discovery semantics.
 - Support DirectionalLight/SphereLight/SpotLight scalar/array script references using Creator3.7 native types. Null/independent empty defaults only; no light construction, baking or pipeline mutation. PointLight is not inferred from other Creator versions.
 - Refuse malformed declaration-evidence/signature collection shapes in get_signature while preserving absent and source-only evidence; saved declaration provenance remains separate and non-permitted.
