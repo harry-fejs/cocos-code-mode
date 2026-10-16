@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Support Mesh/Skeleton scalar and array references in scriptComponentCreate using native asset property types and null/independent empty defaults. No model loading, skeleton construction, retargeting or automatic binding.
 - Forward internal audio/node wait cancellation through readiness, refusing native observation dispatch after cancellation. Node observation phases also require at least100ms remaining; public JSON contracts remain unchanged.
 - Retain unique JSDoc blocks from merged/overloaded symbol declarations in record documentation rather than only the representative declaration; published signatures and permission state remain unchanged.
 - Forward internal animation/graph/particle wait cancellation guards into shared component transport readiness checks. Cancellation during session inspection now refuses before native observation dispatch, not only after the read settles.
