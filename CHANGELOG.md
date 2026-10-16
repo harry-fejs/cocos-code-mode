@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add exact diagnosticCode filtering with matchedDiagnostics to animationTimelineInspect. Diagnostic offsets page matching errors while whole-source diagnostics/counts and revision remain independent of selection; empty matches never imply a valid clip.
 - Refuse exact record owning-class/reference.type conflicts before Inspector observation, retaining normalized matching mappings and catalog-only discovery without mutation permission.
 - Add diagnosticOffset/diagnosticLimit and nextDiagnosticOffset to animationTimelineInspect so diagnostics beyond the first 64 are reachable. Retain bounded pages, whole-source error counts and page-independent revision hashing; no clip mutation or runtime validation.
 - Preserve primary bounded catalog read/hash/limit failures if descriptor cleanup also throws; close-only failure returns sanitized CATALOG_READ_FAILED instead of raw filesystem content or successful bytes.

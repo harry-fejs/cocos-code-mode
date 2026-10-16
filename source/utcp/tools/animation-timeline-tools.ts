@@ -32,6 +32,7 @@ export class AnimationTimelineTools {
             keyframeLimit: { type: 'integer', minimum: 1, maximum: 200, default: 20 },
             diagnosticOffset: { type: 'integer', minimum: 0, maximum: 1000000, default: 0, description: 'Offset into all retrieved-source diagnostics; independent of track/event filters. Use expectedRevision across pages.' },
             diagnosticLimit: { type: 'integer', minimum: 1, maximum: 64, default: 64 },
+            diagnosticCode: { type: 'string', pattern: '^[A-Z][A-Z0-9_]{0,63}$', description: 'Exact diagnostic code; offsets address matches, whole-source counts/revision remain. Unknown codes yield no matches, not source validity.' },
             maxBytes: { type: 'integer', minimum: 1024, maximum: 262144, default: 65536, description: 'Exact UTF-8 JSON byte ceiling for the entire successful result. Oversized records/envelopes fail with typed bound errors.' },
         }, required: ['nodeReference', 'clipReference'],
     }, {
@@ -71,8 +72,9 @@ export class AnimationTimelineTools {
             diagnostics: { type: 'array', maxItems: 64, items: { type: 'object', properties: { code: { type: 'string' }, location: { type: 'string' } }, required: ['code', 'location'] } },
             diagnosticCount: { type: 'integer' }, diagnosticsTruncated: { type: 'boolean' },
             diagnosticOffset: { type: 'integer' }, diagnosticLimit: { type: 'integer' }, nextDiagnosticOffset: { type: ['integer', 'null'] },
+            diagnosticCode: { type: ['string', 'null'] }, matchedDiagnostics: { type: 'integer', minimum: 0 },
             runtimeVerified: { type: 'boolean', const: false }, sceneSaved: { type: 'boolean', const: false }, callbackExistenceVerified: { type: 'boolean', const: false },
-        }, required: ['diagnosticOffset', 'diagnosticLimit', 'nextDiagnosticOffset', 'invalidKeyframesOnly', 'invalidEventsOnly', 'invalidTracksOnly', 'invalidTracks', 'invalidEvents', 'keyframeFrameRange', 'eventFrameRange', 'matchedEvents', 'eventCallback', 'matchedTracks', 'trackBinding', 'revision', 'revisionScope', 'nodeReference', 'clipReference', 'identity', 'clip', 'sourceScope', 'timingUnit', 'validityScope', 'valid', 'sourceComplete', 'complete', 'truncated', 'totalTracks', 'retrievedTracks', 'totalEvents', 'inspectedKeyframes', 'trackOffset', 'trackLimit', 'eventOffset', 'eventLimit', 'nextTrackOffset', 'nextEventOffset', 'tracks', 'events', 'diagnostics', 'diagnosticCount', 'diagnosticsTruncated', 'runtimeVerified', 'sceneSaved', 'callbackExistenceVerified'],
+        }, required: ['diagnosticCode', 'matchedDiagnostics', 'diagnosticOffset', 'diagnosticLimit', 'nextDiagnosticOffset', 'invalidKeyframesOnly', 'invalidEventsOnly', 'invalidTracksOnly', 'invalidTracks', 'invalidEvents', 'keyframeFrameRange', 'eventFrameRange', 'matchedEvents', 'eventCallback', 'matchedTracks', 'trackBinding', 'revision', 'revisionScope', 'nodeReference', 'clipReference', 'identity', 'clip', 'sourceScope', 'timingUnit', 'validityScope', 'valid', 'sourceComplete', 'complete', 'truncated', 'totalTracks', 'retrievedTracks', 'totalEvents', 'inspectedKeyframes', 'trackOffset', 'trackLimit', 'eventOffset', 'eventLimit', 'nextTrackOffset', 'nextEventOffset', 'tracks', 'events', 'diagnostics', 'diagnosticCount', 'diagnosticsTruncated', 'runtimeVerified', 'sceneSaved', 'callbackExistenceVerified'],
     }, 'GET', ['animation', 'timeline', 'inspect', 'read-only'])
     async animationTimelineInspect(args: TimelineInspectOptions) {
         const nodeReference = exactReference(args?.nodeReference, 'nodeReference');

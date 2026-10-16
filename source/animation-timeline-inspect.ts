@@ -23,6 +23,7 @@ export interface TimelineInspectOptions {
     keyframeLimit?: number;
     diagnosticOffset?: number;
     diagnosticLimit?: number;
+    diagnosticCode?: string;
 }
 export function timelineRecord(value: unknown): Row | null {
     return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Row : null;
@@ -40,6 +41,7 @@ export function timelineInspectBounds(options: TimelineInspectOptions) {
     if (options.invalidTracksOnly !== undefined && typeof options.invalidTracksOnly !== 'boolean') fail('INVALID_ARGUMENT', 'invalidTracksOnly must be a boolean.');
     if (options.invalidEventsOnly !== undefined && typeof options.invalidEventsOnly !== 'boolean') fail('INVALID_ARGUMENT', 'invalidEventsOnly must be a boolean.');
     if (options.invalidKeyframesOnly !== undefined && typeof options.invalidKeyframesOnly !== 'boolean') fail('INVALID_ARGUMENT', 'invalidKeyframesOnly must be a boolean.');
+    if (options.diagnosticCode !== undefined && (typeof options.diagnosticCode !== 'string' || !/^[A-Z][A-Z0-9_]{0,63}$/.test(options.diagnosticCode))) fail('INVALID_ARGUMENT', 'diagnosticCode must be an exact uppercase diagnostic code of at most 64 characters.');
     const binding = options.trackBinding;
     if (binding !== undefined && (!timelineRecord(binding) || Object.keys(binding).some(key => !['nodePath', 'property', 'component', 'parentProperty'].includes(key)) || typeof binding.nodePath !== 'string' || binding.nodePath.length > 1024 || binding.component !== undefined && (typeof binding.component !== 'string' || !binding.component || binding.component.length > 256) || binding.parentProperty !== undefined && (typeof binding.parentProperty !== 'string' || binding.parentProperty.length > 256) || typeof binding.property !== 'string' || !binding.property || binding.property.length > 256)) fail('INVALID_ARGUMENT', 'trackBinding requires exact nodePath (empty root allowed) and nonempty property.');
     if (options.eventCallback !== undefined && (typeof options.eventCallback !== 'string' || !options.eventCallback || options.eventCallback.length > 256)) fail('INVALID_ARGUMENT', 'eventCallback must be an exact nonempty callback name of at most 256 characters.');
@@ -71,10 +73,14 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     const bounds = timelineInspectBounds(options), dump = timelineRecord(value);
     const diagnostics: Array<{ code: string; location: string }> = [];
     let diagnosticCount = 0, supported = true;
+    let matchedDiagnostics = 0;
     const diagnosticHash = createHash('sha256');
     const issue = (code: string, location: string, unsupported = false): void => {
         diagnosticHash.update(JSON.stringify([code, location]));
-        if (diagnosticCount >= bounds.diagnosticOffset && diagnostics.length < bounds.diagnosticLimit) diagnostics.push({ code, location });
+        if (options.diagnosticCode === undefined || options.diagnosticCode === code) {
+            if (matchedDiagnostics >= bounds.diagnosticOffset && diagnostics.length < bounds.diagnosticLimit) diagnostics.push({ code, location });
+            matchedDiagnostics++;
+        }
         diagnosticCount++;
         if (unsupported) supported = false;
     };
@@ -255,9 +261,10 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         nextTrackOffset: null as number | null, nextEventOffset: null as number | null,
         tracks: selectedTracks.slice(bounds.trackOffset, bounds.trackOffset + bounds.trackLimit), events: selectedEvents.slice(bounds.eventOffset, bounds.eventOffset + bounds.eventLimit),
         diagnostics, diagnosticCount,
+        diagnosticCode: options.diagnosticCode ?? null, matchedDiagnostics,
         diagnosticOffset: bounds.diagnosticOffset, diagnosticLimit: bounds.diagnosticLimit,
-        nextDiagnosticOffset: bounds.diagnosticOffset + diagnostics.length < diagnosticCount ? bounds.diagnosticOffset + diagnostics.length : null,
-        diagnosticsTruncated: bounds.diagnosticOffset > 0 || diagnosticCount > diagnostics.length,
+        nextDiagnosticOffset: bounds.diagnosticOffset + diagnostics.length < matchedDiagnostics ? bounds.diagnosticOffset + diagnostics.length : null,
+        diagnosticsTruncated: bounds.diagnosticOffset > 0 || matchedDiagnostics > diagnostics.length,
         runtimeVerified: false as const, sceneSaved: false as const, callbackExistenceVerified: false as const,
     };
     for (const [kind, rows] of [['track', result.tracks], ['event', result.events]] as const) for (const row of rows) {
