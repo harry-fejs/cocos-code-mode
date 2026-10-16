@@ -128,7 +128,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     if (!['records', 'list_domains', 'list_classes', 'list_namespaces', 'list_members', 'get_signature', 'get_related_types', 'compare_version'].includes(operation)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Unknown catalog discovery operation.' });
     if (operation === 'get_related_types' && (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'get_related_types requires a bounded exact recordId.' });
     if (operation === 'compare_version') {
-        if (!args.compareVersion || args.compareVersion === version || !Object.prototype.hasOwnProperty.call(VERSIONS, args.compareVersion)
+        if (typeof args.compareVersion !== 'string' || args.compareVersion === version || !Object.prototype.hasOwnProperty.call(VERSIONS, args.compareVersion)
             || typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024
             || typeof args.compareRecordId !== 'string' || !args.compareRecordId || args.compareRecordId.length > 1024
             || args.reference || args.className || args.domain || args.namespace || args.filter || args.cursor || args.category === 'component_schema') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'compare_version requires distinct catalog versions and two exact record IDs without live targets, filters or cursors.' });
