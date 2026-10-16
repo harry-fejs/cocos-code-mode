@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Cap aggregate installed discovery scans at100000 records before reading the next over-budget shard, including filtered-out records; CATALOG_RECORD_LIMIT refuses incomplete scans rather than returning partial completeness.
 - Prune installed shard reads by namespace and component_schema engine-runtime scope before spending maxPages; unrelated namespace shards are not hydrated or qualified by a scoped query.
 - Bound timeline inspection to100000 event parameters across the entire retrieved dump before parameter traversal, including off-page/filtered events. Oversized dense or sparse arrays refuse TIMELINE_SOURCE_BOUND_EXCEEDED rather than silently omitting work.
 - Validate every installed shard basename before catalog navigation, including list_domains and filtered queries; refuse traversal, Windows path forms and non-JSON names without reading shards.

@@ -197,13 +197,16 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         }
     }
     const installedRecordIds = new Set<string>();
+    let installedRecordCount = 0;
     for (const domain of operation === 'list_domains' || external ? [] : index.domains) {
         checkDeadline();
         if (args.domain && domain.name !== args.domain) continue;
         if (args.namespace && !domain.name.startsWith(`${args.namespace}.`)) continue;
         if (args.category === 'component_schema' && !domain.name.startsWith('engine-runtime.')) continue;
+        if (domain.count > 100000 - installedRecordCount) throw new ToolError({ code: 'CATALOG_RECORD_LIMIT', status: 413, message: 'Installed catalog scan exceeds 100000 records; narrow the namespace/domain.' });
         const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(readPage(() => jsonFile(path.join(CATALOG_ROOT, version, domain.file))));
         if (shard.records.length !== domain.count) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed shard record count differs from its index.' });
+        installedRecordCount += shard.records.length;
         for (const record of shard.records) {
             checkDeadline();
             if (record.version !== version || !record.id.startsWith(`${version}:${record.namespace}:`)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed record version or namespaced identity differs from its catalog.' });
