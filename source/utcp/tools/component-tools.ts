@@ -153,30 +153,38 @@ export class ComponentTools {
             enabled: { type: 'boolean', description: 'Exact serialized enabled selector shared by every node.' },
             limitPerNode: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
         }, required: ['references'] },
-        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['items', 'succeeded', 'failed', 'truncated'] },
+        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, inventorySummary: { type: 'object', properties: { observedNodes: { type: 'integer' }, failedNodes: { type: 'integer' }, total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' } }, required: ['observedNodes', 'failedNodes', 'total', 'enabled', 'disabled', 'unknownEnabled'] } }, required: ['items', 'succeeded', 'failed', 'truncated', 'inventorySummary'] },
         'GET', ['scene', 'node', 'component', 'batch', 'inspection']
     )
-    async nodeComponentsBatchGet(args: { references: IInstanceReference[], componentTypes?: string[], enabled?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean }> {
+    async nodeComponentsBatchGet(args: { references: IInstanceReference[], componentTypes?: string[], enabled?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, total: number, enabled: number, disabled: number, unknownEnabled: number } }> {
         if (args.enabled !== undefined && typeof args.enabled !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'enabled must be a boolean serialized component selector.' });
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
         if (args.componentTypes !== undefined && (!Array.isArray(args.componentTypes) || args.componentTypes.length < 1 || args.componentTypes.length > 32 || args.componentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentTypes requires1..32 bounded class names.' });
         const limit = args.limitPerNode ?? 50;
         if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'limitPerNode must be1..100.' });
         const references = args.references.map(reference => ({ id: reference.id }));
+        if (new Set(references.map(reference => reference.id)).size !== references.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Batch node UUIDs must be unique to avoid double-counting inventory.' });
         const componentTypes = args.componentTypes?.slice();
         const items: Array<Record<string, unknown>> = [];
         let succeeded = 0, truncated = false;
+        const inventorySummary = { observedNodes: 0, failedNodes: 0, total: 0, enabled: 0, disabled: 0, unknownEnabled: 0 };
         for (const [index, reference] of references.entries()) {
             try {
                 const result = await this.nodeComponentsGet({ reference, componentTypes, enabled: args.enabled, limit });
                 items.push({ index, ok: true, reference, result });
                 succeeded++;
                 truncated ||= result.truncated;
+                inventorySummary.observedNodes++;
+                inventorySummary.total += result.inventorySummary.total;
+                inventorySummary.enabled += result.inventorySummary.enabled;
+                inventorySummary.disabled += result.inventorySummary.disabled;
+                inventorySummary.unknownEnabled += result.inventorySummary.unknownEnabled;
             } catch (error) {
+                inventorySummary.failedNodes++;
                 items.push({ index, ok: false, reference, error: { code: error instanceof ToolError ? error.code : 'COMPONENT_QUERY_FAILED', message: (error instanceof Error ? error.message : String(error)).slice(0, 512) } });
             }
         }
-        return { items, succeeded, failed: references.length - succeeded, truncated };
+        return { items, succeeded, failed: references.length - succeeded, truncated, inventorySummary };
     }
 
     async nodeComponentRemove(args: { reference: IInstanceReference }): Promise<ISuccessIndicator> {
