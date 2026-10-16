@@ -44,7 +44,7 @@ function collectExports(input, version, roots, label = 'engine') {
     let sigs;
     if (['interface', 'type', 'enum'].includes(kind(declaration)) && !member) {
       const value = typeInfo(checker, checker.getDeclaredTypeOfSymbol(symbol), ts.isInterfaceDeclaration(declaration) ? declaration : declaration.type);
-      sigs = [{ overload: 0, visibility: info.visibility, kind: 'value', type: value.type, declaredType: value.declaredType, references: value.references, unresolved: value.unresolved }];
+      sigs = [{ overload: 0, visibility: info.visibility, jsdoc: info.jsdoc, kind: 'value', type: value.type, declaredType: value.declaredType, references: value.references, unresolved: value.unresolved }];
     } else sigs = signatures(checker, symbol, declaration);
     const diagnostics = sigs.flatMap(signature => signature.unresolved);
     const inheritedName = inheritedFrom?.name?.getText() || null;

@@ -324,7 +324,8 @@ function signatures(checker, symbol, declaration) {
     return row;
   });
   const info = typeInfo(checker, type, declaration.type);
-  return [{ overload: 0, visibility: metadata(declaration).visibility, kind: 'value', type: info.type, declaredType: info.declaredType, references: info.references,
+  const declarationMetadata = metadata(declaration);
+  return [{ overload: 0, visibility: declarationMetadata.visibility, jsdoc: declarationMetadata.jsdoc, kind: 'value', type: info.type, declaredType: info.declaredType, references: info.references,
     defaultExpression: compact(declaration.initializer), unresolved: info.unresolved }];
 }
 function metadata(node) {

@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve documentation on data/variable and collector-created named type value signatures, matching callable/accessor JSDoc contract while retaining non-permitted discovery semantics.
 - Support BoxCollider/SphereCollider/CapsuleCollider/MeshCollider and BoxCollider2D/CircleCollider2D/PolygonCollider2D scalar/array script references with native types and null/empty defaults. No collider construction, auto-attachment or simulation changes.
 - Support RigidBody/Collider/RigidBody2D/Collider2D scalar/array references in scriptComponentCreate. Native typed fields start null/empty; no body construction, backend selection, automatic attachment or simulation control.
 - Preserve JSDoc on individual callable/accessor signature rows so overload-specific documentation remains associated with its own parameter/result contract instead of only record-level concatenated docs.
