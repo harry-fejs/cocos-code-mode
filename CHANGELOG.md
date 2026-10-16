@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Expose signature receiver and type-predicate dependency roles in get_related_types for both source and declaration evidence, retaining signature indexes, bounded paging and malformed nested metadata refusal. Catalog evidence does not authorize invocation.
+- Support UIOpacity/RichText/ToggleContainer scalar/array script references using native Inspector types and null/independent empty defaults. No UI construction, callback binding, fade or radio-group behavior is executed.
 - Retain direct parameter JSDoc on callable signature parameter rows without mixing overload documentation or inferring docs from function-level tags; types, optionality and arity remain unchanged.
 - Refuse runtimeWaitForState observations below100ms remaining instead of rounding inspection timeout above residual caller budget. Existing cancellation/session identity checks and frame predicates remain unchanged.
 - Preserve destructured callable parameter binding patterns (object aliases, nested bindings, array holes and rest elements) alongside compiler names; parameter order, optionality and arity remain unchanged. Metadata does not authorize invocation.
