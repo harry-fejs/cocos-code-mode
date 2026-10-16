@@ -68,10 +68,13 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
     if (lookup.version !== version || lookup.catalogHash !== selected.catalogHash) throw new ToolError({ code: 'CATALOG_HASH_MISMATCH', status: 409, message: 'Lookup version/catalog identity differs from configuration.' });
     readBounded(root, 'index.json', 1024 * 1024, lookup.sourceIndexSha256);
     const entriesById = new Map<string, ExternalApiEntry>();
+    const indexedCounts = lookup.shards.map(() => 0);
     for (const entry of lookup.entries) {
         if (entriesById.has(entry.id) || !lookup.shards[entry.shard] || entry.domain !== lookup.shards[entry.shard].domain) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Catalog lookup identities are inconsistent.' });
         entriesById.set(entry.id, entry);
+        indexedCounts[entry.shard]++;
     }
+    if (lookup.shards.some((shard, index) => shard.count !== indexedCounts[index])) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Lookup entry counts differ from declared shard counts.' });
     return {
         catalogHash: lookup.catalogHash, entries: lookup.entries.map(entry => ({ ...entry, ...(entry.contexts ? { contexts: [...entry.contexts] } : {}) })),
         domains: lookup.shards.map(shard => ({ name: shard.domain, file: shard.file, count: shard.count })),
