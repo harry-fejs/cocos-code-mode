@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Refuse malformed declaration-evidence/signature collection shapes in get_signature while preserving absent and source-only evidence; saved declaration provenance remains separate and non-permitted.
 - Support ImageAsset/TextureCube/EffectAsset/PhysicsMaterial scalar/array script references with null/independent empty defaults. No image/texture load, shader compilation, physics material assignment or automatic asset binding.
 - Default discovery operation/version only when omitted; explicit null operation refuses INVALID_ARGUMENT and null/nonstring targetVersion refuses UNSUPPORTED_VERSION before catalog access.
 - Default discovery numeric limits only when omitted; explicit null timeoutMs/maxPages/maxEntries/maxBytes now refuse INVALID_ARGUMENT rather than silently selecting defaults.
