@@ -357,7 +357,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
             const signatures = (declaration as Record<string, unknown>).signatures;
             if (signatures !== undefined && (!Array.isArray(signatures) || signatures.some(signature => !signature || typeof signature !== 'object' || Array.isArray(signature)))) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration signature metadata is malformed.' });
         }
-        records.splice(0, records.length, { id: record.id, namespace: record.namespace, className: record.className, member: record.member, name: record.name, kind: record.kind, signatures: record.signatures ?? [], declarationEvidence: record.declarationEvidence ?? null, permitted: false, evidenceStatus: record.evidenceStatus ?? null });
+        records.splice(0, records.length, { id: record.id, namespace: record.namespace, className: record.className, member: record.member, name: record.name, kind: record.kind, static: typeof record.static === 'boolean' ? record.static : null, signatures: record.signatures ?? [], declarationEvidence: record.declarationEvidence ?? null, permitted: false, evidenceStatus: record.evidenceStatus ?? null });
     }
     if (offset > records.length) throw new ToolError({ code: 'STALE_CURSOR', status: 409, message: 'Catalog cursor offset exceeds this result set.' });
     if (args.className && records.length === 0 && operation !== 'get_related_types') throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: `Class ${args.className} is absent from the ${version} catalog.` });
