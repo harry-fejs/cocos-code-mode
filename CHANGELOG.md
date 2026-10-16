@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Support LabelOutline/LabelShadow scalar/array script references and requiredComponents using native types, null/empty defaults and existing dependency bounds. No label/material mutation or automatic scene attachment during generation.
 - Reject installed catalog shards whose observed record counts disagree with the index before filtering or returning discovery results; count agreement does not imply byte identity or native qualification.
 - Allow DirectionalLight/SphereLight/SpotLight in scriptComponentCreate requiredComponents with existing max8/unique bounds. Source generation declares dependencies only; later native attachment/render behavior remains separately verified.
 - Bind installed catalog cursors to SHA-256 of the same bounded index bytes used for parsing; manifest changes invalidate continuation even if catalogHash stays unchanged. This does not snapshot mutable shard bytes.
