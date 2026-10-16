@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Validate every installed shard basename before catalog navigation, including list_domains and filtered queries; refuse traversal, Windows path forms and non-JSON names without reading shards.
 - Verify exact installed record namespace/domain ownership using the generator's sanitized-module fallback, not namespace prefix alone; wrong-domain rows refuse CATALOG_INVALID before filtering.
 - Allow AnimationController in scriptComponentCreate requiredComponents using the native animation namespace in imports/decorator expressions. Normal dependency imports and max8/unique constraints remain unchanged; generation never attaches or creates a graph.
 - Build list_members summaries only from explicit member identities, excluding class/owner declarations instead of fabricating self-members from record names. Raw records remain available through record discovery.

@@ -161,6 +161,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     const snapshotHash = external ? external.snapshotHash : crypto.createHash('sha256').update(indexBytes!).digest('hex');
     if (!external && 'version' in index && index.version !== version) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed catalog identity is invalid.' });
     if (!external && new Set(index.domains.map(domain => domain.file.toLowerCase())).size !== index.domains.length) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed catalog index contains duplicate shard filenames.' });
+    if (!external && index.domains.some(domain => path.basename(domain.file) !== domain.file || path.win32.basename(domain.file) !== domain.file || !/^[A-Za-z0-9][A-Za-z0-9_.-]*\.json$/.test(domain.file))) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Unsafe installed catalog shard filename.' });
     const provenancePath = path.join(CATALOG_ROOT, version, 'provenance.json');
     const provenance = !external && fs.existsSync(provenancePath) ? z.object({ scope: z.string().optional(), originalCatalogHash: z.string().nullable().optional() }).passthrough().parse(jsonFile(provenancePath)) : null;
     const coverage = { scope: external ? 'operator-configured-full-catalog' : provenance?.scope ?? 'installed-catalog-scope-unverified', fullCatalogLoaded: external !== null, originalCatalogHash: external?.catalogHash ?? provenance?.originalCatalogHash ?? null };
@@ -199,7 +200,6 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     for (const domain of operation === 'list_domains' || external ? [] : index.domains) {
         checkDeadline();
         if (args.domain && domain.name !== args.domain) continue;
-        if (path.basename(domain.file) !== domain.file) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Unsafe catalog shard path.' });
         const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(readPage(() => jsonFile(path.join(CATALOG_ROOT, version, domain.file))));
         if (shard.records.length !== domain.count) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed shard record count differs from its index.' });
         for (const record of shard.records) {
