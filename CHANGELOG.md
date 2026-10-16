@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Default discovery operation/version only when omitted; explicit null operation refuses INVALID_ARGUMENT and null/nonstring targetVersion refuses UNSUPPORTED_VERSION before catalog access.
 - Default discovery numeric limits only when omitted; explicit null timeoutMs/maxPages/maxEntries/maxBytes now refuse INVALID_ARGUMENT rather than silently selecting defaults.
 - Allow RigidBody/RigidBody2D and supported concrete box/sphere/capsule/mesh/2D colliders in scriptComponentCreate requiredComponents. Abstract collider bases remain reference-only; max8/unique limits and source-only generation remain unchanged.
 - Refuse null/array/primitive catalog discovery argument envelopes with INVALID_ARGUMENT before reading limits or opening catalogs; empty object retains the default bounded query.

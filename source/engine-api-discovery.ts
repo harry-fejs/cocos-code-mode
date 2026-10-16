@@ -64,8 +64,8 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         pages.remaining--;
         return read();
     };
-    const version = args.targetVersion ?? '3.7.3';
-    if (!Object.prototype.hasOwnProperty.call(VERSIONS, version)) throw new ToolError({ code: 'UNSUPPORTED_VERSION', status: 422, message: 'Only catalogued versions 3.7.3 and 3.8.8 are available.' });
+    const version = args.targetVersion === undefined ? '3.7.3' : args.targetVersion;
+    if (typeof version !== 'string' || !Object.prototype.hasOwnProperty.call(VERSIONS, version)) throw new ToolError({ code: 'UNSUPPORTED_VERSION', status: 422, message: 'Only catalogued versions 3.7.3 and 3.8.8 are available.' });
     if (args.category !== undefined && args.category !== 'engine_api' && args.category !== 'component_schema') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Catalog category must be engine_api or component_schema.' });
     if (args.cursor !== undefined && (typeof args.cursor !== 'string' || !/^[A-Za-z0-9_-]{1,2048}$/.test(args.cursor))) throw new ToolError({ code: 'STALE_CURSOR', status: 409, message: 'Catalog cursor must be a bounded nonempty base64url token.' });
     for (const [field, maximum] of [['className', 256], ['domain', 256], ['filter', 1024]] as const) {
@@ -77,7 +77,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         || typeof args.reference.id !== 'string' || !args.reference.id.trim() || args.reference.id.length > 1024
         || args.reference.type !== undefined && (typeof args.reference.type !== 'string' || !args.reference.type.trim() || args.reference.type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'reference requires a bounded nonempty id and optional nonempty type.' });
     if (args.category === 'component_schema' && !args.className) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'component_schema requires className.' });
-    const operation = args.operation ?? 'records';
+    const operation = args.operation === undefined ? 'records' : args.operation;
     if (operation === 'explain_bridge_route') {
         if (typeof args.recordId !== 'string' || !args.recordId || args.recordId.length > 1024
             || Object.keys(args).some(key => !['category', 'operation', 'targetVersion', 'recordId', 'maxEntries', 'maxBytes', 'timeoutMs', 'maxPages'].includes(key))
