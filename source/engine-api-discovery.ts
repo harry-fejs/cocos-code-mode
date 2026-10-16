@@ -38,10 +38,10 @@ function limit(value: number | undefined, fallback: number, maximum: number): nu
 export async function discoverEngineApi(args: EngineDiscoveryArgs): Promise<Record<string, unknown>> {
     if (!args || typeof args !== 'object' || Array.isArray(args)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Catalog discovery requires an argument object.' });
     const timeoutMs = limit(args.timeoutMs, 5000, 30000);
-    return discoverWithinDeadline(args, Date.now() + timeoutMs, { remaining: limit(args.maxPages, 256, 1000) });
+    return discoverWithinDeadline(args, Date.now() + timeoutMs, { remaining: limit(args.maxPages, 256, 1000), recordsRemaining: 100000, bytesRemaining: 32 * 1024 * 1024 });
 }
 
-async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: number, pages: { remaining: number }): Promise<Record<string, unknown>> {
+async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: number, pages: { remaining: number; recordsRemaining: number; bytesRemaining: number }): Promise<Record<string, unknown>> {
     const checkDeadline = () => {
         if (Date.now() >= deadline) throw new ToolError({ code: 'CATALOG_QUERY_TIMEOUT', status: 409, message: 'Catalog discovery exceeded its cooperative deadline; no complete result returned.' });
     };
@@ -197,20 +197,18 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         }
     }
     const installedRecordIds = new Set<string>();
-    let installedRecordCount = 0;
-    let installedBytesRemaining = 32 * 1024 * 1024;
     for (const domain of operation === 'list_domains' || external ? [] : index.domains) {
         checkDeadline();
         if (args.domain && domain.name !== args.domain) continue;
         if (args.namespace && !domain.name.startsWith(`${args.namespace}.`)) continue;
         if (args.category === 'component_schema' && !domain.name.startsWith('engine-runtime.')) continue;
-        if (domain.count > 100000 - installedRecordCount) throw new ToolError({ code: 'CATALOG_RECORD_LIMIT', status: 413, message: 'Installed catalog scan exceeds 100000 records; narrow the namespace/domain.' });
-        if (installedBytesRemaining === 0) throw new ToolError({ code: 'CATALOG_LIMIT_EXCEEDED', status: 413, message: 'Installed shard byte budget exhausted; narrow the namespace/domain.' });
-        const bytes = readPage(() => readBounded(fs.realpathSync(path.join(CATALOG_ROOT, version)), domain.file, Math.min(MAX_CATALOG_FILE, installedBytesRemaining)));
-        installedBytesRemaining -= bytes.length;
+        if (domain.count > pages.recordsRemaining) throw new ToolError({ code: 'CATALOG_RECORD_LIMIT', status: 413, message: 'Installed catalog scan exceeds 100000 records; narrow the namespace/domain.' });
+        if (pages.bytesRemaining === 0) throw new ToolError({ code: 'CATALOG_LIMIT_EXCEEDED', status: 413, message: 'Installed shard byte budget exhausted; narrow the namespace/domain.' });
+        const bytes = readPage(() => readBounded(fs.realpathSync(path.join(CATALOG_ROOT, version)), domain.file, Math.min(MAX_CATALOG_FILE, pages.bytesRemaining)));
+        pages.bytesRemaining -= bytes.length;
         const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(JSON.parse(bytes.toString('utf8')));
         if (shard.records.length !== domain.count) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed shard record count differs from its index.' });
-        installedRecordCount += shard.records.length;
+        pages.recordsRemaining -= shard.records.length;
         for (const record of shard.records) {
             checkDeadline();
             if (record.version !== version || !record.id.startsWith(`${version}:${record.namespace}:`)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed record version or namespaced identity differs from its catalog.' });

@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Share installed record/byte scan budgets across recursive discovery operations and both compare_version sides; recursion no longer resets the100000-record/32MiB allowances.
 - Encode namespace/class summary identities as tuples in list_classes, preventing delimiter-bearing source names from collapsing distinct class groups while retaining duplicate-view counts.
 - Distinguish active traversal backedges from shared acyclic objects in opaque timeline keyframe data. Repeated shared objects are revalidated within existing work/text budgets; actual object/array cycles remain invalid.
 - Report truncationReason maxEntries/maxBytes/null on bounded discovery pages, preserving continuation at the first omitted record and including reason metadata in the whole-response byte budget.
