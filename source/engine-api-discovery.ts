@@ -369,11 +369,15 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
                 if (args.domain && domain.name !== args.domain || args.namespace && namespace !== args.namespace || domain.count === 0) continue;
                 namespaces.set(namespace, (namespaces.get(namespace) ?? 0) + domain.count);
             }
-        } else for (const record of records) namespaces.set(record.namespace, (namespaces.get(record.namespace) ?? 0) + 1);
+        } else for (const record of records) {
+            checkDeadline();
+            namespaces.set(record.namespace, (namespaces.get(record.namespace) ?? 0) + 1);
+        }
         records.splice(0, records.length, ...[...namespaces].sort(([a], [b]) => a.localeCompare(b)).map(([namespace, recordCount]) => ({ id: `${version}:namespace:${namespace}`, namespace, name: namespace, kind: 'namespace-summary', recordCount, permitted: false })));
     } else if (operation === 'list_members') {
         const members = new Map<string, ApiRecord>();
         for (const record of records) {
+            checkDeadline();
             if (!record.className || !record.member) continue;
             const staticIdentity = typeof record.static === 'boolean' ? record.static : null;
             const memberKind = record.kind ?? null;
