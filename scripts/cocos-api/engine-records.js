@@ -19,6 +19,7 @@ function collectExports(input, version, roots, label = 'engine') {
   function record(symbol, declaration, context, className, member, inheritedFrom = null) {
     const memberOwner = member && ts.isParameter(declaration) && ts.isConstructorDeclaration(declaration.parent) ? declaration.parent.parent : declaration.parent;
     const info = metadata(declaration);
+    const documentation = new Set(info.jsdoc ? [info.jsdoc] : []);
     for (const part of symbol.declarations || []) {
       if (part === declaration) continue;
       const merged = metadata(part);
@@ -26,7 +27,9 @@ function collectExports(input, version, roots, label = 'engine') {
       info.deprecated = info.deprecated || merged.deprecated;
       info.async = info.async || merged.async;
       info.generator = info.generator || merged.generator;
+      if (merged.jsdoc) documentation.add(merged.jsdoc);
     }
+    info.jsdoc = [...documentation].join('\n') || null;
     const ownerMetadata = member ? metadata(memberOwner) : info;
     if (member && memberOwner.name) {
       const ownerSymbol = checker.getSymbolAtLocation(memberOwner.name);
