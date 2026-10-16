@@ -1022,8 +1022,9 @@ export class SceneTools {
             rootReference: InstanceReferenceSchema, checkedNodes: { type: 'integer' }, maxDepth: { type: 'integer' }, truncated: { type: 'boolean' },
             depthCounts: { type: 'object', additionalProperties: { type: 'integer', minimum: 1 } },
             leafNodes: { type: 'integer' }, containerNodes: { type: 'integer' }, unknownChildrenNodes: { type: 'integer' },
+            nodesWithComponents: { type: 'integer' }, nodesWithoutComponents: { type: 'integer' }, unknownComponentsNodes: { type: 'integer' },
             activeNodes: { type: 'integer' }, inactiveNodes: { type: 'integer' }, unknownActiveNodes: { type: 'integer' }, componentCounts: { type: 'object' }, duplicateNames: { type: 'array' }, unknownComponentCount: { type: 'integer' }, issues: { type: 'array' },
-        }, required: ['checkedNodes', 'maxDepth', 'depthCounts', 'leafNodes', 'containerNodes', 'unknownChildrenNodes', 'truncated', 'activeNodes', 'inactiveNodes', 'unknownActiveNodes', 'componentCounts', 'duplicateNames', 'unknownComponentCount', 'issues'] },
+        }, required: ['checkedNodes', 'maxDepth', 'depthCounts', 'leafNodes', 'containerNodes', 'unknownChildrenNodes', 'nodesWithComponents', 'nodesWithoutComponents', 'unknownComponentsNodes', 'truncated', 'activeNodes', 'inactiveNodes', 'unknownActiveNodes', 'componentCounts', 'duplicateNames', 'unknownComponentCount', 'issues'] },
         'GET', ['scene', 'hierarchy', 'analyze', 'component', 'summary', 'qa']
     )
     async sceneHierarchyAnalyze(args: { rootReference?: IInstanceReference, limit?: number } = {}): Promise<Record<string, unknown>> {
@@ -1061,6 +1062,7 @@ export class SceneTools {
         let checkedNodes = 0, maxDepth = 0, activeNodes = 0, inactiveNodes = 0, unknownComponentCount = 0, truncated = false;
         let unknownActiveNodes = 0, scheduled = 1, componentTotal = 0;
         let leafNodes = 0, containerNodes = 0, unknownChildrenNodes = 0;
+        let nodesWithComponents = 0, nodesWithoutComponents = 0, unknownComponentsNodes = 0;
         while (stack.length) {
             if (checkedNodes >= limit) { truncated = true; break; }
             const { node, depth } = stack.pop()!;
@@ -1077,7 +1079,8 @@ export class SceneTools {
             else if (children.length === 0) leafNodes++;
             else containerNodes++;
             const components = node.components ?? [];
-            if (!Array.isArray(components)) { issues.push(`malformed components on ${name}`); continue; }
+            if (!Array.isArray(components)) { unknownComponentsNodes++; issues.push(`malformed components on ${name}`); continue; }
+            if (components.length) nodesWithComponents++; else nodesWithoutComponents++;
             componentTotal += components.length;
             if (componentTotal > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Analysis component budget exceeded.' });
             for (const component of components) {
@@ -1090,7 +1093,7 @@ export class SceneTools {
             if (scheduled > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Analysis scheduled-node budget exceeded.' });
             for (let index = children.length - 1; index >= 0; index--) stack.push({ node: children[index], depth: depth + 1 });
         }
-        return { ...(args.rootReference ? { rootReference: args.rootReference } : {}), checkedNodes, maxDepth, depthCounts, leafNodes, containerNodes, unknownChildrenNodes, truncated, activeNodes, inactiveNodes, unknownActiveNodes,
+        return { ...(args.rootReference ? { rootReference: args.rootReference } : {}), checkedNodes, maxDepth, depthCounts, leafNodes, containerNodes, unknownChildrenNodes, nodesWithComponents, nodesWithoutComponents, unknownComponentsNodes, truncated, activeNodes, inactiveNodes, unknownActiveNodes,
             componentCounts, duplicateNames: [...nameCounts].filter(([, count]) => count > 1).map(([name, count]) => ({ name, count })), unknownComponentCount, issues };
     }
 
