@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Refuse a new particle wait observation when less than100ms remains, avoiding subminimum transport timeout dispatch without extending the caller deadline. Returns RUNTIME_STATE_TIMEOUT, not a malformed native request.
 - Preserve explicit generator syntax in declaration metadata and merged overload implementations, independently of async and without inferring generators from iterator return types or granting execution permission.
 - Bound cancellation signal transport timeouts/retries by the capture's original deadline. Under100ms remaining, skip signalling and retain existing deadline cleanup rather than extending the request budget.
 - Retain event-capture primitive ownership until an already-dispatched cancellation signal settles, even if capture completes first. Polling is cleared before awaiting the signal; no additional requests are started during teardown.

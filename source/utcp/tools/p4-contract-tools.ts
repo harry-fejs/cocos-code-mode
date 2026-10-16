@@ -89,7 +89,7 @@ export class P4ContractTools {
         for (;;) {
             assertActive?.();
             const remaining = deadline - Date.now();
-            if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Particle observation deadline expired before a fresh read.' });
+            if (remaining < 100) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Particle observation has insufficient remaining time for a bounded read; no next read dispatched.' });
             let timer: NodeJS.Timeout | undefined;
             let result: Record<string, unknown>;
             try {
