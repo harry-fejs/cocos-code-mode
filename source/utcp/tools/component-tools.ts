@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import packageJSON from '../../../package.json';
 import { utcpTool } from '../decorators';
 import { SuccessIndicatorSchema, ISuccessIndicator, InstanceReferenceSchema, IInstanceReference } from '../schemas';
@@ -76,12 +77,14 @@ export class ComponentTools {
                 componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
                 offset: { type: 'integer', minimum: 0, maximum: 10000 },
                 limit: { type: 'integer', minimum: 1, maximum: 1000 },
+                expectedRevision: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'Revision from a previous page; refuses changed inventory or class selectors.' },
             },
             required: ['reference']
         },
-        { type: 'object', properties: { references: { type: 'array', items: InstanceReferenceSchema }, total: { type: 'integer' }, offset: { type: 'integer' }, nextOffset: { type: ['integer', 'null'] }, truncated: { type: 'boolean' } }, required: ['references', 'total', 'offset', 'nextOffset', 'truncated'] }, 'GET', ['scene', 'node', 'component', 'get', 'inspection']
+        { type: 'object', properties: { references: { type: 'array', items: InstanceReferenceSchema }, total: { type: 'integer' }, offset: { type: 'integer' }, nextOffset: { type: ['integer', 'null'] }, truncated: { type: 'boolean' }, revision: { type: 'string' } }, required: ['references', 'total', 'offset', 'nextOffset', 'truncated', 'revision'] }, 'GET', ['scene', 'node', 'component', 'get', 'inspection']
     )
-    async nodeComponentsGet(args: { reference: IInstanceReference, componentType?: string, componentTypes?: string[], offset?: number, limit?: number }): Promise<{ references: IInstanceReference[], total: number, offset: number, nextOffset: number | null, truncated: boolean }> {
+    async nodeComponentsGet(args: { reference: IInstanceReference, componentType?: string, componentTypes?: string[], offset?: number, limit?: number, expectedRevision?: string }): Promise<{ references: IInstanceReference[], total: number, offset: number, nextOffset: number | null, truncated: boolean, revision: string }> {
+        if (args.expectedRevision !== undefined && (typeof args.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedRevision))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedRevision requires a SHA256 revision token.' });
         if (args.componentType !== undefined && args.componentTypes !== undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Choose componentType or componentTypes, not both.' });
         const types = args.componentTypes ?? (args.componentType !== undefined ? [args.componentType] : undefined);
         if (types !== undefined && (!Array.isArray(types) || types.length < 1 || types.length > 32 || types.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component class selectors require 1..32 bounded nonempty names.' });
@@ -99,6 +102,7 @@ export class ComponentTools {
         if (components.length > VERBOSE_TREE_NODES) throw new Error('nodeComponentsGet: serialized component inventory exceeds the inspection budget');
         const identities = new Set<string>();
         const foundComponents: IInstanceReference[] = [];
+        const inventory: Array<{ id: string, type: string }> = [];
         for (const comp of components) {
             const value = field(comp, 'value');
             const uuidValue = field(value, 'uuid');
@@ -115,17 +119,20 @@ export class ComponentTools {
             }
             if (identities.has(compUuid)) throw new Error('nodeComponentsGet: duplicate component UUID in serialized inventory');
             identities.add(compUuid);
+            inventory.push({ id: compUuid, type: declaredType });
 
             if (!selectedTypes || selectedTypes.has(declaredType.replace(/^cc\./, ''))) {
                 foundComponents.push({ id: compUuid, type: declaredType });
             }
         }
 
+        const revision = createHash('sha256').update(JSON.stringify({ node: args.reference.id, inventory, selector: args.componentType !== undefined ? ['single', args.componentType.replace(/^cc\./, '')] : selectedTypes ? ['multi', [...selectedTypes].sort()] : ['all'] })).digest('hex');
+        if (args.expectedRevision !== undefined && args.expectedRevision !== revision) throw new ToolError({ code: 'COMPONENT_INVENTORY_CHANGED', status: 409, message: 'Component inventory or selector changed; restart pagination from a fresh observation.' });
         if (!foundComponents.length && args.componentType) throw new Error(`Components of type ${args.componentType} not found on node ${args.reference.id}`);
         if (offset > foundComponents.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offset exceeds the observed filtered inventory.' });
         const references = foundComponents.slice(offset, args.limit === undefined ? undefined : offset + args.limit);
         const next = offset + references.length;
-        return { references, total: foundComponents.length, offset, nextOffset: next < foundComponents.length ? next : null, truncated: next < foundComponents.length };
+        return { references, total: foundComponents.length, offset, nextOffset: next < foundComponents.length ? next : null, truncated: next < foundComponents.length, revision };
     }
 
     async nodeComponentRemove(args: { reference: IInstanceReference }): Promise<ISuccessIndicator> {

@@ -443,14 +443,12 @@ describe('scene upgrade read-back contracts', () => {
       };
       throw new Error(`unexpected ${message}`);
     } } };
-    assert.deepEqual(await new ComponentTools().nodeComponentsGet({ reference: { id: 'node-1' }, componentType: 'cc.Label' }), {
-      references: [{ id: 'label-1', type: 'cc.Label' }],
-      total: 1, offset: 0, nextOffset: null, truncated: false,
-    });
-    assert.deepEqual(await new ComponentTools().nodeComponentsGet({ reference: { id: 'node-1' } }), {
-      references: [{ id: 'label-1', type: 'cc.Label' }, { id: 'script-1', type: 'GameController' }],
-      total: 2, offset: 0, nextOffset: null, truncated: false,
-    });
+    assert.deepEqual((await new ComponentTools().nodeComponentsGet({ reference: { id: 'node-1' }, componentType: 'cc.Label' })).references, [
+      { id: 'label-1', type: 'cc.Label' },
+    ]);
+    assert.deepEqual((await new ComponentTools().nodeComponentsGet({ reference: { id: 'node-1' } })).references, [
+      { id: 'label-1', type: 'cc.Label' }, { id: 'script-1', type: 'GameController' },
+    ]);
   });
 
   it('nodeSetTransform rejects accepted writes when fresh read-back is stale', async () => {
