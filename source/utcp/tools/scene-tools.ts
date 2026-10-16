@@ -671,6 +671,7 @@ export class SceneTools {
                 excludeComponentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 }, description: 'Require absence of every listed class, AND-combined with presence predicates.' },
                 componentMatch: { type: 'string', enum: ['all', 'any', 'none'], default: 'all' },
                 nameMatch: { type: 'string', enum: ['contains', 'exact'], default: 'contains' },
+                nameCaseSensitive: { type: 'boolean', default: false, description: 'Match node names with exact case; requires name. Path filtering is unchanged.' },
                 pathContains: { type: 'string', minLength: 1, maxLength: 512 },
                 active: { type: 'boolean', description: 'Exact local active flag only; not visibility or activeInHierarchy.' },
                 hierarchyActive: { type: 'boolean', description: 'Tri-state AND of local active flags from the observed hierarchy root; not runtime activeInHierarchy or visibility.' },
@@ -710,13 +711,15 @@ export class SceneTools {
         },
         { type: 'object', properties: { nodes: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, parentReference: { type: ['object', 'null'] }, name: { type: 'string' }, path: { type: 'string' }, depth: { type: 'integer' }, componentCount: { type: 'integer' }, childCount: { type: 'integer' }, siblingIndex: { type: ['integer', 'null'] }, active: { type: ['boolean', 'null'] }, hierarchyActive: { type: ['boolean', 'null'] } } } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['nodes', 'total'] }, "GET", ['scene', 'node', 'find', 'search', 'name', 'component', 'filter']
     )
-    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], excludeComponentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, active?: boolean, hierarchyActive?: boolean, minComponents?: number, maxComponents?: number, parentReference?: IInstanceReference, minChildren?: number, maxChildren?: number, siblingIndex?: number, minSiblingIndex?: number, maxSiblingIndex?: number, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number, requireSingle?: boolean }): Promise<{ nodes: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, childCount: number, siblingIndex: number | null, active: boolean | null, hierarchyActive: boolean | null }>, total: number, truncated: boolean }> {
+    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', nameCaseSensitive?: boolean, componentType?: string, componentTypes?: string[], excludeComponentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, active?: boolean, hierarchyActive?: boolean, minComponents?: number, maxComponents?: number, parentReference?: IInstanceReference, minChildren?: number, maxChildren?: number, siblingIndex?: number, minSiblingIndex?: number, maxSiblingIndex?: number, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number, requireSingle?: boolean }): Promise<{ nodes: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, childCount: number, siblingIndex: number | null, active: boolean | null, hierarchyActive: boolean | null }>, total: number, truncated: boolean }> {
         if (args.requireSingle !== undefined && typeof args.requireSingle !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireSingle must be boolean.' });
         for (const [key, maximum] of [['name', 256], ['componentType', 256], ['pathContains', 512]] as const) {
             const value = args[key];
             if (value !== undefined && (typeof value !== 'string' || !value.trim() || value.length > maximum)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `${key} must be a bounded nonempty string.` });
         }
         if (args.nameMatch !== undefined && (!args.name || !['contains', 'exact'].includes(args.nameMatch))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'nameMatch requires name and contains/exact.' });
+        if (args.nameCaseSensitive !== undefined && (typeof args.nameCaseSensitive !== 'boolean' || args.name === undefined)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'nameCaseSensitive requires name and a boolean value.' });
+        const nameNeedle = args.nameCaseSensitive ? args.name : args.name?.toLowerCase();
         if (args.componentType !== undefined && args.componentTypes !== undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Choose componentType or componentTypes, not both.' });
         if (args.componentTypes !== undefined && (!Array.isArray(args.componentTypes) || args.componentTypes.length < 1 || args.componentTypes.length > 32 || args.componentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentTypes requires1..32 bounded class names.' });
         if (args.componentMatch !== undefined && (!args.componentTypes || !['all', 'any', 'none'].includes(args.componentMatch))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentMatch requires componentTypes and all/any/none.' });
@@ -756,7 +759,8 @@ export class SceneTools {
             if (id === args.rootReference?.id) rootFound = true;
             const relativeDepth = id === args.rootReference?.id ? 0 : depth;
             const name = sceneTreeNodeName(node);
-            const nameOk = !args.name || (args.nameMatch === 'exact' ? name.toLowerCase() === args.name.toLowerCase() : name.toLowerCase().includes(args.name.toLowerCase()));
+            const comparableName = args.nameCaseSensitive ? name : name.toLowerCase();
+            const nameOk = nameNeedle === undefined || (args.nameMatch === 'exact' ? comparableName === nameNeedle : comparableName.includes(nameNeedle));
             const components = node.components ?? [];
             if (!Array.isArray(components)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed component inventory.' });
             const attachedTypes = new Set<string>();
