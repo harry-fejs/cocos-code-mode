@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Support Graphics scalar/array script references and requiredComponents using native Inspector/dependency metadata. Null/empty defaults only; source generation does not draw, create UI resources or attach components.
 - Reject duplicate record IDs across scanned installed catalog shards before filtering, preventing ambiguous exact-record lookup and duplicate pagination results. Unread shards are not independently verified.
 - Support LabelOutline/LabelShadow scalar/array script references and requiredComponents using native types, null/empty defaults and existing dependency bounds. No label/material mutation or automatic scene attachment during generation.
 - Reject installed catalog shards whose observed record counts disagree with the index before filtering or returning discovery results; count agreement does not imply byte identity or native qualification.
