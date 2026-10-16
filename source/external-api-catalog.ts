@@ -109,7 +109,7 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
                 if (parsed.records.length !== shard.count) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Shard record count differs from lookup.' });
                 const records = new Map<string, Record<string, unknown>>();
                 for (const record of parsed.records) {
-                    if (typeof record.id !== 'string' || records.has(record.id) || record.version !== version) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Shard record identity/version is invalid.' });
+                    if (typeof record.id !== 'string' || typeof record.namespace !== 'string' || !record.namespace || !record.id.startsWith(`${version}:${record.namespace}:`) || records.has(record.id) || record.version !== version) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Shard record identity/version is invalid.' });
                     records.set(record.id, record);
                 }
                 cached = { bytes: bytes.length, records };

@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Validate external hydrated record IDs against version:namespace prefixes before parsed-shard caching, matching generator/installed identity rules and refusing inconsistent but hash-pinned metadata.
 - Derive timeline truncated from effective sourceComplete including unsupported native shapes, matching complete semantics. Missing keyframe data stays incomplete/truncated; complete-but-invalid finite-data diagnostics remain distinct from missing coverage.
 - Reject index.json/lookup.json/manifest.json (case-insensitive) as installed/external shard filenames before navigation, matching offline generator reserved-metadata ownership.
 - Expose invalidEvents across all retrieved timeline events independently of callback/frame filters and paging. Multiple diagnostics on one event count once; absent native events report null, empty arrays zero. No callback existence/runtime validation inferred.
