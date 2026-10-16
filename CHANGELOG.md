@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Add diagnosticOffset/diagnosticLimit and nextDiagnosticOffset to animationTimelineInspect so diagnostics beyond the first 64 are reachable. Retain bounded pages, whole-source error counts and page-independent revision hashing; no clip mutation or runtime validation.
 - Preserve primary bounded catalog read/hash/limit failures if descriptor cleanup also throws; close-only failure returns sanitized CATALOG_READ_FAILED instead of raw filesystem content or successful bytes.
 - Pin acknowledged script UUID before asynchronous source readback and return that verified identity, preventing mutable native acknowledgement objects from substituting an unverified UUID during the await.
 - Validate static metadata on every hydrated external shard record before caching, even with older lookups lacking static projection; boolean/null/absent remain compatible and malformed values refuse CATALOG_INVALID.

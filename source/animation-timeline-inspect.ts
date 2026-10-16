@@ -21,6 +21,8 @@ export interface TimelineInspectOptions {
     expectedRevision?: string;
     keyframeOffset?: number;
     keyframeLimit?: number;
+    diagnosticOffset?: number;
+    diagnosticLimit?: number;
 }
 export function timelineRecord(value: unknown): Row | null {
     return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Row : null;
@@ -52,6 +54,8 @@ export function timelineInspectBounds(options: TimelineInspectOptions) {
         eventLimit: integer(options.eventLimit, 50, 1, 200, 'eventLimit'),
         keyframeOffset: integer(options.keyframeOffset, 0, 0, 100000, 'keyframeOffset'),
         keyframeLimit: integer(options.keyframeLimit, 20, 1, 200, 'keyframeLimit'),
+        diagnosticOffset: integer(options.diagnosticOffset, 0, 0, 1000000, 'diagnosticOffset'),
+        diagnosticLimit: integer(options.diagnosticLimit, 64, 1, 64, 'diagnosticLimit'),
         maxBytes: integer(options.maxBytes, 65536, 1024, 262144, 'maxBytes'),
     };
 }
@@ -67,9 +71,11 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     const bounds = timelineInspectBounds(options), dump = timelineRecord(value);
     const diagnostics: Array<{ code: string; location: string }> = [];
     let diagnosticCount = 0, supported = true;
+    const diagnosticHash = createHash('sha256');
     const issue = (code: string, location: string, unsupported = false): void => {
+        diagnosticHash.update(JSON.stringify([code, location]));
+        if (diagnosticCount >= bounds.diagnosticOffset && diagnostics.length < bounds.diagnosticLimit) diagnostics.push({ code, location });
         diagnosticCount++;
-        if (diagnostics.length < 64) diagnostics.push({ code, location });
         if (unsupported) supported = false;
     };
     let metadataBytes = 0;
@@ -221,7 +227,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     hash.update(timingHash.digest('hex'));
     for (const { keyframes, matchedKeyframes, keyframeOffset, nextKeyframeOffset, keyframeLimit, keyframesComplete, keyframesTruncated, ...row } of tracks) hash.update(JSON.stringify(row));
     for (const row of eventRows) hash.update(JSON.stringify(row));
-    hash.update(JSON.stringify([diagnostics, diagnosticCount, supported]));
+    hash.update(JSON.stringify([diagnosticHash.digest('hex'), diagnosticCount, supported]));
     const revision = hash.digest('hex');
     if (options.expectedRevision !== undefined && options.expectedRevision !== revision) throw new ToolError({ code: 'TIMELINE_REVISION_CHANGED', status: 409, message: 'Retrieved timeline metadata changed; restart paging. No mutation was dispatched.' });
     const selectedTracks = tracks.filter(track => (!options.invalidTracksOnly || !track.dataValid) && (!options.trackBinding || track.identity.nodePath === options.trackBinding!.nodePath && track.identity.property === options.trackBinding!.property && (options.trackBinding!.component === undefined || track.component === options.trackBinding!.component) && (options.trackBinding!.parentProperty === undefined || track.parentProperty === options.trackBinding!.parentProperty)));
@@ -248,7 +254,10 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         trackOffset: bounds.trackOffset, trackLimit: bounds.trackLimit, eventOffset: bounds.eventOffset, eventLimit: bounds.eventLimit,
         nextTrackOffset: null as number | null, nextEventOffset: null as number | null,
         tracks: selectedTracks.slice(bounds.trackOffset, bounds.trackOffset + bounds.trackLimit), events: selectedEvents.slice(bounds.eventOffset, bounds.eventOffset + bounds.eventLimit),
-        diagnostics, diagnosticCount, diagnosticsTruncated: diagnosticCount > diagnostics.length,
+        diagnostics, diagnosticCount,
+        diagnosticOffset: bounds.diagnosticOffset, diagnosticLimit: bounds.diagnosticLimit,
+        nextDiagnosticOffset: bounds.diagnosticOffset + diagnostics.length < diagnosticCount ? bounds.diagnosticOffset + diagnostics.length : null,
+        diagnosticsTruncated: bounds.diagnosticOffset > 0 || diagnosticCount > diagnostics.length,
         runtimeVerified: false as const, sceneSaved: false as const, callbackExistenceVerified: false as const,
     };
     for (const [kind, rows] of [['track', result.tracks], ['event', result.events]] as const) for (const row of rows) {
