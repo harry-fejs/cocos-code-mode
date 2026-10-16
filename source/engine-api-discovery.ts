@@ -422,7 +422,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
             live = { ...live, ...availability, checked: true, versionMatches: availability.engineVersion === version };
         } catch (error: unknown) {
             if (error instanceof ToolError && error.code === 'CATALOG_QUERY_TIMEOUT') throw error;
-            live = { ...live, unavailableReason: error instanceof Error ? error.message.slice(0, 256) : 'Class availability probe unavailable' };
+            live = { ...live, unavailableReason: 'Class availability probe unavailable', unavailableCode: error instanceof ToolError ? error.code : 'CLASS_AVAILABILITY_FAILED' };
         }
     }
     if (args.reference) {
