@@ -15,7 +15,7 @@ const cache = new Map<string, { bytes: number; records: Map<string, Record<strin
 let cacheBytes = 0;
 const MAX_CACHE_BYTES = 32 * 1024 * 1024;
 
-function readBounded(root: string, basename: string, maximum: number, expected?: string): Buffer {
+export function readBounded(root: string, basename: string, maximum: number, expected?: string): Buffer {
     if (path.basename(basename) !== basename || basename === '.' || basename === '..') throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Unsafe catalog path.' });
     const file = fs.realpathSync(path.join(root, basename));
     const relative = path.relative(root, file);

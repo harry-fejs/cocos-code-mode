@@ -6,7 +6,7 @@ import { IInstanceReference } from './utcp/schemas';
 import { ToolsUtils } from './utcp/utils/tools-utils';
 import { z } from './schema-validator';
 import type { infer as InferSchema } from 'zod';
-import { openExternalApiCatalog } from './external-api-catalog';
+import { openExternalApiCatalog, readBounded } from './external-api-catalog';
 
 export interface EngineDiscoveryArgs {
     category?: string; className?: string; targetVersion?: string; domain?: string;
@@ -26,9 +26,8 @@ const CATALOG_ROOT = path.join(__dirname, 'engine-api-catalog');
 const VERSIONS: Record<string, true> = { '3.7.3': true, '3.8.8': true };
 const MAX_CATALOG_FILE = 8 * 1024 * 1024;
 function jsonFile(file: string): unknown {
-    const stat = fs.statSync(file);
-    if (!stat.isFile() || stat.size > MAX_CATALOG_FILE) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Catalog input exceeds its bound.' });
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    const root = fs.realpathSync(path.dirname(file));
+    return JSON.parse(readBounded(root, path.basename(file), MAX_CATALOG_FILE).toString('utf8'));
 }
 function limit(value: number | undefined, fallback: number, maximum: number): number {
     const selected = value ?? fallback;
