@@ -151,7 +151,7 @@ export class ComponentRuntimeTools {
             if (remaining < 100) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Animation wait has insufficient remaining time for a bounded read; no next observation dispatched.' });
             const operation: ComponentOperation = { ...validateSkeletal({ ...args, timeoutMs: Math.max(100, Math.min(remaining, 1000)) }, 'observe'), kind };
             let timer: NodeJS.Timeout | undefined; let result: Record<string, unknown>;
-            try { result = await Promise.race([executeComponentOperation(operation), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read exceeded caller deadline; no playback mutation dispatched.' })), remaining); })]); }
+            try { result = await Promise.race([executeComponentOperation(operation, assertActive), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read exceeded caller deadline; no playback mutation dispatched.' })), remaining); })]); }
             finally { clearTimeout(timer); }
             assertActive?.();
             if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read completed after caller deadline; no playback mutation dispatched.' });
@@ -225,7 +225,7 @@ export class ComponentRuntimeTools {
         let targetId: string | undefined;
         return waitForGraphVariable(args, async timeoutMs => {
             assertActive?.();
-            const result = await executeComponentOperation({ kind: 'graph', operation: 'inspect', sessionId: sessionId!, nodeReference: { id: nodeId }, componentId: componentId!, expectedGraphUuid: graphUuid, timeoutMs });
+            const result = await executeComponentOperation({ kind: 'graph', operation: 'inspect', sessionId: sessionId!, nodeReference: { id: nodeId }, componentId: componentId!, expectedGraphUuid: graphUuid, timeoutMs }, assertActive);
             assertActive?.();
             if (typeof result.targetId !== 'string' || !result.targetId) throw new ToolError({ code: 'INVALID_RUNTIME_RESPONSE', status: 502, message: 'Graph observation target identity is unavailable.' });
             if (targetId !== undefined && result.targetId !== targetId) throw new ToolError({ code: 'RUNTIME_TARGET_CHANGED', status: 409, message: 'Graph target changed during variable wait.' });

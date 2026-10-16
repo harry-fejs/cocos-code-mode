@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Forward internal animation/graph/particle wait cancellation guards into shared component transport readiness checks. Cancellation during session inspection now refuses before native observation dispatch, not only after the read settles.
 - Support enum arrays in scriptComponentCreate with native array-of-Enum metadata, dense declared-value defaults capped256, and independent empty defaults when omitted. Preserve scalar enum requirements; no bitmask or gameplay/state-machine inference.
 - Preserve callable initializer async/generator syntax through transparent parentheses and erased TypeScript wrappers; factory calls and callback/return types remain non-inferred.
 - Bound non-event component inspect/observe transport by its original read budget, including readiness time, without the mutation/event transport grace. Exhausted readiness refuses before dispatch; mutation and event capture budgets remain unchanged.
