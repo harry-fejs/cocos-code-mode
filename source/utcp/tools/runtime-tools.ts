@@ -85,7 +85,7 @@ export class RuntimeTools {
         for (;;) {
             assertActive?.();
             const remaining = deadline - Date.now();
-            if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node activation wait deadline elapsed.' });
+            if (remaining < 100) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Node wait has insufficient remaining time for a bounded read; no next observation dispatched.' });
             let timer: NodeJS.Timeout | undefined;
             let observation: Awaited<ReturnType<RuntimeTools['runtimeNodeObserve']>>;
             try {

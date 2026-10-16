@@ -148,7 +148,7 @@ export class ComponentRuntimeTools {
         for (;;) {
             assertActive?.();
             const remaining = deadline - Date.now();
-            if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state observation deadline expired.' });
+            if (remaining < 100) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Animation wait has insufficient remaining time for a bounded read; no next observation dispatched.' });
             const operation: ComponentOperation = { ...validateSkeletal({ ...args, timeoutMs: Math.max(100, Math.min(remaining, 1000)) }, 'observe'), kind };
             let timer: NodeJS.Timeout | undefined; let result: Record<string, unknown>;
             try { result = await Promise.race([executeComponentOperation(operation), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Skeletal state read exceeded caller deadline; no playback mutation dispatched.' })), remaining); })]); }

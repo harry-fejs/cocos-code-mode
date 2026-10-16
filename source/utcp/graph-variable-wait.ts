@@ -25,7 +25,7 @@ export async function waitForGraphVariable(condition: GraphVariableWaitCondition
     const deadline = Date.now() + timeoutMs; let observations = 0;
     for (;;) {
         const remaining = deadline - Date.now();
-        if (remaining <= 0) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Graph variable wait deadline expired; no mutation dispatched.' });
+        if (remaining < 100) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Graph variable wait has insufficient remaining time for a bounded read; no next observation dispatched.' });
         let timer: NodeJS.Timeout | undefined; let snapshot: Record<string, unknown>;
         try { snapshot = await Promise.race([observe(Math.max(100, Math.min(remaining, 1000))), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Graph variable observation exceeded caller deadline; no mutation dispatched.' })), remaining); })]); }
         finally { clearTimeout(timer); }

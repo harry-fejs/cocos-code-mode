@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Refuse new graph/animation/node wait observations below100ms remaining rather than rounding the read budget above the caller's residual deadline. Existing cancellation, target identity and read-only predicates remain unchanged.
 - Refuse a new particle wait observation when less than100ms remains, avoiding subminimum transport timeout dispatch without extending the caller deadline. Returns RUNTIME_STATE_TIMEOUT, not a malformed native request.
 - Preserve explicit generator syntax in declaration metadata and merged overload implementations, independently of async and without inferring generators from iterator return types or granting execution permission.
 - Bound cancellation signal transport timeouts/retries by the capture's original deadline. Under100ms remaining, skip signalling and retain existing deadline cleanup rather than extending the request budget.
