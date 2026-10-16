@@ -705,9 +705,9 @@ export class SceneTools {
                 { required: ['excludeComponentTypes'] }
             ],
         },
-        { type: 'object', properties: { nodes: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, parentReference: { type: ['object', 'null'] }, name: { type: 'string' }, path: { type: 'string' }, depth: { type: 'integer' }, componentCount: { type: 'integer' }, active: { type: ['boolean', 'null'] } } } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['nodes', 'total'] }, "GET", ['scene', 'node', 'find', 'search', 'name', 'component', 'filter']
+        { type: 'object', properties: { nodes: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, parentReference: { type: ['object', 'null'] }, name: { type: 'string' }, path: { type: 'string' }, depth: { type: 'integer' }, componentCount: { type: 'integer' }, childCount: { type: 'integer' }, siblingIndex: { type: ['integer', 'null'] }, active: { type: ['boolean', 'null'] } } } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['nodes', 'total'] }, "GET", ['scene', 'node', 'find', 'search', 'name', 'component', 'filter']
     )
-    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], excludeComponentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, active?: boolean, minComponents?: number, maxComponents?: number, parentReference?: IInstanceReference, minChildren?: number, maxChildren?: number, siblingIndex?: number, minSiblingIndex?: number, maxSiblingIndex?: number, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, active: boolean | null }>, total: number, truncated: boolean }> {
+    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], excludeComponentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, active?: boolean, minComponents?: number, maxComponents?: number, parentReference?: IInstanceReference, minChildren?: number, maxChildren?: number, siblingIndex?: number, minSiblingIndex?: number, maxSiblingIndex?: number, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, childCount: number, siblingIndex: number | null, active: boolean | null }>, total: number, truncated: boolean }> {
         for (const [key, maximum] of [['name', 256], ['componentType', 256], ['pathContains', 512]] as const) {
             const value = args[key];
             if (value !== undefined && (typeof value !== 'string' || !value.trim() || value.length > maximum)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `${key} must be a bounded nonempty string.` });
@@ -735,7 +735,7 @@ export class SceneTools {
         const queried = await Editor.Message.request('scene', 'query-node-tree');
         if (!queried) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'No open hierarchy.' });
         const root = (await this.findPrefabEditRoot(queried)) ?? queried;
-        const hits: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, active: boolean | null }> = [];
+        const hits: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, childCount: number, siblingIndex: number | null, active: boolean | null }> = [];
         const stack = [{ node: root, path: sceneTreeNodeName(root), depth: 0, parentReference: null as IInstanceReference | null, siblingIndex: 0, inScope: !args.rootReference, excluded: false }];
         const visited = new Set<object>();
         let scheduled = 1, total = 0, rootFound = !args.rootReference;
@@ -774,7 +774,7 @@ export class SceneTools {
             const siblingOk = (args.siblingIndex === undefined || siblingIndex === args.siblingIndex) && (args.minSiblingIndex === undefined || siblingIndex >= args.minSiblingIndex) && (args.maxSiblingIndex === undefined || siblingIndex <= args.maxSiblingIndex);
             if (scoped && !branchExcluded && depthOk && nameOk && compOk && componentCountOk && childCountOk && parentOk && siblingOk && (args.active === undefined || active === args.active) && (!args.pathContains || nodePath.toLowerCase().includes(args.pathContains.toLowerCase()))) {
                 total++;
-                if (hits.length < limit) hits.push({ reference: { id, type: 'cc.Node' }, parentReference, name, path: nodePath, depth: relativeDepth, componentCount: components.length, active: typeof active === 'boolean' ? active : null });
+                if (hits.length < limit) hits.push({ reference: { id, type: 'cc.Node' }, parentReference, name, path: nodePath, depth: relativeDepth, componentCount: components.length, childCount: children.length, siblingIndex: parentReference ? siblingIndex : null, active: typeof active === 'boolean' ? active : null });
             }
             scheduled += children.length;
             if (scheduled > 10000) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Node search exceeds 10000 hierarchy nodes; no complete result returned.' });
