@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Bind discovery cursor identity to component_schema versus general engine_api result scope; switching categories refuses STALE_CURSOR instead of skipping entries in a differently filtered result set.
 - Support SafeArea/BlockInputEvents/UICoordinateTracker scalar/array script references with native property types and null/independent empty defaults. No input blocking, layout/camera tracking or automatic component attachment is executed.
 - Bind catalog discovery cursors to requested instance reference id/type; changed live targets refuse STALE_CURSOR before Inspector observation instead of reusing another instance's continuation.
 - Bound live Inspector instance discovery waiting by the original catalog deadline using the existing observation guard; hung/late reads refuse CATALOG_QUERY_TIMEOUT without retrying or cancelling dispatched native inspection.
