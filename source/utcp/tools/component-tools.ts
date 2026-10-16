@@ -35,9 +35,9 @@ export class ComponentTools {
         { type: 'object', properties: { registrations: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, type: { type: ['string', 'null'] }, assetUuid: { type: ['string', 'null'] } }, required: ['name', 'type', 'assetUuid'] } }, componentTypes: { type: 'array', items: { type: 'string' } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['registrations', 'componentTypes', 'total', 'truncated'] }, "GET", ['scene', 'node', 'component', 'types', 'inspection']
     )
     async nodeGetAvailableComponentTypes(args: { includeInternal?: boolean, scriptReference?: IInstanceReference, requireSingle?: boolean, filter?: string, filterMatch?: 'contains' | 'exact' | 'prefix' | 'suffix', filterCaseSensitive?: boolean, limit?: number } = {}): Promise<{ registrations: Array<{ name: string, type: string | null, assetUuid: string | null }>, componentTypes: string[], total: number, truncated: boolean }> {
-        if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 1000)) throw new Error('Component discovery limit must be an integer from 1 to 1000.');
-        if (args.filter !== undefined && typeof args.filter !== 'string') throw new Error('Component discovery filter must be a string.');
-        if (args.includeInternal !== undefined && typeof args.includeInternal !== 'boolean') throw new Error('includeInternal must be a boolean.');
+        if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 1000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component discovery limit must be an integer from 1 to 1000.', details: { field: 'limit' } });
+        if (args.filter !== undefined && typeof args.filter !== 'string') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component discovery filter must be a string.', details: { field: 'filter' } });
+        if (args.includeInternal !== undefined && typeof args.includeInternal !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'includeInternal must be a boolean.', details: { field: 'includeInternal' } });
         if (args.scriptReference !== undefined && (typeof args.scriptReference?.id !== 'string' || !args.scriptReference.id.trim() || args.scriptReference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'scriptReference requires a bounded exact script asset UUID.' });
         if (args.requireSingle !== undefined && typeof args.requireSingle !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireSingle must be boolean.' });
         if (args.filterMatch !== undefined && (typeof args.filter !== 'string' || !args.filter.trim() || !['contains', 'exact', 'prefix', 'suffix'].includes(args.filterMatch))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'filterMatch requires a nonempty filter and contains/exact/prefix/suffix.' });
@@ -45,15 +45,17 @@ export class ComponentTools {
         const allComponents = await Editor.Message.request('scene', 'query-components');
 
         if (!Array.isArray(allComponents)) {
-            throw new Error('Failed to retrieve component types');
+            throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Creator did not return a component registry array.', details: { field: 'componentRegistry' } });
         }
-        for (const component of allComponents) {
-            if (!component || typeof component !== 'object' || Array.isArray(component)
-                || typeof component.name !== 'string' || !component.name.trim()
-                || ('type' in component && (typeof component.type !== 'string' || !component.type.trim()))
-                || (component.assetUuid !== undefined && component.assetUuid !== null && typeof component.assetUuid !== 'string')) {
-                throw new Error('Component registry contains malformed class metadata.');
+        for (const [registryIndex, component] of allComponents.entries()) {
+            const invalidFields: string[] = [];
+            if (!component || typeof component !== 'object' || Array.isArray(component)) invalidFields.push('entry');
+            else {
+                if (typeof component.name !== 'string' || !component.name.trim()) invalidFields.push('name');
+                if ('type' in component && (typeof component.type !== 'string' || !component.type.trim())) invalidFields.push('type');
+                if (component.assetUuid !== undefined && component.assetUuid !== null && typeof component.assetUuid !== 'string') invalidFields.push('assetUuid');
             }
+            if (invalidFields.length) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Component registry contains malformed class metadata.', details: { registryIndex, invalidFields } });
         }
 
         const filterNeedle = args.filterCaseSensitive ? args.filter : args.filter?.toLowerCase();
@@ -109,6 +111,9 @@ export class ComponentTools {
         const types = args.componentTypes ?? (args.componentType !== undefined ? [args.componentType] : undefined);
         if (types !== undefined && (!Array.isArray(types) || types.length < 1 || types.length > 32 || types.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component class selectors require1..32 bounded names.' });
         if (args.excludeComponentTypes !== undefined && (!Array.isArray(args.excludeComponentTypes) || args.excludeComponentTypes.length < 1 || args.excludeComponentTypes.length > 32 || args.excludeComponentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'excludeComponentTypes requires1..32 bounded class names.' });
+        for (const list of [types, args.excludeComponentTypes]) if (list !== undefined) {
+            for (const type of list) if (typeof type !== 'string' || !type.trim() || type.length > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component class selectors require bounded names without missing entries.' });
+        }
         const excludedTypes = new Set(args.excludeComponentTypes?.map(type => type.replace(/^cc\./, '')));
         if (args.enabled !== undefined && typeof args.enabled !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'enabled must be a boolean serialized component selector.' });
         const offset = args.offset ?? 0;
@@ -209,9 +214,13 @@ export class ComponentTools {
         if (args.forbiddenComponentTypes !== undefined && (!Array.isArray(args.forbiddenComponentTypes) || args.forbiddenComponentTypes.length < 1 || args.forbiddenComponentTypes.length > 32 || args.forbiddenComponentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'forbiddenComponentTypes requires1..32 bounded class names.' });
         if (args.singletonComponentTypes !== undefined && (!Array.isArray(args.singletonComponentTypes) || args.singletonComponentTypes.length < 1 || args.singletonComponentTypes.length > 32 || args.singletonComponentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'singletonComponentTypes requires1..32 bounded class names.' });
         if (args.allowedComponentTypes !== undefined && (!Array.isArray(args.allowedComponentTypes) || args.allowedComponentTypes.length > 32 || args.allowedComponentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'allowedComponentTypes requires0..32 bounded class names.' });
-        if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
+        if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
+        for (const reference of args.references) if (typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires bounded node UUIDs without missing entries.' });
         if (args.componentTypes !== undefined && (!Array.isArray(args.componentTypes) || args.componentTypes.length < 1 || args.componentTypes.length > 32 || args.componentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentTypes requires1..32 bounded class names.' });
         if (args.excludeComponentTypes !== undefined && (!Array.isArray(args.excludeComponentTypes) || args.excludeComponentTypes.length < 1 || args.excludeComponentTypes.length > 32 || args.excludeComponentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'excludeComponentTypes requires1..32 bounded class names.' });
+        for (const list of [args.componentTypes, args.excludeComponentTypes, args.requiredComponentTypes, args.forbiddenComponentTypes, args.singletonComponentTypes, args.allowedComponentTypes]) if (list !== undefined) {
+            for (const type of list) if (typeof type !== 'string' || !type.trim() || type.length > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component class selectors require bounded names without missing entries.' });
+        }
         const limit = args.limitPerNode ?? 50;
         if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'limitPerNode must be1..100.' });
         const references = args.references.map(reference => ({ id: reference.id }));

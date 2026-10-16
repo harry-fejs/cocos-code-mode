@@ -2198,4 +2198,476 @@ describe('selection and composition observation boundaries', () => {
     });
     assert.equal(queries, 0);
   });
+  it('detects sibling count drift when target path ancestry and index remain unchanged', async () => {
+    const children = [{ uuid: 'target', name: 'Target' }];
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', name: 'Root', children }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const first = await tools.nodeGetPath({ reference: { id: 'target' } });
+    const args = { reference: { id: 'target' }, expectedPath: first.path, expectedAncestors: first.ancestors, expectedSiblingIndex: first.siblingIndex, expectedSiblingCount: first.siblingCount };
+    children.push({ uuid: 'new', name: 'New' });
+    await assert.rejects(() => tools.nodeGetPath(args), error => {
+      assert.equal(error.code, 'NODE_SIBLING_COUNT_CHANGED');
+      assert.deepEqual(error.details, { nodeId: 'target', expectedSiblingCount: 1, siblingCount: 2 });
+      return true;
+    });
+    assert.equal((await tools.nodeGetPath({ ...args, expectedSiblingCount: 2 })).siblingIndex, 0);
+    assert.equal((await tools.nodeGetPath({ reference: { id: 'root' }, expectedSiblingCount: null })).siblingCount, null);
+  });
+  it('isolates batch sibling count drift by UUID and withholds whole-selection projections', async () => {
+    const left = { uuid: 'left', children: [{ uuid: 'a' }] };
+    const right = { uuid: 'right', children: [{ uuid: 'b' }] };
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children: [left, right] }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const references = [{ id: 'a' }, { id: 'b' }];
+    const first = await tools.nodeGetPaths({ references });
+    const expectedSiblingCounts = first.items.map(item => ({ reference: item.reference, siblingCount: item.result.siblingCount })).reverse();
+    left.children.push({ uuid: 'new' });
+    const args = { references, expectedSiblingCounts };
+    const result = await tools.nodeGetPaths(args);
+    assert.equal(result.items[0].error.code, 'NODE_SIBLING_COUNT_CHANGED');
+    assert.deepEqual(result.items[0].error.details, { nodeId: 'a', expectedSiblingCount: 1, siblingCount: 2 });
+    assert.equal(result.items[1].result.reference.id, 'b');
+    assert.equal(result.selectionParentCounts, null);
+    assert.equal(result.errorCounts.NODE_SIBLING_COUNT_CHANGED, 1);
+    await assert.rejects(() => tools.nodeGetPaths({ ...args, requireAll: true }), error => error.code === 'NODE_GROUP_INCOMPLETE' && error.details.failed === 1);
+  });
+  it('requires UUID-bound sibling count coverage without treating null as an absent guard', async () => {
+    let queries = 0;
+    global.Editor = { Message: { request: async () => { queries++; return { uuid: 'root', children: [{ uuid: 'child' }] }; } } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    await assert.rejects(() => tools.nodeGetPaths({ references: ['child', 'root', 'child'].map(id => ({ id })), requireSiblingCounts: true, expectedSiblingCounts: [{ reference: { id: 'root' }, siblingCount: null }] }), error => {
+      assert.equal(error.code, 'INVALID_ARGUMENT');
+      assert.deepEqual(error.details, { missingSiblingCountGuardIds: ['child'] });
+      return true;
+    });
+    assert.equal(queries, 0);
+    const result = await tools.nodeGetPaths({ references: [{ id: 'root' }, { id: 'child' }], requireSiblingCounts: true, expectedSiblingCounts: [{ reference: { id: 'root' }, siblingCount: null }, { reference: { id: 'child' }, siblingCount: 1 }] });
+    assert.equal(result.failed, 0);
+  });
+  it('detects removed siblings but does not claim count guards identify same-count replacements', async () => {
+    const children = [{ uuid: 'target', name: 'Target' }, { uuid: 'old', name: 'Sibling' }];
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', name: 'Root', children }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const first = await tools.nodeGetPath({ reference: { id: 'target' } });
+    const args = { reference: first.reference, expectedPath: first.path, expectedAncestors: first.ancestors, expectedSiblingIndex: first.siblingIndex, expectedSiblingCount: first.siblingCount };
+    children[1] = { uuid: 'replacement', name: 'Sibling' };
+    const replaced = await tools.nodeGetPath(args);
+    assert.equal(replaced.nextSibling.id, 'replacement');
+    assert.equal(first.nextSibling.id, 'old');
+    children.pop();
+    await assert.rejects(() => tools.nodeGetPath(args), error => {
+      assert.equal(error.code, 'NODE_SIBLING_COUNT_CHANGED');
+      assert.deepEqual(error.details, { nodeId: 'target', expectedSiblingCount: 2, siblingCount: 1 });
+      return true;
+    });
+  });
+  it('detects same-count next sibling replacement and validates explicit no-next baselines', async () => {
+    const children = [{ uuid: 'target' }, { uuid: 'old' }];
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const first = await tools.nodeGetPath({ reference: { id: 'target' } });
+    children[1] = { uuid: 'new' };
+    await assert.rejects(() => tools.nodeGetPath({ reference: first.reference, expectedSiblingIndex: 0, expectedSiblingCount: 2, expectedNextSibling: first.nextSibling }), error => {
+      assert.equal(error.code, 'NODE_NEXT_SIBLING_CHANGED');
+      assert.deepEqual(error.details, { nodeId: 'target', expectedNextSiblingId: 'old', nextSiblingId: 'new' });
+      return true;
+    });
+    assert.equal((await tools.nodeGetPath({ reference: { id: 'new' }, expectedNextSibling: null })).nextSibling, null);
+    await assert.rejects(() => tools.nodeGetPath({ reference: { id: 'target' }, expectedNextSibling: null }), error => error.code === 'NODE_NEXT_SIBLING_CHANGED');
+  });
+  it('detects same-count previous sibling replacement without conflating the unchanged next neighbor', async () => {
+    const children = [{ uuid: 'old' }, { uuid: 'target' }, { uuid: 'next' }];
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const first = await tools.nodeGetPath({ reference: { id: 'target' } });
+    children[0] = { uuid: 'new' };
+    await assert.rejects(() => tools.nodeGetPath({ reference: first.reference, expectedSiblingIndex: 1, expectedSiblingCount: 3, expectedNextSibling: first.nextSibling, expectedPreviousSibling: first.previousSibling }), error => {
+      assert.equal(error.code, 'NODE_PREVIOUS_SIBLING_CHANGED');
+      assert.deepEqual(error.details, { nodeId: 'target', expectedPreviousSiblingId: 'old', previousSiblingId: 'new' });
+      return true;
+    });
+    assert.equal((await tools.nodeGetPath({ reference: { id: 'new' }, expectedPreviousSibling: null })).previousSibling, null);
+  });
+  it('checks neighbor UUIDs and conflict precedence across every sibling permutation', async () => {
+    const original = ['a', 'target', 'b', 'c'];
+    let order = original;
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children: order.map(uuid => ({ uuid })) }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const baseline = await tools.nodeGetPath({ reference: { id: 'target' } });
+    const permutations = values => values.length === 0 ? [[]] : values.flatMap((value, index) => permutations(values.filter((_value, other) => other !== index)).map(rest => [value, ...rest]));
+    for (const permutation of permutations(original)) {
+      order = permutation;
+      const index = order.indexOf('target');
+      const previousId = order[index - 1] ?? null;
+      const nextId = order[index + 1] ?? null;
+      const args = { reference: baseline.reference, expectedNextSibling: baseline.nextSibling, expectedPreviousSibling: baseline.previousSibling };
+      const code = nextId !== 'b' ? 'NODE_NEXT_SIBLING_CHANGED' : previousId !== 'a' ? 'NODE_PREVIOUS_SIBLING_CHANGED' : null;
+      if (code) await assert.rejects(() => tools.nodeGetPath(args), error => {
+        assert.equal(error.code, code);
+        if (code === 'NODE_NEXT_SIBLING_CHANGED') assert.equal(error.details.nextSiblingId, nextId);
+        else assert.equal(error.details.previousSiblingId, previousId);
+        return true;
+      });
+      else {
+        const result = await tools.nodeGetPath(args);
+        assert.equal(result.previousSibling.id, 'a');
+        assert.equal(result.nextSibling.id, 'b');
+      }
+    }
+    assert.equal(baseline.previousSibling.id, 'a');
+    assert.equal(baseline.nextSibling.id, 'b');
+    assert.equal(baseline.siblingIndex, 1);
+  });
+  it('binds batch neighbor pairs by UUID while isolating drift from unchanged peers', async () => {
+    const left = { uuid: 'left', children: [{ uuid: 'target' }, { uuid: 'old' }] };
+    const right = { uuid: 'right', children: [{ uuid: 'peer' }] };
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children: [left, right] }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const references = [{ id: 'target' }, { id: 'peer' }];
+    const first = await tools.nodeGetPaths({ references });
+    const expectedNeighbors = first.items.map(item => ({ reference: item.reference, previousSibling: item.result.previousSibling, nextSibling: item.result.nextSibling })).reverse();
+    left.children[1] = { uuid: 'new' };
+    const args = { references, expectedNeighbors };
+    const result = await tools.nodeGetPaths(args);
+    assert.equal(result.items[0].error.code, 'NODE_NEXT_SIBLING_CHANGED');
+    assert.equal(result.items[0].error.details.nextSiblingId, 'new');
+    assert.equal(result.items[1].result.reference.id, 'peer');
+    assert.equal(result.selectionParentCounts, null);
+    await assert.rejects(() => tools.nodeGetPaths({ ...args, requireAll: true }), error => error.code === 'NODE_GROUP_INCOMPLETE' && error.details.errorCounts.NODE_NEXT_SIBLING_CHANGED === 1);
+  });
+  it('requires neighbor baseline coverage by UUID without treating null pairs as absent', async () => {
+    let queries = 0;
+    global.Editor = { Message: { request: async () => { queries++; return { uuid: 'root', children: [{ uuid: 'child' }] }; } } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const expectedNeighbors = [{ reference: { id: 'root' }, previousSibling: null, nextSibling: null }];
+    await assert.rejects(() => tools.nodeGetPaths({ references: ['child', 'root', 'child'].map(id => ({ id })), expectedNeighbors, requireNeighbors: true }), error => {
+      assert.equal(error.code, 'INVALID_ARGUMENT');
+      assert.deepEqual(error.details, { missingNeighborGuardIds: ['child'] });
+      return true;
+    });
+    assert.equal(queries, 0);
+    const result = await tools.nodeGetPaths({ references: [{ id: 'root' }], expectedNeighbors, requireNeighbors: true });
+    assert.equal(result.failed, 0);
+  });
+  it('rejects previous-neighbor drift without refreshing caller baselines or losing unchanged peers', async () => {
+    const branch = { uuid: 'branch', children: [{ uuid: 'old' }, { uuid: 'target' }, { uuid: 'next' }] };
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children: [branch, { uuid: 'peer' }] }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const references = [{ id: 'target' }, { id: 'peer' }];
+    const first = await tools.nodeGetPaths({ references });
+    const expectedNeighbors = first.items.map(item => ({ reference: item.reference, previousSibling: item.result.previousSibling, nextSibling: item.result.nextSibling }));
+    branch.children[0] = { uuid: 'replacement' };
+    const args = { references, expectedNeighbors, requireNeighbors: true };
+    const stale = await tools.nodeGetPaths(args);
+    assert.equal(stale.items[0].error.code, 'NODE_PREVIOUS_SIBLING_CHANGED');
+    assert.deepEqual(stale.items[0].error.details, { nodeId: 'target', expectedPreviousSiblingId: 'old', previousSiblingId: 'replacement' });
+    assert.equal(stale.items[1].result.reference.id, 'peer');
+    assert.equal(stale.subtreeSelectionCoverage, null);
+    assert.equal(expectedNeighbors[0].previousSibling.id, 'old');
+    await assert.rejects(() => tools.nodeGetPaths({ ...args, requireAll: true }), error => error.code === 'NODE_GROUP_INCOMPLETE' && error.details.errorCounts.NODE_PREVIOUS_SIBLING_CHANGED === 1);
+  });
+  it('detects target child-count drift independently of unchanged sibling metadata', async () => {
+    const target = { uuid: 'target', name: 'Target', children: [] };
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', name: 'Root', children: [target] }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const first = await tools.nodeGetPath({ reference: { id: 'target' }, expectedChildCount: 0 });
+    target.children.push({ uuid: 'new' });
+    await assert.rejects(() => tools.nodeGetPath({ reference: first.reference, expectedPath: first.path, expectedSiblingIndex: first.siblingIndex, expectedSiblingCount: first.siblingCount, expectedChildCount: 0 }), error => {
+      assert.equal(error.code, 'NODE_CHILD_COUNT_CHANGED');
+      assert.deepEqual(error.details, { nodeId: 'target', expectedChildCount: 0, childCount: 1 });
+      return true;
+    });
+    assert.equal((await tools.nodeGetPath({ reference: first.reference, expectedChildCount: 1 })).childCount, 1);
+  });
+  it('isolates UUID-bound child count drift while retaining valid batch peers', async () => {
+    const target = { uuid: 'target', children: [] };
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children: [target, { uuid: 'peer' }] }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const references = [{ id: 'target' }, { id: 'peer' }];
+    const first = await tools.nodeGetPaths({ references });
+    const expectedChildCounts = first.items.map(item => ({ reference: item.reference, childCount: item.result.childCount })).reverse();
+    target.children.push({ uuid: 'new' });
+    const args = { references, expectedChildCounts };
+    const result = await tools.nodeGetPaths(args);
+    assert.equal(result.items[0].error.code, 'NODE_CHILD_COUNT_CHANGED');
+    assert.deepEqual(result.items[0].error.details, { nodeId: 'target', expectedChildCount: 0, childCount: 1 });
+    assert.equal(result.items[1].result.reference.id, 'peer');
+    assert.equal(result.subtreeSelectionCoverage, null);
+    await assert.rejects(() => tools.nodeGetPaths({ ...args, requireAll: true }), error => error.code === 'NODE_GROUP_INCOMPLETE' && error.details.errorCounts.NODE_CHILD_COUNT_CHANGED === 1);
+  });
+  it('requires complete child count baselines while treating zero as a supplied guard', async () => {
+    let queries = 0;
+    global.Editor = { Message: { request: async () => { queries++; return { uuid: 'root', children: [{ uuid: 'leaf' }] }; } } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const expectedChildCounts = [{ reference: { id: 'leaf' }, childCount: 0 }];
+    await assert.rejects(() => tools.nodeGetPaths({ references: ['root', 'leaf', 'root'].map(id => ({ id })), expectedChildCounts, requireChildCounts: true }), error => {
+      assert.equal(error.code, 'INVALID_ARGUMENT');
+      assert.deepEqual(error.details, { missingChildCountGuardIds: ['root'] });
+      return true;
+    });
+    assert.equal(queries, 0);
+    assert.equal((await tools.nodeGetPaths({ references: [{ id: 'leaf' }], expectedChildCounts, requireChildCounts: true })).failed, 0);
+  });
+  it('retains old child-count baselines after removals until an explicit fresh observation', async () => {
+    const container = { uuid: 'container', children: [{ uuid: 'kept' }, { uuid: 'removed' }] };
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children: [container, { uuid: 'peer' }] }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const references = [{ id: 'container' }, { id: 'peer' }];
+    const before = await tools.nodeGetPaths({ references });
+    const expectedChildCounts = before.items.map(item => ({ reference: item.reference, childCount: item.result.childCount }));
+    container.children.pop();
+    const args = { references, expectedChildCounts, requireChildCounts: true };
+    const stale = await tools.nodeGetPaths(args);
+    assert.deepEqual(stale.items[0].error.details, { nodeId: 'container', expectedChildCount: 2, childCount: 1 });
+    assert.equal(stale.items[1].result.reference.id, 'peer');
+    assert.equal(stale.subtreeSelectionCoverage, null);
+    assert.equal(expectedChildCounts[0].childCount, 2);
+    assert.equal(before.items[0].result.childCount, 2);
+    await assert.rejects(() => tools.nodeGetPaths({ ...args, requireAll: true }), error => error.code === 'NODE_GROUP_INCOMPLETE');
+    const fresh = await tools.nodeGetPaths({ references });
+    assert.equal(fresh.items[0].result.childCount, 1);
+    assert.equal(fresh.items[0].result.firstChild.id, 'kept');
+    const refreshedCounts = fresh.items.map(item => ({ reference: item.reference, childCount: item.result.childCount }));
+    assert.equal((await tools.nodeGetPaths({ ...args, expectedChildCounts: refreshedCounts })).failed, 0);
+  });
+  it('refuses malformed child identities even when child-count baselines match', async () => {
+    const children = [{ uuid: 'a' }, { uuid: 'b' }];
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    assert.equal((await tools.nodeGetPath({ reference: { id: 'root' }, expectedChildCount: 2 })).childCount, 2);
+    children[1] = { uuid: 'a' };
+    await assert.rejects(() => tools.nodeGetPath({ reference: { id: 'root' }, expectedChildCount: 2 }), error => error.code === 'INVALID_RESPONSE');
+    await assert.rejects(() => tools.nodeGetPaths({ references: [{ id: 'root' }], expectedChildCounts: [{ reference: { id: 'root' }, childCount: 2 }], requireChildCounts: true }), error => error.code === 'INVALID_RESPONSE');
+    children[1] = {};
+    await assert.rejects(() => tools.nodeGetPath({ reference: { id: 'root' }, expectedChildCount: 2 }), error => error.code === 'INVALID_RESPONSE');
+  });
+  it('detects deep descendant growth even when the immediate child count stays unchanged', async () => {
+    const branch = { uuid: 'branch', children: [] };
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children: [branch] }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const first = await tools.nodeGetPath({ reference: { id: 'root' } });
+    branch.children.push({ uuid: 'deep' });
+    await assert.rejects(() => tools.nodeGetPath({ reference: first.reference, expectedChildCount: first.childCount, expectedDescendantCount: first.descendantCount }), error => {
+      assert.equal(error.code, 'NODE_DESCENDANT_COUNT_CHANGED');
+      assert.deepEqual(error.details, { nodeId: 'root', expectedDescendantCount: 1, descendantCount: 2 });
+      return true;
+    });
+    assert.equal((await tools.nodeGetPath({ reference: { id: 'deep' }, expectedDescendantCount: 0 })).descendantCount, 0);
+  });
+  it('isolates deep descendant drift in UUID-bound batch guards', async () => {
+    const branch = { uuid: 'branch', children: [] };
+    const container = { uuid: 'container', children: [branch] };
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children: [container, { uuid: 'peer' }] }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const references = [{ id: 'container' }, { id: 'peer' }];
+    const before = await tools.nodeGetPaths({ references });
+    const expectedDescendantCounts = before.items.map(item => ({ reference: item.reference, descendantCount: item.result.descendantCount })).reverse();
+    branch.children.push({ uuid: 'deep' });
+    const args = { references, expectedDescendantCounts };
+    const result = await tools.nodeGetPaths(args);
+    assert.equal(result.items[0].error.code, 'NODE_DESCENDANT_COUNT_CHANGED');
+    assert.deepEqual(result.items[0].error.details, { nodeId: 'container', expectedDescendantCount: 1, descendantCount: 2 });
+    assert.equal(result.items[1].result.reference.id, 'peer');
+    assert.equal(result.subtreeSelectionCoverage, null);
+    await assert.rejects(() => tools.nodeGetPaths({ ...args, requireAll: true }), error => error.code === 'NODE_GROUP_INCOMPLETE' && error.details.errorCounts.NODE_DESCENDANT_COUNT_CHANGED === 1);
+  });
+  it('requires complete descendant baselines without treating zero as absent coverage', async () => {
+    let queries = 0;
+    global.Editor = { Message: { request: async () => { queries++; return { uuid: 'root', children: [{ uuid: 'leaf' }] }; } } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const expectedDescendantCounts = [{ reference: { id: 'leaf' }, descendantCount: 0 }];
+    await assert.rejects(() => tools.nodeGetPaths({ references: ['root', 'leaf', 'root'].map(id => ({ id })), expectedDescendantCounts, requireDescendantCounts: true }), error => {
+      assert.equal(error.code, 'INVALID_ARGUMENT');
+      assert.deepEqual(error.details, { missingDescendantCountGuardIds: ['root'] });
+      return true;
+    });
+    assert.equal(queries, 0);
+    assert.equal((await tools.nodeGetPaths({ references: [{ id: 'leaf' }], expectedDescendantCounts, requireDescendantCounts: true })).failed, 0);
+  });
+  it('does not mistake stable descendant totals for unchanged subtree topology', async () => {
+    const leaf = { uuid: 'leaf', name: 'Leaf' };
+    const branch = { uuid: 'branch', name: 'Branch', children: [] };
+    const root = { uuid: 'root', name: 'Root', children: [branch, leaf] };
+    global.Editor = { Message: { request: async () => root } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const before = await tools.nodeGetPath({ reference: { id: 'root' } });
+    const leafBefore = await tools.nodeGetPath({ reference: { id: 'leaf' } });
+    root.children.pop();
+    branch.children.push(leaf);
+    const after = await tools.nodeGetPath({ reference: before.reference, expectedDescendantCount: before.descendantCount });
+    assert.equal(after.descendantCount, 2);
+    assert.equal(after.subtreeHeight, 2);
+    assert.equal(after.subtreeLeafCount, 1);
+    assert.equal(before.subtreeHeight, 1);
+    assert.equal(before.subtreeLeafCount, 2);
+    await assert.rejects(() => tools.nodeGetPath({ reference: leafBefore.reference, expectedAncestors: leafBefore.ancestors }),
+      error => error.code === 'NODE_ANCESTRY_CHANGED' && error.details.ancestorIds.includes('branch'));
+  });
+  it('refuses malformed off-filter registry rows before returning a capped unique registration', async () => {
+    const rows = [{ name: 'Controller', type: 'Game.Controller', assetUuid: 'script' }, { name: 'Other', type: 'Game.Other', assetUuid: 42 }];
+    global.Editor = { Message: { request: async () => rows } };
+    const tools = new ComponentTools();
+    const args = { scriptReference: { id: 'script' }, filter: 'Game.Controller', filterMatch: 'exact', requireSingle: true, limit: 1 };
+    await assert.rejects(() => tools.nodeGetAvailableComponentTypes(args), error => error.code === 'INVALID_RESPONSE' && error.status === 502 && error.details.registryIndex === 1);
+    rows[1].assetUuid = 'other-script';
+    const result = await tools.nodeGetAvailableComponentTypes(args);
+    assert.deepEqual(result.registrations, [{ name: 'Controller', type: 'Game.Controller', assetUuid: 'script' }]);
+    assert.equal(result.total, 1);
+    rows[1].name = ' ';
+    await assert.rejects(() => tools.nodeGetAvailableComponentTypes(args), error => error.code === 'INVALID_RESPONSE' && error.status === 502 && error.details.registryIndex === 1);
+  });
+  it('detects child replacement and reorder despite unchanged counts', async () => {
+    const children = [{ uuid: 'a' }, { uuid: 'b' }];
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const args = { reference: { id: 'root' }, expectedChildCount: 2, expectedDescendantCount: 2, expectedChildren: [{ id: 'a' }, { id: 'b' }] };
+    assert.equal((await tools.nodeGetPath(args)).childCount, 2);
+    children.reverse();
+    await assert.rejects(() => tools.nodeGetPath(args), error => error.code === 'NODE_CHILDREN_CHANGED' && error.details.childIds.join(',') === 'b,a');
+    children[0] = { uuid: 'replacement' };
+    await assert.rejects(() => tools.nodeGetPath(args), error => error.code === 'NODE_CHILDREN_CHANGED' && error.details.childIds[0] === 'replacement');
+    assert.equal((await tools.nodeGetPath({ reference: { id: 'a' }, expectedChildren: [] })).childCount, 0);
+  });
+  it('identifies the first child mismatch including appended and removed tail entries', async () => {
+    let children = [{ uuid: 'a' }, { uuid: 'b' }];
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const args = { reference: { id: 'root' }, expectedChildren: [{ id: 'a' }, { id: 'b' }] };
+    children = [{ uuid: 'a' }, { uuid: 'replacement' }];
+    await assert.rejects(() => tools.nodeGetPath(args), error => error.code === 'NODE_CHILDREN_CHANGED' && error.details.mismatchIndex === 1 && error.details.expectedChildId === 'b' && error.details.childId === 'replacement');
+    children = [{ uuid: 'a' }];
+    await assert.rejects(() => tools.nodeGetPath(args), error => error.details.mismatchIndex === 1 && error.details.expectedChildId === 'b' && error.details.childId === null);
+    children = [{ uuid: 'a' }, { uuid: 'b' }, { uuid: 'c' }];
+    await assert.rejects(() => tools.nodeGetPath(args), error => error.details.mismatchIndex === 2 && error.details.expectedChildId === null && error.details.childId === 'c');
+  });
+  it('checks same-name child permutations by UUID without claiming recursive descendant identity', async () => {
+    const original = ['a', 'b', 'c'];
+    let children = original.map(uuid => ({ uuid, name: 'Same', children: [] }));
+    global.Editor = { Message: { request: async () => ({ uuid: 'root', children }) } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    const args = { reference: { id: 'root' }, expectedChildCount: 3, expectedChildren: original.map(id => ({ id })) };
+    const permutations = values => values.length ? values.flatMap((value, index) => permutations(values.filter((_value, other) => index !== other)).map(rest => [value, ...rest])) : [[]];
+    for (const order of permutations(original)) {
+      children = order.map(uuid => ({ uuid, name: 'Same', children: [] }));
+      const mismatch = order.findIndex((id, index) => id !== original[index]);
+      if (mismatch < 0) assert.equal((await tools.nodeGetPath(args)).childCount, 3);
+      else await assert.rejects(() => tools.nodeGetPath(args), error => error.code === 'NODE_CHILDREN_CHANGED' && error.details.mismatchIndex === mismatch && error.details.expectedChildId === original[mismatch] && error.details.childId === order[mismatch]);
+    }
+    children = original.map(uuid => ({ uuid, name: 'Same', children: [] }));
+    children[0].children.push({ uuid: 'deep' });
+    const deep = await tools.nodeGetPath(args);
+    assert.equal(deep.childCount, 3);
+    assert.equal(deep.descendantCount, 4);
+  });
+  it('rejects invalid search limits before IPC instead of returning misleading empty hit prefixes', async () => {
+    let queries = 0;
+    global.Editor = { Message: { request: async () => { queries++; return { uuid: 'root', name: 'Root' }; } } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    for (const maxResults of [NaN, Infinity, 0, -1, 1.5, 2001, '1', null]) {
+      await assert.rejects(() => tools.findNodes({ name: 'Root', maxResults }), error => error.code === 'INVALID_ARGUMENT' && error.status === 400 && error.details.field === 'maxResults');
+    }
+    assert.equal(queries, 0);
+    assert.equal((await tools.findNodes({ name: 'Root', maxResults: 1 })).nodes[0].reference.id, 'root');
+  });
+  it('retains all malformed registry field names without inventing fields for non-object rows', async () => {
+    let row = { name: ' ', type: 42, assetUuid: false };
+    global.Editor = { Message: { request: async () => [row] } };
+    const tools = new ComponentTools();
+    await assert.rejects(() => tools.nodeGetAvailableComponentTypes(), error => {
+      assert.equal(error.code, 'INVALID_RESPONSE');
+      assert.deepEqual(error.details, { registryIndex: 0, invalidFields: ['name', 'type', 'assetUuid'] });
+      return true;
+    });
+    row = null;
+    await assert.rejects(() => tools.nodeGetAvailableComponentTypes(), error => error.code === 'INVALID_RESPONSE' && error.details.invalidFields.join(',') === 'entry');
+  });
+  it('refuses sparse child baselines before querying while preserving empty-list leaf checks', async () => {
+    let queries = 0;
+    global.Editor = { Message: { request: async () => { queries++; return { uuid: 'root' }; } } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    await assert.rejects(() => tools.nodeGetPath({ reference: { id: 'root' }, expectedChildren: new Array(1) }), error => error.code === 'INVALID_ARGUMENT' && error.status === 400);
+    const mixed = [{ id: 'a' }, , { id: 'b' }];
+    await assert.rejects(() => tools.nodeGetPath({ reference: { id: 'root' }, expectedChildren: mixed }), error => error.code === 'INVALID_ARGUMENT');
+    assert.equal(queries, 0);
+    assert.equal((await tools.nodeGetPath({ reference: { id: 'root' }, expectedChildren: [] })).childCount, 0);
+  });
+  it('rejects sparse ancestry chains instead of accepting missing identities as wildcard ancestors', async () => {
+    let queries = 0;
+    global.Editor = { Message: { request: async () => { queries++; return { uuid: 'root', children: [{ uuid: 'child' }] }; } } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    await assert.rejects(() => tools.nodeGetPath({ reference: { id: 'child' }, expectedAncestors: new Array(1) }), error => error.code === 'INVALID_ARGUMENT');
+    await assert.rejects(() => tools.nodeGetPaths({ references: [{ id: 'child' }], expectedAncestors: [{ reference: { id: 'child' }, ancestors: new Array(1) }], requireAncestors: true }), error => error.code === 'INVALID_ARGUMENT');
+    assert.equal(queries, 0);
+    assert.equal((await tools.nodeGetPath({ reference: { id: 'root' }, expectedAncestors: [] })).depth, 0);
+  });
+  it('rejects sparse tree and component batch selections as caller errors before IPC', async () => {
+    let queries = 0;
+    global.Editor = { Message: { request: async () => { queries++; throw new Error('unexpected query'); } } };
+    for (const [tools, method] of [[new SceneTools(), 'nodeGetPaths'], [new ComponentTools(), 'nodeComponentsBatchGet']]) {
+      for (const references of [new Array(1), [{ id: 'a' }, , { id: 'b' }]]) await assert.rejects(() => tools[method]({ references }), error => error.code === 'INVALID_ARGUMENT' && error.status === 400);
+    }
+    assert.equal(queries, 0);
+  });
+  it('rejects sparse search UUID selections before querying instead of inventing missing identities', async () => {
+    let queries = 0;
+    global.Editor = { Message: { request: async () => { queries++; return { uuid: 'root' }; } } };
+    const tools = new SceneTools();
+    tools.findPrefabEditRoot = async () => null;
+    for (const references of [new Array(1), [{ id: 'root' }, , { id: 'other' }]]) await assert.rejects(() => tools.findNodes({ references }), error => error.code === 'INVALID_ARGUMENT' && error.status === 400);
+    assert.equal(queries, 0);
+    assert.equal((await tools.findNodes({ references: [{ id: 'root' }, { id: 'root' }] })).total, 1);
+  });
+  it('rejects sparse parent and subtree-exclusion selectors before hierarchy IPC', async () => {
+    let queries = 0;
+    global.Editor = { Message: { request: async () => { queries++; throw new Error('unexpected query'); } } };
+    const tools = new SceneTools();
+    for (const field of ['parentReferences', 'excludeReferences']) {
+      for (const references of [new Array(1), [{ id: 'root' }, , { id: 'other' }]]) await assert.rejects(() => tools.findNodes({ [field]: references }), error => error.code === 'INVALID_ARGUMENT' && error.status === 400);
+    }
+    assert.equal(queries, 0);
+  });
+  it('rejects sparse component class rules before inventing composition findings or querying nodes', async () => {
+    let queries = 0;
+    global.Editor = { Message: { request: async () => { queries++; throw new Error('unexpected query'); } } };
+    const tools = new ComponentTools();
+    for (const field of ['componentTypes', 'excludeComponentTypes', 'requiredComponentTypes', 'forbiddenComponentTypes', 'singletonComponentTypes', 'allowedComponentTypes']) {
+      await assert.rejects(() => tools.nodeComponentsBatchGet({ references: [{ id: 'n' }], [field]: new Array(1) }), error => error.code === 'INVALID_ARGUMENT' && error.status === 400);
+    }
+    for (const field of ['componentTypes', 'excludeComponentTypes']) await assert.rejects(() => tools.nodeComponentsGet({ reference: { id: 'n' }, [field]: new Array(1) }), error => error.code === 'INVALID_ARGUMENT');
+    assert.equal(queries, 0);
+  });
+  it('rejects sparse search class predicates without issuing false presence or absence results', async () => {
+    let queries = 0;
+    global.Editor = { Message: { request: async () => { queries++; return { uuid: 'root' }; } } };
+    const tools = new SceneTools();
+    for (const field of ['componentTypes', 'excludeComponentTypes']) {
+      for (const list of [new Array(1), ['cc.Label', , 'cc.Button']]) await assert.rejects(() => tools.findNodes({ [field]: list }), error => error.code === 'INVALID_ARGUMENT' && error.status === 400);
+    }
+    assert.equal(queries, 0);
+  });
 });

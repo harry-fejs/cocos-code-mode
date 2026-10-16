@@ -272,7 +272,7 @@ it('waits for a selected Game View renderer to reload before sending start', asy
     control.runtime.timeScale = NaN;
     assert.deepEqual(await new RuntimeTools().runtimeGetState(), { paused: false, timeScale: null, frameCount: null });
     await assert.rejects(tools.runtimeScenarioAssert({ sessionId: session.sessionId, minFrameCount: 1 }), { code: 'UNSUPPORTED_RUNTIME_METRIC' });
-    await assert.rejects(tools.runtimeWaitForState({ sessionId: session.sessionId, minFrameCount: 1, timeoutMs: 100 }), { code: 'UNSUPPORTED_RUNTIME_METRIC' });
+    await assert.rejects(tools.runtimeWaitForState({ sessionId: session.sessionId, minFrameCount: 1, timeoutMs: 500 }), { code: 'UNSUPPORTED_RUNTIME_METRIC' });
   });
 
   it('bounds each state wait including a nonresponsive first read', async () => {
