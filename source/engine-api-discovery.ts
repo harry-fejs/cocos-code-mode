@@ -339,10 +339,11 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         for (const record of records) {
             if (!record.className || !record.member) continue;
             const staticIdentity = typeof record.static === 'boolean' ? record.static : null;
-            const key = `${record.namespace}:${record.className}:${record.member}:${staticIdentity === null ? 'unknown' : staticIdentity ? 'static' : 'instance'}`;
+            const memberKind = record.kind ?? null;
+            const key = JSON.stringify([record.namespace, record.className, record.member, staticIdentity, memberKind]);
             const existing = members.get(key);
             if (existing) existing.recordCount = Number(existing.recordCount) + 1;
-            else members.set(key, { id: `${version}:member-index:${key}`, namespace: record.namespace, className: record.className, member: record.member, name: record.member, static: staticIdentity, kind: 'member-summary', recordCount: 1, permitted: false });
+            else members.set(key, { id: `${version}:member-index:${key}`, namespace: record.namespace, className: record.className, member: record.member, name: record.member, static: staticIdentity, memberKind, kind: 'member-summary', recordCount: 1, permitted: false });
         }
         records.splice(0, records.length, ...[...members.values()].sort((a, b) => a.id.localeCompare(b.id)));
     }
