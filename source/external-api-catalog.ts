@@ -76,6 +76,7 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
     if (lookup.version !== version || lookup.catalogHash !== selected.catalogHash) throw new ToolError({ code: 'CATALOG_HASH_MISMATCH', status: 409, message: 'Lookup version/catalog identity differs from configuration.' });
     const sourceIndex = SourceIndexSchema.parse(parseCatalogJson(readBounded(root, 'index.json', 1024 * 1024, lookup.sourceIndexSha256)));
     if (sourceIndex.version !== version || sourceIndex.catalogHash !== lookup.catalogHash) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Source index version/catalog identity differs from lookup.' });
+    if (lookup.shards.some(shard => ['index.json', 'lookup.json', 'manifest.json'].includes(shard.file.toLowerCase()))) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Reserved catalog metadata filename cannot be used as a shard.' });
     if (lookup.shards.some(shard => path.basename(shard.file) !== shard.file || path.win32.basename(shard.file) !== shard.file || !/^[A-Za-z0-9][A-Za-z0-9_.-]*\.json$/.test(shard.file))) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Unsafe external catalog shard filename.' });
     const sourceDomains = new Map(sourceIndex.domains.map(domain => [domain.file, domain]));
     const lookupFiles = new Set(lookup.shards.map(shard => shard.file));

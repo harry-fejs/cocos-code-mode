@@ -161,6 +161,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     const snapshotHash = external ? external.snapshotHash : crypto.createHash('sha256').update(indexBytes!).digest('hex');
     if (!external && 'version' in index && index.version !== version) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed catalog identity is invalid.' });
     if (!external && new Set(index.domains.map(domain => domain.file.toLowerCase())).size !== index.domains.length) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed catalog index contains duplicate shard filenames.' });
+    if (!external && index.domains.some(domain => ['index.json', 'lookup.json', 'manifest.json'].includes(domain.file.toLowerCase()))) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Reserved catalog metadata filename cannot be used as a shard.' });
     if (!external && index.domains.some(domain => path.basename(domain.file) !== domain.file || path.win32.basename(domain.file) !== domain.file || !/^[A-Za-z0-9][A-Za-z0-9_.-]*\.json$/.test(domain.file))) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Unsafe installed catalog shard filename.' });
     const provenancePath = path.join(CATALOG_ROOT, version, 'provenance.json');
     const provenance = !external && fs.existsSync(provenancePath) ? z.object({ scope: z.string().optional(), originalCatalogHash: z.string().nullable().optional() }).passthrough().parse(jsonFile(provenancePath)) : null;

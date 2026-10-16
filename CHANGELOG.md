@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Reject index.json/lookup.json/manifest.json (case-insensitive) as installed/external shard filenames before navigation, matching offline generator reserved-metadata ownership.
 - Expose invalidEvents across all retrieved timeline events independently of callback/frame filters and paging. Multiple diagnostics on one event count once; absent native events report null, empty arrays zero. No callback existence/runtime validation inferred.
 - Validate external lookup shard basename/JSON filename grammar before catalog exposure, refusing unsafe manifest paths during navigation rather than waiting for record hydration.
 - Reject case-colliding shard filenames in external source-index and lookup manifests before exposing discovery, matching offline generator and installed-catalog uniqueness semantics.
