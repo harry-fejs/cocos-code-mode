@@ -273,6 +273,9 @@ export async function readComponentScriptSource(source: ComponentScriptPath, uui
             count += read;
         }
         if (count !== expected.bytes || componentScriptHash(bytes.subarray(0, count)) !== expected.sha256) throw new Error('Source hash mismatch');
+        const after = await queryComponentScriptAsset(source.assetUrl);
+        const afterPath = resolveComponentScriptPath(source.assetUrl);
+        if (!after || after.uuid !== uuid || after.url !== source.assetUrl || path.resolve(after.file) !== source.file || after.isDirectory || afterPath.file !== source.file || afterPath.parent !== source.parent || fs.lstatSync(source.file).isSymbolicLink() || fs.realpathSync(source.file) !== source.file) throw new Error('Source identity changed during readback');
     } catch {
         throw new ToolError({ code: 'SOURCE_READBACK_UNCONFIRMED', status: 502, message: 'Created source identity/content could not be confirmed. Source may exist; no retry or deletion was attempted.', details: { assetUrl: source.assetUrl, expectedSha256: expected.sha256, sourceCreated: null, classRegistration: 'unknown', attached: false, runtimeVerified: false, sceneSaved: false } });
     } finally { if (fd !== undefined) fs.closeSync(fd); }
