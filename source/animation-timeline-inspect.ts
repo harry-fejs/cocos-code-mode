@@ -151,6 +151,12 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         return row;
     });
     let eventParameterCount = 0;
+    let eventTextBytes = 0;
+    const countEventText = (value: string): void => {
+        if (value.length > 1048576 - eventTextBytes) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native event text exceeds 1 MiB UTF-8.');
+        eventTextBytes += Buffer.byteLength(value, 'utf8');
+        if (eventTextBytes > 1048576) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native event text exceeds 1 MiB UTF-8.');
+    };
     const eventRows = Array.from(events ?? [], (raw: unknown, index: number) => {
         const event = timelineRecord(raw), location = `events[${index}]`, startIssues = diagnosticCount;
         if (!event || !frameValid(event.frame)) issue('INVALID_EVENT_TIME', location);
@@ -158,7 +164,11 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         eventParameterCount += params?.length ?? 0;
         if (eventParameterCount > 100000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native dump exceeds 100000 event parameters.');
         let paramsValid = params !== null;
-        if (params) for (let i = 0; i < params.length; i++) if (!Object.prototype.hasOwnProperty.call(params, i) || typeof params[i] !== 'string') { paramsValid = false; break; }
+        if (params) for (let i = 0; i < params.length; i++) {
+            if (!Object.prototype.hasOwnProperty.call(params, i) || typeof params[i] !== 'string') { paramsValid = false; break; }
+            countEventText(params[i]);
+        }
+        if (typeof event?.func === 'string') countEventText(event.func);
         if (!event || typeof event.func !== 'string' || !event.func || !paramsValid) issue('UNSUPPORTED_EVENT_DATA', location, true);
         return { index, frame: event && finite(event.frame) ? event.frame : null, frameOverSample: event && frameValid(event.frame) && sample !== null && finite(event.frame / sample) ? event.frame / sample : null,
             callback: text(event?.func), params: paramsValid ? params as string[] : null, dataValid: diagnosticCount === startIssues };
