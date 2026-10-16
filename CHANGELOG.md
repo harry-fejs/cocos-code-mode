@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Derive timeline truncated from effective sourceComplete including unsupported native shapes, matching complete semantics. Missing keyframe data stays incomplete/truncated; complete-but-invalid finite-data diagnostics remain distinct from missing coverage.
 - Reject index.json/lookup.json/manifest.json (case-insensitive) as installed/external shard filenames before navigation, matching offline generator reserved-metadata ownership.
 - Expose invalidEvents across all retrieved timeline events independently of callback/frame filters and paging. Multiple diagnostics on one event count once; absent native events report null, empty arrays zero. No callback existence/runtime validation inferred.
 - Validate external lookup shard basename/JSON filename grammar before catalog exposure, refusing unsafe manifest paths during navigation rather than waiting for record hydration.

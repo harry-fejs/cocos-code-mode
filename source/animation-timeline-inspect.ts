@@ -247,7 +247,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         result.nextTrackOffset = trackEnd < selectedTracks.length ? trackEnd : null;
         result.nextEventOffset = eventEnd < selectedEvents.length ? eventEnd : null;
         result.complete = result.sourceComplete && bounds.trackOffset === 0 && bounds.eventOffset === 0 && bounds.keyframeOffset === 0 && selectedTracks.every(track => track.nextKeyframeOffset === null) && result.nextTrackOffset === null && result.nextEventOffset === null && !result.diagnosticsTruncated;
-        result.truncated = !sourceComplete || bounds.trackOffset > 0 || bounds.eventOffset > 0 || bounds.keyframeOffset > 0 || selectedTracks.some(track => track.nextKeyframeOffset !== null) || result.nextTrackOffset !== null || result.nextEventOffset !== null || result.diagnosticsTruncated;
+        result.truncated = !result.sourceComplete || bounds.trackOffset > 0 || bounds.eventOffset > 0 || bounds.keyframeOffset > 0 || selectedTracks.some(track => track.nextKeyframeOffset !== null) || result.nextTrackOffset !== null || result.nextEventOffset !== null || result.diagnosticsTruncated;
     };
     pagination();
     while (byteLength(result) > bounds.maxBytes) {
