@@ -8,6 +8,7 @@ import type { infer as InferSchema } from 'zod';
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const EntrySchema = z.object({ id: z.string().min(1), shard: z.number().int().nonnegative(), namespace: z.string(), className: z.string().nullable(), name: z.string(), member: z.string().nullable(), kind: z.string(), module: z.string().min(1).optional(), visibility: z.enum(['public', 'protected', 'private', 'internal']).nullable().optional(), contexts: z.array(z.string().min(1).max(128)).max(32).nullable().optional(), evidenceState: z.string().min(1).max(128).nullable().optional(), domain: z.string() });
 const LookupSchema = z.object({ schemaVersion: z.literal(1), version: z.string(), catalogHash: digest, sourceIndexSha256: digest, shards: z.array(z.object({ file: z.string(), sha256: digest, count: z.number().int().nonnegative(), domain: z.string() })).max(1000), entries: z.array(EntrySchema).max(100000) });
+const SourceIndexSchema = z.object({ schemaVersion: z.literal(1), version: z.string(), catalogHash: digest, recordCount: z.number().int().nonnegative().optional(), domains: z.array(z.object({ name: z.string(), file: z.string(), count: z.number().int().nonnegative() })).max(1000) });
 const ConfigSchema = z.object({ schemaVersion: z.literal(1), catalogs: z.array(z.object({ version: z.enum(['3.7.3', '3.8.8']), catalogRoot: z.string().min(1), lookupRoot: z.string().min(1), lookupSha256: digest, catalogHash: digest })).max(2) });
 type Lookup = InferSchema<typeof LookupSchema>;
 export type ExternalApiEntry = InferSchema<typeof EntrySchema>;
@@ -66,7 +67,13 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
     const root = fs.realpathSync(selected.catalogRoot), lookupRoot = fs.realpathSync(selected.lookupRoot);
     const lookup = LookupSchema.parse(JSON.parse(readBounded(lookupRoot, 'lookup.json', 32 * 1024 * 1024, selected.lookupSha256).toString('utf8')));
     if (lookup.version !== version || lookup.catalogHash !== selected.catalogHash) throw new ToolError({ code: 'CATALOG_HASH_MISMATCH', status: 409, message: 'Lookup version/catalog identity differs from configuration.' });
-    readBounded(root, 'index.json', 1024 * 1024, lookup.sourceIndexSha256);
+    const sourceIndex = SourceIndexSchema.parse(JSON.parse(readBounded(root, 'index.json', 1024 * 1024, lookup.sourceIndexSha256).toString('utf8')));
+    if (sourceIndex.version !== version || sourceIndex.catalogHash !== lookup.catalogHash) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Source index version/catalog identity differs from lookup.' });
+    const sourceDomains = new Map(sourceIndex.domains.map(domain => [domain.file, domain]));
+    const lookupFiles = new Set(lookup.shards.map(shard => shard.file));
+    if (sourceDomains.size !== sourceIndex.domains.length || lookupFiles.size !== lookup.shards.length || sourceDomains.size !== lookupFiles.size
+        || lookup.shards.some(shard => { const domain = sourceDomains.get(shard.file); return !domain || domain.name !== shard.domain || domain.count !== shard.count; })
+        || sourceIndex.recordCount !== undefined && sourceIndex.recordCount !== lookup.entries.length) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Lookup shard manifest differs from the verified source index.' });
     const entriesById = new Map<string, ExternalApiEntry>();
     const indexedCounts = lookup.shards.map(() => 0);
     for (const entry of lookup.entries) {
