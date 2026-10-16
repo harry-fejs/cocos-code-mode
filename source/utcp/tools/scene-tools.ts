@@ -667,6 +667,8 @@ export class SceneTools {
             properties: {
                 name: { type: 'string', description: 'Substring match on node name (case-insensitive).' },
                 componentType: { type: 'string', description: 'Exact component class, e.g. cc.Sprite, cc.Label.' },
+                componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
+                componentMatch: { type: 'string', enum: ['all', 'any', 'none'], default: 'all' },
                 nameMatch: { type: 'string', enum: ['contains', 'exact'], default: 'contains' },
                 pathContains: { type: 'string', minLength: 1, maxLength: 512 },
                 rootReference: InstanceReferenceSchema,
@@ -676,19 +678,24 @@ export class SceneTools {
                 { required: ['name'] },
                 { required: ['componentType'] },
                 { required: ['pathContains'] },
-                { required: ['rootReference'] }
+                { required: ['rootReference'] },
+                { required: ['componentTypes'] }
             ],
         },
         { type: 'object', properties: { nodes: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, name: { type: 'string' }, path: { type: 'string' } } } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['nodes', 'total'] }, "GET", ['scene', 'node', 'find', 'search', 'name', 'component', 'filter']
     )
-    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, pathContains?: string, rootReference?: IInstanceReference, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, name: string, path: string }>, total: number, truncated: boolean }> {
+    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, rootReference?: IInstanceReference, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, name: string, path: string }>, total: number, truncated: boolean }> {
         for (const [key, maximum] of [['name', 256], ['componentType', 256], ['pathContains', 512]] as const) {
             const value = args[key];
             if (value !== undefined && (typeof value !== 'string' || !value.trim() || value.length > maximum)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `${key} must be a bounded nonempty string.` });
         }
         if (args.nameMatch !== undefined && (!args.name || !['contains', 'exact'].includes(args.nameMatch))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'nameMatch requires name and contains/exact.' });
+        if (args.componentType !== undefined && args.componentTypes !== undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Choose componentType or componentTypes, not both.' });
+        if (args.componentTypes !== undefined && (!Array.isArray(args.componentTypes) || args.componentTypes.length < 1 || args.componentTypes.length > 32 || args.componentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentTypes requires1..32 bounded class names.' });
+        if (args.componentMatch !== undefined && (!args.componentTypes || !['all', 'any', 'none'].includes(args.componentMatch))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentMatch requires componentTypes and all/any/none.' });
+        const types = [...new Set((args.componentTypes ?? (args.componentType ? [args.componentType] : [])).map(type => type.replace(/^cc\./, '')))];
         if (args.rootReference !== undefined && (typeof args.rootReference?.id !== 'string' || !args.rootReference.id.trim() || args.rootReference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'rootReference requires a bounded node UUID.' });
-        if (!args.name && !args.componentType && !args.pathContains && !args.rootReference) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'At least one node selector is required.' });
+        if (!args.name && !types.length && !args.pathContains && !args.rootReference) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'At least one node selector is required.' });
         const limit = boundedListLimit(args.maxResults);
         const queried = await Editor.Message.request('scene', 'query-node-tree');
         if (!queried) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'No open hierarchy.' });
@@ -708,7 +715,14 @@ export class SceneTools {
             const nameOk = !args.name || (args.nameMatch === 'exact' ? name.toLowerCase() === args.name.toLowerCase() : name.toLowerCase().includes(args.name.toLowerCase()));
             const components = node.components ?? [];
             if (!Array.isArray(components)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed component inventory.' });
-            const compOk = !args.componentType || components.some((component: any) => [...componentCandidates(component), component?.__type__, componentClassId(component)].some(type => typeof type === 'string' && type.replace(/^cc\./, '') === args.componentType!.replace(/^cc\./, '')));
+            const attachedTypes = new Set<string>();
+            if (types.length) for (const component of components) {
+                const candidates = [...componentCandidates(component), component?.__type__, componentClassId(component)].filter((type): type is string => typeof type === 'string' && !!type.trim());
+                if (!candidates.length) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Component class identity is unavailable; presence/absence cannot be determined.' });
+                for (const type of candidates) attachedTypes.add(type.replace(/^cc\./, ''));
+            }
+            const matched = types.filter(type => attachedTypes.has(type)).length;
+            const compOk = !types.length || (args.componentMatch === 'any' ? matched > 0 : args.componentMatch === 'none' ? matched === 0 : matched === types.length);
             if (scoped && nameOk && compOk && (!args.pathContains || nodePath.toLowerCase().includes(args.pathContains.toLowerCase()))) {
                 total++;
                 if (hits.length < limit) hits.push({ reference: { id, type: 'cc.Node' }, name, path: nodePath });
