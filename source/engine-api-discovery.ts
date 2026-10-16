@@ -230,6 +230,20 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
                 if (!seen.has(key)) { seen.add(key); related.push({ ...row, relation: field, ...location }); }
             }
         };
+        const collectSignatureTypes = (row: Record<string, unknown>, prefix: string, signatureIndex: number) => {
+            const collectType = (value: unknown, relation: string) => {
+                if (value === undefined || value === null) return;
+                if (typeof value !== 'object' || Array.isArray(value)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: `Record ${relation} type metadata is malformed.` });
+                const type = value as Record<string, unknown>;
+                collect(type.references, `${relation}.references`, { signatureIndex });
+                collect(type.unresolved, `${relation}.unresolved`, { signatureIndex });
+            };
+            collectType(row.receiver, `${prefix}.receiver`);
+            if (row.predicate !== undefined && row.predicate !== null) {
+                if (typeof row.predicate !== 'object' || Array.isArray(row.predicate)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record predicate metadata is malformed.' });
+                collectType((row.predicate as Record<string, unknown>).type, `${prefix}.predicate`);
+            }
+        };
         collect((source as Record<string, unknown>).references, 'references');
         collect((source as Record<string, unknown>).unresolved, 'unresolved');
         const declaration = (source as Record<string, unknown>).declarationEvidence;
@@ -245,6 +259,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
                     collect(row.references, 'declaration.signature.references', { signatureIndex });
                     collect(row.returnReferences, 'declaration.signature.returnReferences', { signatureIndex });
                     collect(row.unresolved, 'declaration.signature.unresolved', { signatureIndex });
+                    collectSignatureTypes(row, 'declaration.signature', signatureIndex);
                     if (row.parameters !== undefined) {
                         if (!Array.isArray(row.parameters)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Declaration parameters metadata is malformed.' });
                         for (const [parameterIndex, parameter] of row.parameters.entries()) {
@@ -264,6 +279,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
                 if (!signature || typeof signature !== 'object' || Array.isArray(signature)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record signature metadata is malformed.' });
                 const row = signature as Record<string, unknown>;
                 collect(row.references, 'signature.references', { signatureIndex }); collect(row.returnReferences, 'signature.returnReferences', { signatureIndex }); collect(row.unresolved, 'signature.unresolved', { signatureIndex });
+                collectSignatureTypes(row, 'signature', signatureIndex);
                 if (Array.isArray(row.parameters)) for (const [parameterIndex, parameter] of row.parameters.entries()) {
                     if (!parameter || typeof parameter !== 'object' || Array.isArray(parameter)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Record parameter metadata is malformed.' });
                     const parameterRow = parameter as Record<string, unknown>;
