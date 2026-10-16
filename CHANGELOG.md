@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Allow native UI dependency declarations for UIOpacity/RichText/ToggleContainer/PageView/PageViewIndicator/ScrollBar/SafeArea/BlockInputEvents/UICoordinateTracker in scriptComponentCreate. Existing max8/unique constraints remain; source generation never attaches components or configures their required references.
 - Reject explicit empty/nonstring/oversized or non-base64url discovery cursors before catalog access with STALE_CURSOR, rather than treating falsy malformed cursors as first-page requests.
 - Validate discovery className/domain/filter string bounds and namespace enum before catalog access, returning INVALID_ARGUMENT for malformed selectors instead of normalization errors or misleading empty results.
 - Support MouseJoint2D/RelativeJoint2D/SliderJoint2D/WheelJoint2D scalar/array script references with null/independent empty defaults. No joint creation, input registration, connected-body assignment or simulation mutation.
