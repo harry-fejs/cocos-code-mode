@@ -318,6 +318,7 @@ function signatures(checker, symbol, declaration) {
     const row = signatureInfo(checker, sig, sig.getDeclaration() || declaration, i);
     if (i >= calls.length) row.kind = 'construct';
     row.abstract = declarationMetadata.abstract || !!(sig.flags & ts.SignatureFlags.Abstract);
+    if (ts.isVariableDeclaration(declaration) || ts.isBindingElement(declaration)) row.jsdoc = row.jsdoc || declarationMetadata.jsdoc;
     if (ts.isPropertyDeclaration(declaration) || ts.isPropertySignature(declaration) || ts.isParameter(declaration) && ts.isConstructorDeclaration(declaration.parent) && !!(ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.ParameterPropertyModifier)) {
       row.visibility = declarationMetadata.visibility;
       row.jsdoc = row.jsdoc || declarationMetadata.jsdoc;
