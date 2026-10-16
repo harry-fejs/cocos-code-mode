@@ -166,7 +166,9 @@ export class RuntimeSessionTools {
         if (session.status === 'stopped') return { success: true, operation: 'inspect', session, ready: false };
         if (session.targetKind !== 'game-view') throw new ToolError({ code: 'UNSUPPORTED_RUNTIME_TRANSPORT', status: 422, message: `Runtime target ${session.targetKind} has no verified transport.` });
         try {
-            const state = await this.readState(session.targetId, Date.now() + (args.timeoutMs ?? 30_000));
+            const deadline = Date.now() + (args.timeoutMs ?? 30_000);
+            const state = await this.readState(session.targetId, deadline);
+            if (Date.now() >= deadline) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Session readiness inspection completed after its caller deadline.' });
             let current: RuntimeSession;
             try { current = store.inspect(session.sessionId); }
             catch (error) {
