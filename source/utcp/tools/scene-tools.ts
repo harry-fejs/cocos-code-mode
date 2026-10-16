@@ -902,14 +902,16 @@ export class SceneTools {
             expectedPaths: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, path: { type: 'string', maxLength: 4096 } }, required: ['reference', 'path'] }, description: 'Optional exact paths keyed by requested target UUID; omitted targets are unguarded.' },
             expectedAncestors: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, ancestors: { type: 'array', maxItems: 9999, items: InstanceReferenceSchema } }, required: ['reference', 'ancestors'] }, description: 'Optional ordered ancestor UUID chains keyed by requested target; same relativeTo scope required.' },
             relativeTo: InstanceReferenceSchema, includeRoot: { type: 'boolean', default: true }, requireUnique: { type: 'boolean', default: false },
+            requireAll: { type: 'boolean', default: false, description: 'Refuse partial target resolution after collecting every item result; no mutation or rollback.' },
         }, required: ['references'] },
         { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, commonAncestor: { type: ['object', 'null'], properties: { id: { type: 'string' }, type: { type: 'string' } } } }, required: ['items', 'succeeded', 'failed', 'commonAncestor'] },
         'GET', ['scene', 'node', 'path', 'batch', 'ancestors']
     )
-    async nodeGetPaths(args: { references: IInstanceReference[], expectedPaths?: Array<{ reference: IInstanceReference, path: string }>, expectedAncestors?: Array<{ reference: IInstanceReference, ancestors: IInstanceReference[] }>, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, commonAncestor: IInstanceReference | null }> {
+    async nodeGetPaths(args: { references: IInstanceReference[], expectedPaths?: Array<{ reference: IInstanceReference, path: string }>, expectedAncestors?: Array<{ reference: IInstanceReference, ancestors: IInstanceReference[] }>, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean, requireAll?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, commonAncestor: IInstanceReference | null }> {
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
         if (args.relativeTo !== undefined && (typeof args.relativeTo?.id !== 'string' || !args.relativeTo.id.trim() || args.relativeTo.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'relativeTo requires a bounded node UUID.' });
         if (args.includeRoot !== undefined && typeof args.includeRoot !== 'boolean' || args.requireUnique !== undefined && typeof args.requireUnique !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path projection flags must be boolean.' });
+        if (args.requireAll !== undefined && typeof args.requireAll !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireAll must be boolean.' });
         const references = args.references.map(reference => ({ id: reference.id }));
         const expectedPaths = new Map<string, string>();
         const requestedIds = new Set(references.map(reference => reference.id));
@@ -955,7 +957,9 @@ export class SceneTools {
                 items.push({ index, ok: false, reference, error: { code: error instanceof ToolError ? error.code : 'NODE_PATH_QUERY_FAILED', message: (error instanceof Error ? error.message : String(error)).slice(0, 512) } });
             }
         }
-        return { items, succeeded, failed: references.length - succeeded, commonAncestor: commonChain?.length ? commonChain[commonChain.length - 1] : null };
+        const result = { items, succeeded, failed: references.length - succeeded, commonAncestor: commonChain?.length ? commonChain[commonChain.length - 1] : null };
+        if (args.requireAll && result.failed) throw new ToolError({ code: 'NODE_GROUP_INCOMPLETE', status: 409, message: 'Not every requested node resolved; partial results must not be used as a complete group.', details: result });
+        return result;
     }
 
     @utcpTool(
