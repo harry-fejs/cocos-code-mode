@@ -227,7 +227,8 @@ function typeInfo(checker, type, node) {
 }
 function signatureInfo(checker, signature, declaration, index, returnType) {
   const unresolved = [];
-  const visibility = metadata(declaration).visibility;
+  const declarationMetadata = metadata(declaration);
+  const visibility = declarationMetadata.visibility;
   const genericReferences = new Map();
   const receiverSymbol = signature.thisParameter;
   const receiverDeclaration = receiverSymbol?.valueDeclaration || receiverSymbol?.declarations?.[0];
@@ -300,7 +301,7 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
     const variance = [modifiers.some(modifier => modifier.kind === ts.SyntaxKind.InKeyword) ? 'in' : '', modifiers.some(modifier => modifier.kind === ts.SyntaxKind.OutKeyword) ? 'out' : ''].filter(Boolean).join(' ') || null;
     return { name: parameter.symbol?.name || checker.typeToString(parameter), const: modifiers.some(modifier => modifier.kind === ts.SyntaxKind.ConstKeyword), variance, constraint: info?.type || null, default: compact(declared?.default) };
   });
-  return { overload: index, visibility, minArgumentCount, kind: ts.isSetAccessorDeclaration(declaration) ? 'set' : ts.isGetAccessorDeclaration(declaration) ? 'get' : 'call',
+  return { overload: index, visibility, jsdoc: declarationMetadata.jsdoc, minArgumentCount, kind: ts.isSetAccessorDeclaration(declaration) ? 'set' : ts.isGetAccessorDeclaration(declaration) ? 'get' : 'call',
     text: returnType && ts.isGetAccessorDeclaration(declaration) ? `(): ${result.type}` : checker.signatureToString(signature, declaration, ts.TypeFormatFlags.NoTruncation), typeParameters, parameters, receiver, predicate,
     returnType: result.type, declaredReturnType: result.declaredType, returnReferences: result.references,
     references: [...genericReferences.values()].sort((a, b) => compare(json(a), json(b))),

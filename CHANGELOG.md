@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve JSDoc on individual callable/accessor signature rows so overload-specific documentation remains associated with its own parameter/result contract instead of only record-level concatenated docs.
 - Support Mesh/Skeleton scalar and array references in scriptComponentCreate using native asset property types and null/independent empty defaults. No model loading, skeleton construction, retargeting or automatic binding.
 - Forward internal audio/node wait cancellation through readiness, refusing native observation dispatch after cancellation. Node observation phases also require at least100ms remaining; public JSON contracts remain unchanged.
 - Retain unique JSDoc blocks from merged/overloaded symbol declarations in record documentation rather than only the representative declaration; published signatures and permission state remain unchanged.
