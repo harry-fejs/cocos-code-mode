@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Cap aggregate get_related_types serialized deduplication-key text at1MiB UTF-8, including duplicate entries before deduplication; excess refuses CATALOG_RELATED_LIMIT. The guard runs after each key serialization, not before temporary string allocation.
 - Reject replicated as a generated script field or formerlySerializedAs alias, protecting the inherited native CCObject accessor from data-field initialization/serialization collisions. Distinct project data names remain supported.
 - Cap get_related_types source/declaration signature and parameter containers at10000 combined before iteration, with cooperative deadline checks even for empty metadata; excess refuses CATALOG_RELATED_LIMIT.
 - Bound get_related_types dependency-entry traversal to10000 across all collected relations, including duplicates before deduplication; excess refuses CATALOG_RELATED_LIMIT rather than returning partial completeness.

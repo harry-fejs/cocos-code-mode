@@ -262,6 +262,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         const seen = new Set<string>();
         let relatedEntriesRemaining = 10000;
         let containersRemaining = 10000;
+        let relatedBytesRemaining = 1024 * 1024;
         const reserveContainers = (count: number) => {
             checkDeadline();
             if (count > containersRemaining) throw new ToolError({ code: 'CATALOG_RELATED_LIMIT', status: 413, message: 'Related-type signature/parameter traversal exceeds 10000 containers.' });
@@ -277,6 +278,9 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
                 if (!item || typeof item !== 'object' || Array.isArray(item)) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: `Record ${field} contains malformed related-type metadata.` });
                 const row = item as Record<string, unknown>;
                 const key = JSON.stringify([field, location, row]);
+                const keyBytes = Buffer.byteLength(key, 'utf8');
+                if (keyBytes > relatedBytesRemaining) throw new ToolError({ code: 'CATALOG_RELATED_LIMIT', status: 413, message: 'Related-type serialized metadata exceeds 1MiB; no complete dependency result returned.' });
+                relatedBytesRemaining -= keyBytes;
                 if (!seen.has(key)) { seen.add(key); related.push({ ...row, relation: field, ...location }); }
             }
         };
