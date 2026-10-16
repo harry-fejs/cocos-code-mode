@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Snapshot discovery argument scalars and nested reference identity before asynchronous observation, preventing caller edits during Inspector waits from changing validated selectors or returned target mapping.
 - Reject hasOwnProperty as a script enum label before generation, protecting Creator3.7 Enum ownership checks from numeric method shadowing for both scalar and array fields.
 - Reject external lookup entries whose domain belongs to a different namespace before exposing navigation, even when source-index and shard manifests agree on that incorrect domain.
 - Map catalog schema validation failures at the discovery boundary to CATALOG_INVALID without echoing validator issues; preserve existing typed catalog/hash/limit errors unchanged.
