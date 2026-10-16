@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Reuse manifest aggregation for unfiltered external list_namespaces, avoiding a second full lookup-entry iteration after loader validation; record-level filters retain entry-based counts and cursor semantics.
 - Recheck created-script file-handle and current-path dev/inode/size/mtime/ctime after Asset DB readback, refusing observed content/path replacement drift without create retries or deletion. Optimistic metadata checks are not atomic snapshot or ABA protection.
 - Aggregate unfiltered installed list_namespaces counts from manifest domains without shard hydration; record-level selectors retain the existing bounded scan. Manifest counts are catalog metadata, not independently verified shard evidence.
 - Recheck created script Asset DB UUID/path and project-owned source path after bounded content readback. Identity drift refuses SOURCE_READBACK_UNCONFIRMED without retrying creation or deleting the uncertain source.

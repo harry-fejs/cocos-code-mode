@@ -187,8 +187,8 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         } catch { throw new ToolError({ code: 'STALE_CURSOR', status: 409, message: 'Catalog cursor does not match this version/filter/snapshot.' }); }
     }
     const records: ApiRecord[] = [];
-    const manifestNamespaces = operation === 'list_namespaces' && !external && [args.filter, args.kind, args.module, args.visibility, args.context, args.evidenceState, args.member].every(value => value === undefined);
-    if (external && operation !== 'list_domains') {
+    const manifestNamespaces = operation === 'list_namespaces' && [args.filter, args.kind, args.module, args.visibility, args.context, args.evidenceState, args.member].every(value => value === undefined);
+    if (external && operation !== 'list_domains' && !manifestNamespaces) {
         for (const entry of external.entries) {
             checkDeadline();
             if (args.recordId !== undefined && entry.id !== args.recordId) continue;
