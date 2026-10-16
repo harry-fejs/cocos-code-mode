@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Support RenderTexture scalar/array script references with native asset metadata and null/independent empty defaults. No GPU target creation, resize/reset or automatic camera binding.
 - Bind discovery cursors to catalog source coverage/provenance as well as catalog hash and selectors; switching installed pilot versus operator external catalog refuses STALE_CURSOR even when catalog hashes match.
 - Reject null/primitive/array source signature entries in get_signature with CATALOG_INVALID, matching declaration-signature entry shape checks while preserving valid metadata and non-permitted discovery semantics.
 - Support DirectionalLight/SphereLight/SpotLight scalar/array script references using Creator3.7 native types. Null/independent empty defaults only; no light construction, baking or pipeline mutation. PointLight is not inferred from other Creator versions.
