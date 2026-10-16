@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Bound non-event component inspect/observe transport by its original read budget, including readiness time, without the mutation/event transport grace. Exhausted readiness refuses before dispatch; mutation and event capture budgets remain unchanged.
 - Propagate audio wait's internal deadline to observation transport and recheck remaining budget after session readiness. Refuse new reads below100ms; standalone observation/control schemas and budgets remain unchanged.
 - Preserve async/generator syntax from direct arrow/function initializers on variable/class property metadata without inferring modifiers from callback types or Promise/iterator return types.
 - Refuse new graph/animation/node wait observations below100ms remaining rather than rounding the read budget above the caller's residual deadline. Existing cancellation, target identity and read-only predicates remain unchanged.

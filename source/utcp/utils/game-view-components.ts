@@ -255,17 +255,21 @@ export function createComponentOperationSource(args: ComponentOperation): string
 export async function executeComponentOperation(args: ComponentOperation, assertActive?: () => void): Promise<Record<string, unknown>> {
     validateComponentTarget(args, args.kind !== 'particle');
     args = { ...args, nodeReference: { id: args.nodeReference.id }, ...(args.variable === undefined ? {} : { variable: { ...args.variable } }) };
+    const boundedRead = args.kind !== 'events' && ['inspect', 'observe'].includes(args.operation);
+    const readDeadline = Date.now() + (args.timeoutMs ?? 1000);
     const runtime = new RuntimeSessionTools(); const inspected = await runtime.runtimeSessionLifecycle({ operation: 'inspect', sessionId: args.sessionId }); const session = inspected.session;
     if (!session || !('status' in session) || !('targetId' in session) || !('targetKind' in session) || session.sessionId !== args.sessionId || session.status !== 'attached' || session.targetKind !== 'game-view' || typeof session.targetId !== 'string' || !inspected.ready) { if (session && 'status' in session && session.status === 'stopped') throw new ToolError({ code: 'RUNTIME_SESSION_STOPPED', status: 409, message: 'The runtime session is stopped.' }); throw new ToolError({ code: 'RUNTIME_NOT_READY', status: 409, message: 'The exact attached Game View session is not ready.' }); }
     assertActive?.();
     const mutation = args.kind !== 'events' && !['inspect', 'observe'].includes(args.operation);
+    const readRemaining = readDeadline - Date.now();
+    if (boundedRead && readRemaining < 100) throw new ToolError({ code: 'RUNTIME_STATE_TIMEOUT', status: 409, message: 'Component observation budget exhausted during readiness; no read dispatched.' });
     const captureToken = args.kind === 'events' && assertActive ? randomUUID() : undefined;
     const captureDeadline = Date.now() + (args.timeoutMs ?? 1000);
     let cancellationPoll: NodeJS.Timeout | undefined; let signalling = false; let signalAttempts = 0;
     let pendingSignal: Promise<unknown> | undefined;
     let result: Record<string, unknown> | null;
     try {
-        const pending = executeGameViewOperation(session.targetId, createComponentOperationSource({ ...args, captureToken }), (args.timeoutMs ?? 1000) + 2000, mutation);
+        const pending = executeGameViewOperation(session.targetId, createComponentOperationSource({ ...args, captureToken, ...(boundedRead ? { timeoutMs: readRemaining } : {}) }), boundedRead ? readRemaining : (args.timeoutMs ?? 1000) + 2000, mutation);
         if (captureToken !== undefined) cancellationPoll = setInterval(() => {
             if (signalling || signalAttempts >= 3) return;
             const remaining = captureDeadline - Date.now();
