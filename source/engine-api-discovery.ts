@@ -150,7 +150,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     const provenancePath = path.join(CATALOG_ROOT, version, 'provenance.json');
     const provenance = !external && fs.existsSync(provenancePath) ? z.object({ scope: z.string().optional(), originalCatalogHash: z.string().nullable().optional() }).passthrough().parse(jsonFile(provenancePath)) : null;
     const coverage = { scope: external ? 'operator-configured-full-catalog' : provenance?.scope ?? 'installed-catalog-scope-unverified', fullCatalogLoaded: external !== null, originalCatalogHash: external?.catalogHash ?? provenance?.originalCatalogHash ?? null };
-    const selector = JSON.stringify({ version, operation, namespace: args.namespace ?? '', domain: args.domain ?? '', filter: args.filter ?? '', className: args.className ?? '', recordId: args.recordId ?? '', kind: args.kind ?? '', module: args.module ?? '', visibility: args.visibility ?? '', context: args.context ?? '', evidenceState: args.evidenceState ?? '', member: args.member ?? '' });
+    const selector = JSON.stringify({ version, operation, namespace: args.namespace ?? '', domain: args.domain ?? '', filter: args.filter ?? '', className: args.className ?? '', recordId: args.recordId ?? '', kind: args.kind ?? '', module: args.module ?? '', visibility: args.visibility ?? '', context: args.context ?? '', evidenceState: args.evidenceState ?? '', member: args.member ?? '', reference: args.reference ? { id: args.reference.id, type: args.reference.type ?? null } : null });
     const selectorHash = crypto.createHash('sha256').update(selector).digest('hex');
     let offset = 0;
     if (args.cursor) {
