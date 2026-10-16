@@ -166,10 +166,10 @@ export class ComponentTools {
             summaryOnly: { type: 'boolean', default: false, description: 'Omit component reference pages; retain full summaries, filtered totals, revisions and per-node errors.' },
             limitPerNode: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
         }, required: ['references'] },
-        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, inventorySummary: { type: 'object', properties: { observedNodes: { type: 'integer' }, failedNodes: { type: 'integer' }, total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' }, classDistribution: { type: 'object', additionalProperties: { type: 'object', properties: { instances: { type: 'integer', minimum: 1 }, nodes: { type: 'integer', minimum: 1 } }, required: ['instances', 'nodes'] } } }, required: ['observedNodes', 'failedNodes', 'total', 'enabled', 'disabled', 'unknownEnabled', 'classDistribution'] } }, required: ['items', 'succeeded', 'failed', 'truncated', 'inventorySummary'] },
+        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, inventorySummary: { type: 'object', properties: { observedNodes: { type: 'integer' }, failedNodes: { type: 'integer' }, matchedNodes: { type: 'integer' }, unmatchedNodes: { type: 'integer' }, matchedComponents: { type: 'integer' }, total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' }, classDistribution: { type: 'object', additionalProperties: { type: 'object', properties: { instances: { type: 'integer', minimum: 1 }, nodes: { type: 'integer', minimum: 1 } }, required: ['instances', 'nodes'] } } }, required: ['observedNodes', 'failedNodes', 'matchedNodes', 'unmatchedNodes', 'matchedComponents', 'total', 'enabled', 'disabled', 'unknownEnabled', 'classDistribution'] } }, required: ['items', 'succeeded', 'failed', 'truncated', 'inventorySummary'] },
         'GET', ['scene', 'node', 'component', 'batch', 'inspection']
     )
-    async nodeComponentsBatchGet(args: { references: IInstanceReference[], expectedRevisions?: Array<{ reference: IInstanceReference, revision: string }>, componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, summaryOnly?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, total: number, enabled: number, disabled: number, unknownEnabled: number, classDistribution: Record<string, { instances: number, nodes: number }> } }> {
+    async nodeComponentsBatchGet(args: { references: IInstanceReference[], expectedRevisions?: Array<{ reference: IInstanceReference, revision: string }>, componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, summaryOnly?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, matchedNodes: number, unmatchedNodes: number, matchedComponents: number, total: number, enabled: number, disabled: number, unknownEnabled: number, classDistribution: Record<string, { instances: number, nodes: number }> } }> {
         if (args.enabled !== undefined && typeof args.enabled !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'enabled must be a boolean serialized component selector.' });
         if (args.requireSingle !== undefined && typeof args.requireSingle !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireSingle must be boolean.' });
         if (args.summaryOnly !== undefined && typeof args.summaryOnly !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'summaryOnly must be boolean.' });
@@ -194,7 +194,7 @@ export class ComponentTools {
         const excludeComponentTypes = args.excludeComponentTypes?.slice();
         const items: Array<Record<string, unknown>> = [];
         let succeeded = 0, truncated = false;
-        const inventorySummary = { observedNodes: 0, failedNodes: 0, total: 0, enabled: 0, disabled: 0, unknownEnabled: 0, classDistribution: Object.create(null) as Record<string, { instances: number, nodes: number }> };
+        const inventorySummary = { observedNodes: 0, failedNodes: 0, matchedNodes: 0, unmatchedNodes: 0, matchedComponents: 0, total: 0, enabled: 0, disabled: 0, unknownEnabled: 0, classDistribution: Object.create(null) as Record<string, { instances: number, nodes: number }> };
         for (const [index, reference] of references.entries()) {
             try {
                 const result = await this.nodeComponentsGet({ reference, expectedRevision: expectedRevisions.get(reference.id), componentTypes, excludeComponentTypes, enabled: args.enabled, requireSingle: args.requireSingle, limit });
@@ -202,6 +202,8 @@ export class ComponentTools {
                 succeeded++;
                 if (!args.summaryOnly) truncated ||= result.truncated;
                 inventorySummary.observedNodes++;
+                if (result.total > 0) inventorySummary.matchedNodes++; else inventorySummary.unmatchedNodes++;
+                inventorySummary.matchedComponents += result.total;
                 inventorySummary.total += result.inventorySummary.total;
                 inventorySummary.enabled += result.inventorySummary.enabled;
                 inventorySummary.disabled += result.inventorySummary.disabled;
