@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Refuse contradictory discovery className/reference.type selectors before catalog access or Inspector dispatch, using existing cc. prefix normalization and TYPE_MISMATCH rather than waiting for live observation.
 - Reuse manifest aggregation for unfiltered external list_namespaces, avoiding a second full lookup-entry iteration after loader validation; record-level filters retain entry-based counts and cursor semantics.
 - Recheck created-script file-handle and current-path dev/inode/size/mtime/ctime after Asset DB readback, refusing observed content/path replacement drift without create retries or deletion. Optimistic metadata checks are not atomic snapshot or ABA protection.
 - Aggregate unfiltered installed list_namespaces counts from manifest domains without shard hydration; record-level selectors retain the existing bounded scan. Manifest counts are catalog metadata, not independently verified shard evidence.

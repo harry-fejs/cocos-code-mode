@@ -84,6 +84,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     if (args.reference !== undefined && (!args.reference || typeof args.reference !== 'object' || Array.isArray(args.reference)
         || typeof args.reference.id !== 'string' || !args.reference.id.trim() || args.reference.id.length > 1024
         || args.reference.type !== undefined && (typeof args.reference.type !== 'string' || !args.reference.type.trim() || args.reference.type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'reference requires a bounded nonempty id and optional nonempty type.' });
+    if (args.className !== undefined && args.reference?.type !== undefined && args.className.replace(/^cc\./, '') !== args.reference.type.replace(/^cc\./, '')) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: 'Catalog class and instance reference type disagree.' });
     if (args.category === 'component_schema' && !args.className) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'component_schema requires className.' });
     const operation = args.operation === undefined ? 'records' : args.operation;
     if (operation === 'explain_bridge_route') {
