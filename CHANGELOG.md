@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Allow DirectionalLight/SphereLight/SpotLight in scriptComponentCreate requiredComponents with existing max8/unique bounds. Source generation declares dependencies only; later native attachment/render behavior remains separately verified.
 - Bind installed catalog cursors to SHA-256 of the same bounded index bytes used for parsing; manifest changes invalidate continuation even if catalogHash stays unchanged. This does not snapshot mutable shard bytes.
 - Bind external discovery cursors to a hashed project/version/resolved-root/approved-lookup snapshot identity; changing lookup revision or configured roots invalidates continuation even when catalogHash remains unchanged. Paths are not exposed by the digest.
 - Support RenderTexture scalar/array script references with native asset metadata and null/independent empty defaults. No GPU target creation, resize/reset or automatic camera binding.
