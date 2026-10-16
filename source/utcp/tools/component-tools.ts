@@ -76,18 +76,20 @@ export class ComponentTools {
                 componentType: { type: 'string', minLength: 1, maxLength: 256 },
                 componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
                 offset: { type: 'integer', minimum: 0, maximum: 10000 },
+                enabled: { type: 'boolean', description: 'Exact serialized component enabled flag; not runtime activation.' },
                 limit: { type: 'integer', minimum: 1, maximum: 1000 },
                 expectedRevision: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'Revision from a previous page; refuses changed inventory or class selectors.' },
             },
             required: ['reference']
         },
-        { type: 'object', properties: { references: { type: 'array', items: InstanceReferenceSchema }, total: { type: 'integer' }, offset: { type: 'integer' }, nextOffset: { type: ['integer', 'null'] }, truncated: { type: 'boolean' }, revision: { type: 'string' } }, required: ['references', 'total', 'offset', 'nextOffset', 'truncated', 'revision'] }, 'GET', ['scene', 'node', 'component', 'get', 'inspection']
+        { type: 'object', properties: { references: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, type: { type: 'string' }, enabled: { type: 'boolean' } }, required: ['id'] } }, total: { type: 'integer' }, offset: { type: 'integer' }, nextOffset: { type: ['integer', 'null'] }, truncated: { type: 'boolean' }, revision: { type: 'string' } }, required: ['references', 'total', 'offset', 'nextOffset', 'truncated', 'revision'] }, 'GET', ['scene', 'node', 'component', 'get', 'inspection']
     )
-    async nodeComponentsGet(args: { reference: IInstanceReference, componentType?: string, componentTypes?: string[], offset?: number, limit?: number, expectedRevision?: string }): Promise<{ references: IInstanceReference[], total: number, offset: number, nextOffset: number | null, truncated: boolean, revision: string }> {
+    async nodeComponentsGet(args: { reference: IInstanceReference, componentType?: string, componentTypes?: string[], enabled?: boolean, offset?: number, limit?: number, expectedRevision?: string }): Promise<{ references: Array<IInstanceReference & { enabled?: boolean }>, total: number, offset: number, nextOffset: number | null, truncated: boolean, revision: string }> {
         if (args.expectedRevision !== undefined && (typeof args.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedRevision))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedRevision requires a SHA256 revision token.' });
         if (args.componentType !== undefined && args.componentTypes !== undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Choose componentType or componentTypes, not both.' });
         const types = args.componentTypes ?? (args.componentType !== undefined ? [args.componentType] : undefined);
-        if (types !== undefined && (!Array.isArray(types) || types.length < 1 || types.length > 32 || types.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component class selectors require 1..32 bounded nonempty names.' });
+        if (types !== undefined && (!Array.isArray(types) || types.length < 1 || types.length > 32 || types.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component class selectors require1..32 bounded names.' });
+        if (args.enabled !== undefined && typeof args.enabled !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'enabled must be a boolean serialized component selector.' });
         const offset = args.offset ?? 0;
         if (!Number.isInteger(offset) || offset < 0 || offset > 10000 || args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 1000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offset must be0..10000 and limit1..1000.' });
         const selectedTypes = types ? new Set(types.map(type => type.replace(/^cc\./, ''))) : undefined;
@@ -102,7 +104,7 @@ export class ComponentTools {
         if (components.length > VERBOSE_TREE_NODES) throw new Error('nodeComponentsGet: serialized component inventory exceeds the inspection budget');
         const identities = new Set<string>();
         const foundComponents: IInstanceReference[] = [];
-        const inventory: Array<{ id: string, type: string }> = [];
+        const inventory: Array<{ id: string, type: string, enabled?: boolean }> = [];
         for (const comp of components) {
             const value = field(comp, 'value');
             const uuidValue = field(value, 'uuid');
@@ -119,14 +121,16 @@ export class ComponentTools {
             }
             if (identities.has(compUuid)) throw new Error('nodeComponentsGet: duplicate component UUID in serialized inventory');
             identities.add(compUuid);
-            inventory.push({ id: compUuid, type: declaredType });
-
-            if (!selectedTypes || selectedTypes.has(declaredType.replace(/^cc\./, ''))) {
-                foundComponents.push({ id: compUuid, type: declaredType });
+            const enabledField = field(comp, 'enabled') ?? field(value, 'enabled');
+            const rawEnabled = typeof enabledField === 'boolean' ? enabledField : field(enabledField, 'value');
+            if (args.enabled !== undefined && typeof rawEnabled !== 'boolean') throw new ToolError({ code: 'COMPONENT_STATE_UNAVAILABLE', status: 422, message: 'Serialized enabled state is unavailable; no enabled-filtered result returned.' });
+            inventory.push({ id: compUuid, type: declaredType, ...(typeof rawEnabled === 'boolean' ? { enabled: rawEnabled } : {}) });
+            if ((!selectedTypes || selectedTypes.has(declaredType.replace(/^cc\./, ''))) && (args.enabled === undefined || rawEnabled === args.enabled)) {
+                foundComponents.push({ id: compUuid, type: declaredType, ...(typeof rawEnabled === 'boolean' ? { enabled: rawEnabled } : {}) });
             }
         }
 
-        const revision = createHash('sha256').update(JSON.stringify({ node: args.reference.id, inventory, selector: args.componentType !== undefined ? ['single', args.componentType.replace(/^cc\./, '')] : selectedTypes ? ['multi', [...selectedTypes].sort()] : ['all'] })).digest('hex');
+        const revision = createHash('sha256').update(JSON.stringify({ node: args.reference.id, inventory, selector: { types: args.componentType !== undefined ? ['single', args.componentType.replace(/^cc\./, '')] : selectedTypes ? ['multi', [...selectedTypes].sort()] : ['all'], enabled: args.enabled ?? null } })).digest('hex');
         if (args.expectedRevision !== undefined && args.expectedRevision !== revision) throw new ToolError({ code: 'COMPONENT_INVENTORY_CHANGED', status: 409, message: 'Component inventory or selector changed; restart pagination from a fresh observation.' });
         if (!foundComponents.length && args.componentType) throw new Error(`Components of type ${args.componentType} not found on node ${args.reference.id}`);
         if (offset > foundComponents.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offset exceeds the observed filtered inventory.' });
@@ -141,12 +145,14 @@ export class ComponentTools {
         { type: 'object', additionalProperties: false, properties: {
             references: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema },
             componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
+            enabled: { type: 'boolean', description: 'Exact serialized enabled selector shared by every node.' },
             limitPerNode: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
         }, required: ['references'] },
         { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['items', 'succeeded', 'failed', 'truncated'] },
         'GET', ['scene', 'node', 'component', 'batch', 'inspection']
     )
-    async nodeComponentsBatchGet(args: { references: IInstanceReference[], componentTypes?: string[], limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean }> {
+    async nodeComponentsBatchGet(args: { references: IInstanceReference[], componentTypes?: string[], enabled?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean }> {
+        if (args.enabled !== undefined && typeof args.enabled !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'enabled must be a boolean serialized component selector.' });
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
         if (args.componentTypes !== undefined && (!Array.isArray(args.componentTypes) || args.componentTypes.length < 1 || args.componentTypes.length > 32 || args.componentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentTypes requires1..32 bounded class names.' });
         const limit = args.limitPerNode ?? 50;
@@ -157,7 +163,7 @@ export class ComponentTools {
         let succeeded = 0, truncated = false;
         for (const [index, reference] of references.entries()) {
             try {
-                const result = await this.nodeComponentsGet({ reference, componentTypes, limit });
+                const result = await this.nodeComponentsGet({ reference, componentTypes, enabled: args.enabled, limit });
                 items.push({ index, ok: true, reference, result });
                 succeeded++;
                 truncated ||= result.truncated;

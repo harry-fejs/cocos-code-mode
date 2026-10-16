@@ -805,9 +805,9 @@ declare namespace ccp3x {
         componentTypes: string[]; total: number; truncated: boolean;
     };
     /** Reads up to 10000 serialized components bound to the requested node UUID; malformed/duplicate component identities throw before filtering rather than returning partial matches. Raw IPC allocation is not capped. */
-    function nodeComponentsGet(args: { reference: InstanceReference; componentType?: string; componentTypes?: string[]; offset?: number; limit?: number; expectedRevision?: string }): { references: InstanceReference[]; total: number; offset: number; nextOffset: number | null; truncated: boolean; revision: string };
+    function nodeComponentsGet(args: { reference: InstanceReference; componentType?: string; componentTypes?: string[]; enabled?: boolean; offset?: number; limit?: number; expectedRevision?: string }): { references: Array<InstanceReference & { enabled?: boolean }>; total: number; offset: number; nextOffset: number | null; truncated: boolean; revision: string };
     /** Sequential read-only inventory for1..32 nodes, default50/max100 components per node; errors remain per-item. Continue individual inventories with nodeComponentsGet and their revision. */
-    function nodeComponentsBatchGet(args: { references: InstanceReference[]; componentTypes?: string[]; limitPerNode?: number }): { items: Array<Record<string, unknown>>; succeeded: number; failed: number; truncated: boolean };
+    function nodeComponentsBatchGet(args: { references: InstanceReference[]; componentTypes?: string[]; enabled?: boolean; limitPerNode?: number }): { items: Array<Record<string, unknown>>; succeeded: number; failed: number; truncated: boolean };
     /** Lists classes known to the editor, optionally filtered by base class; filtering applies to returned class names. */
     function listComponentClasses(args: { extends?: string; excludeSelf?: boolean; filter?: string }): { classes: string[] };
 
