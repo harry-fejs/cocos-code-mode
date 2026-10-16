@@ -24,16 +24,24 @@ export class ComponentTools {
             type: 'object',
             properties: {
                 includeInternal: { type: 'boolean', default: false, description: 'Whether to include internal engine components.' },
+                scriptReference: InstanceReferenceSchema,
+                requireSingle: { type: 'boolean', default: false, description: 'Require exactly one filtered registry row before the output cap; no arbitrary first-class selection.' },
                 filter: { type: 'string', description: 'Optional filter string to match component types or categories (case-insensitive substring match).' },
+                filterMatch: { type: 'string', enum: ['contains', 'exact', 'prefix', 'suffix'], default: 'contains', description: 'Literal matching against registry type, or name when type is absent; requires a nonempty filter. Uses filterCaseSensitive.' },
+                filterCaseSensitive: { type: 'boolean', default: false, description: 'Case-sensitive class filtering; requires a nonblank filter.' },
                 limit: { type: 'integer', minimum: 1, maximum: 1000, default: 200, description: 'Maximum component types to return.' }
             }
         },
-        { type: 'object', properties: { componentTypes: { type: 'array', items: { type: 'string' } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['componentTypes', 'total', 'truncated'] }, "GET",  ['scene', 'node', 'component', 'types', 'inspection']
+        { type: 'object', properties: { registrations: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, type: { type: ['string', 'null'] }, assetUuid: { type: ['string', 'null'] } }, required: ['name', 'type', 'assetUuid'] } }, componentTypes: { type: 'array', items: { type: 'string' } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['registrations', 'componentTypes', 'total', 'truncated'] }, "GET", ['scene', 'node', 'component', 'types', 'inspection']
     )
-    async nodeGetAvailableComponentTypes(args: { includeInternal?: boolean, filter?: string, limit?: number } = {}): Promise<{ componentTypes: string[], total: number, truncated: boolean }> {
+    async nodeGetAvailableComponentTypes(args: { includeInternal?: boolean, scriptReference?: IInstanceReference, requireSingle?: boolean, filter?: string, filterMatch?: 'contains' | 'exact' | 'prefix' | 'suffix', filterCaseSensitive?: boolean, limit?: number } = {}): Promise<{ registrations: Array<{ name: string, type: string | null, assetUuid: string | null }>, componentTypes: string[], total: number, truncated: boolean }> {
         if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 1000)) throw new Error('Component discovery limit must be an integer from 1 to 1000.');
         if (args.filter !== undefined && typeof args.filter !== 'string') throw new Error('Component discovery filter must be a string.');
         if (args.includeInternal !== undefined && typeof args.includeInternal !== 'boolean') throw new Error('includeInternal must be a boolean.');
+        if (args.scriptReference !== undefined && (typeof args.scriptReference?.id !== 'string' || !args.scriptReference.id.trim() || args.scriptReference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'scriptReference requires a bounded exact script asset UUID.' });
+        if (args.requireSingle !== undefined && typeof args.requireSingle !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireSingle must be boolean.' });
+        if (args.filterMatch !== undefined && (typeof args.filter !== 'string' || !args.filter.trim() || !['contains', 'exact', 'prefix', 'suffix'].includes(args.filterMatch))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'filterMatch requires a nonempty filter and contains/exact/prefix/suffix.' });
+        if (args.filterCaseSensitive !== undefined && (typeof args.filterCaseSensitive !== 'boolean' || typeof args.filter !== 'string' || !args.filter.trim())) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'filterCaseSensitive requires a boolean and a nonblank filter.' });
         const allComponents = await Editor.Message.request('scene', 'query-components');
 
         if (!Array.isArray(allComponents)) {
@@ -48,11 +56,14 @@ export class ComponentTools {
             }
         }
 
-        const lowerFilter = args.filter ? args.filter.toLowerCase() : null;
+        const filterNeedle = args.filterCaseSensitive ? args.filter : args.filter?.toLowerCase();
         const filtered = allComponents.filter((comp: any) => {
+            if (args.scriptReference && comp.assetUuid !== args.scriptReference.id) return false;
             let matchesFilter = true;
-            if (lowerFilter) {
-                matchesFilter = (comp.type ?? comp.name).toLowerCase().includes(lowerFilter);
+            if (filterNeedle) {
+                const rawCandidate = comp.type ?? comp.name;
+                const candidate = args.filterCaseSensitive ? rawCandidate : rawCandidate.toLowerCase();
+                matchesFilter = args.filterMatch === 'exact' ? candidate === filterNeedle : args.filterMatch === 'prefix' ? candidate.startsWith(filterNeedle) : args.filterMatch === 'suffix' ? candidate.endsWith(filterNeedle) : candidate.includes(filterNeedle);
             }
             if (!args.includeInternal) {
                 matchesFilter = matchesFilter && comp.assetUuid && comp.assetUuid.length > 0;
@@ -60,10 +71,11 @@ export class ComponentTools {
             return matchesFilter;
         });
 
-        const names = filtered.map((comp: any) => comp.name).filter((name: any) => typeof name === 'string');
+        if (args.requireSingle && filtered.length !== 1) throw new ToolError({ code: filtered.length ? 'COMPONENT_CLASS_MATCH_AMBIGUOUS' : 'COMPONENT_CLASS_MATCH_NOT_FOUND', status: filtered.length ? 409 : 404, message: 'Component class discovery requires exactly one filtered registry row.', details: { matchCount: filtered.length } });
         const limit = Math.min(Math.max(args.limit ?? 200, 1), 1000);
 
-        return { componentTypes: names.slice(0, limit), total: names.length, truncated: names.length > limit };
+        const registrations: Array<{ name: string, type: string | null, assetUuid: string | null }> = filtered.slice(0, limit).map((comp: any) => ({ name: comp.name, type: comp.type ?? null, assetUuid: comp.assetUuid ?? null }));
+        return { registrations, componentTypes: registrations.map(row => row.name), total: filtered.length, truncated: filtered.length > limit };
     }
 
     @utcpTool(
@@ -74,12 +86,14 @@ export class ComponentTools {
             properties: {
                 reference: InstanceReferenceSchema,
                 componentReference: InstanceReferenceSchema,
+                componentIndex: { type: 'integer', minimum: 0, maximum: 9999, description: 'Zero-based full serialized inventory index, not filtered/page position. Re-read UUID before mutation.' },
                 componentType: { type: 'string', minLength: 1, maxLength: 256 },
                 componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
                 excludeComponentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
                 offset: { type: 'integer', minimum: 0, maximum: 10000 },
                 enabled: { type: 'boolean', description: 'Exact serialized component enabled flag; not runtime activation.' },
                 requireSingle: { type: 'boolean', default: false, description: 'Require exactly one complete filtered match before pagination; offset must be0.' },
+                requireMatch: { type: 'boolean', default: false, description: 'Require at least one complete filtered match, independently of the requested page.' },
                 limit: { type: 'integer', minimum: 1, maximum: 1000 },
                 expectedRevision: { type: 'string', pattern: '^[a-f0-9]{64}$', description: 'Revision from a previous page; refuses changed inventory or class selectors.' },
             },
@@ -87,9 +101,10 @@ export class ComponentTools {
         },
         { type: 'object', properties: { references: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, type: { type: 'string' }, componentIndex: { type: 'integer', minimum: 0 }, enabled: { type: 'boolean' } }, required: ['id', 'componentIndex'] } }, inventorySummary: { type: 'object', properties: { total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' }, classCounts: { type: 'object', additionalProperties: { type: 'integer', minimum: 1 } } }, required: ['total', 'enabled', 'disabled', 'unknownEnabled', 'classCounts'] }, total: { type: 'integer' }, offset: { type: 'integer' }, nextOffset: { type: ['integer', 'null'] }, truncated: { type: 'boolean' }, revision: { type: 'string' } }, required: ['references', 'inventorySummary', 'total', 'offset', 'nextOffset', 'truncated', 'revision'] }, 'GET', ['scene', 'node', 'component', 'get', 'inspection']
     )
-    async nodeComponentsGet(args: { reference: IInstanceReference, componentReference?: IInstanceReference, componentType?: string, componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, offset?: number, limit?: number, expectedRevision?: string }): Promise<{ references: Array<IInstanceReference & { componentIndex: number, enabled?: boolean }>, inventorySummary: { total: number, enabled: number, disabled: number, unknownEnabled: number, classCounts: Record<string, number> }, total: number, offset: number, nextOffset: number | null, truncated: boolean, revision: string }> {
+    async nodeComponentsGet(args: { reference: IInstanceReference, componentReference?: IInstanceReference, componentIndex?: number, componentType?: string, componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, requireMatch?: boolean, offset?: number, limit?: number, expectedRevision?: string }): Promise<{ references: Array<IInstanceReference & { componentIndex: number, enabled?: boolean }>, inventorySummary: { total: number, enabled: number, disabled: number, unknownEnabled: number, classCounts: Record<string, number> }, total: number, offset: number, nextOffset: number | null, truncated: boolean, revision: string }> {
         if (args.expectedRevision !== undefined && (typeof args.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedRevision))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedRevision requires a SHA256 revision token.' });
         if (args.componentReference !== undefined && (typeof args.componentReference?.id !== 'string' || !args.componentReference.id.trim() || args.componentReference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentReference requires a bounded exact component UUID.' });
+        if (args.componentIndex !== undefined && (!Number.isInteger(args.componentIndex) || args.componentIndex < 0 || args.componentIndex > 9999)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentIndex requires an integer0..9999.' });
         if (args.componentType !== undefined && args.componentTypes !== undefined) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Choose componentType or componentTypes, not both.' });
         const types = args.componentTypes ?? (args.componentType !== undefined ? [args.componentType] : undefined);
         if (types !== undefined && (!Array.isArray(types) || types.length < 1 || types.length > 32 || types.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component class selectors require1..32 bounded names.' });
@@ -99,17 +114,19 @@ export class ComponentTools {
         const offset = args.offset ?? 0;
         if (!Number.isInteger(offset) || offset < 0 || offset > 10000 || args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 1000)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offset must be0..10000 and limit1..1000.' });
         if (args.requireSingle !== undefined && typeof args.requireSingle !== 'boolean' || args.requireSingle === true && offset !== 0) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireSingle must be boolean and requires offset0.' });
+        if (args.requireMatch !== undefined && typeof args.requireMatch !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireMatch must be boolean.' });
         const selectedTypes = types ? new Set(types.map(type => type.replace(/^cc\./, ''))) : undefined;
-        if (!args.reference?.id) throw new Error('nodeComponentsGet requires reference.id');
+        if (typeof args.reference?.id !== 'string' || !args.reference.id.trim() || args.reference.id.length > 256) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'reference requires a bounded exact node UUID.' });
         const node = await Editor.Message.request('scene', 'query-node', args.reference.id);
-        if (!node) throw new Error(`Node ${args.reference.id} not found`);
+        if (node === null || node === undefined) throw new ToolError({ code: 'COMPONENT_NODE_NOT_FOUND', status: 404, message: `Node ${args.reference.id} not found`, details: { nodeId: args.reference.id } });
         const nodeUuid = field(node, 'uuid');
-        if ((typeof nodeUuid === 'string' ? nodeUuid : field(nodeUuid, 'value')) !== args.reference.id) throw new Error('nodeComponentsGet: node UUID read-back does not match the requested target');
+        const observedNodeId = typeof nodeUuid === 'string' ? nodeUuid : field(nodeUuid, 'value');
+        if (observedNodeId !== args.reference.id) throw new ToolError({ code: 'COMPONENT_NODE_IDENTITY_MISMATCH', status: 502, message: 'Component inventory node identity does not match the requested target.', details: { requestedNodeId: args.reference.id, observedNodeId: typeof observedNodeId === 'string' ? observedNodeId : null } });
 
-        if (!Array.isArray(node.__comps__)) throw new Error(`nodeComponentsGet: node ${args.reference.id} lacks a serialized component array — dump shape drift`);
+        if (!Array.isArray(node.__comps__)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Node dump lacks a serialized component array.', details: { nodeId: args.reference.id, field: '__comps__' } });
         const components = node.__comps__;
-        if (components.length > VERBOSE_TREE_NODES) throw new Error('nodeComponentsGet: serialized component inventory exceeds the inspection budget');
-        const identities = new Set<string>();
+        if (components.length > VERBOSE_TREE_NODES) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 413, message: 'Serialized component inventory exceeds the inspection budget.', details: { nodeId: args.reference.id, componentCount: components.length, maximum: VERBOSE_TREE_NODES } });
+        const identities = new Map<string, number>();
         const foundComponents: Array<IInstanceReference & { componentIndex: number, enabled?: boolean }> = [];
         const inventory: Array<{ id: string, type: string, enabled?: boolean }> = [];
         const inventorySummary = { total: components.length, enabled: 0, disabled: 0, unknownEnabled: 0, classCounts: Object.create(null) as Record<string, number> };
@@ -125,29 +142,30 @@ export class ComponentTools {
                 : typeof nestedUuid === 'string' ? nestedUuid : field(comp, 'uuid');
             const declaredType = typeof rawType === 'string' ? rawType : undefined;
             if (typeof compUuid !== 'string' || !compUuid.trim() || !declaredType?.trim()) {
-                throw new Error(`nodeComponentsGet: component on ${args.reference.id} lacks authoritative uuid/type — dump shape drift`);
+                throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Serialized component entry lacks authoritative UUID or class identity.', details: { nodeId: args.reference.id, componentIndex, missingUuid: typeof compUuid !== 'string' || !compUuid.trim(), missingType: !declaredType?.trim() } });
             }
-            if (identities.has(compUuid)) throw new Error('nodeComponentsGet: duplicate component UUID in serialized inventory');
-            identities.add(compUuid);
+            if (identities.has(compUuid)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Duplicate component UUID in serialized inventory.', details: { nodeId: args.reference.id, componentId: compUuid, firstComponentIndex: identities.get(compUuid)!, componentIndex } });
+            identities.set(compUuid, componentIndex);
             inventorySummary.classCounts[declaredType] = (inventorySummary.classCounts[declaredType] ?? 0) + 1;
             const enabledField = field(comp, 'enabled') ?? field(value, 'enabled');
             const rawEnabled = typeof enabledField === 'boolean' ? enabledField : field(enabledField, 'value');
             if (rawEnabled === true) inventorySummary.enabled++;
             else if (rawEnabled === false) inventorySummary.disabled++;
             else inventorySummary.unknownEnabled++;
-            if (args.enabled !== undefined && typeof rawEnabled !== 'boolean') throw new ToolError({ code: 'COMPONENT_STATE_UNAVAILABLE', status: 422, message: 'Serialized enabled state is unavailable; no enabled-filtered result returned.' });
+            if (args.enabled !== undefined && typeof rawEnabled !== 'boolean') throw new ToolError({ code: 'COMPONENT_STATE_UNAVAILABLE', status: 422, message: 'Serialized enabled state is unavailable; no enabled-filtered result returned.', details: { nodeId: args.reference.id, componentId: compUuid, componentIndex } });
             inventory.push({ id: compUuid, type: declaredType, ...(typeof rawEnabled === 'boolean' ? { enabled: rawEnabled } : {}) });
-            if ((args.componentReference === undefined || compUuid === args.componentReference.id) && !excludedTypes.has(declaredType.replace(/^cc\./, '')) && (!selectedTypes || selectedTypes.has(declaredType.replace(/^cc\./, ''))) && (args.enabled === undefined || rawEnabled === args.enabled)) {
+            if ((args.componentIndex === undefined || componentIndex === args.componentIndex) && (args.componentReference === undefined || compUuid === args.componentReference.id) && !excludedTypes.has(declaredType.replace(/^cc\./, '')) && (!selectedTypes || selectedTypes.has(declaredType.replace(/^cc\./, ''))) && (args.enabled === undefined || rawEnabled === args.enabled)) {
                 foundComponents.push({ id: compUuid, type: declaredType, componentIndex, ...(typeof rawEnabled === 'boolean' ? { enabled: rawEnabled } : {}) });
             }
         }
 
-        const revision = createHash('sha256').update(JSON.stringify({ node: args.reference.id, inventory, selector: { excludedTypes: [...excludedTypes].sort(), componentId: args.componentReference?.id ?? null, types: args.componentType !== undefined ? ['single', args.componentType.replace(/^cc\./, '')] : selectedTypes ? ['multi', [...selectedTypes].sort()] : ['all'], enabled: args.enabled ?? null } })).digest('hex');
-        if (args.expectedRevision !== undefined && args.expectedRevision !== revision) throw new ToolError({ code: 'COMPONENT_INVENTORY_CHANGED', status: 409, message: 'Component inventory or selector changed; restart pagination from a fresh observation.' });
-        if (args.componentReference !== undefined && !identities.has(args.componentReference.id)) throw new ToolError({ code: 'COMPONENT_NOT_ATTACHED', status: 404, message: 'The exact component UUID is not attached to the requested node.' });
+        const revision = createHash('sha256').update(JSON.stringify({ node: args.reference.id, inventory, selector: { excludedTypes: [...excludedTypes].sort(), componentId: args.componentReference?.id ?? null, types: args.componentType !== undefined ? ['single', args.componentType.replace(/^cc\./, '')] : selectedTypes ? ['multi', [...selectedTypes].sort()] : ['all'], enabled: args.enabled ?? null, ...(args.componentIndex !== undefined ? { componentIndex: args.componentIndex } : {}) } })).digest('hex');
+        if (args.expectedRevision !== undefined && args.expectedRevision !== revision) throw new ToolError({ code: 'COMPONENT_INVENTORY_CHANGED', status: 409, message: 'Component inventory or selector changed; restart pagination from a fresh observation.', details: { nodeId: args.reference.id, expectedRevision: args.expectedRevision, observedRevision: revision } });
+        if (args.componentReference !== undefined && !identities.has(args.componentReference.id)) throw new ToolError({ code: 'COMPONENT_NOT_ATTACHED', status: 404, message: 'The exact component UUID is not attached to the requested node.', details: { nodeId: args.reference.id, componentId: args.componentReference.id } });
         if (args.requireSingle && foundComponents.length !== 1) throw new ToolError({ code: foundComponents.length ? 'COMPONENT_MATCH_AMBIGUOUS' : 'COMPONENT_MATCH_NOT_FOUND', status: foundComponents.length ? 409 : 404, message: 'Single-component lookup requires exactly one filtered match.', details: { nodeId: args.reference.id, matchCount: foundComponents.length } });
-        if (!foundComponents.length && args.componentType) throw new Error(`Components of type ${args.componentType} not found on node ${args.reference.id}`);
-        if (offset > foundComponents.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offset exceeds the observed filtered inventory.' });
+        if (!foundComponents.length && args.componentType) throw new ToolError({ code: 'COMPONENT_MATCH_NOT_FOUND', status: 404, message: `Components of type ${args.componentType} not found on node ${args.reference.id}`, details: { nodeId: args.reference.id, componentType: args.componentType, matchCount: 0 } });
+        if (args.requireMatch && !foundComponents.length) throw new ToolError({ code: 'COMPONENT_MATCH_NOT_FOUND', status: 404, message: 'Component presence check requires at least one filtered match.', details: { nodeId: args.reference.id, matchCount: 0 } });
+        if (offset > foundComponents.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offset exceeds the observed filtered inventory.', details: { nodeId: args.reference.id, offset, matchCount: foundComponents.length } });
         const references = foundComponents.slice(offset, args.limit === undefined ? undefined : offset + args.limit);
         const next = offset + references.length;
         return { references, inventorySummary, total: foundComponents.length, offset, nextOffset: next < foundComponents.length ? next : null, truncated: next < foundComponents.length, revision };
@@ -159,30 +177,54 @@ export class ComponentTools {
         { type: 'object', additionalProperties: false, properties: {
             references: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema },
             expectedRevisions: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, revision: { type: 'string', pattern: '^[a-f0-9]{64}$' } }, required: ['reference', 'revision'] }, description: 'Optional revisions keyed by exact requested node UUID; omitted nodes are unguarded.' },
+            requireRevisions: { type: 'boolean', default: false, description: 'Require a valid expected revision for every requested node before any query. Does not make reads atomic.' },
             offsets: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, offset: { type: 'integer', minimum: 0, maximum: 10000 } }, required: ['reference', 'offset'] } },
             componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
             excludeComponentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
+            requiredComponentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 }, description: 'Require every listed class in the full inventory before detail filters; optional cc. prefix normalization, no inheritance inference.' },
+            forbiddenComponentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 }, description: 'Refuse listed classes present in the full inventory, independently of detail filters; optional cc. prefix normalization.' },
+            allowedComponentTypes: { type: 'array', maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 }, description: 'Only these normalized classes may occur in the full inventory; empty allows no components.' },
+            singletonComponentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 }, description: 'Require at most one instance per listed normalized class in the full inventory; absence is allowed.' },
+            minComponents: { type: 'integer', minimum: 0, maximum: 10000, description: 'Minimum full inventory size, independent of detail filters and paging.' },
+            maxComponents: { type: 'integer', minimum: 0, maximum: 10000, description: 'Maximum full inventory size, independent of detail filters and paging.' },
             enabled: { type: 'boolean', description: 'Exact serialized enabled selector shared by every node.' },
             requireSingle: { type: 'boolean', default: false, description: 'Require exactly one filtered match on each node; cardinality failures remain per-item.' },
+            requireMatch: { type: 'boolean', default: false, description: 'Require at least one complete filtered match per node, independently of pagination. Multiple matches are allowed unless requireSingle is set.' },
             summaryOnly: { type: 'boolean', default: false, description: 'Omit component reference pages; retain full summaries, filtered totals, revisions and per-node errors.' },
             requireAll: { type: 'boolean', default: false, description: 'Refuse any per-node failure after collecting all outcomes; does not require every component detail page.' },
             limitPerNode: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
         }, required: ['references'] },
-        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, inventorySummary: { type: 'object', properties: { observedNodes: { type: 'integer' }, failedNodes: { type: 'integer' }, matchedNodes: { type: 'integer' }, unmatchedNodes: { type: 'integer' }, matchedComponents: { type: 'integer' }, total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' }, classDistribution: { type: 'object', additionalProperties: { type: 'object', properties: { instances: { type: 'integer', minimum: 1 }, nodes: { type: 'integer', minimum: 1 } }, required: ['instances', 'nodes'] } } }, required: ['observedNodes', 'failedNodes', 'matchedNodes', 'unmatchedNodes', 'matchedComponents', 'total', 'enabled', 'disabled', 'unknownEnabled', 'classDistribution'] } }, required: ['items', 'succeeded', 'failed', 'truncated', 'inventorySummary'] },
+        { type: 'object', properties: { items: { type: 'array' }, errorCounts: { type: 'object', additionalProperties: { type: 'integer', minimum: 1 } }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, inventorySummary: { type: 'object', properties: { observedNodes: { type: 'integer' }, failedNodes: { type: 'integer' }, matchedNodes: { type: 'integer' }, unmatchedNodes: { type: 'integer' }, matchedComponents: { type: 'integer' }, total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' }, classDistribution: { type: 'object', additionalProperties: { type: 'object', properties: { instances: { type: 'integer', minimum: 1 }, nodes: { type: 'integer', minimum: 1 } }, required: ['instances', 'nodes'] } } }, required: ['observedNodes', 'failedNodes', 'matchedNodes', 'unmatchedNodes', 'matchedComponents', 'total', 'enabled', 'disabled', 'unknownEnabled', 'classDistribution'] } }, required: ['errorCounts', 'items', 'succeeded', 'failed', 'truncated', 'inventorySummary'] },
         'GET', ['scene', 'node', 'component', 'batch', 'inspection']
     )
-    async nodeComponentsBatchGet(args: { references: IInstanceReference[], offsets?: Array<{ reference: IInstanceReference, offset: number }>, expectedRevisions?: Array<{ reference: IInstanceReference, revision: string }>, componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, summaryOnly?: boolean, requireAll?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, matchedNodes: number, unmatchedNodes: number, matchedComponents: number, total: number, enabled: number, disabled: number, unknownEnabled: number, classDistribution: Record<string, { instances: number, nodes: number }> } }> {
+    async nodeComponentsBatchGet(args: { references: IInstanceReference[], offsets?: Array<{ reference: IInstanceReference, offset: number }>, expectedRevisions?: Array<{ reference: IInstanceReference, revision: string }>, requireRevisions?: boolean, componentTypes?: string[], excludeComponentTypes?: string[], requiredComponentTypes?: string[], forbiddenComponentTypes?: string[], allowedComponentTypes?: string[], singletonComponentTypes?: string[], minComponents?: number, maxComponents?: number, enabled?: boolean, requireSingle?: boolean, requireMatch?: boolean, summaryOnly?: boolean, requireAll?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, errorCounts: Record<string, number>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, matchedNodes: number, unmatchedNodes: number, matchedComponents: number, total: number, enabled: number, disabled: number, unknownEnabled: number, classDistribution: Record<string, { instances: number, nodes: number }> } }> {
         if (args.enabled !== undefined && typeof args.enabled !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'enabled must be a boolean serialized component selector.' });
         if (args.requireSingle !== undefined && typeof args.requireSingle !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireSingle must be boolean.' });
+        if (args.requireMatch !== undefined && typeof args.requireMatch !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireMatch must be boolean.' });
         if (args.summaryOnly !== undefined && typeof args.summaryOnly !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'summaryOnly must be boolean.' });
         if (args.requireAll !== undefined && typeof args.requireAll !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireAll must be boolean.' });
+        if (args.requireRevisions !== undefined && typeof args.requireRevisions !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireRevisions must be boolean.' });
+        if (args.minComponents !== undefined && (!Number.isInteger(args.minComponents) || args.minComponents < 0 || args.minComponents > 10000) || args.maxComponents !== undefined && (!Number.isInteger(args.maxComponents) || args.maxComponents < 0 || args.maxComponents > 10000) || args.minComponents !== undefined && args.maxComponents !== undefined && args.minComponents > args.maxComponents) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Component inventory bounds require integers0..10000 with minComponents<=maxComponents.' });
+        if (args.requiredComponentTypes !== undefined && (!Array.isArray(args.requiredComponentTypes) || args.requiredComponentTypes.length < 1 || args.requiredComponentTypes.length > 32 || args.requiredComponentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requiredComponentTypes requires1..32 bounded class names.' });
+        if (args.forbiddenComponentTypes !== undefined && (!Array.isArray(args.forbiddenComponentTypes) || args.forbiddenComponentTypes.length < 1 || args.forbiddenComponentTypes.length > 32 || args.forbiddenComponentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'forbiddenComponentTypes requires1..32 bounded class names.' });
+        if (args.singletonComponentTypes !== undefined && (!Array.isArray(args.singletonComponentTypes) || args.singletonComponentTypes.length < 1 || args.singletonComponentTypes.length > 32 || args.singletonComponentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'singletonComponentTypes requires1..32 bounded class names.' });
+        if (args.allowedComponentTypes !== undefined && (!Array.isArray(args.allowedComponentTypes) || args.allowedComponentTypes.length > 32 || args.allowedComponentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'allowedComponentTypes requires0..32 bounded class names.' });
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
         if (args.componentTypes !== undefined && (!Array.isArray(args.componentTypes) || args.componentTypes.length < 1 || args.componentTypes.length > 32 || args.componentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentTypes requires1..32 bounded class names.' });
         if (args.excludeComponentTypes !== undefined && (!Array.isArray(args.excludeComponentTypes) || args.excludeComponentTypes.length < 1 || args.excludeComponentTypes.length > 32 || args.excludeComponentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'excludeComponentTypes requires1..32 bounded class names.' });
         const limit = args.limitPerNode ?? 50;
         if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'limitPerNode must be1..100.' });
         const references = args.references.map(reference => ({ id: reference.id }));
-        if (new Set(references.map(reference => reference.id)).size !== references.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Batch node UUIDs must be unique to avoid double-counting inventory.' });
+        if (new Set(references.map(reference => reference.id)).size !== references.length) {
+            const positions = new Map<string, number[]>();
+            for (const [index, reference] of references.entries()) {
+                const indices = positions.get(reference.id);
+                if (indices) indices.push(index);
+                else positions.set(reference.id, [index]);
+            }
+            const duplicates = [...positions].filter(([, indices]) => indices.length > 1).map(([id, indices]) => ({ reference: { id }, indices }));
+            throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Batch node UUIDs must be unique to avoid double-counting inventory.', details: { duplicates } });
+        }
         const expectedRevisions = new Map<string, string>();
         const requestedIds = new Set(references.map(reference => reference.id));
         if (args.expectedRevisions !== undefined) {
@@ -193,6 +235,7 @@ export class ComponentTools {
                 expectedRevisions.set(id, entry.revision);
             }
         }
+        if (args.requireRevisions && expectedRevisions.size !== references.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireRevisions requires an expected revision for every requested node UUID.', details: { missingRevisionGuardIds: references.filter(reference => !expectedRevisions.has(reference.id)).map(reference => reference.id) } });
         const offsets = new Map<string, number>();
         if (args.offsets !== undefined) {
             if (!Array.isArray(args.offsets) || args.offsets.length > 32) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offsets accepts at most32 node-bound entries.' });
@@ -205,11 +248,55 @@ export class ComponentTools {
         const componentTypes = args.componentTypes?.slice();
         const excludeComponentTypes = args.excludeComponentTypes?.slice();
         const items: Array<Record<string, unknown>> = [];
+        const requiredComponentTypes = new Set(args.requiredComponentTypes?.map(type => type.replace(/^cc\./, '')));
+        const forbiddenComponentTypes = new Set(args.forbiddenComponentTypes?.map(type => type.replace(/^cc\./, '')));
+        const singletonComponentTypes = new Set(args.singletonComponentTypes?.map(type => type.replace(/^cc\./, '')));
+        const allowedComponentTypes = args.allowedComponentTypes === undefined ? undefined : new Set(args.allowedComponentTypes.map(type => type.replace(/^cc\./, '')));
+        const conflictingTypes = [...requiredComponentTypes].filter(type => forbiddenComponentTypes.has(type) || allowedComponentTypes !== undefined && !allowedComponentTypes.has(type));
+        if (conflictingTypes.length) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Required component classes cannot be forbidden or outside the allowed set.', details: { conflictingComponentTypes: conflictingTypes } });
         let succeeded = 0, truncated = false;
+        const errorCounts: Record<string, number> = Object.create(null);
         const inventorySummary = { observedNodes: 0, failedNodes: 0, matchedNodes: 0, unmatchedNodes: 0, matchedComponents: 0, total: 0, enabled: 0, disabled: 0, unknownEnabled: 0, classDistribution: Object.create(null) as Record<string, { instances: number, nodes: number }> };
         for (const [index, reference] of references.entries()) {
+            let missingComponentTypes: string[] | undefined;
+            let forbiddenTypesPresent: string[] | undefined;
+            let forbiddenComponentCounts: Record<string, number> | undefined;
+            let duplicateComponentCounts: Record<string, number> | undefined;
+            let unexpectedComponentCounts: Record<string, number> | undefined;
+            let componentCountViolation: { componentCount: number, minComponents?: number, maxComponents?: number } | undefined;
+            let observedRevision: string | undefined;
+            let observedSummary: { total: number, enabled: number, disabled: number, unknownEnabled: number, classCounts: Record<string, number> } | undefined;
             try {
                 const result = await this.nodeComponentsGet({ reference, offset: offsets.get(reference.id) ?? 0, expectedRevision: expectedRevisions.get(reference.id), componentTypes, excludeComponentTypes, enabled: args.enabled, requireSingle: args.requireSingle, limit });
+                observedRevision = result.revision;
+                observedSummary = result.inventorySummary;
+                if (args.minComponents !== undefined && result.inventorySummary.total < args.minComponents || args.maxComponents !== undefined && result.inventorySummary.total > args.maxComponents) componentCountViolation = { componentCount: result.inventorySummary.total, ...(args.minComponents !== undefined ? { minComponents: args.minComponents } : {}), ...(args.maxComponents !== undefined ? { maxComponents: args.maxComponents } : {}) };
+                if (requiredComponentTypes.size || forbiddenComponentTypes.size || singletonComponentTypes.size || allowedComponentTypes !== undefined) {
+                    const observedCounts = new Map<string, number>();
+                    for (const [type, count] of Object.entries(result.inventorySummary.classCounts)) {
+                        const normalized = type.replace(/^cc\./, '');
+                        observedCounts.set(normalized, (observedCounts.get(normalized) ?? 0) + count);
+                    }
+                    const missingTypes = [...requiredComponentTypes].filter(type => !observedCounts.has(type));
+                    const presentTypes = [...forbiddenComponentTypes].filter(type => observedCounts.has(type));
+                    if (missingTypes.length) missingComponentTypes = missingTypes;
+                    if (presentTypes.length) {
+                        forbiddenTypesPresent = presentTypes;
+                        forbiddenComponentCounts = Object.fromEntries(presentTypes.map(type => [type, observedCounts.get(type)!]));
+                    }
+                    const duplicateCounts = Object.fromEntries([...singletonComponentTypes].filter(type => (observedCounts.get(type) ?? 0) > 1).map(type => [type, observedCounts.get(type)!]));
+                    if (Object.keys(duplicateCounts).length) duplicateComponentCounts = duplicateCounts;
+                    if (allowedComponentTypes !== undefined) {
+                        const unexpected = [...observedCounts].filter(([type]) => !allowedComponentTypes.has(type));
+                        if (unexpected.length) unexpectedComponentCounts = Object.fromEntries(unexpected);
+                    }
+                    if (missingTypes.length) throw new ToolError({ code: 'COMPONENT_COMPOSITION_INCOMPLETE', status: 422, message: `Missing required component classes: ${missingTypes.join(', ')}`, details: { nodeId: reference.id, missingTypes } });
+                    if (presentTypes.length) throw new ToolError({ code: 'COMPONENT_COMPOSITION_FORBIDDEN', status: 422, message: `Forbidden component classes present: ${presentTypes.join(', ')}` });
+                    if (unexpectedComponentCounts) throw new ToolError({ code: 'COMPONENT_COMPOSITION_UNEXPECTED', status: 422, message: 'Component classes outside the allowed inventory are present.', details: { nodeId: reference.id, unexpectedComponentCounts } });
+                    if (duplicateComponentCounts) throw new ToolError({ code: 'COMPONENT_SINGLETON_VIOLATION', status: 422, message: 'Requested singleton classes have multiple serialized instances.', details: { nodeId: reference.id, duplicateComponentCounts } });
+                }
+                if (componentCountViolation) throw new ToolError({ code: 'COMPONENT_COUNT_OUT_OF_RANGE', status: 422, message: 'Full component inventory size is outside the required bounds.', details: { nodeId: reference.id, ...componentCountViolation } });
+                if (args.requireMatch && result.total === 0) throw new ToolError({ code: 'COMPONENT_MATCH_NOT_FOUND', status: 404, message: 'Component presence check requires at least one filtered match.', details: { nodeId: reference.id, matchCount: 0 } });
                 items.push({ index, ok: true, reference, result: args.summaryOnly ? { inventorySummary: result.inventorySummary, total: result.total, revision: result.revision, detailsOmitted: true } : result });
                 succeeded++;
                 if (!args.summaryOnly) truncated ||= result.truncated;
@@ -227,10 +314,15 @@ export class ComponentTools {
                 }
             } catch (error) {
                 inventorySummary.failedNodes++;
-                items.push({ index, ok: false, reference, error: { code: error instanceof ToolError ? error.code : 'COMPONENT_QUERY_FAILED', message: (error instanceof Error ? error.message : String(error)).slice(0, 512) } });
+                const code = error instanceof ToolError ? error.code : 'COMPONENT_QUERY_FAILED';
+                errorCounts[code] = (errorCounts[code] ?? 0) + 1;
+                const matchCount = error instanceof ToolError && (error.code === 'COMPONENT_MATCH_NOT_FOUND' || error.code === 'COMPONENT_MATCH_AMBIGUOUS') ? error.details?.matchCount : undefined;
+                const stateIdentity = error instanceof ToolError && error.code === 'COMPONENT_STATE_UNAVAILABLE' ? error.details : undefined;
+                const identityMismatch = error instanceof ToolError && error.code === 'COMPONENT_NODE_IDENTITY_MISMATCH' ? error.details : undefined;
+                items.push({ index, ok: false, reference, error: { status: error instanceof ToolError ? error.status : 500, code, message: (error instanceof Error ? error.message : String(error)).slice(0, 512), ...(error instanceof ToolError && error.details ? { details: error.details } : {}), ...(identityMismatch ? { identityMismatch } : {}), ...(stateIdentity ? { stateIdentity } : {}), ...(typeof matchCount === 'number' && Number.isInteger(matchCount) && matchCount >= 0 ? { matchCount } : {}), ...(observedRevision ? { revision: observedRevision, inventorySummary: observedSummary } : {}), ...(unexpectedComponentCounts ? { unexpectedComponentCounts } : {}), ...(componentCountViolation ? { componentCountViolation } : {}), ...(duplicateComponentCounts ? { duplicateComponentCounts } : {}), ...(missingComponentTypes ? { missingComponentTypes } : {}), ...(forbiddenTypesPresent ? { forbiddenComponentTypes: forbiddenTypesPresent, forbiddenComponentCounts } : {}) } });
             }
         }
-        const result = { items, succeeded, failed: references.length - succeeded, truncated, inventorySummary };
+        const result = { items, errorCounts, succeeded, failed: references.length - succeeded, truncated, inventorySummary };
         if (args.requireAll && result.failed) throw new ToolError({ code: 'COMPONENT_GROUP_INCOMPLETE', status: 409, message: 'Not every requested component inventory succeeded; inspect retained per-node outcomes.', details: result });
         return result;
     }

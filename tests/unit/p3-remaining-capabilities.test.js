@@ -169,12 +169,12 @@ describe('remaining P3 capability contracts', () => {
   it('lists bounded imported model outputs with stable subasset identities', async () => {
     install(async (_service, message, id) => {
       if (message !== 'query-asset-info') throw new Error('unexpected request');
-      return { uuid: id, type: 'cc.FBX', importer: 'fbx', subAssets: { mesh: { uuid: `${id}@mesh`, importer: 'gltf-mesh', type: 'cc.Mesh', name: 'Body' }, skeleton: { uuid: `${id}@skeleton`, importer: 'gltf-skeleton', type: 'cc.Skeleton', name: 'Rig' } } };
+      return { uuid: id, type: 'cc.FBX', importer: 'fbx', subAssets: { mesh: { uuid: `${id}@mesh`, url: 'db://assets/model.fbx/Body.mesh', importer: 'gltf-mesh', type: 'cc.Mesh', name: 'Body' }, skeleton: { uuid: `${id}@skeleton`, url: 'db://assets/model.fbx/Rig.skeleton', importer: 'gltf-skeleton', type: 'cc.Skeleton', name: 'Rig' } } };
     });
     const result = await new PortfolioValidationTools().modelImportOutputsInspect({ reference: { id: 'model' }, maxOutputs: 1 });
     assert.equal(result.total, 2);
     assert.equal(result.truncated, true);
-    assert.deepEqual(result.outputs[0], { uuid: 'model@mesh', url: null, type: 'cc.Mesh', importer: 'gltf-mesh', name: 'Body', userData: null });
+    assert.deepEqual(result.outputs[0], { uuid: 'model@mesh', url: 'db://assets/model.fbx/Body.mesh', type: 'cc.Mesh', importer: 'gltf-mesh', name: 'Body', userData: null });
   });
   it('validates imported model skeleton joint uniqueness', async () => {
     install(async (_service, message, id) => {

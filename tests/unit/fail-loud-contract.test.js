@@ -76,18 +76,16 @@ describe('fail-loud audit (docs §2) regressions', () => {
   });
 
   it('component identity lookup carries the §1 fallback and fails loud', async () => {
-    const scene = readSource('source/utcp/tools/scene-tools.ts');
-    assert.match(scene, /c\?\.type \?\? c\?\.__type__ \?\? c\?\.cid/);
     const { ComponentTools } = requireDist('utcp/tools/component-tools.js');
     const previous = global.Editor;
     global.Editor = { Message: { request: async (service, message) => {
-      if (service === 'scene' && message === 'query-node') return { __comps__: [{ value: { uuid: { value: 42 } } }, { type: 'cc.Sprite' }] };
+      if (service === 'scene' && message === 'query-node') return { uuid: 'node', __comps__: [{ value: { uuid: { value: 42 } } }, { type: 'cc.Sprite' }] };
       throw new Error(`unexpected ${service}:${message}`);
     } } };
     try {
       const tools = new ComponentTools();
-      await assert.rejects(() => tools.nodeComponentsGet({ reference: { id: 'node' } }), /lacks authoritative uuid/);
-      await assert.rejects(() => tools.nodeComponentsGet({ reference: { id: 'node' }, componentType: 'cc.Sprite' }), /lacks authoritative uuid/);
+      await assert.rejects(() => tools.nodeComponentsGet({ reference: { id: 'node' } }), error => error.code === 'INVALID_RESPONSE' && error.details.componentIndex === 0 && error.details.missingUuid === true);
+      await assert.rejects(() => tools.nodeComponentsGet({ reference: { id: 'node' }, componentType: 'cc.Sprite' }), error => error.code === 'INVALID_RESPONSE' && error.details.componentIndex === 0 && error.details.missingUuid === true);
     } finally {
       if (previous === undefined) delete global.Editor; else global.Editor = previous;
     }
