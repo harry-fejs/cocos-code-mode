@@ -234,9 +234,9 @@ export async function queryComponentScriptAsset(url: string): Promise<ComponentS
     try { info = await Editor.Message.request('asset-db', 'query-asset-info', url); }
     catch { throw new ToolError({ code: 'ASSET_QUERY_FAILED', status: 502, message: 'Asset DB query failed; source ownership is unconfirmed.' }); }
     if (info === null) return null;
-    if (!info || typeof info !== 'object') throw new ToolError({ code: 'ASSET_QUERY_FAILED', status: 502, message: 'Asset DB returned an invalid asset identity; absence is not confirmed.' });
+    if (!info || typeof info !== 'object' || Array.isArray(info)) throw new ToolError({ code: 'ASSET_QUERY_FAILED', status: 502, message: 'Asset DB returned an invalid asset identity; absence is not confirmed.' });
     const row = info as Record<string, unknown>;
-    if (typeof row.uuid !== 'string' || !row.uuid || typeof row.url !== 'string' || typeof row.file !== 'string') throw new ToolError({ code: 'ASSET_QUERY_FAILED', status: 502, message: 'Asset DB returned incomplete asset ownership information.' });
+    if (typeof row.uuid !== 'string' || !row.uuid.trim() || row.uuid.length > 256 || typeof row.url !== 'string' || !row.url.trim() || typeof row.file !== 'string' || !row.file.trim() || row.isDirectory !== undefined && typeof row.isDirectory !== 'boolean') throw new ToolError({ code: 'ASSET_QUERY_FAILED', status: 502, message: 'Asset DB returned incomplete asset ownership information.' });
     return { uuid: row.uuid, url: row.url, file: row.file, isDirectory: row.isDirectory === true };
 }
 export async function preflightComponentScriptPath(assetUrl: string): Promise<ComponentScriptPath> {
