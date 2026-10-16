@@ -24,6 +24,7 @@ function collectExports(input, version, roots, label = 'engine') {
       const merged = metadata(part);
       info.internal = info.internal || merged.internal;
       info.deprecated = info.deprecated || merged.deprecated;
+      info.async = info.async || merged.async;
     }
     const ownerMetadata = member ? metadata(memberOwner) : info;
     if (member && memberOwner.name) {

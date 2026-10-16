@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve explicit async implementation syntax across merged overload declarations in catalog metadata without changing published overload signatures or inferring async from Promise return types.
 - Require the native SkeletalAnimation constructor for skeletalAnimationEvents via an internal event selector. Regular Animation cannot satisfy the skeletal API; general animation event capture remains unchanged.
 - Cancel scenario animation event capture through a private per-capture renderer token, bounded registry and at most three exact-target signals. Capture cancellation disposes only owned listeners; failed signalling retains deadline cleanup and never stops playback or clears sibling captures.
 - Preserve explicit async declaration modifiers in shared catalog metadata without inferring async syntax from Promise return types or granting invocation/execution permission.
