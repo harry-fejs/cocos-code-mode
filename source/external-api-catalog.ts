@@ -78,6 +78,8 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
     if (sourceIndex.version !== version || sourceIndex.catalogHash !== lookup.catalogHash) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Source index version/catalog identity differs from lookup.' });
     const sourceDomains = new Map(sourceIndex.domains.map(domain => [domain.file, domain]));
     const lookupFiles = new Set(lookup.shards.map(shard => shard.file));
+    if (new Set(sourceIndex.domains.map(domain => domain.file.toLowerCase())).size !== sourceIndex.domains.length
+        || new Set(lookup.shards.map(shard => shard.file.toLowerCase())).size !== lookup.shards.length) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Catalog manifest contains case-colliding shard filenames.' });
     if (sourceDomains.size !== sourceIndex.domains.length || lookupFiles.size !== lookup.shards.length || sourceDomains.size !== lookupFiles.size
         || lookup.shards.some(shard => { const domain = sourceDomains.get(shard.file); return !domain || domain.name !== shard.domain || domain.count !== shard.count; })
         || sourceIndex.recordCount !== undefined && sourceIndex.recordCount !== lookup.entries.length) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Lookup shard manifest differs from the verified source index.' });
