@@ -6,7 +6,7 @@ type Row = Record<string, unknown>;
 export interface TimelineInspectOptions {
     nodeReference: IInstanceReference;
     clipReference: IInstanceReference;
-    trackBinding?: { nodePath: string; component?: string; property: string };
+    trackBinding?: { nodePath: string; component?: string; parentProperty?: string; property: string };
     eventCallback?: string;
     eventFrameRange?: { min: number; max: number };
     keyframeFrameRange?: { min: number; max: number };
@@ -33,7 +33,7 @@ function integer(value: unknown, fallback: number, min: number, max: number, nam
 export function timelineInspectBounds(options: TimelineInspectOptions) {
     if (options.expectedRevision !== undefined && (typeof options.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(options.expectedRevision))) fail('INVALID_ARGUMENT', 'expectedRevision must be a lowercase SHA-256 revision.');
     const binding = options.trackBinding;
-    if (binding !== undefined && (!timelineRecord(binding) || Object.keys(binding).some(key => !['nodePath', 'property', 'component'].includes(key)) || typeof binding.nodePath !== 'string' || binding.nodePath.length > 1024 || binding.component !== undefined && (typeof binding.component !== 'string' || !binding.component || binding.component.length > 256) || typeof binding.property !== 'string' || !binding.property || binding.property.length > 256)) fail('INVALID_ARGUMENT', 'trackBinding requires exact nodePath (empty root allowed) and nonempty property.');
+    if (binding !== undefined && (!timelineRecord(binding) || Object.keys(binding).some(key => !['nodePath', 'property', 'component', 'parentProperty'].includes(key)) || typeof binding.nodePath !== 'string' || binding.nodePath.length > 1024 || binding.component !== undefined && (typeof binding.component !== 'string' || !binding.component || binding.component.length > 256) || binding.parentProperty !== undefined && (typeof binding.parentProperty !== 'string' || binding.parentProperty.length > 256) || typeof binding.property !== 'string' || !binding.property || binding.property.length > 256)) fail('INVALID_ARGUMENT', 'trackBinding requires exact nodePath (empty root allowed) and nonempty property.');
     if (options.eventCallback !== undefined && (typeof options.eventCallback !== 'string' || !options.eventCallback || options.eventCallback.length > 256)) fail('INVALID_ARGUMENT', 'eventCallback must be an exact nonempty callback name of at most 256 characters.');
     const range = options.eventFrameRange;
     if (range !== undefined && (!timelineRecord(range) || Object.keys(range).some(key => !['min', 'max'].includes(key)) || typeof range.min !== 'number' || !Number.isFinite(range.min) || range.min < 0 || typeof range.max !== 'number' || !Number.isFinite(range.max) || range.max < range.min)) fail('INVALID_ARGUMENT', 'eventFrameRange requires finite nonnegative inclusive min <= max native frames.');
@@ -218,7 +218,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     hash.update(JSON.stringify([diagnostics, diagnosticCount, supported]));
     const revision = hash.digest('hex');
     if (options.expectedRevision !== undefined && options.expectedRevision !== revision) throw new ToolError({ code: 'TIMELINE_REVISION_CHANGED', status: 409, message: 'Retrieved timeline metadata changed; restart paging. No mutation was dispatched.' });
-    const selectedTracks = options.trackBinding ? tracks.filter(track => track.identity.nodePath === options.trackBinding!.nodePath && track.identity.property === options.trackBinding!.property && (options.trackBinding!.component === undefined || track.component === options.trackBinding!.component)) : tracks;
+    const selectedTracks = options.trackBinding ? tracks.filter(track => track.identity.nodePath === options.trackBinding!.nodePath && track.identity.property === options.trackBinding!.property && (options.trackBinding!.component === undefined || track.component === options.trackBinding!.component) && (options.trackBinding!.parentProperty === undefined || track.parentProperty === options.trackBinding!.parentProperty)) : tracks;
     const selectedEvents = options.eventCallback === undefined && options.eventFrameRange === undefined ? eventRows : eventRows.filter(event => (options.eventCallback === undefined || event.callback === options.eventCallback) && (options.eventFrameRange === undefined || event.frame !== null && event.frame >= options.eventFrameRange.min && event.frame <= options.eventFrameRange.max));
     const result = {
         nodeReference: options.nodeReference, clipReference: options.clipReference,

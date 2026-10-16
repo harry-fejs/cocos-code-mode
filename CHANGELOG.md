@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Map catalog schema validation failures at the discovery boundary to CATALOG_INVALID without echoing validator issues; preserve existing typed catalog/hash/limit errors unchanged.
+- Add optional exact trackBinding.parentProperty matching native parentPropKey in timeline inspection, AND-composed with node/property/component selectors. Empty parent key is explicit; omitted remains any. Native indices, whole-dump diagnostics and revision scope remain unchanged.
 - Cap aggregate get_related_types serialized deduplication-key text at1MiB UTF-8, including duplicate entries before deduplication; excess refuses CATALOG_RELATED_LIMIT. The guard runs after each key serialization, not before temporary string allocation.
 - Reject replicated as a generated script field or formerlySerializedAs alias, protecting the inherited native CCObject accessor from data-field initialization/serialization collisions. Distinct project data names remain supported.
 - Cap get_related_types source/declaration signature and parameter containers at10000 combined before iteration, with cooperative deadline checks even for empty metadata; excess refuses CATALOG_RELATED_LIMIT.
