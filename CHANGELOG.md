@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Revalidate shard record counts against each selected external lookup on warmed-cache reads, refusing changed lookup counts even when cached shard bytes and hashes remain identical.
 - Return independent JSON snapshots of external catalog records so caller edits to nested signatures/metadata cannot poison verified parsed-shard cache entries on later reads.
 - Reject external catalog lookup name/member selectors that disagree with verified shard record metadata, including warmed-cache reads; pinned file hashes alone do not establish cross-file selector consistency.
 - Reuse the bounded descriptor catalog reader for installed discovery JSON, refusing oversized/growing or replaced inputs with descriptor cleanup instead of unbounded readFileSync after stat. This is not an atomic filesystem snapshot or hard synchronous deadline guarantee.

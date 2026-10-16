@@ -98,6 +98,7 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
                 }
                 cache.set(key, cached); cacheBytes += cached.bytes;
             } else { cache.delete(key); cache.set(key, cached); }
+            if (cached.records.size !== shard.count) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Cached shard record count differs from lookup.' });
             const record = cached.records.get(id);
             if (!record || record.namespace !== entry.namespace || record.className !== entry.className || record.kind !== entry.kind || record.domain !== entry.domain.split('.').slice(1).join('.')) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed record does not match its actual shard metadata.' });
             if (record.name !== entry.name || record.member !== entry.member) throw new ToolError({ code: 'CATALOG_INVALID', status: 422, message: 'Indexed name/member differs from verified record metadata.' });
