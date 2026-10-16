@@ -10,6 +10,7 @@ export interface ComponentOperation extends ComponentTarget {
     expectedGraphUuid?: string;
     maxClips?: number; clipOffset?: number;
     captureToken?: string;
+    skeletalEvents?: boolean;
 }
 interface RuntimeClip { name: string; uuid: string }
 interface RuntimeState { clip: RuntimeClip; isPlaying: boolean; isPaused: boolean; time?: unknown; duration?: unknown; speed?: unknown }
@@ -74,7 +75,7 @@ function resolveComponent(args: ComponentOperation): RuntimeResolved {
         ? requireDefined(cc.ParticleSystem ?? cc.js?.getClassByName('cc.ParticleSystem'), 'ParticleSystem')
         : args.kind === 'graph'
             ? requireDefined(cc.animation?.AnimationController ?? cc.js?.getClassByName('cc.animation.AnimationController'), 'AnimationController')
-            : args.kind === 'skeletal'
+            : args.kind === 'skeletal' || args.kind === 'events' && args.skeletalEvents === true
                 ? requireDefined(cc.SkeletalAnimation ?? cc.js?.getClassByName('cc.SkeletalAnimation'), 'SkeletalAnimation')
                 : requireDefined(cc.Animation ?? cc.js?.getClassByName('cc.Animation'), 'Animation');
     const components = targetNode.getComponents(ctor);
@@ -247,7 +248,7 @@ async function componentOperation(args: ComponentOperation & { expiresAt: number
 
 export function createComponentOperationSource(args: ComponentOperation): string {
     const timeoutMs = args.timeoutMs ?? 1000;
-    const data = { captureToken: args.captureToken, kind: args.kind, operation: args.operation, nodeReference: { id: args.nodeReference.id }, componentId: args.componentId, clipName: args.clipName, clipUuid: args.clipUuid, maxEvents: args.maxEvents, maxClips: args.maxClips, clipOffset: args.clipOffset, expectedGraphUuid: args.expectedGraphUuid, variable: args.variable ? { name: args.variable.name, type: args.variable.type, value: args.variable.value, expectedValue: args.variable.expectedValue } : undefined, expiresAt: Date.now() + timeoutMs };
+    const data = { skeletalEvents: args.skeletalEvents, captureToken: args.captureToken, kind: args.kind, operation: args.operation, nodeReference: { id: args.nodeReference.id }, componentId: args.componentId, clipName: args.clipName, clipUuid: args.clipUuid, maxEvents: args.maxEvents, maxClips: args.maxClips, clipOffset: args.clipOffset, expectedGraphUuid: args.expectedGraphUuid, variable: args.variable ? { name: args.variable.name, type: args.variable.type, value: args.variable.value, expectedValue: args.variable.expectedValue } : undefined, expiresAt: Date.now() + timeoutMs };
     return `(async () => { const token = ${JSON.stringify(args.captureToken ?? null)}; const key = Symbol.for('ccp3x.animationCaptures'); let captures; if (token !== null) { captures = globalThis[key] ?? (globalThis[key] = new Map()); if (!(captures instanceof Map) || captures.size >= 128 || captures.has(token)) return { code: 'RUNTIME_CAPTURE_LIMIT', message: 'Capture registry unavailable or full.' }; captures.set(token, false); } try { const requireDefined = ${requireDefined.toString()}; const finiteNumber = ${finiteNumber.toString()}; const objectValue = ${objectValue.toString()}; const resolveComponent = ${resolveComponent.toString()}; return await (${componentOperation.toString()})(${JSON.stringify(data)}); } finally { if (token !== null) captures.delete(token); } })()`;
 }
 

@@ -179,7 +179,7 @@ export class ComponentRuntimeTools {
         requireComponentText(args.clipName, 'clipName');
         requireComponentText(args.clipUuid, 'clipUuid');
         if (args.maxEvents !== undefined && (!Number.isInteger(args.maxEvents) || args.maxEvents < 1 || args.maxEvents > 100)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'maxEvents must be an integer from 1 to 100.' });
-        const op: ComponentOperation = { kind: 'events', operation: 'observe', sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, clipName: args.clipName!, clipUuid: args.clipUuid!, maxEvents: args.maxEvents ?? 20, timeoutMs: validateTimeout(args.timeoutMs) };
+        const op: ComponentOperation = { kind: 'events', skeletalEvents: true, operation: 'observe', sessionId: args.sessionId!, nodeReference: { id: args.nodeReference!.id! }, componentId: args.componentId!, clipName: args.clipName!, clipUuid: args.clipUuid!, maxEvents: args.maxEvents ?? 20, timeoutMs: validateTimeout(args.timeoutMs) };
         return executeComponentOperation(op);
     }
 
