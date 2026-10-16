@@ -159,6 +159,7 @@ export class ComponentTools {
         { type: 'object', additionalProperties: false, properties: {
             references: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema },
             expectedRevisions: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, revision: { type: 'string', pattern: '^[a-f0-9]{64}$' } }, required: ['reference', 'revision'] }, description: 'Optional revisions keyed by exact requested node UUID; omitted nodes are unguarded.' },
+            offsets: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, offset: { type: 'integer', minimum: 0, maximum: 10000 } }, required: ['reference', 'offset'] } },
             componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
             excludeComponentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
             enabled: { type: 'boolean', description: 'Exact serialized enabled selector shared by every node.' },
@@ -170,7 +171,7 @@ export class ComponentTools {
         { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, inventorySummary: { type: 'object', properties: { observedNodes: { type: 'integer' }, failedNodes: { type: 'integer' }, matchedNodes: { type: 'integer' }, unmatchedNodes: { type: 'integer' }, matchedComponents: { type: 'integer' }, total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' }, classDistribution: { type: 'object', additionalProperties: { type: 'object', properties: { instances: { type: 'integer', minimum: 1 }, nodes: { type: 'integer', minimum: 1 } }, required: ['instances', 'nodes'] } } }, required: ['observedNodes', 'failedNodes', 'matchedNodes', 'unmatchedNodes', 'matchedComponents', 'total', 'enabled', 'disabled', 'unknownEnabled', 'classDistribution'] } }, required: ['items', 'succeeded', 'failed', 'truncated', 'inventorySummary'] },
         'GET', ['scene', 'node', 'component', 'batch', 'inspection']
     )
-    async nodeComponentsBatchGet(args: { references: IInstanceReference[], expectedRevisions?: Array<{ reference: IInstanceReference, revision: string }>, componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, summaryOnly?: boolean, requireAll?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, matchedNodes: number, unmatchedNodes: number, matchedComponents: number, total: number, enabled: number, disabled: number, unknownEnabled: number, classDistribution: Record<string, { instances: number, nodes: number }> } }> {
+    async nodeComponentsBatchGet(args: { references: IInstanceReference[], offsets?: Array<{ reference: IInstanceReference, offset: number }>, expectedRevisions?: Array<{ reference: IInstanceReference, revision: string }>, componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, summaryOnly?: boolean, requireAll?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, matchedNodes: number, unmatchedNodes: number, matchedComponents: number, total: number, enabled: number, disabled: number, unknownEnabled: number, classDistribution: Record<string, { instances: number, nodes: number }> } }> {
         if (args.enabled !== undefined && typeof args.enabled !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'enabled must be a boolean serialized component selector.' });
         if (args.requireSingle !== undefined && typeof args.requireSingle !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireSingle must be boolean.' });
         if (args.summaryOnly !== undefined && typeof args.summaryOnly !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'summaryOnly must be boolean.' });
@@ -192,6 +193,15 @@ export class ComponentTools {
                 expectedRevisions.set(id, entry.revision);
             }
         }
+        const offsets = new Map<string, number>();
+        if (args.offsets !== undefined) {
+            if (!Array.isArray(args.offsets) || args.offsets.length > 32) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'offsets accepts at most32 node-bound entries.' });
+            for (const entry of args.offsets) {
+                const id = entry?.reference?.id;
+                if (typeof id !== 'string' || !requestedIds.has(id) || offsets.has(id) || !Number.isInteger(entry.offset) || entry.offset < 0 || entry.offset > 10000 || args.requireSingle && entry.offset !== 0) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Offsets require unique requested UUIDs and integers0..10000; requireSingle requires offset0.' });
+                offsets.set(id, entry.offset);
+            }
+        }
         const componentTypes = args.componentTypes?.slice();
         const excludeComponentTypes = args.excludeComponentTypes?.slice();
         const items: Array<Record<string, unknown>> = [];
@@ -199,7 +209,7 @@ export class ComponentTools {
         const inventorySummary = { observedNodes: 0, failedNodes: 0, matchedNodes: 0, unmatchedNodes: 0, matchedComponents: 0, total: 0, enabled: 0, disabled: 0, unknownEnabled: 0, classDistribution: Object.create(null) as Record<string, { instances: number, nodes: number }> };
         for (const [index, reference] of references.entries()) {
             try {
-                const result = await this.nodeComponentsGet({ reference, expectedRevision: expectedRevisions.get(reference.id), componentTypes, excludeComponentTypes, enabled: args.enabled, requireSingle: args.requireSingle, limit });
+                const result = await this.nodeComponentsGet({ reference, offset: offsets.get(reference.id) ?? 0, expectedRevision: expectedRevisions.get(reference.id), componentTypes, excludeComponentTypes, enabled: args.enabled, requireSingle: args.requireSingle, limit });
                 items.push({ index, ok: true, reference, result: args.summaryOnly ? { inventorySummary: result.inventorySummary, total: result.total, revision: result.revision, detailsOmitted: true } : result });
                 succeeded++;
                 if (!args.summaryOnly) truncated ||= result.truncated;
