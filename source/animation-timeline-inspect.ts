@@ -112,6 +112,10 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
             if (entry.value && typeof entry.value === 'object') {
                 if (seen.has(entry.value)) return false;
                 seen.add(entry.value);
+                if (Array.isArray(entry.value)) {
+                    if (entry.value.length + pending.length > 1000000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native value array exceeds the scan bound.');
+                    for (let index = 0; index < entry.value.length; index++) if (!Object.prototype.hasOwnProperty.call(entry.value, index)) return false;
+                }
                 const children = Object.values(entry.value);
                 if (children.length + pending.length > 1000000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native value container exceeds the scan bound.');
                 for (const child of children) pending.push({ value: child, depth: entry.depth + 1 });

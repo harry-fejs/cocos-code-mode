@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve static/instance/unknown member identity through generated lookup, verified loader and list_members summaries. Older lookups retain unknown identity rather than inferring instance members; catalog regeneration/hash adoption remains explicit.
+- Diagnose sparse arrays in opaque timeline keyframe data instead of accepting hole-skipping Object.values output. Dense/null/empty arrays retain existing behavior; oversized array length refuses before index scanning.
 - Bound cumulative installed shard bytes to32MiB per discovery scan, passing residual capacity into the existing descriptor reader before allocation; exhausted/oversized reads refuse without partial completeness. This is not a decoded-heap cap.
 - Bound clip name and aggregate track binding/label metadata to1MiB UTF-8 before revision hashing, including off-page/filtered tracks. Oversized metadata refuses without truncation or clip mutation.
 - Cap aggregate installed discovery scans at100000 records before reading the next over-budget shard, including filtered-out records; CATALOG_RECORD_LIMIT refuses incomplete scans rather than returning partial completeness.
