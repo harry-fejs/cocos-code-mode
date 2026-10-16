@@ -917,10 +917,10 @@ export class SceneTools {
             requireDisjoint: { type: 'boolean', default: false, description: 'Reject duplicate requested UUIDs and ancestor/descendant overlaps among successfully resolved targets. Does not imply requireAll.' },
             requireSameParent: { type: 'boolean', default: false, description: 'Require a nonempty resolved group with the same direct parent UUID inside the selected scope. Does not imply requireAll or distinct targets.' },
         }, required: ['references'] },
-        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, selectionRoots: { type: 'array', items: InstanceReferenceSchema }, selectionCoverage: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, selectionRoot: InstanceReferenceSchema }, required: ['reference', 'selectionRoot'] } }, commonAncestor: { type: ['object', 'null'], properties: { id: { type: 'string' }, type: { type: 'string' } } } }, required: ['items', 'succeeded', 'failed', 'commonAncestor', 'selectionRoots', 'selectionCoverage'] },
+        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, sharedParent: { type: ['object', 'null'], properties: { id: { type: 'string' }, type: { type: 'string' } } }, selectionRoots: { type: 'array', items: InstanceReferenceSchema }, selectionCoverage: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, selectionRoot: InstanceReferenceSchema }, required: ['reference', 'selectionRoot'] } }, commonAncestor: { type: ['object', 'null'], properties: { id: { type: 'string' }, type: { type: 'string' } } } }, required: ['items', 'succeeded', 'failed', 'commonAncestor', 'sharedParent', 'selectionRoots', 'selectionCoverage'] },
         'GET', ['scene', 'node', 'path', 'batch', 'ancestors']
     )
-    async nodeGetPaths(args: { references: IInstanceReference[], expectedPaths?: Array<{ reference: IInstanceReference, path: string }>, expectedAncestors?: Array<{ reference: IInstanceReference, ancestors: IInstanceReference[] }>, expectedSiblingIndices?: Array<{ reference: IInstanceReference, siblingIndex: number | null }>, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean, requireAll?: boolean, requireDisjoint?: boolean, requireSameParent?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, commonAncestor: IInstanceReference | null, selectionRoots: IInstanceReference[], selectionCoverage: Array<{ reference: IInstanceReference, selectionRoot: IInstanceReference }> }> {
+    async nodeGetPaths(args: { references: IInstanceReference[], expectedPaths?: Array<{ reference: IInstanceReference, path: string }>, expectedAncestors?: Array<{ reference: IInstanceReference, ancestors: IInstanceReference[] }>, expectedSiblingIndices?: Array<{ reference: IInstanceReference, siblingIndex: number | null }>, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean, requireAll?: boolean, requireDisjoint?: boolean, requireSameParent?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, commonAncestor: IInstanceReference | null, sharedParent: IInstanceReference | null, selectionRoots: IInstanceReference[], selectionCoverage: Array<{ reference: IInstanceReference, selectionRoot: IInstanceReference }> }> {
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
         if (args.relativeTo !== undefined && (typeof args.relativeTo?.id !== 'string' || !args.relativeTo.id.trim() || args.relativeTo.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'relativeTo requires a bounded node UUID.' });
         if (args.includeRoot !== undefined && typeof args.includeRoot !== 'boolean' || args.requireUnique !== undefined && typeof args.requireUnique !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path projection flags must be boolean.' });
@@ -992,19 +992,18 @@ export class SceneTools {
             if (!selectedAncestor) selectionRoots.push(target.reference);
             selectionCoverage.push({ reference: target.reference, selectionRoot });
         }
-        const result = { items, succeeded, failed: references.length - succeeded, commonAncestor: commonChain?.length ? commonChain[commonChain.length - 1] : null, selectionRoots, selectionCoverage };
+        let parentId: string | undefined;
+        let sameParent = resolved.size > 0;
+        for (const target of resolved.values()) {
+            const parent = target.ancestors[target.ancestors.length - 1]?.id;
+            if (parent === undefined || parentId !== undefined && parent !== parentId) sameParent = false;
+            parentId = parent;
+        }
+        const sharedParent: IInstanceReference | null = sameParent && parentId !== undefined ? { id: parentId, type: 'cc.Node' } : null;
+        const result = { items, succeeded, failed: references.length - succeeded, commonAncestor: commonChain?.length ? commonChain[commonChain.length - 1] : null, sharedParent, selectionRoots, selectionCoverage };
         if (args.requireAll && result.failed) throw new ToolError({ code: 'NODE_GROUP_INCOMPLETE', status: 409, message: 'Not every requested node resolved; partial results must not be used as a complete group.', details: result });
         if (args.requireDisjoint && selectionRoots.length !== resolved.size) throw new ToolError({ code: 'NODE_SELECTION_OVERLAP', status: 409, message: 'Resolved selection contains ancestor/descendant overlaps.', details: result });
-        if (args.requireSameParent) {
-            let parentId: string | undefined;
-            let sameParent = resolved.size > 0;
-            for (const target of resolved.values()) {
-                const parent = target.ancestors[target.ancestors.length - 1]?.id;
-                if (parent === undefined || parentId !== undefined && parent !== parentId) sameParent = false;
-                parentId = parent;
-            }
-            if (!sameParent) throw new ToolError({ code: 'NODE_PARENT_GROUP_MISMATCH', status: 409, message: 'Resolved targets do not share one observed direct parent in the selected scope.', details: result });
-        }
+        if (args.requireSameParent && sharedParent === null) throw new ToolError({ code: 'NODE_PARENT_GROUP_MISMATCH', status: 409, message: 'Resolved targets do not share one observed direct parent in the selected scope.', details: result });
         return result;
     }
 
