@@ -198,13 +198,17 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     }
     const installedRecordIds = new Set<string>();
     let installedRecordCount = 0;
+    let installedBytesRemaining = 32 * 1024 * 1024;
     for (const domain of operation === 'list_domains' || external ? [] : index.domains) {
         checkDeadline();
         if (args.domain && domain.name !== args.domain) continue;
         if (args.namespace && !domain.name.startsWith(`${args.namespace}.`)) continue;
         if (args.category === 'component_schema' && !domain.name.startsWith('engine-runtime.')) continue;
         if (domain.count > 100000 - installedRecordCount) throw new ToolError({ code: 'CATALOG_RECORD_LIMIT', status: 413, message: 'Installed catalog scan exceeds 100000 records; narrow the namespace/domain.' });
-        const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(readPage(() => jsonFile(path.join(CATALOG_ROOT, version, domain.file))));
+        if (installedBytesRemaining === 0) throw new ToolError({ code: 'CATALOG_LIMIT_EXCEEDED', status: 413, message: 'Installed shard byte budget exhausted; narrow the namespace/domain.' });
+        const bytes = readPage(() => readBounded(fs.realpathSync(path.join(CATALOG_ROOT, version)), domain.file, Math.min(MAX_CATALOG_FILE, installedBytesRemaining)));
+        installedBytesRemaining -= bytes.length;
+        const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(JSON.parse(bytes.toString('utf8')));
         if (shard.records.length !== domain.count) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed shard record count differs from its index.' });
         installedRecordCount += shard.records.length;
         for (const record of shard.records) {
