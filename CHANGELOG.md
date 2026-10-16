@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Reject installed catalog shards whose observed record counts disagree with the index before filtering or returning discovery results; count agreement does not imply byte identity or native qualification.
 - Allow DirectionalLight/SphereLight/SpotLight in scriptComponentCreate requiredComponents with existing max8/unique bounds. Source generation declares dependencies only; later native attachment/render behavior remains separately verified.
 - Bind installed catalog cursors to SHA-256 of the same bounded index bytes used for parsing; manifest changes invalidate continuation even if catalogHash stays unchanged. This does not snapshot mutable shard bytes.
 - Bind external discovery cursors to a hashed project/version/resolved-root/approved-lookup snapshot identity; changing lookup revision or configured roots invalidates continuation even when catalogHash remains unchanged. Paths are not exposed by the digest.

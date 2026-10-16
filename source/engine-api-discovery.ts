@@ -199,6 +199,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         if (args.domain && domain.name !== args.domain) continue;
         if (path.basename(domain.file) !== domain.file) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Unsafe catalog shard path.' });
         const shard = z.object({ records: z.array(ApiRecordSchema).max(10000) }).parse(readPage(() => jsonFile(path.join(CATALOG_ROOT, version, domain.file))));
+        if (shard.records.length !== domain.count) throw new ToolError({ code: 'CATALOG_INVALID', status: 502, message: 'Installed shard record count differs from its index.' });
         for (const record of shard.records) {
             checkDeadline();
             if (args.recordId !== undefined && record.id !== args.recordId) continue;
