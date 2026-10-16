@@ -165,10 +165,10 @@ export class ComponentTools {
             requireSingle: { type: 'boolean', default: false, description: 'Require exactly one filtered match on each node; cardinality failures remain per-item.' },
             limitPerNode: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
         }, required: ['references'] },
-        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, inventorySummary: { type: 'object', properties: { observedNodes: { type: 'integer' }, failedNodes: { type: 'integer' }, total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' } }, required: ['observedNodes', 'failedNodes', 'total', 'enabled', 'disabled', 'unknownEnabled'] } }, required: ['items', 'succeeded', 'failed', 'truncated', 'inventorySummary'] },
+        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' }, inventorySummary: { type: 'object', properties: { observedNodes: { type: 'integer' }, failedNodes: { type: 'integer' }, total: { type: 'integer' }, enabled: { type: 'integer' }, disabled: { type: 'integer' }, unknownEnabled: { type: 'integer' }, classDistribution: { type: 'object', additionalProperties: { type: 'object', properties: { instances: { type: 'integer', minimum: 1 }, nodes: { type: 'integer', minimum: 1 } }, required: ['instances', 'nodes'] } } }, required: ['observedNodes', 'failedNodes', 'total', 'enabled', 'disabled', 'unknownEnabled', 'classDistribution'] } }, required: ['items', 'succeeded', 'failed', 'truncated', 'inventorySummary'] },
         'GET', ['scene', 'node', 'component', 'batch', 'inspection']
     )
-    async nodeComponentsBatchGet(args: { references: IInstanceReference[], expectedRevisions?: Array<{ reference: IInstanceReference, revision: string }>, componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, total: number, enabled: number, disabled: number, unknownEnabled: number } }> {
+    async nodeComponentsBatchGet(args: { references: IInstanceReference[], expectedRevisions?: Array<{ reference: IInstanceReference, revision: string }>, componentTypes?: string[], excludeComponentTypes?: string[], enabled?: boolean, requireSingle?: boolean, limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean, inventorySummary: { observedNodes: number, failedNodes: number, total: number, enabled: number, disabled: number, unknownEnabled: number, classDistribution: Record<string, { instances: number, nodes: number }> } }> {
         if (args.enabled !== undefined && typeof args.enabled !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'enabled must be a boolean serialized component selector.' });
         if (args.requireSingle !== undefined && typeof args.requireSingle !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'requireSingle must be boolean.' });
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
@@ -192,7 +192,7 @@ export class ComponentTools {
         const excludeComponentTypes = args.excludeComponentTypes?.slice();
         const items: Array<Record<string, unknown>> = [];
         let succeeded = 0, truncated = false;
-        const inventorySummary = { observedNodes: 0, failedNodes: 0, total: 0, enabled: 0, disabled: 0, unknownEnabled: 0 };
+        const inventorySummary = { observedNodes: 0, failedNodes: 0, total: 0, enabled: 0, disabled: 0, unknownEnabled: 0, classDistribution: Object.create(null) as Record<string, { instances: number, nodes: number }> };
         for (const [index, reference] of references.entries()) {
             try {
                 const result = await this.nodeComponentsGet({ reference, expectedRevision: expectedRevisions.get(reference.id), componentTypes, excludeComponentTypes, enabled: args.enabled, requireSingle: args.requireSingle, limit });
@@ -204,6 +204,11 @@ export class ComponentTools {
                 inventorySummary.enabled += result.inventorySummary.enabled;
                 inventorySummary.disabled += result.inventorySummary.disabled;
                 inventorySummary.unknownEnabled += result.inventorySummary.unknownEnabled;
+                for (const [type, count] of Object.entries(result.inventorySummary.classCounts)) {
+                    const distribution = inventorySummary.classDistribution[type] ?? (inventorySummary.classDistribution[type] = { instances: 0, nodes: 0 });
+                    distribution.instances += count;
+                    distribution.nodes++;
+                }
             } catch (error) {
                 inventorySummary.failedNodes++;
                 items.push({ index, ok: false, reference, error: { code: error instanceof ToolError ? error.code : 'COMPONENT_QUERY_FAILED', message: (error instanceof Error ? error.message : String(error)).slice(0, 512) } });
