@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Refuse component inspect/observe rechecks with under100ms remaining and refuse success after read deadline. Mutation/event verification remains unchanged; this does not abort readiness or native requests already dispatched.
 - Preserve callable/constructable property owner JSDoc when nested signature declarations lack docs, retaining signature-specific docs when present and reusing one declaration metadata read across overloads.
 - Report UNSORTED_KEYFRAME_TIME for decreasing native keyframe frames during timeline inspection, including off-page/filtered keys. Preserve original order and equal-time keys; do not sort, mutate or infer interpolation validity.
 - Check internal cancellation before component/audio readiness and before post-read session reinspection. Cancelled observations dispatch no new inspection phases; mutation verification and event listener teardown remain intact.
