@@ -315,6 +315,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
         try {
             const availability = z.object({ available: z.boolean(), className: z.string(), engineVersion: z.string().nullable(), context: z.literal('edit-scene') }).parse(await Editor.Message.request('scene', 'execute-scene-script', { name: 'ccp3x', method: 'engineApiClassAvailability', args: [{ className: args.className }] }));
             if (availability.className.replace(/^cc\./, '') !== args.className.replace(/^cc\./, '')) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: 'Availability probe returned a different class identity.' });
+            if (availability.engineVersion !== version) throw new ToolError({ code: 'VERSION_CONTEXT_MISMATCH', status: 422, message: 'Availability probe engine version does not match the selected catalog.' });
             live = { ...live, ...availability, checked: true, versionMatches: availability.engineVersion === version };
         } catch (error: unknown) {
             live = { ...live, unavailableReason: error instanceof Error ? error.message.slice(0, 256) : 'Class availability probe unavailable' };

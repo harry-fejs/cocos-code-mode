@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Leave class availability unchecked/unknown when the probe engine version is missing or differs from the selected catalog, rather than crediting a different engine's available class.
 - Credit class availability probes only when the returned class identity matches the requested class (allowing the existing cc. prefix normalization); foreign responses remain unchecked/unknown rather than attaching another class's availability.
 - Align hydrated record domain identity with the lookup generator's sanitized module fallback for null/empty/absent domains, retaining exact namespace/domain equality and rejecting invalid domain shapes.
 - Bind external lookup shard files/domain names/counts and version/catalog identity to the hash-verified source index; reject omitted, substituted or duplicate manifest files and inconsistent optional total counts before discovery.
