@@ -691,9 +691,9 @@ export class SceneTools {
                 { required: ['maxComponents'] }
             ],
         },
-        { type: 'object', properties: { nodes: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, name: { type: 'string' }, path: { type: 'string' }, depth: { type: 'integer' } } } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['nodes', 'total'] }, "GET", ['scene', 'node', 'find', 'search', 'name', 'component', 'filter']
+        { type: 'object', properties: { nodes: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, parentReference: { type: ['object', 'null'] }, name: { type: 'string' }, path: { type: 'string' }, depth: { type: 'integer' }, componentCount: { type: 'integer' }, active: { type: ['boolean', 'null'] } } } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['nodes', 'total'] }, "GET", ['scene', 'node', 'find', 'search', 'name', 'component', 'filter']
     )
-    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, active?: boolean, minComponents?: number, maxComponents?: number, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, name: string, path: string, depth: number }>, total: number, truncated: boolean }> {
+    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, active?: boolean, minComponents?: number, maxComponents?: number, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, active: boolean | null }>, total: number, truncated: boolean }> {
         for (const [key, maximum] of [['name', 256], ['componentType', 256], ['pathContains', 512]] as const) {
             const value = args[key];
             if (value !== undefined && (typeof value !== 'string' || !value.trim() || value.length > maximum)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `${key} must be a bounded nonempty string.` });
@@ -715,12 +715,12 @@ export class SceneTools {
         const queried = await Editor.Message.request('scene', 'query-node-tree');
         if (!queried) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'No open hierarchy.' });
         const root = (await this.findPrefabEditRoot(queried)) ?? queried;
-        const hits: Array<{ reference: IInstanceReference, name: string, path: string, depth: number }> = [];
-        const stack = [{ node: root, path: sceneTreeNodeName(root), depth: 0, inScope: !args.rootReference, excluded: false }];
+        const hits: Array<{ reference: IInstanceReference, parentReference: IInstanceReference | null, name: string, path: string, depth: number, componentCount: number, active: boolean | null }> = [];
+        const stack = [{ node: root, path: sceneTreeNodeName(root), depth: 0, parentReference: null as IInstanceReference | null, inScope: !args.rootReference, excluded: false }];
         const visited = new Set<object>();
         let scheduled = 1, total = 0, rootFound = !args.rootReference;
         while (stack.length) {
-            const { node, path: nodePath, depth, inScope, excluded } = stack.pop()!;
+            const { node, path: nodePath, depth, parentReference, inScope, excluded } = stack.pop()!;
             if (!node || typeof node !== 'object' || visited.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed or cyclic scene hierarchy.' });
             visited.add(node);
             const id = nodeUuidFromSceneUsage(node, 'node search');
@@ -748,7 +748,7 @@ export class SceneTools {
             if (args.active !== undefined && scoped && !branchExcluded && depthOk && nameOk && compOk && componentCountOk && (!args.pathContains || nodePath.toLowerCase().includes(args.pathContains.toLowerCase())) && typeof active !== 'boolean') throw new ToolError({ code: 'NODE_STATE_UNAVAILABLE', status: 422, message: 'Local active metadata is unavailable; no complete activity-filtered result returned.' });
             if (scoped && !branchExcluded && depthOk && nameOk && compOk && componentCountOk && (args.active === undefined || active === args.active) && (!args.pathContains || nodePath.toLowerCase().includes(args.pathContains.toLowerCase()))) {
                 total++;
-                if (hits.length < limit) hits.push({ reference: { id, type: 'cc.Node' }, name, path: nodePath, depth: relativeDepth });
+                if (hits.length < limit) hits.push({ reference: { id, type: 'cc.Node' }, parentReference, name, path: nodePath, depth: relativeDepth, componentCount: components.length, active: typeof active === 'boolean' ? active : null });
             }
             const children = node.children ?? [];
             if (!Array.isArray(children)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed hierarchy children.' });
@@ -757,7 +757,7 @@ export class SceneTools {
             for (let index = children.length - 1; index >= 0; index--) {
                 const child = children[index];
                 if (!child || typeof child !== 'object' || Array.isArray(child)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed hierarchy child.' });
-                stack.push({ node: child, path: `${nodePath}/${sceneTreeNodeName(child)}`, depth: relativeDepth + 1, inScope: scoped, excluded: branchExcluded });
+                stack.push({ node: child, path: `${nodePath}/${sceneTreeNodeName(child)}`, depth: relativeDepth + 1, parentReference: { id, type: 'cc.Node' }, inScope: scoped, excluded: branchExcluded });
             }
         }
         if (!rootFound) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Search subtree UUID is absent from the open hierarchy.' });
