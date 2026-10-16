@@ -189,6 +189,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         eventTextBytes += Buffer.byteLength(value, 'utf8');
         if (eventTextBytes > 1048576) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native event text exceeds 1 MiB UTF-8.');
     };
+    let invalidEvents = 0;
     const eventRows = Array.from(events ?? [], (raw: unknown, index: number) => {
         const event = timelineRecord(raw), location = `events[${index}]`, startIssues = diagnosticCount;
         if (!event || !frameValid(event.frame)) issue('INVALID_EVENT_TIME', location);
@@ -202,6 +203,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         }
         if (typeof event?.func === 'string') countEventText(event.func);
         if (!event || typeof event.func !== 'string' || !event.func || !paramsValid) issue('UNSUPPORTED_EVENT_DATA', location, true);
+        if (diagnosticCount !== startIssues) invalidEvents++;
         return { index, frame: event && finite(event.frame) ? event.frame : null, frameOverSample: event && frameValid(event.frame) && sample !== null && finite(event.frame / sample) ? event.frame / sample : null,
             callback: text(event?.func), params: paramsValid ? params as string[] : null, dataValid: diagnosticCount === startIssues };
     });
@@ -228,6 +230,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         totalTracks, retrievedTracks: curves?.length ?? null, totalEvents: events?.length ?? null, inspectedKeyframes: keyframeCount,
         matchedTracks: curves ? selectedTracks.length : null, trackBinding: options.trackBinding ? { ...options.trackBinding } : null,
         matchedEvents: events ? selectedEvents.length : null, eventCallback: options.eventCallback ?? null,
+        invalidEvents: events === null ? null : invalidEvents,
         eventFrameRange: options.eventFrameRange ? { ...options.eventFrameRange } : null,
         keyframeFrameRange: options.keyframeFrameRange ? { ...options.keyframeFrameRange } : null,
         trackOffset: bounds.trackOffset, trackLimit: bounds.trackLimit, eventOffset: bounds.eventOffset, eventLimit: bounds.eventLimit,

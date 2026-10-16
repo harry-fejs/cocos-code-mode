@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Expose invalidEvents across all retrieved timeline events independently of callback/frame filters and paging. Multiple diagnostics on one event count once; absent native events report null, empty arrays zero. No callback existence/runtime validation inferred.
 - Validate external lookup shard basename/JSON filename grammar before catalog exposure, refusing unsafe manifest paths during navigation rather than waiting for record hydration.
 - Reject case-colliding shard filenames in external source-index and lookup manifests before exposing discovery, matching offline generator and installed-catalog uniqueness semantics.
 - Expose invalidKeyframes per retrieved timeline track, counted across all keys independently of page/frame filters; unavailable native keys report null and empty keys report zero. Counts do not imply interpolation or binding validation.
