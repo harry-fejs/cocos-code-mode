@@ -80,7 +80,7 @@ export function openExternalApiCatalog(version: string): ExternalApiCatalog | nu
             if (!entry) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Catalog record was not indexed.' });
             const shard = lookup.shards[entry.shard];
             const bytes = readBounded(root, shard.file, 8 * 1024 * 1024, shard.sha256);
-            const key = `${root}:${lookup.catalogHash}:${shard.file}:${shard.sha256}`;
+            const key = `${root}:${version}:${lookup.catalogHash}:${shard.file}:${shard.sha256}`;
             let cached = cache.get(key);
             if (!cached) {
                 const parsed = z.object({ records: z.array(z.record(z.string(), z.unknown())).max(10000) }).parse(JSON.parse(bytes.toString('utf8')));
