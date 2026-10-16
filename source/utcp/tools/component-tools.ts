@@ -135,6 +135,39 @@ export class ComponentTools {
         return { references, total: foundComponents.length, offset, nextOffset: next < foundComponents.length ? next : null, truncated: next < foundComponents.length, revision };
     }
 
+    @utcpTool(
+        'nodeComponentsBatchGet',
+        'Inspect component inventories on1..32 exact nodes sequentially with per-item errors. Class selectors use OR; each result carries its own revision. No writes or atomic cross-node snapshot.',
+        { type: 'object', additionalProperties: false, properties: {
+            references: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema },
+            componentTypes: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'string', minLength: 1, maxLength: 256 } },
+            limitPerNode: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
+        }, required: ['references'] },
+        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' }, truncated: { type: 'boolean' } }, required: ['items', 'succeeded', 'failed', 'truncated'] },
+        'GET', ['scene', 'node', 'component', 'batch', 'inspection']
+    )
+    async nodeComponentsBatchGet(args: { references: IInstanceReference[], componentTypes?: string[], limitPerNode?: number }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number, truncated: boolean }> {
+        if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
+        if (args.componentTypes !== undefined && (!Array.isArray(args.componentTypes) || args.componentTypes.length < 1 || args.componentTypes.length > 32 || args.componentTypes.some(type => typeof type !== 'string' || !type.trim() || type.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentTypes requires1..32 bounded class names.' });
+        const limit = args.limitPerNode ?? 50;
+        if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'limitPerNode must be1..100.' });
+        const references = args.references.map(reference => ({ id: reference.id }));
+        const componentTypes = args.componentTypes?.slice();
+        const items: Array<Record<string, unknown>> = [];
+        let succeeded = 0, truncated = false;
+        for (const [index, reference] of references.entries()) {
+            try {
+                const result = await this.nodeComponentsGet({ reference, componentTypes, limit });
+                items.push({ index, ok: true, reference, result });
+                succeeded++;
+                truncated ||= result.truncated;
+            } catch (error) {
+                items.push({ index, ok: false, reference, error: { code: error instanceof ToolError ? error.code : 'COMPONENT_QUERY_FAILED', message: (error instanceof Error ? error.message : String(error)).slice(0, 512) } });
+            }
+        }
+        return { items, succeeded, failed: references.length - succeeded, truncated };
+    }
+
     async nodeComponentRemove(args: { reference: IInstanceReference }): Promise<ISuccessIndicator> {
         if (!args.reference?.id) throw new Error('nodeComponentRemove requires reference.id');
         try {
