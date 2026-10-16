@@ -891,23 +891,34 @@ export class SceneTools {
         'Resolve1..32 exact node UUIDs sequentially to scoped hierarchy paths and ancestor chains with per-target errors. Each lookup observes a fresh bounded hierarchy; no atomic snapshot or mutation.',
         { type: 'object', additionalProperties: false, properties: {
             references: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema },
+            expectedPaths: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false, properties: { reference: InstanceReferenceSchema, path: { type: 'string', maxLength: 4096 } }, required: ['reference', 'path'] }, description: 'Optional exact paths keyed by requested target UUID; omitted targets are unguarded.' },
             relativeTo: InstanceReferenceSchema, includeRoot: { type: 'boolean', default: true }, requireUnique: { type: 'boolean', default: false },
         }, required: ['references'] },
         { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' } }, required: ['items', 'succeeded', 'failed'] },
         'GET', ['scene', 'node', 'path', 'batch', 'ancestors']
     )
-    async nodeGetPaths(args: { references: IInstanceReference[], relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number }> {
+    async nodeGetPaths(args: { references: IInstanceReference[], expectedPaths?: Array<{ reference: IInstanceReference, path: string }>, relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number }> {
         if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
         if (args.relativeTo !== undefined && (typeof args.relativeTo?.id !== 'string' || !args.relativeTo.id.trim() || args.relativeTo.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'relativeTo requires a bounded node UUID.' });
         if (args.includeRoot !== undefined && typeof args.includeRoot !== 'boolean' || args.requireUnique !== undefined && typeof args.requireUnique !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path projection flags must be boolean.' });
         const references = args.references.map(reference => ({ id: reference.id }));
+        const expectedPaths = new Map<string, string>();
+        const requestedIds = new Set(references.map(reference => reference.id));
+        if (args.expectedPaths !== undefined) {
+            if (!Array.isArray(args.expectedPaths) || args.expectedPaths.length > 32) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'expectedPaths accepts at most32 target-bound paths.' });
+            for (const entry of args.expectedPaths) {
+                const id = entry?.reference?.id;
+                if (typeof id !== 'string' || !requestedIds.has(id) || expectedPaths.has(id) || typeof entry.path !== 'string' || entry.path.length > 4096) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Expected paths must be unique valid entries bound to requested UUIDs.' });
+                expectedPaths.set(id, entry.path);
+            }
+        }
         const relativeTo = args.relativeTo ? { id: args.relativeTo.id } : undefined;
         const includeRoot = args.includeRoot, requireUnique = args.requireUnique;
         const items: Array<Record<string, unknown>> = [];
         let succeeded = 0;
         for (const [index, reference] of references.entries()) {
             try {
-                const result = await this.nodeGetPath({ reference, relativeTo, includeRoot, requireUnique });
+                const result = await this.nodeGetPath({ reference, relativeTo, includeRoot, requireUnique, expectedPath: expectedPaths.get(reference.id) });
                 items.push({ index, ok: true, reference, result });
                 succeeded++;
             } catch (error) {
