@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Support MouseJoint2D/RelativeJoint2D/SliderJoint2D/WheelJoint2D scalar/array script references with null/independent empty defaults. No joint creation, input registration, connected-body assignment or simulation mutation.
 - Refuse malformed Inspector type/property collections in live catalog discovery with INSPECTOR_RESPONSE_INVALID rather than reporting availability or throwing untyped class-normalization errors.
 - Refuse malformed discovery instance references before catalog access or Inspector dispatch: id is nonempty/bounded1024 and optional type nonempty/bounded256; null/array/nonstring identities return INVALID_ARGUMENT.
 - Support HingeConstraint/FixedConstraint/PointToPointConstraint and DistanceJoint2D/SpringJoint2D/FixedJoint2D/HingeJoint2D scalar/array script references. Null/empty defaults only; no joint construction, connected-body assignment or physics simulation mutation.
