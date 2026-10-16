@@ -338,9 +338,11 @@ function metadata(node) {
   if (binding !== node) tags.push(...ts.getJSDocTags(binding).map(tag => tag.tagName.text));
   const documentation = node.jsDoc?.length ? node.jsDoc : binding.jsDoc?.length ? binding.jsDoc : ts.isVariableDeclaration(binding) && ts.isVariableStatement(binding.parent?.parent) ? binding.parent.parent.jsDoc || [] : [];
   const constantBinding = ts.isVariableDeclaration(binding) && ts.isVariableDeclarationList(binding.parent) && !!(binding.parent.flags & ts.NodeFlags.Const);
+  const callable = (ts.isVariableDeclaration(node) || ts.isPropertyDeclaration(node)) && node.initializer && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer)) ? node.initializer : node;
+  const callableModifiers = ts.canHaveModifiers(callable) ? ts.getModifiers(callable) || [] : [];
   return { decorators, visibility, optional: !!node.questionToken, static: modifiers.includes('static'), readonly: constantBinding || modifiers.includes('readonly') || ts.isGetAccessorDeclaration(node) && !node.symbol?.declarations?.some(ts.isSetAccessorDeclaration),
     internal: tags.includes('internal') || tags.includes('engineInternal') || tags.includes('private') || !!declaredName?.startsWith('__'), deprecated: tags.includes('deprecated'),
-    generator: !!node.asteriskToken, async: modifiers.includes('async'), abstract: modifiers.includes('abstract'), jsdoc: documentation.map(doc => doc.getText()).join('\n') || null };
+    generator: !!callable.asteriskToken, async: callableModifiers.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword), abstract: modifiers.includes('abstract'), jsdoc: documentation.map(doc => doc.getText()).join('\n') || null };
 }
 function constraints(node, context, checker) {
   const sf = node.getSourceFile();
