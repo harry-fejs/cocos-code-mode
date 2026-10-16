@@ -818,7 +818,7 @@ declare namespace ccp3x {
     function findNodesByAsset(args: { reference: InstanceReference }): { references: InstanceReference[] };
 
     /** Read-only AND filters; componentTypes use componentMatch all/any/none, exact component classes; subtree includes root. */
-    function findNodes(args: { name?: string; nameMatch?: 'contains' | 'exact'; componentType?: string; componentTypes?: string[]; componentMatch?: 'all' | 'any' | 'none'; pathContains?: string; rootReference?: InstanceReference; minDepth?: number; maxDepth?: number; maxResults?: number }): { nodes: Array<{ reference: InstanceReference; name: string; path: string; depth: number }>; total: number; truncated: boolean };
+    function findNodes(args: { name?: string; nameMatch?: 'contains' | 'exact'; componentType?: string; componentTypes?: string[]; componentMatch?: 'all' | 'any' | 'none'; pathContains?: string; rootReference?: InstanceReference; excludeReferences?: InstanceReference[]; minDepth?: number; maxDepth?: number; maxResults?: number }): { nodes: Array<{ reference: InstanceReference; name: string; path: string; depth: number }>; total: number; truncated: boolean };
     function sceneHierarchyAnalyze(args?: { rootReference?: InstanceReference; limit?: number }): { rootReference?: InstanceReference; checkedNodes: number; maxDepth: number; truncated: boolean; activeNodes: number; inactiveNodes: number; unknownActiveNodes: number; componentCounts: Record<string, number>; duplicateNames: Array<{ name: string; count: number }>; unknownComponentCount: number; issues: string[] };
 
     /** Find all nodes whose asset references are missing/broken. QA/health check for scene integrity. */

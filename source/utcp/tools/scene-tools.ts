@@ -674,6 +674,7 @@ export class SceneTools {
                 minDepth: { type: 'integer', minimum: 0, maximum: 99 },
                 maxDepth: { type: 'integer', minimum: 0, maximum: 99 },
                 rootReference: InstanceReferenceSchema,
+                excludeReferences: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema },
                 maxResults: { type: 'number', minimum: 1, maximum: MAX_LIST_LIMIT, default: DEFAULT_LIST_LIMIT, description: 'Cap results.' }
             },
             anyOf: [
@@ -686,7 +687,7 @@ export class SceneTools {
         },
         { type: 'object', properties: { nodes: { type: 'array', items: { type: 'object', properties: { reference: InstanceReferenceSchema, name: { type: 'string' }, path: { type: 'string' }, depth: { type: 'integer' } } } }, total: { type: 'number' }, truncated: { type: 'boolean' } }, required: ['nodes', 'total'] }, "GET", ['scene', 'node', 'find', 'search', 'name', 'component', 'filter']
     )
-    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, rootReference?: IInstanceReference, minDepth?: number, maxDepth?: number, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, name: string, path: string, depth: number }>, total: number, truncated: boolean }> {
+    async findNodes(args: { name?: string, nameMatch?: 'contains' | 'exact', componentType?: string, componentTypes?: string[], componentMatch?: 'all' | 'any' | 'none', pathContains?: string, rootReference?: IInstanceReference, excludeReferences?: IInstanceReference[], minDepth?: number, maxDepth?: number, maxResults?: number }): Promise<{ nodes: Array<{ reference: IInstanceReference, name: string, path: string, depth: number }>, total: number, truncated: boolean }> {
         for (const [key, maximum] of [['name', 256], ['componentType', 256], ['pathContains', 512]] as const) {
             const value = args[key];
             if (value !== undefined && (typeof value !== 'string' || !value.trim() || value.length > maximum)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: `${key} must be a bounded nonempty string.` });
@@ -697,6 +698,9 @@ export class SceneTools {
         if (args.componentMatch !== undefined && (!args.componentTypes || !['all', 'any', 'none'].includes(args.componentMatch))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'componentMatch requires componentTypes and all/any/none.' });
         const types = [...new Set((args.componentTypes ?? (args.componentType ? [args.componentType] : [])).map(type => type.replace(/^cc\./, '')))];
         if (args.rootReference !== undefined && (typeof args.rootReference?.id !== 'string' || !args.rootReference.id.trim() || args.rootReference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'rootReference requires a bounded node UUID.' });
+        if (args.excludeReferences !== undefined && (!Array.isArray(args.excludeReferences) || args.excludeReferences.length < 1 || args.excludeReferences.length > 32 || args.excludeReferences.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256))) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'excludeReferences requires1..32 bounded node UUIDs.' });
+        const excludedIds = new Set(args.excludeReferences?.map(reference => reference.id));
+        const unseenExclusions = new Set(excludedIds);
         if (args.minDepth !== undefined && (!Number.isInteger(args.minDepth) || args.minDepth < 0 || args.minDepth > 99) || args.maxDepth !== undefined && (!Number.isInteger(args.maxDepth) || args.maxDepth < 0 || args.maxDepth > 99) || args.minDepth !== undefined && args.maxDepth !== undefined && args.minDepth > args.maxDepth) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Depth filters must be integers0..99 with minDepth<=maxDepth.' });
         if (!args.name && !types.length && !args.pathContains && !args.rootReference) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'At least one node selector is required.' });
         const limit = boundedListLimit(args.maxResults);
@@ -704,14 +708,16 @@ export class SceneTools {
         if (!queried) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'No open hierarchy.' });
         const root = (await this.findPrefabEditRoot(queried)) ?? queried;
         const hits: Array<{ reference: IInstanceReference, name: string, path: string, depth: number }> = [];
-        const stack = [{ node: root, path: sceneTreeNodeName(root), depth: 0, inScope: !args.rootReference }];
+        const stack = [{ node: root, path: sceneTreeNodeName(root), depth: 0, inScope: !args.rootReference, excluded: false }];
         const visited = new Set<object>();
         let scheduled = 1, total = 0, rootFound = !args.rootReference;
         while (stack.length) {
-            const { node, path: nodePath, depth, inScope } = stack.pop()!;
+            const { node, path: nodePath, depth, inScope, excluded } = stack.pop()!;
             if (!node || typeof node !== 'object' || visited.has(node)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed or cyclic scene hierarchy.' });
             visited.add(node);
             const id = nodeUuidFromSceneUsage(node, 'node search');
+            unseenExclusions.delete(id);
+            const branchExcluded = excluded || excludedIds.has(id);
             const scoped = inScope || id === args.rootReference?.id;
             if (id === args.rootReference?.id) rootFound = true;
             const relativeDepth = id === args.rootReference?.id ? 0 : depth;
@@ -728,7 +734,7 @@ export class SceneTools {
             const matched = types.filter(type => attachedTypes.has(type)).length;
             const compOk = !types.length || (args.componentMatch === 'any' ? matched > 0 : args.componentMatch === 'none' ? matched === 0 : matched === types.length);
             const depthOk = (args.minDepth === undefined || relativeDepth >= args.minDepth) && (args.maxDepth === undefined || relativeDepth <= args.maxDepth);
-            if (scoped && depthOk && nameOk && compOk && (!args.pathContains || nodePath.toLowerCase().includes(args.pathContains.toLowerCase()))) {
+            if (scoped && !branchExcluded && depthOk && nameOk && compOk && (!args.pathContains || nodePath.toLowerCase().includes(args.pathContains.toLowerCase()))) {
                 total++;
                 if (hits.length < limit) hits.push({ reference: { id, type: 'cc.Node' }, name, path: nodePath, depth: relativeDepth });
             }
@@ -739,10 +745,11 @@ export class SceneTools {
             for (let index = children.length - 1; index >= 0; index--) {
                 const child = children[index];
                 if (!child || typeof child !== 'object' || Array.isArray(child)) throw new ToolError({ code: 'INVALID_RESPONSE', status: 502, message: 'Malformed hierarchy child.' });
-                stack.push({ node: child, path: `${nodePath}/${sceneTreeNodeName(child)}`, depth: relativeDepth + 1, inScope: scoped });
+                stack.push({ node: child, path: `${nodePath}/${sceneTreeNodeName(child)}`, depth: relativeDepth + 1, inScope: scoped, excluded: branchExcluded });
             }
         }
         if (!rootFound) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Search subtree UUID is absent from the open hierarchy.' });
+        if (unseenExclusions.size) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'An excluded subtree UUID is absent from the open hierarchy.' });
         return { nodes: hits, total, truncated: total > hits.length };
     }
 
