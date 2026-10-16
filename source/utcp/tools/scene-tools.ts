@@ -1021,11 +1021,12 @@ export class SceneTools {
         { type: 'object', additionalProperties: false, properties: {
             rootReference: InstanceReferenceSchema, checkedNodes: { type: 'integer' }, maxDepth: { type: 'integer' }, truncated: { type: 'boolean' },
             depthCounts: { type: 'object', additionalProperties: { type: 'integer', minimum: 1 } },
+            childCountDistribution: { type: 'object', additionalProperties: { type: 'integer', minimum: 1 } },
             leafNodes: { type: 'integer' }, containerNodes: { type: 'integer' }, unknownChildrenNodes: { type: 'integer' },
             nodesWithComponents: { type: 'integer' }, nodesWithoutComponents: { type: 'integer' }, unknownComponentsNodes: { type: 'integer' },
             siblingNameCollisions: { type: 'array', items: { type: 'object', properties: { parentReference: InstanceReferenceSchema, name: { type: 'string' }, references: { type: 'array', items: InstanceReferenceSchema } }, required: ['parentReference', 'name', 'references'] } },
             activeNodes: { type: 'integer' }, inactiveNodes: { type: 'integer' }, unknownActiveNodes: { type: 'integer' }, componentCounts: { type: 'object' }, duplicateNames: { type: 'array' }, unknownComponentCount: { type: 'integer' }, issues: { type: 'array' },
-        }, required: ['checkedNodes', 'maxDepth', 'depthCounts', 'leafNodes', 'containerNodes', 'unknownChildrenNodes', 'nodesWithComponents', 'nodesWithoutComponents', 'unknownComponentsNodes', 'truncated', 'activeNodes', 'inactiveNodes', 'unknownActiveNodes', 'componentCounts', 'duplicateNames', 'siblingNameCollisions', 'unknownComponentCount', 'issues'] },
+        }, required: ['checkedNodes', 'maxDepth', 'depthCounts', 'childCountDistribution', 'leafNodes', 'containerNodes', 'unknownChildrenNodes', 'nodesWithComponents', 'nodesWithoutComponents', 'unknownComponentsNodes', 'truncated', 'activeNodes', 'inactiveNodes', 'unknownActiveNodes', 'componentCounts', 'duplicateNames', 'siblingNameCollisions', 'unknownComponentCount', 'issues'] },
         'GET', ['scene', 'hierarchy', 'analyze', 'component', 'summary', 'qa']
     )
     async sceneHierarchyAnalyze(args: { rootReference?: IInstanceReference, limit?: number } = {}): Promise<Record<string, unknown>> {
@@ -1056,6 +1057,7 @@ export class SceneTools {
         const limit = boundedListLimit(args.limit);
         const componentCounts: Record<string, number> = Object.create(null);
         const depthCounts: Record<string, number> = Object.create(null);
+        const childCountDistribution: Record<string, number> = Object.create(null);
         const nameCounts = new Map<string, number>();
         const issues: string[] = [];
         const visited = new Set<object>();
@@ -1091,6 +1093,7 @@ export class SceneTools {
             if (!Array.isArray(children)) unknownChildrenNodes++;
             else if (children.length === 0) leafNodes++;
             else containerNodes++;
+            if (Array.isArray(children)) childCountDistribution[children.length] = (childCountDistribution[children.length] ?? 0) + 1;
             const components = node.components ?? [];
             if (!Array.isArray(components)) {
                 unknownComponentsNodes++;
@@ -1112,7 +1115,7 @@ export class SceneTools {
         }
         const siblingNameCollisions: Array<{ parentReference: IInstanceReference, name: string, references: IInstanceReference[] }> = [];
         for (const group of siblingGroups.values()) for (const [name, references] of group.names) if (references.length > 1) siblingNameCollisions.push({ parentReference: group.parentReference, name, references });
-        return { ...(args.rootReference ? { rootReference: args.rootReference } : {}), checkedNodes, maxDepth, depthCounts, leafNodes, containerNodes, unknownChildrenNodes, nodesWithComponents, nodesWithoutComponents, unknownComponentsNodes, truncated, activeNodes, inactiveNodes, unknownActiveNodes,
+        return { ...(args.rootReference ? { rootReference: args.rootReference } : {}), checkedNodes, maxDepth, depthCounts, childCountDistribution, leafNodes, containerNodes, unknownChildrenNodes, nodesWithComponents, nodesWithoutComponents, unknownComponentsNodes, truncated, activeNodes, inactiveNodes, unknownActiveNodes,
             componentCounts, duplicateNames: [...nameCounts].filter(([, count]) => count > 1).map(([name, count]) => ({ name, count })), siblingNameCollisions, unknownComponentCount, issues };
     }
 
