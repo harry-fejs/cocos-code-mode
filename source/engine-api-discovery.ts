@@ -337,7 +337,7 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     if (args.reference) {
         if (version !== '3.7.3') throw new ToolError({ code: 'VERSION_CONTEXT_MISMATCH', status: 422, message: 'Comparison catalog cannot be mapped to the Creator3.7 target.' });
         // Re-read every request: project script recompilation cannot leave a persistent path cache.
-        const info = await ToolsUtils.inspectInstance(args.reference.id, false);
+        const info = await observeWithinDeadline(() => ToolsUtils.inspectInstance(args.reference!.id, false));
         if (!info?.props) throw new ToolError({ code: 'TARGET_NOT_FOUND', status: 404, message: 'Target has no authoritative Inspector dump.' });
         if (args.className && info.type.replace(/^cc\./, '') !== args.className.replace(/^cc\./, '')) throw new ToolError({ code: 'TYPE_MISMATCH', status: 422, message: 'Target class does not match requested catalog class.' });
         live = { checked: true, context: 'edit-scene', available: true, type: info.type, writablePaths: Object.entries(info.props).filter(([, value]) => value && typeof value === 'object' && !Array.isArray(value) && 'readonly' in value && value.readonly === false).map(([key]) => key), mutationAuthorized: false, pathEvidence: 'authoritative-inspector-dump' };

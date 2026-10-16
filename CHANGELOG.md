@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Bound live Inspector instance discovery waiting by the original catalog deadline using the existing observation guard; hung/late reads refuse CATALOG_QUERY_TIMEOUT without retrying or cancelling dispatched native inspection.
 - Bound optional class-availability IPC waiting by the original discovery deadline; hung or late probes fail CATALOG_QUERY_TIMEOUT rather than keeping catalog queries pending indefinitely. In-flight native reads are not cancelled or retried.
 - Leave class availability unchecked/unknown when the probe engine version is missing or differs from the selected catalog, rather than crediting a different engine's available class.
 - Credit class availability probes only when the returned class identity matches the requested class (allowing the existing cc. prefix normalization); foreign responses remain unchecked/unknown rather than attaching another class's availability.
