@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Preserve destructured callable parameter binding patterns (object aliases, nested bindings, array holes and rest elements) alongside compiler names; parameter order, optionality and arity remain unchanged. Metadata does not authorize invocation.
 - Propagate internal audio wait residual budgets to readiness/recheck inspection and refuse late verified success. Standalone observe/control defaults remain unchanged; insufficient verification budget skips the next inspection.
 - Preserve callable/constructable variable-binding owner JSDoc when nested signature declarations have no docs; signature-specific documentation remains authoritative and no callable permission is inferred.
 - Pass bounded component read budgets into readiness and residual post-read session inspection. Mutation/event inspection defaults remain unchanged; no native request cancellation is inferred from host deadlines.

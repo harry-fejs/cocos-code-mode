@@ -268,6 +268,7 @@ function signatureInfo(checker, signature, declaration, index, returnType) {
     const info = typeInfo(checker, checker.getTypeOfSymbolAtLocation(symbol, parameter || declaration), parameter?.type);
     unresolved.push(...info.unresolved);
     return { name: symbol.name, type: info.type, declaredType: info.declaredType, references: info.references, optional: !!(symbol.flags & ts.SymbolFlags.Optional) || !!parameter?.questionToken || !!parameter?.initializer && position >= signature.minArgumentCount,
+      bindingPattern: parameter?.name && (ts.isObjectBindingPattern(parameter.name) || ts.isArrayBindingPattern(parameter.name)) ? compact(parameter.name) : null,
       rest: !!parameter?.dotDotDotToken, defaultExpression: compact(parameter?.initializer), unresolved: info.unresolved };
   });
   for (let position = 0; position < parameters.length; position++) {
