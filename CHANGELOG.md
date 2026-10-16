@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Size the finalized discovery page envelope rather than refusing against an empty provisional page with a longer continuation cursor; exact-fit terminal pages remain supported and final maxBytes is enforced.
 - Add whole-source diagnosticSummary code/count histogram to animationTimelineInspect, independent of diagnostic filters/pages and track selection. Counts describe retrieved dump diagnostics only, not runtime or binding validity.
 - Add exact diagnosticCode filtering with matchedDiagnostics to animationTimelineInspect. Diagnostic offsets page matching errors while whole-source diagnostics/counts and revision remain independent of selection; empty matches never imply a valid clip.
 - Refuse exact record owning-class/reference.type conflicts before Inspector observation, retaining normalized matching mappings and catalog-only discovery without mutation permission.

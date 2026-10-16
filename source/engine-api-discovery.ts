@@ -459,13 +459,13 @@ async function discoverWithinDeadline(args: EngineDiscoveryArgs, deadline: numbe
     let byteLimited = false;
     const cursorAt = (next: number): string | null => next < records.length ? Buffer.from(JSON.stringify({ hash: index.catalogHash, selector: selectorHash, offset: next })).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') : null;
     const result = (): Record<string, unknown> => ({ version, operation, coverage, catalogHash: index.catalogHash, records: selected, total: records.length, count: selected.length, truncated: offset + selected.length < records.length, truncationReason: offset + selected.length < records.length ? byteLimited ? 'maxBytes' : 'maxEntries' : null, nextCursor: cursorAt(offset + selected.length), live, runtimeVerified: false, qualified: false });
-    if (Buffer.byteLength(JSON.stringify(result())) > maxBytes) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'Required catalog metadata exceeds maxBytes.' });
     for (const record of records.slice(offset, offset + maxEntries)) {
         checkDeadline();
         selected.push(external && operation === 'records' ? ApiRecordSchema.parse({ ...readPage(() => external.readRecord(record.id)), permitted: false, writablePath: null }) : record);
         if (Buffer.byteLength(JSON.stringify(result())) > maxBytes) { selected.pop(); byteLimited = true; break; }
     }
     if (offset < records.length && selected.length === 0) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'One catalog record cannot fit maxBytes; narrow the query or increase its explicit bound.' });
+    if (Buffer.byteLength(JSON.stringify(result())) > maxBytes) throw new ToolError({ code: 'RESULT_TOO_LARGE', status: 422, message: 'Required catalog metadata exceeds maxBytes.' });
     checkDeadline();
     return result();
 }
