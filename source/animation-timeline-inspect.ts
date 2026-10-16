@@ -102,6 +102,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
     if (!sourceComplete && curves && events) issue('NATIVE_DUMP_TRUNCATED', 'clip.curves');
     let scannedValues = 0, keyframeCount = 0;
     let opaqueTextBytes = 0;
+    let opaqueKeyBytes = 0;
     // Validate opaque property dumps for non-finite numeric values without interpreting their schema.
     const finiteTree = (root: unknown): boolean => {
         const pending: Array<{ value: unknown; depth: number }> = [{ value: root, depth: 0 }];
@@ -122,9 +123,14 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
                     if (entry.value.length + pending.length > 1000000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native value array exceeds the scan bound.');
                     for (let index = 0; index < entry.value.length; index++) if (!Object.prototype.hasOwnProperty.call(entry.value, index)) return false;
                 }
-                const children = Object.values(entry.value);
-                if (children.length + pending.length > 1000000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native value container exceeds the scan bound.');
-                for (const child of children) pending.push({ value: child, depth: entry.depth + 1 });
+                for (const key in entry.value) {
+                    if (!Object.prototype.hasOwnProperty.call(entry.value, key)) continue;
+                    if (key.length > 1048576 - opaqueKeyBytes) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Opaque keyframe keys exceed 1 MiB UTF-8.');
+                    opaqueKeyBytes += Buffer.byteLength(key, 'utf8');
+                    if (opaqueKeyBytes > 1048576) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Opaque keyframe keys exceed 1 MiB UTF-8.');
+                    if (scannedValues + pending.length >= 1000000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native value container exceeds the scan bound.');
+                    pending.push({ value: (entry.value as Row)[key], depth: entry.depth + 1 });
+                }
             } else if (typeof entry.value === 'function' || typeof entry.value === 'symbol' || typeof entry.value === 'bigint' || entry.value === undefined) return false;
         }
         return true;

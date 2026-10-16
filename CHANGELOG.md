@@ -2,6 +2,7 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Traverse opaque keyframe own enumerable keys without a full Object.values allocation, counting aggregate key text up to1MiB UTF-8 and refusing work-queue overflow before enqueue. Existing dense/sparse value validation remains unchanged.
 - Retain nullable static identity on get_signature projections so exact signature consumers can distinguish static/instance declarations; missing metadata remains unknown rather than inferred callable support.
 - Retain memberKind in list_members identity and summaries, keeping same-name methods/properties/unknown kinds separate while aggregating duplicate views of the same kind/static identity. Tuple-encoded keys avoid delimiter collisions.
 - Bound aggregate opaque keyframe string values to1MiB UTF-8 during timeline validation. Exact boundary remains supported; excess refuses without truncation, schema interpretation or clip mutation.
