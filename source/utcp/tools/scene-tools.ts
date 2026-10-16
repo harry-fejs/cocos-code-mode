@@ -887,6 +887,37 @@ export class SceneTools {
     }
 
     @utcpTool(
+        'nodeGetPaths',
+        'Resolve1..32 exact node UUIDs sequentially to scoped hierarchy paths and ancestor chains with per-target errors. Each lookup observes a fresh bounded hierarchy; no atomic snapshot or mutation.',
+        { type: 'object', additionalProperties: false, properties: {
+            references: { type: 'array', minItems: 1, maxItems: 32, items: InstanceReferenceSchema },
+            relativeTo: InstanceReferenceSchema, includeRoot: { type: 'boolean', default: true }, requireUnique: { type: 'boolean', default: false },
+        }, required: ['references'] },
+        { type: 'object', properties: { items: { type: 'array' }, succeeded: { type: 'integer' }, failed: { type: 'integer' } }, required: ['items', 'succeeded', 'failed'] },
+        'GET', ['scene', 'node', 'path', 'batch', 'ancestors']
+    )
+    async nodeGetPaths(args: { references: IInstanceReference[], relativeTo?: IInstanceReference, includeRoot?: boolean, requireUnique?: boolean }): Promise<{ items: Array<Record<string, unknown>>, succeeded: number, failed: number }> {
+        if (!Array.isArray(args?.references) || args.references.length < 1 || args.references.length > 32 || args.references.some(reference => typeof reference?.id !== 'string' || !reference.id.trim() || reference.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'references requires1..32 bounded node UUIDs.' });
+        if (args.relativeTo !== undefined && (typeof args.relativeTo?.id !== 'string' || !args.relativeTo.id.trim() || args.relativeTo.id.length > 256)) throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'relativeTo requires a bounded node UUID.' });
+        if (args.includeRoot !== undefined && typeof args.includeRoot !== 'boolean' || args.requireUnique !== undefined && typeof args.requireUnique !== 'boolean') throw new ToolError({ code: 'INVALID_ARGUMENT', status: 400, message: 'Path projection flags must be boolean.' });
+        const references = args.references.map(reference => ({ id: reference.id }));
+        const relativeTo = args.relativeTo ? { id: args.relativeTo.id } : undefined;
+        const includeRoot = args.includeRoot, requireUnique = args.requireUnique;
+        const items: Array<Record<string, unknown>> = [];
+        let succeeded = 0;
+        for (const [index, reference] of references.entries()) {
+            try {
+                const result = await this.nodeGetPath({ reference, relativeTo, includeRoot, requireUnique });
+                items.push({ index, ok: true, reference, result });
+                succeeded++;
+            } catch (error) {
+                items.push({ index, ok: false, reference, error: { code: error instanceof ToolError ? error.code : 'NODE_PATH_QUERY_FAILED', message: (error instanceof Error ? error.message : String(error)).slice(0, 512) } });
+            }
+        }
+        return { items, succeeded, failed: references.length - succeeded };
+    }
+
+    @utcpTool(
         'sceneHierarchyAnalyze',
         'Summarize a bounded scene or subtree hierarchy: depth, active state, component counts, duplicate names and unknown component identities. Read-only; no serialized mutation or runtime inference.',
         {
