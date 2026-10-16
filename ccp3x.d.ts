@@ -1054,6 +1054,8 @@ declare namespace ccp3x {
         component: string | null; parentProperty: string | null; displayName: string | null;
         keyframeCount: number | null; keyframeOffset: number; nextKeyframeOffset: number | null;
         matchedKeyframes: number | null;
+        /** Invalid key rows across the whole retrieved track, independent of timing filters/pages; null when native keys are unavailable. */
+        invalidKeyframes: number | null;
         /** Coverage of matching timing keys, not opaque values/binding/runtime validity. Missing keys cannot prove complete. */
         keyframeLimit: number; keyframesComplete: boolean; keyframesTruncated: boolean;
         keyframes: AnimationTimelineKeyframe[];

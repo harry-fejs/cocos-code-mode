@@ -2,6 +2,8 @@
 
 ## Unreleased — Creator 3.7 follow-through
 
+- Reject case-colliding shard filenames in external source-index and lookup manifests before exposing discovery, matching offline generator and installed-catalog uniqueness semantics.
+- Expose invalidKeyframes per retrieved timeline track, counted across all keys independently of page/frame filters; unavailable native keys report null and empty keys report zero. Counts do not imply interpolation or binding validation.
 - Reuse fatal UTF-8/typed JSON parsing across external config/lookup/source-index/shards and installed discovery, preserving raw hash checks before parsing and rejecting corrupt encoded metadata without content echo.
 - Include every retrieved keyframe dataValid flag in timeline revision hashing, preventing off-page validity swaps from retaining revision after the diagnostic list reaches its cap. Opaque value-only changes remain outside revision scope.
 - Decode installed index/provenance/shard JSON with fatal UTF-8 validation and typed CATALOG_INVALID parsing failures, avoiding silent replacement characters or raw SyntaxError responses.

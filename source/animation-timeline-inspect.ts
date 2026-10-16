@@ -150,6 +150,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         if (keyframeCount > 100000) fail('TIMELINE_SOURCE_BOUND_EXCEEDED', 'Native dump exceeds 100000 keyframes.');
         let first: number | null = null, last: number | null = null;
         let matchedKeyframes = 0;
+        let invalidKeyframes = 0;
         let previousFrame: number | null = null;
         const keyframes: Array<{ index: number; frame: number | null; frameOverSample: number | null; dataValid: boolean }> = [];
         for (const [keyIndex, rawKey] of (keys ?? []).entries()) {
@@ -163,6 +164,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
             const matchesFrame = options.keyframeFrameRange === undefined || frame !== null && frame >= options.keyframeFrameRange.min && frame <= options.keyframeFrameRange.max;
             if (!key || !frameValid(key.frame)) issue('INVALID_KEYFRAME_TIME', keyLocation);
             if (!key || !('dump' in key) || !finiteTree(key)) issue('INVALID_KEYFRAME_DATA', keyLocation);
+            if (diagnosticCount !== keyIssues) invalidKeyframes++;
             timingHash.update(JSON.stringify([index, keyIndex, frame, diagnosticCount === keyIssues]));
             if (matchesFrame) {
                 if (matchedKeyframes >= bounds.keyframeOffset && matchedKeyframes < bounds.keyframeOffset + bounds.keyframeLimit) keyframes.push({ index: keyIndex, frame, frameOverSample: frame !== null && sample !== null && finite(frame / sample) ? frame / sample : null, dataValid: diagnosticCount === keyIssues });
@@ -173,6 +175,7 @@ export function inspectAnimationTimeline(value: unknown, options: TimelineInspec
         for (const field of ['comp', 'parentPropKey', 'displayName']) if (curve && field in curve && typeof curve[field] !== 'string') issue('UNSUPPORTED_TRACK_METADATA', `${location}.${field}`, true);
         const row = { index, identity: { nodePath: text(curve?.nodePath), property: text(curve?.key) }, component: text(curve?.comp), parentProperty: text(curve?.parentPropKey), displayName: text(curve?.displayName), keyframeCount: keys?.length ?? null,
             matchedKeyframes: keys === null ? null : matchedKeyframes,
+            invalidKeyframes: keys === null ? null : invalidKeyframes,
             keyframes, keyframeOffset: bounds.keyframeOffset, nextKeyframeOffset: keys && bounds.keyframeOffset + keyframes.length < matchedKeyframes ? bounds.keyframeOffset + keyframes.length : null,
             keyframeLimit: bounds.keyframeLimit, keyframesComplete: keys !== null && bounds.keyframeOffset === 0 && keyframes.length === matchedKeyframes,
             keyframesTruncated: keys === null || bounds.keyframeOffset > 0 || keyframes.length < matchedKeyframes,
